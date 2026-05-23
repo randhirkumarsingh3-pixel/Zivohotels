@@ -1,0 +1,1190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String         @id @default(uuid())
+  name               String
+  email              String         @unique
+  password           String
+  role               Role           @default(CUSTOMER)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  phone              String?
+  inviteToken        String?
+  inviteExpiry       DateTime?
+  mustChangePassword Boolean?       @default(false)
+  status             UserStatus?    @default(ACTIVE)
+  loyalty            Int?           @default(0)
+  tokenVersion       Int            @default(1)
+  lastLogin          DateTime?
+  lastActiveAt       DateTime?
+  bookings           Booking[]
+  couponUsages       CouponUsage[]
+  hotels             Hotel[]        @relation("PrimaryOwner")
+  loyaltyWallet      LoyaltyWallet?
+  reviews            Review[]
+}
+
+model Hotel {
+  id              String          @id @default(uuid())
+  name            String
+  location        String
+  city            String
+  rating          Float           @default(0)
+  reviews         Int             @default(0)
+  amenities       Json            @default("[]")
+  description     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  ownerId         String
+  latitude        Float?
+  longitude       Float?
+  landmark        String?
+  type            String?         @default("hotel")
+  status          PropertyStatus? @default(DRAFT)
+  statusReason    String?
+  statusUpdatedBy String?
+  statusUpdatedAt DateTime?
+  mode            PropertyMode    @default(INTERNAL)
+  onboardingStep  Int             @default(1)
+
+  // Identity & KYC
+  legalName         String?
+  brandName         String?
+  gstin             String?
+  pan               String?
+  incorporationType String? @default("INDIVIDUAL") // INDIVIDUAL, PARTNERSHIP, PVT_LTD
+
+  // Scoring
+  mediaScore            Float @default(0)
+  complianceScore       Int   @default(0)
+  revenueReadinessScore Int   @default(0)
+  readinessBreakdown    Json  @default("{}")
+
+  checkInTime         String?  @default("14:00")
+  checkOutTime        String?  @default("11:00")
+  policies            Json     @default("[]")
+  isDeleted           Boolean? @default(false)
+  channelProvider     String?
+  integrationMode     String   @default("INTERNAL")
+  integrationSettings Json?    @default("{}")
+  cmSyncStatus        String?  @default("INACTIVE")
+
+  creditScore           Float     @default(700)
+  dynamicCommissionRate Float     @default(15.0)
+  isThrottled           Boolean   @default(false)
+  competitivenessRating Float     @default(0.5)
+  healthScore           Int       @default(70)
+  payoutCycle           String    @default("T+2")
+  activationDate        DateTime?
+  lastAuditAt           DateTime?
+
+  // Relations
+  bookings           Booking[]
+  cancellationPolicy CancellationPolicy?
+  owner              User                @relation("PrimaryOwner", fields: [ownerId], references: [id])
+  media              HotelImage[]
+  reviewList         Review[]
+  roomTypes          RoomType[]
+  kycRecords         KYCRecord[]
+  tasks              PropertyTask[]
+  audits             PropertyAudit[]
+  agreements         PropertyAgreement[]
+  channelMappings    ChannelMapping[]
+  lead               PropertyLead?
+  policyRecords      HotelPolicy[]
+}
+
+model RoomType {
+  id              String          @id @default(uuid())
+  name            String
+  description     String
+  capacity        Int
+  totalInventory  Int
+  amenities       Json            @default("[]")
+  hotelId         String
+  code            String?         @default("")
+  maxOccupancy    Int?            @default(2)
+  baseOccupancy   Int?            @default(2)
+  bedType         String?
+  roomSize        String?
+  viewType        String?
+  isActive        Boolean?        @default(true)
+  extraBedAllowed Boolean         @default(false)
+  maxExtraBeds    Int?
+  bookings        Booking[]
+  inventories     Inventory[]
+  ratePlans       RatePlan[]
+  hotel           Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  images          RoomTypeImage[]
+
+  @@unique([hotelId, code])
+}
+
+model HotelImage {
+  id         String          @id @default(uuid())
+  url        String
+  hotelId    String
+  tags       String[]
+  category   String
+  isPrimary  Boolean         @default(false)
+  aiScore    Float?
+  aiAnalysis Json?           @default("{}")
+  createdAt  DateTime        @default(now())
+  hotel      Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomLinks  RoomTypeImage[]
+
+  @@index([hotelId, category])
+}
+
+model RoomTypeImage {
+  id         String     @id @default(uuid())
+  roomTypeId String
+  imageId    String
+  isPrimary  Boolean    @default(false)
+  image      HotelImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  roomType   RoomType   @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, imageId])
+  @@index([roomTypeId])
+}
+
+model RatePlan {
+  id                 String             @id @default(uuid())
+  name               String
+  mealPlan           MealPlan?          @default(NONE)
+  cancellationPolicy String?
+  basePrice          Float
+  isActive           Boolean?           @default(true)
+  roomTypeId         String
+  extraAdultPrice    Float?             @default(0)
+  extraBedIncluded   Boolean            @default(false)
+  extraBedPrice      Float?
+  extraChildPrice    Float?             @default(0)
+  mealPriceAdult     Float?
+  mealPriceChild     Float?
+  isConfigured       Boolean            @default(false)
+  bookings           Booking[]
+  occupancyPricing   OccupancyPricing[]
+  roomType           RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+}
+
+model OccupancyPricing {
+  id         String   @id @default(uuid())
+  ratePlanId String
+  occupancy  Int
+  price      Float
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+
+  @@unique([ratePlanId, occupancy])
+}
+
+model Booking {
+  id                String         @id @default(uuid())
+  bookingRef        String         @unique
+  guestName         String
+  guestEmail        String
+  guestPhone        String
+  checkIn           DateTime
+  checkOut          DateTime
+  guests            Int
+  rooms             Int
+  totalAmount       Float
+  status            BookingStatus  @default(PENDING)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  hotelId           String
+  roomTypeId        String
+  userId            String?
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  paidAmount        Float?         @default(0)
+  remainingAmount   Float?         @default(0)
+  expiresAt         DateTime?
+  paymentType       PaymentType?   @default(PREPAID)
+  paymentStatus     PaymentStatus? @default(PENDING)
+  taxAmount         Float?         @default(0)
+  baseAmount        Float?         @default(0)
+  ratePlanId        String?
+  cancelledAt       DateTime?
+  refundAmount      Float?         @default(0)
+  adults            Int            @default(2)
+  children          Int            @default(0)
+  extraBedCharges   Float?         @default(0)
+  extraBeds         Int            @default(0)
+  extraGuestCharges Float?         @default(0)
+  mealCharges       Float?         @default(0)
+  pricingType       String?        @default("STANDARD")
+  roomPrice         Float?         @default(0)
+  metadata          Json?          @default("{}")
+  requestId         String?        @unique
+  couponCode        String?
+  sessionId         String?
+  hotel             Hotel          @relation(fields: [hotelId], references: [id])
+  ratePlan          RatePlan?      @relation(fields: [ratePlanId], references: [id])
+  roomType          RoomType       @relation(fields: [roomTypeId], references: [id])
+  session           SessionLog?    @relation(fields: [sessionId], references: [sessionId])
+  user              User?          @relation(fields: [userId], references: [id])
+  invoice           Invoice?
+  refund            Refund?
+  review            Review?
+}
+
+model TaxRule {
+  id            String    @id @default(uuid())
+  name          String
+  minThreshold  Float?    @default(0)
+  maxThreshold  Float?
+  percentage    Float
+  isActive      Boolean?  @default(true)
+  effectiveFrom DateTime  @default(now())
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+model Agreement {
+  id             String           @id @default(uuid())
+  hotelId        String           @unique
+  ownerId        String
+  status         AgreementStatus? @default(DRAFT)
+  commissionRate Float?           @default(15.0)
+  sentAt         DateTime?
+  signedAt       DateTime?
+  expiryAt       DateTime?
+  createdAt      DateTime?        @default(now())
+  updatedAt      DateTime?        @updatedAt
+}
+
+model BankDetail {
+  id            String    @id @default(uuid())
+  hotelId       String    @unique
+  accountName   String
+  bankName      String
+  accountNumber String
+  ifscCode      String
+  branchName    String?
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+model Inventory {
+  id             String   @id @default(uuid())
+  date           DateTime
+  totalRooms     Int
+  bookedRooms    Int?     @default(0)
+  availableRooms Int
+  roomTypeId     String
+  roomType       RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, date])
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  userId     String
+  createdAt  DateTime? @default(now())
+  requestId  String?
+  traceId    String? // Global correlation ID
+
+  @@index([userId])
+  @@index([createdAt, action])
+  @@index([action, createdAt])
+}
+
+model SecurityLog {
+  id        String    @id @default(uuid())
+  type      String
+  userId    String?
+  ip        String
+  userAgent String?
+  details   Json?
+  requestId String?
+  createdAt DateTime? @default(now())
+
+  @@index([ip])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  hotelId   String
+  type      String // NEW_BOOKING, CANCELLED, LOW_INVENTORY, PAYOUT
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([hotelId, isRead])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AppState {
+  id                      String   @id @default("singleton")
+  experimentWorkerRunning Boolean  @default(false)
+  globalExperimentToggle  Boolean  @default(true)
+  systemMode              String   @default("NORMAL")
+  updatedAt               DateTime @updatedAt
+}
+
+model OwnerProperty {
+  id         String @id @default(uuid())
+  commission Float? @default(15.0)
+  userId     String
+  hotelId    String
+}
+
+model Permission {
+  id       String   @id @default(uuid())
+  module   String
+  canRead  Boolean? @default(true)
+  canWrite Boolean? @default(false)
+  userId   String
+}
+
+model Refund {
+  id               String       @id @default(uuid())
+  bookingId        String       @unique
+  amount           Float
+  status           RefundStatus @default(INITIATED)
+  reason           String?
+  razorpayRefundId String?
+  requestId        String?
+  retryCount       Int          @default(0)
+  lastAttemptAt    DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  booking          Booking      @relation(fields: [bookingId], references: [id])
+}
+
+model CancellationPolicy {
+  id                    String   @id @default(uuid())
+  hotelId               String   @unique
+  freeCancellationHours Int      @default(24)
+  partialRefundPercent  Float    @default(50)
+  noRefundHours         Int      @default(6)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  hotel                 Hotel    @relation(fields: [hotelId], references: [id])
+}
+
+model InvoiceSequence {
+  id      Int @id @default(autoincrement())
+  year    Int @unique
+  counter Int @default(0)
+}
+
+model Invoice {
+  id         String   @id @default(uuid())
+  invoiceRef String   @unique
+  bookingId  String   @unique
+  pdfUrl     String?
+  status     String   @default("GENERATED")
+  createdAt  DateTime @default(now())
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String       @id @default(uuid())
+  rating        Float
+  comment       String?
+  bookingId     String       @unique
+  userId        String
+  hotelId       String
+  createdAt     DateTime     @default(now())
+  isVerified    Boolean      @default(true)
+  editableUntil DateTime?
+  status        ReviewStatus @default(PENDING)
+  updatedAt     DateTime     @updatedAt
+  booking       Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotel         Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id               String        @id @default(uuid())
+  code             String        @unique
+  discountType     String
+  value            Float
+  expiry           DateTime
+  isActive         Boolean       @default(true)
+  maxUses          Int?
+  usedCount        Int           @default(0)
+  createdAt        DateTime      @default(now())
+  maxDiscount      Float?
+  minBookingAmount Float?
+  maxUsesPerUser   Int?
+  usages           CouponUsage[]
+}
+
+model CouponUsage {
+  id        String @id @default(uuid())
+  userId    String
+  couponId  String
+  usedCount Int    @default(0)
+  coupon    Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, couponId])
+}
+
+model LoyaltyWallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserBehavior {
+  id                        String    @id @default(uuid())
+  userId                    String    @unique
+  lastSearchedCity          String?
+  lastSearchAt              DateTime?
+  preferredMinPrice         Float?
+  preferredMaxPrice         Float?
+  lastViewedHotels          String[]
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  recentlyRecommendedHotels String[]  @default([])
+}
+
+model AnalyticsEvent {
+  id           String    @id @default(uuid())
+  userId       String?
+  sessionId    String
+  eventType    EventType
+  metadata     Json
+  hotelId      String?
+  city         String?
+  createdAt    DateTime  @default(now())
+  experiments  Json?
+  experimentId String?
+  variantId    String?
+
+  @@index([eventType, createdAt])
+  @@index([userId])
+  @@index([hotelId])
+}
+
+model HotelView {
+  id        String   @id @default(uuid())
+  userId    String?
+  hotelId   String
+  createdAt DateTime @default(now())
+
+  @@index([hotelId, createdAt])
+}
+
+model Experiment {
+  id               String    @id @default(uuid())
+  name             String    @unique
+  status           String
+  variants         Json
+  createdAt        DateTime  @default(now())
+  category         String
+  concludedAt      DateTime?
+  endAt            DateTime?
+  owner            String?
+  startAt          DateTime?
+  traffic          Int       @default(100)
+  updatedAt        DateTime  @updatedAt
+  winner           String?
+  priority         String    @default("LOW")
+  lastEvaluationAt DateTime?
+  lastUplift       Float?
+  guardrailMetrics Json?
+  stratification   Json?
+}
+
+model ExperimentInsight {
+  id             String   @id @default(uuid())
+  experimentId   String
+  experimentName String
+  category       String
+  winner         String?
+  relativeUplift Float
+  absoluteUplift Float
+  confidence     String
+  createdAt      DateTime @default(now())
+  resultType     String
+  segmentKey     String?
+  status         String   @default("ACTIVE")
+  version        Int      @default(1)
+}
+
+model PricingRule {
+  id         String   @id @default(uuid())
+  hotelId    String?
+  roomTypeId String?
+  type       String
+  condition  Json
+  adjustment Float
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model DemandSignal {
+  id          String   @id @default(uuid())
+  hotelId     String
+  date        DateTime
+  searches    Int      @default(0)
+  views       Int      @default(0)
+  bookings    Int      @default(0)
+  demandScore Float    @default(0.5)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roomTypeId  String   @default("_all")
+
+  @@unique([hotelId, roomTypeId, date])
+}
+
+model PricingSnapshot {
+  id         String   @id @default(uuid())
+  bookingId  String?
+  hotelId    String
+  roomTypeId String
+  date       DateTime
+  basePrice  Float
+  finalPrice Float
+  breakdown  Json
+  createdAt  DateTime @default(now())
+}
+
+model PricingState {
+  id               String   @id @default(uuid())
+  hotelId          String
+  roomTypeId       String
+  lastAppliedPrice Float
+  lastUpdatedAt    DateTime @default(now())
+
+  @@unique([hotelId, roomTypeId])
+}
+
+model HolidayCalendar {
+  id         String   @id @default(uuid())
+  date       DateTime
+  city       String?
+  name       String
+  multiplier Float    @default(0.15)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([date])
+}
+
+model PricingFeatureLog {
+  id            String   @id @default(uuid())
+  hotelId       String
+  roomTypeId    String
+  date          DateTime
+  basePrice     Float
+  finalPrice    Float
+  demandScore   Float
+  occupancy     Float
+  daysToCheckIn Int
+  dayOfWeek     Int
+  segment       String?
+  device        String?
+  wasBooked     Boolean  @default(false)
+  revenue       Float?
+  createdAt     DateTime @default(now())
+}
+
+model PricingPrediction {
+  id           String   @id @default(uuid())
+  contextHash  String
+  multiplier   Float
+  confidence   Float
+  modelVersion String
+  source       String
+  createdAt    DateTime @default(now())
+}
+
+model PricingFeedback {
+  id           String   @id @default(uuid())
+  predictionId String
+  outcome      String
+  revenue      Float?
+  createdAt    DateTime @default(now())
+}
+
+model ChannelIntegration {
+  id          String   @id @default(uuid())
+  hotelId     String   @unique
+  provider    String
+  credentials Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ChannelMapping {
+  id                String    @id @default(uuid())
+  hotelId           String
+  externalProvider  String // e.g., STAAH, AXIS
+  zivoRoomTypeId    String
+  externalRoomCode  String
+  zivoRatePlanId    String?
+  externalRateCode  String?
+  mappingConfidence Float     @default(1.0)
+  syncStatus        String    @default("ACTIVE")
+  lastSyncAt        DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  hotel             Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([hotelId, zivoRoomTypeId, externalProvider])
+}
+
+model Transaction {
+  id         String   @id @default(uuid())
+  bookingId  String?
+  userId     String?
+  type       String
+  amount     Decimal  @db.Decimal(12, 2)
+  currency   String   @default("INR")
+  status     String
+  gateway    String?
+  gatewayRef String?  @unique
+  createdAt  DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([gatewayRef])
+}
+
+model Settlement {
+  id               String    @id @default(uuid())
+  bookingId        String    @unique
+  hotelId          String
+  grossAmount      Decimal   @db.Decimal(12, 2)
+  commissionAmount Decimal   @db.Decimal(12, 2)
+  taxAmount        Decimal   @db.Decimal(12, 2)
+  netPayable       Decimal   @db.Decimal(12, 2)
+  status           String
+  version          Int       @default(1)
+  holdUntil        DateTime? // Payout eligibility date
+  payoutDate       DateTime?
+  createdAt        DateTime  @default(now())
+  cgstAmount       Decimal   @default(0) @db.Decimal(12, 2)
+  igstAmount       Decimal   @default(0) @db.Decimal(12, 2)
+  placeOfSupply    String?
+  sgstAmount       Decimal   @default(0) @db.Decimal(12, 2)
+
+  @@index([hotelId])
+  @@index([status])
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  referenceId   String
+  referenceType String? // BOOKING, SETTLEMENT, REFUND, DISPUTE, PAYOUT
+  traceId       String? // UUID for tracking the entire request lifecycle
+  account       String
+  type          String // DEBIT, CREDIT
+  amount        Decimal  @db.Decimal(12, 2)
+  description   String
+  hash          String? // Immutable hash (previous + current)
+  createdAt     DateTime @default(now())
+  periodId      String?
+
+  @@unique([referenceId, account, type, amount, description])
+  @@index([referenceId])
+  @@index([account])
+  @@index([createdAt])
+}
+
+model Payout {
+  id          String   @id @default(uuid())
+  hotelId     String
+  totalAmount Decimal  @db.Decimal(12, 2)
+  status      String
+  reference   String?  @unique
+  createdAt   DateTime @default(now())
+
+  @@index([hotelId])
+}
+
+model Dispute {
+  id            String   @id @default(uuid())
+  transactionId String
+  bookingId     String
+  amount        Decimal  @db.Decimal(12, 2)
+  reason        String
+  status        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([transactionId])
+  @@index([bookingId])
+}
+
+model FinancialPeriod {
+  id        String   @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isLocked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id           String              @id @default(uuid())
+  userId       String?             @unique
+  hotelId      String?             @unique
+  balance      Decimal             @default(0) @db.Decimal(12, 2)
+  creditLimit  Decimal             @default(0) @db.Decimal(12, 2)
+  currency     String              @default("INR")
+  updatedAt    DateTime            @updatedAt
+  kycStatus    String              @default("PENDING")
+  tier         String              @default("BRONZE")
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id        String   @id @default(uuid())
+  walletId  String
+  type      String
+  amount    Decimal  @db.Decimal(12, 2)
+  reference String
+  createdAt DateTime @default(now())
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model FraudLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  bookingId String?
+  riskScore Float
+  reason    String
+  status    String
+  createdAt DateTime @default(now())
+}
+
+model PayoutQueue {
+  id        String   @id @default(uuid())
+  hotelId   String
+  amount    Decimal  @db.Decimal(12, 2)
+  status    String
+  retries   Int      @default(0)
+  error     String?
+  createdAt DateTime @default(now())
+  holdUntil DateTime @default(now())
+}
+
+model LoyaltyPoint {
+  id        String   @id @default(uuid())
+  userId    String
+  points    Int
+  source    String
+  createdAt DateTime @default(now())
+}
+
+model Agent {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  creditLimit Decimal  @db.Decimal(12, 2)
+  usedCredit  Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+}
+
+model SessionLog {
+  id          String    @id @default(uuid())
+  userId      String?
+  sessionId   String    @unique
+  platform    String
+  city        String?
+  createdAt   DateTime  @default(now())
+  conversions Booking[]
+}
+
+model DemandForecast {
+  id              String   @id @default(uuid())
+  city            String
+  date            DateTime
+  predictedDemand Float
+  confidence      Float
+  createdAt       DateTime @default(now())
+
+  @@unique([city, date])
+}
+
+model HotelInteraction {
+  id        String   @id @default(uuid())
+  hotelId   String
+  sessionId String?
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([hotelId, type])
+}
+
+model PropertyLead {
+  id                    String     @id @default(uuid())
+  email                 String     @unique
+  phone                 String?
+  name                  String?
+  propertyName          String
+  city                  String
+  source                LeadSource @default(DIRECT)
+  status                LeadStatus @default(NEW)
+  assignedTo            String? // Admin/Sales User ID
+  priority              Int        @default(1) // 1-5
+  notes                 String?
+  conversionProbability Float?     @default(0.0)
+  expectedRevenue       Decimal?   @db.Decimal(20, 4)
+  followUpAt            DateTime?
+  convertedAt           DateTime?
+  hotelId               String?    @unique
+  hotel                 Hotel?     @relation(fields: [hotelId], references: [id])
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([city])
+}
+
+model KYCRecord {
+  id              String         @id @default(uuid())
+  hotelId         String
+  documentType    DocumentType
+  documentUrl     String
+  documentStatus  DocumentStatus @default(PENDING)
+  version         Int            @default(1)
+  rejectionReason String?
+  ocrMetadata     Json?          @default("{}")
+  expiryDate      DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String? // Admin User ID
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  hotel           Hotel          @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, documentType])
+}
+
+model PropertyTask {
+  id          String     @id @default(uuid())
+  hotelId     String
+  title       String
+  description String?
+  status      TaskStatus @default(OPEN)
+  priority    Int        @default(1)
+  dueAt       DateTime?
+  completedAt DateTime?
+  metadata    Json?      @default("{}")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  hotel       Hotel      @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, status])
+}
+
+model PropertyAudit {
+  id          String        @id @default(uuid())
+  hotelId     String
+  auditorId   String
+  score       Float         @default(0)
+  breakdown   Json          @default("{}")
+  severity    AuditSeverity @default(LOW)
+  actionItems String[]      @default([])
+  findings    String?
+  timestamp   DateTime      @default(now())
+  hotel       Hotel         @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, timestamp])
+}
+
+model PropertyAgreement {
+  id          String          @id @default(uuid())
+  hotelId     String
+  version     String
+  signedAt    DateTime?
+  expiresAt   DateTime?
+  documentUrl String
+  status      AgreementStatus @default(DRAFT)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  hotel       Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, status])
+}
+
+model AdminActionLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
+
+model DecisionLog {
+  id        String   @id @default(uuid())
+  entityId  String
+  type      String
+  inputs    Json
+  output    Json
+  reason    String?
+  timestamp DateTime @default(now())
+
+  @@index([entityId, type])
+  @@index([timestamp])
+}
+
+model SessionRecord {
+  id           String   @id @default(uuid())
+  sessionId    String   @unique
+  userId       String?
+  path         Json
+  revenue      Decimal  @default(0) @db.Decimal(20, 4)
+  dropOffPoint String?
+  isConverted  Boolean  @default(false)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isConverted])
+  @@index([createdAt])
+}
+
+model SessionAggregate {
+  id            String   @id @default(uuid())
+  date          DateTime @unique @db.Date
+  totalSessions Int      @default(0)
+  conversions   Int      @default(0)
+  totalRevenue  Decimal  @default(0) @db.Decimal(20, 4)
+  dropOffs      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+}
+
+model SystemActionLog {
+  id          String    @id @default(uuid())
+  actionType  String
+  reason      String
+  triggeredBy String
+  impact      Json?
+  status      String    @default("ACTIVE")
+  revertedAt  DateTime?
+  revertedBy  String?
+  timestamp   DateTime  @default(now())
+
+  @@index([actionType])
+  @@index([timestamp])
+}
+
+model SystemEvent {
+  id        String   @id @default(uuid())
+  type      String
+  payload   Json
+  source    String
+  timestamp DateTime @default(now())
+
+  @@index([type])
+  @@index([timestamp])
+}
+
+model DecisionVersion {
+  id         String   @id @default(uuid())
+  entityType String
+  version    String
+  config     Json
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, version])
+}
+
+enum Role {
+  CUSTOMER
+  OWNER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  BLOCKED
+  DELETED
+}
+
+enum PropertyStatus {
+  DRAFT
+  IN_REVIEW
+  LIVE
+  ACTIVE
+  PAUSED
+  SUSPENDED
+  THROTTLED
+  BLOCKED
+  PENDING
+  INACTIVE
+}
+
+enum PropertyMode {
+  INTERNAL
+  CHANNEL_MANAGER
+  HYBRID
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  ONBOARDING
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  DIRECT
+  SALES
+  REFERRAL
+  AGGREGATOR
+  API
+}
+
+enum DocumentType {
+  GST
+  PAN
+  TRADE_LICENSE
+  OWNERSHIP_PROOF
+  BANK_PROOF
+  FIRE_SAFETY
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum AuditSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  OPEN
+  COMPLETED
+  SKIPPED
+}
+
+enum RefundStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+}
+
+enum MealPlan {
+  NONE
+  EP
+  CP
+  MAP
+  AP
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentType {
+  PAY_AT_HOTEL
+  PARTIAL
+  PREPAID
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL_PAID
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum AgreementStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  SIGNED
+  EXPIRED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventType {
+  SEARCH_STARTED
+  DESTINATION_SELECTED
+  HOTEL_VIEWED
+  BOOKING_STARTED
+  BOOKING_COMPLETED
+}
+
+model PolicyTemplate {
+  id        String   @id @default(uuid())
+  category  String
+  code      String   @unique
+  label     String
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HotelPolicy {
+  id         String   @id @default(uuid())
+  hotelId    String
+  policyCode String
+  value      String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  hotel      Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([hotelId, policyCode])
+}

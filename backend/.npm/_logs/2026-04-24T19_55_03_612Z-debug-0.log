@@ -1,0 +1,17 @@
+0 verbose cli /usr/local/bin/node /usr/local/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@11.12.1
+2 info using node@v24.15.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/randhir/Desktop/ZivoHotels/backend/.npmrc
+5 silly config load:file:/usr/local/etc/npmrc
+6 verbose title npm exec prisma db push --accept-data-loss
+7 verbose argv "exec" "--" "prisma" "db" "push" "--accept-data-loss"
+8 verbose logfile logs-max:10 dir:/Users/randhir/Desktop/ZivoHotels/backend/.npm/_logs/2026-04-24T19_55_03_612Z-
+9 verbose logfile /Users/randhir/Desktop/ZivoHotels/backend/.npm/_logs/2026-04-24T19_55_03_612Z-debug-0.log
+10 silly logfile done cleaning log files
+11 verbose cwd /Users/randhir/Desktop/ZivoHotels/backend
+12 verbose os Darwin 21.5.0
+13 verbose node v24.15.0
+14 verbose npm  v11.12.1
+15 verbose exit 1
+16 verbose code 1
