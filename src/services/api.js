@@ -1,5 +1,6 @@
-// Base URL is handled by Vite proxy for local development
-const API_URL = '/api/v1';
+// Base URL is handled by Vite proxy for local development, but in production
+// it can be overridden using the VITE_API_URL environment variable.
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const ADMIN_BASE = `${API_URL}/admin`;
 const PUBLIC_BASE = API_URL;
 
