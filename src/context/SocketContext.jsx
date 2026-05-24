@@ -17,7 +17,11 @@ export const SocketProvider = ({ children }) => {
     if (!token || connectingRef.current) return;
     connectingRef.current = true;
 
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000', {
+    // Extract the base domain (origin) so Socket.io doesn't treat /api/v1 as a namespace
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+    const socketUrl = apiUrl.startsWith('http') ? new URL(apiUrl).origin : window.location.origin;
+
+    const newSocket = io(socketUrl, {
       auth: { token },
       transports: ['websocket'],
       reconnectionAttempts: 5,
