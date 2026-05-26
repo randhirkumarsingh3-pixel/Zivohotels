@@ -77,7 +77,10 @@ export const getHotels = async (searchParams = {}, filters = {}) => {
   if (filters.sortBy)          params.set('sort', filters.sortBy);
   if (filters.includeSoldOut !== undefined) params.set('includeSoldOut', filters.includeSoldOut);
 
-  const url = `${PUBLIC_BASE}/hotels/search${params.toString() ? '?' + params.toString() : ''}`;
+  const hasSearchCriteria = searchParams.destination && searchParams.checkIn && searchParams.checkOut;
+  const baseUrl = hasSearchCriteria ? `${PUBLIC_BASE}/hotels/search` : `${PUBLIC_BASE}/hotels`;
+
+  const url = `${baseUrl}${params.toString() ? '?' + params.toString() : ''}`;
   
   try {
     const response = await fetch(url);
