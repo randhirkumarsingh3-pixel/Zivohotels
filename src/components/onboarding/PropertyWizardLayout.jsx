@@ -25,7 +25,7 @@ const PropertyWizardLayout = ({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] font-sans pb-20">
+    <div className="min-h-screen bg-[#F4F5F7] font-sans pb-32">
       {/* Top Navigation / Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -89,11 +89,32 @@ const PropertyWizardLayout = ({
       </div>
 
       {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto mt-8 px-4 sm:px-6 relative">
+      <main className="max-w-7xl mx-auto mt-8 px-4 sm:px-6 relative">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-[500px]">
           {children}
         </div>
       </main>
+
+      {/* Bottom Sticky Navigation Bar matching screenshot */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3.5 px-8 flex items-center justify-between z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        <button
+          type="button"
+          onClick={() => currentStep > 1 && setCurrentStep(prev => prev - 1)}
+          disabled={currentStep === 1 || isSubmitting}
+          className="text-blue-600 font-bold hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={isSubmitting}
+          className="bg-[#E05A3E] hover:bg-[#c64f35] text-white px-8 py-2.5 rounded font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-md cursor-pointer"
+        >
+          {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+          Save And Continue
+        </button>
+      </div>
     </div>
   );
 };

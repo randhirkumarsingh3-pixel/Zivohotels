@@ -51,6 +51,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 <option>Villa</option>
                 <option>Apartment</option>
                 <option>Hostel</option>
+                <option>Homestay</option>
               </select>
             </div>
           </div>
