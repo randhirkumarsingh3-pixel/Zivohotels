@@ -168,10 +168,13 @@ export const pricingDomain = {
 
     // Find applicable tax rule (sorted by effectiveFrom desc, so first match is current)
     // Assume service passes pre-filtered and sorted taxRules array
-    const taxRule = taxRules.find(rule => 
-      perNightRate >= rule.minThreshold && 
-      (rule.maxThreshold === null || perNightRate <= rule.maxThreshold)
-    );
+    const taxRule = taxRules.find(rule => {
+      if (rule.maxThreshold !== null) {
+        return perNightRate >= rule.minThreshold && perNightRate <= rule.maxThreshold;
+      } else {
+        return perNightRate > rule.minThreshold;
+      }
+    });
 
     if (!taxRule) {
       throw new Error(`No applicable tax rule found for tariff ₹${perNightRate.toFixed(2)}`);

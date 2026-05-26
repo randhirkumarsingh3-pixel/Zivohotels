@@ -24,7 +24,7 @@ async function main() {
   await prisma.taxRule.create({
     data: {
       name: 'GST 18%',
-      minThreshold: 7500.01,
+      minThreshold: 7500,
       maxThreshold: null,
       percentage: 18,
       isActive: true,

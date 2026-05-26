@@ -88,7 +88,7 @@ const HotelCard = ({ hotel }) => {
                   <span className="text-xl font-extrabold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span>
                   <span className="text-xs text-gray-500 ml-1">/ night</span>
                 </div>
-                <p className="text-[10px] text-green-600 font-medium mt-0.5">+ ₹{Math.round(displayPrice * 0.18).toLocaleString('en-IN')} taxes & fees</p>
+                <p className="text-[10px] text-green-600 font-medium mt-0.5">+ ₹{Math.round(displayPrice * (displayPrice <= 7500 ? 0.05 : 0.18)).toLocaleString('en-IN')} taxes & fees</p>
               </>
             ) : (
               <p className="text-sm font-semibold text-orange-600">Price not available</p>

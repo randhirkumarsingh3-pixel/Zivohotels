@@ -208,7 +208,8 @@ const Detail = () => {
   const nightsN   = rooms || 1;
   const pricePerNight = selectedRatePlan?.basePrice || 0;
   const baseTotal = pricePerNight * nights * nightsN;
-  const taxes     = Math.round(baseTotal * 0.18);
+  const taxRate   = pricePerNight <= 7500 ? 0.05 : 0.18;
+  const taxes     = Math.round(baseTotal * taxRate);
   const grandTotal= baseTotal + taxes;
 
   return (
@@ -380,7 +381,7 @@ const Detail = () => {
                       <span>{fmt(baseTotal)}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>Taxes &amp; Fees (18%)</span>
+                      <span>Taxes &amp; Fees ({Math.round(taxRate * 100)}%)</span>
                       <span>{fmt(taxes)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
