@@ -14,6 +14,28 @@ export const inventoryRepository = {
     const { roomTypeId, checkInDate, checkOutDate, rooms } = params;
     const dateRange = getDatesInRange(checkInDate, checkOutDate);
 
+    // Ensure inventory records exist in the database for the dates (fallback to physical inventory)
+    const roomType = await tx.roomType.findUnique({
+      where: { id: roomTypeId },
+      select: { totalInventory: true }
+    });
+    if (!roomType) {
+      throw new Error("RoomType not found");
+    }
+
+    const inventoryData = dateRange.map(date => ({
+      roomTypeId,
+      date,
+      totalRooms: roomType.totalInventory,
+      availableRooms: roomType.totalInventory,
+      bookedRooms: 0
+    }));
+
+    await tx.inventory.createMany({
+      data: inventoryData,
+      skipDuplicates: true
+    });
+
     // 1. Hard Lock the rows to prevent race conditions
     await tx.$queryRaw`
       SELECT id FROM "Inventory"

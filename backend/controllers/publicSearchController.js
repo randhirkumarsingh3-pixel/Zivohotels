@@ -23,11 +23,16 @@ export const searchAll = async (req, res, next) => {
           similarity(location, ${searchQuery})
         ) AS max_score
       FROM "Hotel"
-      WHERE name % ${searchQuery}
-         OR city % ${searchQuery}
-         OR location % ${searchQuery}
-        AND ("isDeleted" = false OR "isDeleted" IS NULL)
-        AND "status" = 'ACTIVE'
+      WHERE (
+        name % ${searchQuery}
+        OR city % ${searchQuery}
+        OR location % ${searchQuery}
+        OR name ILIKE ${'%' + searchQuery + '%'}
+        OR city ILIKE ${'%' + searchQuery + '%'}
+        OR location ILIKE ${'%' + searchQuery + '%'}
+      )
+      AND ("isDeleted" = false OR "isDeleted" IS NULL)
+      AND "status" = 'ACTIVE'
       ORDER BY max_score DESC
       LIMIT 10;
     `;

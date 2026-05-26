@@ -483,11 +483,32 @@ export const searchHotels = asyncHandler(async (req, res) => {
              }
          });
          
-         if (rt.inventories && rt.inventories.length > 0) {
-            const minAvail = Math.min(...rt.inventories.map(i => i.availableRooms));
-            availableRooms += Math.max(0, minAvail);
-            totalRooms += rt.inventories[0].totalRooms;
+         const startDate = new Date(checkIn);
+         const endDate = new Date(checkOut);
+         const daysCount = Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)));
+          
+         let minAvail = rt.totalInventory || 0;
+         const inventoryMap = {};
+         if (rt.inventories) {
+            rt.inventories.forEach(inv => {
+               const dateStr = new Date(inv.date).toISOString().split('T')[0];
+               inventoryMap[dateStr] = inv.availableRooms;
+            });
          }
+          
+         for (let d = 0; d < daysCount; d++) {
+            const currDate = new Date(startDate);
+            currDate.setDate(startDate.getDate() + d);
+            const currDateStr = currDate.toISOString().split('T')[0];
+             
+            const dayAvail = inventoryMap[currDateStr] !== undefined ? inventoryMap[currDateStr] : (rt.totalInventory || 0);
+            if (dayAvail < minAvail) {
+               minAvail = dayAvail;
+            }
+         }
+          
+         availableRooms += Math.max(0, minAvail);
+         totalRooms += (rt.totalInventory || 0);
      });
 
      return {

@@ -8,8 +8,76 @@ import ledgerService from './finance/ledgerService.js';
 import settlementService from './finance/settlementService.js';
 import loyaltyService from './finance/loyaltyService.js';
 import agentService from './finance/agentService.js';
+import { getSystemConfig } from '../config/systemConfig.js';
 
 export const bookingService = {
+
+  /**
+   * Generates a preview of the booking costs
+   */
+  previewBooking: async (params) => {
+    const { roomTypeId, ratePlanId, checkIn, checkOut, rooms, adults, children, extraBeds, paymentType, couponCode } = params;
+
+    // 1. Fetch Dependencies
+    const roomType = await prisma.roomType.findUnique({
+      where: { id: roomTypeId },
+      include: { hotel: true }
+    });
+    if (!roomType) throw new Error('Room type not found');
+
+    const ratePlan = await prisma.ratePlan.findUnique({
+      where: { id: ratePlanId },
+      include: { occupancyPricing: true }
+    });
+    if (!ratePlan) throw new Error('Rate plan not found');
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    const taxRules = await prisma.taxRule.findMany({
+      where: { isActive: true },
+      orderBy: { effectiveFrom: 'desc' }
+    });
+
+    const systemConfig = await getSystemConfig();
+    const prepaidDiscountPercent = systemConfig.prepaidDiscountPercent ?? 5;
+
+    let appliedCoupon = null;
+    if (couponCode) {
+      appliedCoupon = await prisma.coupon.findUnique({
+        where: { code: couponCode, isActive: true }
+      });
+      if (appliedCoupon && new Date(appliedCoupon.expiry) < new Date()) {
+         appliedCoupon = null;
+      }
+    }
+
+    // 2. Pricing Validation
+    const dynamicContext = {
+      safeMode: false,
+      availableRooms: roomType.totalInventory,
+      userSegment: 'STANDARD',
+      device: 'WEB'
+    };
+
+    const calculationInput = {
+      roomType,
+      ratePlan,
+      taxRules,
+      prepaidDiscountPercent,
+      checkInDate,
+      checkOutDate,
+      rooms,
+      adults,
+      children,
+      extraBeds,
+      paymentType,
+      appliedCoupon,
+      dynamicContext
+    };
+
+    return pricingDomain.calculate(calculationInput);
+  },
 
   /**
    * Orchestrates the creation of a new booking
@@ -29,34 +97,62 @@ export const bookingService = {
     if (!roomType) throw new Error('Room type not found');
 
     const ratePlan = await prisma.ratePlan.findUnique({
-      where: { id: ratePlanId }
+      where: { id: ratePlanId },
+      include: { occupancyPricing: true }
     });
     if (!ratePlan) throw new Error('Rate plan not found');
 
     const checkInDate = new Date(dates[0]);
     const checkOutDate = new Date(dates[dates.length - 1]);
+    checkOutDate.setDate(checkOutDate.getDate() + 1);
     const rooms = pricingParams.rooms || 1;
     const adults = pricingParams.adults || 2;
     const children = pricingParams.children || 0;
     const extraBeds = pricingParams.extraBeds || 0;
 
+    const taxRules = await prisma.taxRule.findMany({
+      where: { isActive: true },
+      orderBy: { effectiveFrom: 'desc' }
+    });
+
+    const systemConfig = await getSystemConfig();
+    const prepaidDiscountPercent = systemConfig.prepaidDiscountPercent ?? 5;
+
+    let appliedCoupon = null;
+    if (couponCode) {
+      appliedCoupon = await prisma.coupon.findUnique({
+        where: { code: couponCode, isActive: true }
+      });
+      if (appliedCoupon && new Date(appliedCoupon.expiry) < new Date()) {
+         appliedCoupon = null;
+      }
+    }
+
     // 2. Pricing Validation (Double Check)
     const dynamicContext = {
       safeMode: false,
-      availableRooms: roomType.baseInventory,
+      availableRooms: roomType.totalInventory,
       userSegment: 'STANDARD',
       device: 'WEB'
     };
 
-    const finalPricingParams = {
-      ...pricingParams,
-      hotelId, roomTypeId, ratePlanId,
-      basePrice: ratePlan.basePrice,
-      checkInDate, checkOutDate,
+    const calculationInput = {
+      roomType,
+      ratePlan,
+      taxRules,
+      prepaidDiscountPercent,
+      checkInDate,
+      checkOutDate,
+      rooms,
+      adults,
+      children,
+      extraBeds,
+      paymentType,
+      appliedCoupon,
       dynamicContext
     };
 
-    const pricing = pricingDomain.calculate(finalPricingParams);
+    const pricing = pricingDomain.calculate(calculationInput);
     Object.freeze(pricing);
 
     // 3. B2B Agent Authorization (Phase 8.7)
@@ -170,8 +266,8 @@ export const bookingService = {
       if (lastNight?.dynamicBreakdown?.finalPrice) {
         await tx.pricingState.upsert({
           where: { hotelId_roomTypeId: { hotelId, roomTypeId } },
-          update: { lastSeenPrice: lastNight.dynamicBreakdown.finalPrice },
-          create: { hotelId, roomTypeId, lastSeenPrice: lastNight.dynamicBreakdown.finalPrice }
+          update: { lastAppliedPrice: lastNight.dynamicBreakdown.finalPrice },
+          create: { hotelId, roomTypeId, lastAppliedPrice: lastNight.dynamicBreakdown.finalPrice }
         });
       }
 

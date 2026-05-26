@@ -95,13 +95,34 @@ export const createBooking = async (req, res, next) => {
       });
     }
 
-    const context = {
-      requestId: req.id,
-      userId: req.user?.id,
-      sessionId: req.headers['x-session-id'] || null
+    const {
+      hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
+      rooms, adults, children, extraBeds, paymentType,
+      guestName, guestEmail, guestPhone, couponCode, agentId
+    } = validation.data;
+
+    const dates = getDatesInRange(checkIn, checkOut);
+
+    const pricingParams = {
+      rooms, adults, children, extraBeds
     };
 
-    const result = await bookingService.createBooking(validation.data, context);
+    const serviceContext = {
+      guestName, guestEmail, guestPhone,
+      ratePlanId, paymentType, couponCode,
+      requestId: req.id,
+      sessionId: req.headers['x-session-id'] || null,
+      agentId
+    };
+
+    const result = await bookingService.createBooking(
+      req.user?.id,
+      hotelId,
+      roomTypeId,
+      dates,
+      pricingParams,
+      serviceContext
+    );
 
     if (result.isIdempotent) {
       return res.status(200).json({ 
