@@ -449,7 +449,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
         where: { isActive: true },
         include: {
           ratePlans: { where: { isActive: true } },
-          Inventory: {
+          inventories: {
              where: { date: { gte: new Date(checkIn), lt: new Date(checkOut) } }
           }
         }
@@ -483,10 +483,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
              }
          });
          
-         if (rt.Inventory && rt.Inventory.length > 0) {
-            const minAvail = Math.min(...rt.Inventory.map(i => i.availableRooms));
+         if (rt.inventories && rt.inventories.length > 0) {
+            const minAvail = Math.min(...rt.inventories.map(i => i.availableRooms));
             availableRooms += Math.max(0, minAvail);
-            totalRooms += rt.Inventory[0].totalRooms;
+            totalRooms += rt.inventories[0].totalRooms;
          }
      });
 
