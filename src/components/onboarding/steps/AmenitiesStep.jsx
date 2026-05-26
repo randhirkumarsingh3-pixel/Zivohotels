@@ -29,312 +29,307 @@ const AMENITIES_DATA = [
   {
     name: 'General Services',
     items: [
-      { name: 'Laundry Service', hasDropdown: false },
-      { name: 'Dry Cleaning Service', hasDropdown: false },
-      { name: 'Ironing Service', hasDropdown: false },
-      { name: 'Luggage Storage', hasDropdown: false },
+      { name: 'Laundry', hasDropdown: false },
+      { name: 'Newspaper', hasDropdown: false },
+      { name: 'Smoking rooms', hasDropdown: false },
+      { name: 'Lounge', hasDropdown: false },
+      { name: 'First-aid services', hasDropdown: false },
       { name: 'Concierge', hasDropdown: false },
-      { name: 'Tour Desk', hasDropdown: false },
-      { name: 'Ticket Service', hasDropdown: false },
-      { name: 'Currency Exchange', hasDropdown: false },
-      { name: 'ATM on site', hasDropdown: false },
-      { name: 'Daily Housekeeping', hasDropdown: false },
-      { name: 'Trouser Press', hasDropdown: false },
-      { name: 'Shoeshine', hasDropdown: false },
-      { name: 'Butler Service', hasDropdown: false }
+      { name: 'Multilingual Staff', hasDropdown: false },
+      { name: 'Cloak Room', hasDropdown: false },
+      { name: 'Specially abled assistance', hasDropdown: false },
+      { name: 'Butler Services', hasDropdown: false },
+      { name: 'Doctor on call', hasDropdown: false },
+      { name: 'Medical centre (Within Premise)', hasDropdown: false },
+      { name: 'Pool/ Beach towels', hasDropdown: false }
     ]
   },
   {
     name: 'Security',
     items: [
-      { name: '24-Hour Security', hasDropdown: false },
-      { name: 'Safe', hasDropdown: false },
-      { name: 'Fire Extinguishers', hasDropdown: false },
-      { name: 'Smoke Alarms', hasDropdown: false },
-      { name: 'Security Alarms', hasDropdown: false },
-      { name: 'Key Card Access', hasDropdown: false },
-      { name: 'Security Guard', hasDropdown: false }
+      { name: 'Smoke detector', hasDropdown: false },
+      { name: 'Fire extinguishers', hasDropdown: false },
+      { name: 'Security alarms', hasDropdown: false },
+      { name: 'Security Guard', hasDropdown: false },
+      { name: 'Carbon Monoxide Detector', hasDropdown: false },
+      { name: 'Door-Eye', hasDropdown: false },
+      { name: 'Door Chain', hasDropdown: false }
     ]
   },
   {
     name: 'Basic Facilities',
     items: [
-      { name: 'Power Backup Facilities', hasDropdown: false },
-      { name: 'Elevator/Lift Service', hasDropdown: false },
-      { name: 'Air Conditioning (General Area)', hasDropdown: false },
-      { name: 'Free Wi-Fi (General Area)', hasDropdown: false },
-      { name: 'Paid Parking (General Area)', hasDropdown: false },
-      { name: 'Public Restroom', hasDropdown: false },
-      { name: 'Intercom', hasDropdown: false },
-      { name: 'First Aid Kit', hasDropdown: false },
-      { name: 'Doctor on Call', hasDropdown: false }
+      { name: 'LAN', hasDropdown: false },
+      { name: 'Refrigerator', hasDropdown: false },
+      { name: 'Umbrellas', hasDropdown: false },
+      { name: 'Washing Machine', hasDropdown: false },
+      { name: 'Laundromat', hasDropdown: false },
+      { name: 'EV Charging Station (Within Premise)', hasDropdown: false },
+      { name: 'Driver\'s Accommodation', hasDropdown: false },
+      { name: 'Grocery Purchase', hasDropdown: false },
+      { name: 'Utensil Cleaning', hasDropdown: false }
     ]
   },
   {
     name: 'Outdoor Sports & Activities',
     items: [
-      { name: 'Badminton', hasDropdown: false },
-      { name: 'Tennis Court', hasDropdown: false },
-      { name: 'Golf Course', hasDropdown: false },
-      { name: 'Cycling', hasDropdown: false },
-      { name: 'Hiking', hasDropdown: false },
-      { name: 'Horseback Riding', hasDropdown: false },
-      { name: 'Squash', hasDropdown: false },
-      { name: 'Mini Golf', hasDropdown: false },
-      { name: 'Table Tennis', hasDropdown: false },
-      { name: 'Darts', hasDropdown: false },
-      { name: 'Billiards', hasDropdown: false },
-      { name: 'Archery', hasDropdown: false },
-      { name: 'Bowling', hasDropdown: false },
-      { name: 'Fishing', hasDropdown: false },
-      { name: 'Canoeing', hasDropdown: false },
-      { name: 'Diving', hasDropdown: false },
-      { name: 'Snorkeling', hasDropdown: false },
+      { name: 'Beach', hasDropdown: false },
+      { name: 'Golf Course / Mini Golf', hasDropdown: false },
+      { name: 'Outdoor sports', hasDropdown: false },
       { name: 'Skiing', hasDropdown: false },
-      { name: 'Ski School', hasDropdown: false },
-      { name: 'Windsurfing', hasDropdown: false },
-      { name: 'Hiking Trails', hasDropdown: false },
-      { name: 'Bicycle Rental', hasDropdown: false },
-      { name: 'Tennis Equipment', hasDropdown: false },
-      { name: 'Badminton Equipment', hasDropdown: false },
-      { name: 'Ski Equipment Rental', hasDropdown: false },
-      { name: 'Ski Pass Vendor', hasDropdown: false },
-      { name: 'Ski-to-Door Access', hasDropdown: false },
-      { name: 'Ski Storage', hasDropdown: false }
+      { name: 'Cycling', hasDropdown: false },
+      { name: 'Rock Climbing', hasDropdown: false },
+      { name: 'Ziplining', hasDropdown: false },
+      { name: 'Archery', hasDropdown: false },
+      { name: 'Tennis', hasDropdown: false },
+      { name: 'Basketball court', hasDropdown: false },
+      { name: 'Cricket', hasDropdown: false },
+      { name: 'Badminton', hasDropdown: false },
+      { name: 'Volley Ball', hasDropdown: false },
+      { name: 'High rope course', hasDropdown: false },
+      { name: 'Paintball', hasDropdown: false },
+      { name: 'Paragliding', hasDropdown: false },
+      { name: 'Camping', hasDropdown: false },
+      { name: 'Hot Air Balloon Ride', hasDropdown: false },
+      { name: 'Air Rifle Shooting', hasDropdown: false },
+      { name: 'Football/Soccer', hasDropdown: false },
+      { name: 'Pickle Ball', hasDropdown: false },
+      { name: 'ATV or Buggy Ride', hasDropdown: false },
+      { name: 'Zorbing', hasDropdown: false },
+      { name: 'Wall Climbing', hasDropdown: false },
+      { name: 'Bungee Jumping', hasDropdown: false },
+      { name: 'Beach Volley / Football', hasDropdown: false },
+      { name: 'Golf Simulator', hasDropdown: false },
+      { name: 'Rappelling', hasDropdown: false }
     ]
   },
   {
     name: 'Common Area',
     items: [
-      { name: 'Shared Lounge/TV Area', hasDropdown: false },
-      { name: 'Terrace', hasDropdown: false },
+      { name: 'Balcony/ Terrace', hasDropdown: false },
       { name: 'Garden', hasDropdown: false },
-      { name: 'Library', hasDropdown: false },
-      { name: 'Picnic Area', hasDropdown: false },
+      { name: 'Sun Deck', hasDropdown: false },
+      { name: 'Prayer Room', hasDropdown: false },
+      { name: 'Living Room', hasDropdown: false },
       { name: 'Outdoor Furniture', hasDropdown: false }
     ]
   },
   {
     name: 'Food and Drink',
     items: [
-      { name: 'Bar Facility', hasDropdown: false },
-      { name: 'Restaurant Facility', hasDropdown: false },
-      { name: 'Coffee House on site', hasDropdown: false },
-      { name: 'Breakfast in the Room', hasDropdown: false },
-      { name: 'Special Diet Menus', hasDropdown: false },
-      { name: 'Snack Bar', hasDropdown: false },
-      { name: 'Kid-friendly Buffet', hasDropdown: false }
+      { name: 'Barbeque', hasDropdown: false },
+      { name: 'Dining Area', hasDropdown: false },
+      { name: 'Kid\'s Menu', hasDropdown: false },
+      { name: 'Breakfast', hasDropdown: false },
+      { name: 'Food Options Available', hasDropdown: false },
+      { name: 'Indian Chef', hasDropdown: false },
+      { name: 'Cook Service', hasDropdown: false }
     ]
   },
   {
     name: 'Business Center and Conferences',
     items: [
-      { name: 'Meeting/Banquet Facilities', hasDropdown: false },
-      { name: 'Business Center Services', hasDropdown: false },
-      { name: 'Fax/Photocopying Services', hasDropdown: false },
-      { name: 'Conference Rooms', hasDropdown: false },
-      { name: 'Executive Lounge Access', hasDropdown: false },
-      { name: 'Boardrooms', hasDropdown: false }
+      { name: 'Banquet', hasDropdown: false },
+      { name: 'Business Center', hasDropdown: false },
+      { name: 'Conference room', hasDropdown: false },
+      { name: 'Photocopying', hasDropdown: false },
+      { name: 'Fax service', hasDropdown: false },
+      { name: 'Printer', hasDropdown: false }
     ]
   },
   {
     name: 'Transfers',
     items: [
-      { name: 'Airport Shuttle (free)', hasDropdown: false },
-      { name: 'Airport Shuttle (surcharge)', hasDropdown: false },
-      { name: 'Shuttle Service (free)', hasDropdown: false },
-      { name: 'Shuttle Service (surcharge)', hasDropdown: false }
+      { name: 'Pickup/ Drop', hasDropdown: false },
+      { name: 'Shuttle Service', hasDropdown: false },
+      { name: 'Railway Station Transfers', hasDropdown: false },
+      { name: 'Bus Station transfers', hasDropdown: false }
     ]
   },
   {
     name: 'Entertainment',
     items: [
-      { name: 'Evening Entertainment', hasDropdown: false },
-      { name: 'Nightclub/DJ', hasDropdown: false },
-      { name: 'Karaoke', hasDropdown: false },
-      { name: 'Board Games/Puzzles', hasDropdown: false },
-      { name: 'Casino', hasDropdown: false },
-      { name: 'Game Room', hasDropdown: false }
+      { name: 'Events', hasDropdown: false },
+      { name: 'Professional Photography', hasDropdown: false },
+      { name: 'Night Club', hasDropdown: false },
+      { name: 'Beach club', hasDropdown: false },
+      { name: 'Movie Room', hasDropdown: false },
+      { name: 'Music System', hasDropdown: false }
     ]
   },
   {
     name: 'Shopping',
     items: [
-      { name: 'Gift Shop', hasDropdown: false },
-      { name: 'Convenience Store on site', hasDropdown: false },
-      { name: 'Mini-market on site', hasDropdown: false }
+      { name: 'Grocery/Supermarket (Within Premise)', hasDropdown: false },
+      { name: 'Souvenir shop', hasDropdown: false },
+      { name: 'Jewellery Shop', hasDropdown: false }
     ]
   },
   {
     name: 'Media and technology',
     items: [
-      { name: 'Flat-screen TV Access', hasDropdown: false }
+      { name: 'TV', hasDropdown: false }
     ]
   },
   {
     name: 'Payment Services',
     items: [
-      { name: 'Mobile Payment options', hasDropdown: false },
-      { name: 'Card Payment Accepted', hasDropdown: false }
+      { name: 'ATM', hasDropdown: false },
+      { name: 'Currency Exchange', hasDropdown: false }
     ]
   },
   {
     name: 'Family and kids',
     items: [
-      { name: 'Babysitting/Child Services', hasDropdown: false },
-      { name: 'Kids\' Outdoor Play Equipment', hasDropdown: false },
-      { name: 'Indoor Play Area For Kids', hasDropdown: false }
+      { name: 'Kids\' Club', hasDropdown: false },
+      { name: 'Babysitting', hasDropdown: false },
+      { name: 'Crib', hasDropdown: false }
     ]
   },
   {
     name: 'Pet essentials',
     items: [
-      { name: 'Pet Bowls', hasDropdown: false },
-      { name: 'Pet Basket', hasDropdown: false }
+      { name: 'Pet bowls', hasDropdown: false },
+      { name: 'Pet baskets', hasDropdown: false }
     ]
   },
   {
     name: 'Spa & Wellness',
     items: [
-      { name: 'Spa/Wellness Packages', hasDropdown: false },
-      { name: 'Sauna Room', hasDropdown: false },
-      { name: 'Steam Room', hasDropdown: false },
-      { name: 'Hot Tub/Jacuzzi', hasDropdown: false },
+      { name: 'Massage', hasDropdown: false },
+      { name: 'Salon', hasDropdown: false },
+      { name: 'Steam and Sauna', hasDropdown: false },
+      { name: 'Jacuzzi', hasDropdown: false },
+      { name: 'Activity Centre', hasDropdown: false },
+      { name: 'Yoga', hasDropdown: false },
+      { name: 'Meditation Room', hasDropdown: false },
       { name: 'Solarium', hasDropdown: false },
-      { name: 'Massage Services', hasDropdown: false },
-      { name: 'Fitness Center Facility', hasDropdown: false },
-      { name: 'Yoga Classes', hasDropdown: false },
-      { name: 'Fitness Classes', hasDropdown: false },
-      { name: 'Personal Trainer', hasDropdown: false },
-      { name: 'Open-air Bath', hasDropdown: false }
+      { name: 'Hot Spring bath (Within Premise)', hasDropdown: false },
+      { name: 'Hammam', hasDropdown: false },
+      { name: 'Ayurvedic Treatment (Within Premise)', hasDropdown: false }
     ]
   },
   {
     name: 'Accessibility',
     items: [
-      { name: 'Wheelchair Accessible Rooms', hasDropdown: false },
-      { name: 'Toilet with Grab Rails', hasDropdown: false },
-      { name: 'Higher Level Toilet', hasDropdown: false },
-      { name: 'Lower Bathroom Sink', hasDropdown: false },
-      { name: 'Emergency Cord in Bathroom', hasDropdown: false },
-      { name: 'Tactile Signs Available', hasDropdown: false },
-      { name: 'Braille Visual Aids', hasDropdown: false },
       { name: 'Auditory Guidance', hasDropdown: false },
-      { name: 'Raised Toilet Seat', hasDropdown: false },
-      { name: 'Walk-in Shower', hasDropdown: false },
-      { name: 'Shower Chair', hasDropdown: false }
+      { name: 'Visual aids (Braille)', hasDropdown: false },
+      { name: 'Visual aids (tactile signs)', hasDropdown: false },
+      { name: 'Ramp', hasDropdown: false },
+      { name: 'Step free entrance', hasDropdown: false },
+      { name: 'Designated Accessible Parking', hasDropdown: false },
+      { name: 'Wide Pathways', hasDropdown: false },
+      { name: 'Toilet with grabrails', hasDropdown: false },
+      { name: 'Raised toilet', hasDropdown: false },
+      { name: 'Lowered sink', hasDropdown: false },
+      { name: 'Bathroom emergency cord', hasDropdown: false }
     ]
   },
   {
     name: 'Water Sports & Activities',
     items: [
-      { name: 'Water Sports Facilities on site', hasDropdown: false },
-      { name: 'Water Park Access', hasDropdown: false },
-      { name: 'Jet Skiing', hasDropdown: false },
       { name: 'Kayaking', hasDropdown: false },
-      { name: 'Parasailing', hasDropdown: false },
-      { name: 'Paddleboarding', hasDropdown: false },
-      { name: 'Rafting', hasDropdown: false },
-      { name: 'Sailing', hasDropdown: false },
-      { name: 'Wakeboarding', hasDropdown: false },
-      { name: 'Water Skiing', hasDropdown: false },
-      { name: 'Kneeboarding', hasDropdown: false },
-      { name: 'Tubing', hasDropdown: false },
-      { name: 'Flyboarding', hasDropdown: false },
-      { name: 'Kitesurfing', hasDropdown: false },
-      { name: 'Skimboarding', hasDropdown: false },
-      { name: 'Bodyboarding', hasDropdown: false },
-      { name: 'Surfing', hasDropdown: false },
-      { name: 'Free Diving', hasDropdown: false },
+      { name: 'Snorkelling', hasDropdown: false },
+      { name: 'Water sports', hasDropdown: false },
+      { name: 'Canoeing', hasDropdown: false },
+      { name: 'Water Park (Within Premise)', hasDropdown: false },
       { name: 'Scuba Diving', hasDropdown: false },
-      { name: 'Snorkeling Tour', hasDropdown: false },
-      { name: 'Boat Tour', hasDropdown: false },
-      { name: 'Fishing Charter', hasDropdown: false },
-      { name: 'Catamaran Sailing', hasDropdown: false },
-      { name: 'Windsurfing School', hasDropdown: false },
-      { name: 'Jet Ski Rental', hasDropdown: false }
+      { name: 'Jet skiing', hasDropdown: false },
+      { name: 'Paddle Boarding', hasDropdown: false },
+      { name: 'Pedal Boats', hasDropdown: false },
+      { name: 'Banana Boat Ride', hasDropdown: false },
+      { name: 'Fishing', hasDropdown: false },
+      { name: 'Windsurfing', hasDropdown: false },
+      { name: 'Beach Volleyball', hasDropdown: false },
+      { name: 'Laser Boat', hasDropdown: false },
+      { name: 'Glass Bottom Boat', hasDropdown: false },
+      { name: 'Parasailing', hasDropdown: false },
+      { name: 'Beach football', hasDropdown: false },
+      { name: 'Surfing', hasDropdown: false },
+      { name: 'River Rafting', hasDropdown: false },
+      { name: 'Dolphin Boat Ride', hasDropdown: false },
+      { name: 'Water Skiing', hasDropdown: false },
+      { name: 'Diving', hasDropdown: false },
+      { name: 'Motor Boat ride', hasDropdown: false },
+      { name: 'Boat Ride', hasDropdown: false },
+      { name: 'Beach Sports', hasDropdown: false }
     ]
   },
   {
     name: 'Indoor Sports & Activities',
     items: [
-      { name: 'Billiards Room', hasDropdown: false },
-      { name: 'Table Tennis Area', hasDropdown: false },
-      { name: 'Darts Area', hasDropdown: false },
-      { name: 'Bowling Alley', hasDropdown: false },
-      { name: 'Squash Court Room', hasDropdown: false },
-      { name: 'Card Games room', hasDropdown: false },
-      { name: 'Foosball Table', hasDropdown: false },
-      { name: 'Carrom Board', hasDropdown: false },
-      { name: 'Chess Board', hasDropdown: false },
-      { name: 'Video Games room', hasDropdown: false },
-      { name: 'Escape Room Activity', hasDropdown: false },
-      { name: 'Virtual Reality gaming', hasDropdown: false },
-      { name: 'Laser Tag Activity', hasDropdown: false }
+      { name: 'Library', hasDropdown: false },
+      { name: 'Indoor games', hasDropdown: false },
+      { name: 'Indoor games room', hasDropdown: false },
+      { name: 'Table Tennis', hasDropdown: false },
+      { name: 'Billiards/pool table', hasDropdown: false },
+      { name: 'Board Games', hasDropdown: false },
+      { name: 'Foosball table', hasDropdown: false },
+      { name: 'Air hockey table', hasDropdown: false },
+      { name: 'Game Zone / Arcade', hasDropdown: false },
+      { name: 'Virtual Gaming/VR Zone', hasDropdown: false },
+      { name: 'Dart Board', hasDropdown: false },
+      { name: 'Bowling', hasDropdown: false },
+      { name: 'Squash', hasDropdown: false }
     ]
   },
   {
     name: 'Live Shows, Music & Entertainment Activities',
     items: [
-      { name: 'Live Music/Performance', hasDropdown: false },
-      { name: 'Stand-up Comedy Shows', hasDropdown: false },
-      { name: 'Theater Shows', hasDropdown: false },
+      { name: 'Casino', hasDropdown: false },
+      { name: 'Bonfire', hasDropdown: false },
+      { name: 'Live Music', hasDropdown: false },
+      { name: 'Cultural Programme', hasDropdown: false },
+      { name: 'Movie Screenings', hasDropdown: false },
+      { name: 'Karaoke', hasDropdown: false },
       { name: 'Magic Shows', hasDropdown: false },
-      { name: 'Acrobatics Shows', hasDropdown: false },
-      { name: 'Cultural Dance Shows', hasDropdown: false },
-      { name: 'Karaoke Nights', hasDropdown: false },
-      { name: 'DJ Nights', hasDropdown: false },
-      { name: 'Movie Nights', hasDropdown: false },
-      { name: 'Pub Crawls', hasDropdown: false },
-      { name: 'Theme Dinners', hasDropdown: false },
-      { name: 'Cooking Classes', hasDropdown: false },
-      { name: 'Wine Tasting Sessions', hasDropdown: false },
-      { name: 'Local Culture Tours', hasDropdown: false },
-      { name: 'Art Galleries visits', hasDropdown: false },
-      { name: 'Fashion Shows', hasDropdown: false },
-      { name: 'Concerts', hasDropdown: false },
-      { name: 'Festivals', hasDropdown: false }
+      { name: 'Puppet Shows', hasDropdown: false },
+      { name: 'Live Art Performance', hasDropdown: false },
+      { name: 'Stand-up Comedy', hasDropdown: false },
+      { name: 'Light & Sound Show', hasDropdown: false },
+      { name: 'Rain Dance', hasDropdown: false },
+      { name: 'DJ Party', hasDropdown: false },
+      { name: 'Firework Show', hasDropdown: false },
+      { name: 'Dance Performance', hasDropdown: false },
+      { name: 'Disco Club', hasDropdown: false },
+      { name: 'Aarti Ceremony', hasDropdown: false },
+      { name: 'Drone Show', hasDropdown: false }
     ]
   },
   {
     name: 'Wildlife Safari and Wildlife Exploration',
     items: [
-      { name: 'Wildlife Safari Tours', hasDropdown: false },
-      { name: 'Bird Watching', hasDropdown: false },
-      { name: 'Nature Trails Walk', hasDropdown: false },
-      { name: 'Tiger Reserve Tour', hasDropdown: false },
-      { name: 'Jungle Trekking', hasDropdown: false },
-      { name: 'Elephant Ride', hasDropdown: false },
-      { name: 'Crocodile Farm visit', hasDropdown: false },
-      { name: 'Snake Park visit', hasDropdown: false },
-      { name: 'Butterfly Garden', hasDropdown: false },
-      { name: 'Nocturnal Animal Tour', hasDropdown: false },
-      { name: 'Reptile Show', hasDropdown: false },
-      { name: 'Wildlife Photography Tour', hasDropdown: false },
-      { name: 'Conservation Center visit', hasDropdown: false }
+      { name: 'Jungle Safari', hasDropdown: false },
+      { name: 'Wildlife Photography', hasDropdown: false },
+      { name: 'Wildlife Documentary', hasDropdown: false },
+      { name: 'Night Safari', hasDropdown: false },
+      { name: 'Forest Camping', hasDropdown: false },
+      { name: 'Dolphin Watching', hasDropdown: false },
+      { name: 'Tiger Safari', hasDropdown: false },
+      { name: 'Leopard Safari', hasDropdown: false },
+      { name: 'Lion Safari', hasDropdown: false },
+      { name: 'Elephant Safari', hasDropdown: false },
+      { name: 'Whale Watching', hasDropdown: false },
+      { name: 'Turtle Watching', hasDropdown: false },
+      { name: 'Sea Life Exploration', hasDropdown: false }
     ]
   },
   {
     name: 'Rides, Safari, Excursions & Tour',
     items: [
-      { name: 'Hot Air Balloon Ride', hasDropdown: false },
-      { name: 'Helicopter Tour', hasDropdown: false },
-      { name: 'Desert Safari', hasDropdown: false },
-      { name: 'Camel Ride', hasDropdown: false },
-      { name: 'ATV Quad Biking', hasDropdown: false },
-      { name: 'Boat Cruise', hasDropdown: false },
-      { name: 'Cable Car Ride', hasDropdown: false },
-      { name: 'Ziplining', hasDropdown: false },
-      { name: 'Segway Tour', hasDropdown: false },
-      { name: 'Bus Tour', hasDropdown: false },
-      { name: 'Walking Tour', hasDropdown: false },
-      { name: 'Bike Tour', hasDropdown: false },
-      { name: 'Jeep Safari', hasDropdown: false },
-      { name: 'Speedboat Ride', hasDropdown: false },
-      { name: 'Catamaran Cruise', hasDropdown: false },
-      { name: 'Historic Sites Tour', hasDropdown: false },
-      { name: 'Museum Excursion', hasDropdown: false },
-      { name: 'Theme Park Access', hasDropdown: false }
+      { name: 'Jungle Safari', hasDropdown: false },
+      { name: 'Wildlife Photography', hasDropdown: false },
+      { name: 'Wildlife Documentary', hasDropdown: false },
+      { name: 'Night Safari', hasDropdown: false },
+      { name: 'Forest Camping', hasDropdown: false },
+      { name: 'Dolphin Watching', hasDropdown: false },
+      { name: 'Tiger Safari', hasDropdown: false },
+      { name: 'Leopard Safari', hasDropdown: false },
+      { name: 'Lion Safari', hasDropdown: false },
+      { name: 'Elephant Safari', hasDropdown: false },
+      { name: 'Whale Watching', hasDropdown: false },
+      { name: 'Turtle Watching', hasDropdown: false },
+      { name: 'Sea Life Exploration', hasDropdown: false }
     ]
   },
   {
@@ -378,14 +373,12 @@ const AmenitiesStep = ({ formData, updateForm }) => {
   // Toggle selected amenities
   const handleToggle = (amenityName, value, hasDropdown, options) => {
     if (value === 'Yes') {
-      // Check if already selected (with or without dropdown text)
       const exists = selectedAmenities.some(a => a === amenityName || a.startsWith(amenityName + ':'));
       if (!exists) {
         const defaultValue = hasDropdown && options ? `${amenityName}: ${options[0]}` : amenityName;
         updateForm('amenities', [...selectedAmenities, defaultValue]);
       }
     } else {
-      // Toggle No: remove from array
       updateForm('amenities', selectedAmenities.filter(a => a !== amenityName && !a.startsWith(amenityName + ':')));
     }
   };
@@ -396,7 +389,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
     updateForm('amenities', [...cleanList, `${amenityName}: ${optionValue}`]);
   };
 
-  // Check if amenity is selected (returns true if present as exact match or starts with name + ':')
+  // Check if amenity is selected
   const isSelected = (amenityName) => {
     return selectedAmenities.some(a => a === amenityName || a.startsWith(amenityName + ':'));
   };
@@ -429,7 +422,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
 
       <div className="flex flex-col md:flex-row gap-8 items-start min-h-[500px]">
         {/* Left Column: Categories Sidebar */}
-        <div className="w-full md:w-1/3 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white divide-y divide-gray-100 shrink-0">
+        <div className="w-full md:w-1/3 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white divide-y divide-gray-100 shrink-0 max-h-[700px] overflow-y-auto">
           {AMENITIES_DATA.map((cat) => {
             const active = activeCategory === cat.name;
             const count = getSelectedCount(cat);
@@ -440,7 +433,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
                 key={cat.name}
                 type="button"
                 onClick={() => setActiveCategory(cat.name)}
-                className={`w-full text-left px-5 py-4 flex items-center justify-between text-sm transition-all focus:outline-none ${
+                className={`w-full text-left px-5 py-3.5 flex items-center justify-between text-sm transition-all focus:outline-none ${
                   active
                     ? 'bg-blue-50/70 border-l-4 border-blue-600 text-blue-700 font-bold'
                     : 'text-gray-700 hover:bg-gray-50/50 hover:text-gray-900 font-medium'
@@ -456,7 +449,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
         </div>
 
         {/* Right Column: Amenities Toggles */}
-        <div className="w-full md:w-2/3 border border-gray-200 rounded-lg shadow-sm bg-white p-5 sm:p-8 space-y-6">
+        <div className="w-full md:w-2/3 border border-gray-200 rounded-lg shadow-sm bg-white p-5 sm:p-8 space-y-6 max-h-[700px] overflow-y-auto">
           <h2 className="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-3">
             {activeCategory} Amenities
           </h2>
