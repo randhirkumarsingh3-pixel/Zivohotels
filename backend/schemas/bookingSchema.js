@@ -50,8 +50,10 @@ export const bookingSchema = {
     return null;
   },
 
-  guests: (v) => {
-    const n = parseInt(v);
+  guests: (v, body) => {
+    const val = v !== undefined ? v : (body.adults !== undefined ? body.adults : body.guests);
+    if (val === undefined) return null;
+    const n = parseInt(val);
     if (isNaN(n) || n < 1) return 'guests must be at least 1';
     if (n > 20) return 'guests cannot exceed 20';
     return null;
