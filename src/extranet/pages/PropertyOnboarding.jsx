@@ -504,7 +504,7 @@ const PropertyOnboarding = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto bg-white/50 backdrop-blur-3xl relative">
-          <div className="max-w-4xl mx-auto p-12">
+          <div className="max-w-5xl mx-auto p-12">
             <div className="mb-12">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full uppercase tracking-[0.2em]">Step 0{currentStep}</span>
@@ -532,7 +532,7 @@ const PropertyOnboarding = () => {
                   <div className="space-y-10">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="col-span-2 space-y-4">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Property Classification</label>
+                        <label className="text-sm font-semibold text-slate-700">Property Classification</label>
                         <div className="grid grid-cols-5 gap-4">
                           {[
                             { id: 'hotel', label: 'Hotel', icon: Building2 },
@@ -558,13 +558,13 @@ const PropertyOnboarding = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Property Name</label>
+                        <label className="text-sm font-semibold text-slate-700">Property Name</label>
                         <div className="relative">
                           <input 
                             type="text" 
                             value={formData.name || ''}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-gray-900 placeholder:text-gray-300"
+                            className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-gray-900 placeholder:text-gray-300"
                             placeholder="e.g. Grand Zivo Palace"
                           />
                           {formData.name?.length > 3 && <BadgeCheck size={20} className="absolute right-4 top-5 text-emerald-500" />}
@@ -572,24 +572,24 @@ const PropertyOnboarding = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Legal Business Name</label>
+                        <label className="text-sm font-semibold text-slate-700">Legal Business Name</label>
                         <input 
                           type="text" 
                           value={formData.legalName || ''}
                           onChange={(e) => setFormData({...formData, legalName: e.target.value})}
-                          className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-gray-900 placeholder:text-gray-300"
+                          className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-gray-900 placeholder:text-gray-300"
                           placeholder="Registered company name"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">GSTIN Number</label>
+                        <label className="text-sm font-semibold text-slate-700">GSTIN Number</label>
                         <div className="relative group">
                           <input 
                             type="text" 
                             value={formData.gstin || ''}
                             onChange={(e) => setFormData({...formData, gstin: e.target.value})}
-                            className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-mono font-bold text-gray-900"
+                            className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-mono font-bold text-gray-900"
                             placeholder="15-digit GST number"
                           />
                           {formData.gstin?.length === 15 ? (
@@ -601,18 +601,18 @@ const PropertyOnboarding = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">PAN Number</label>
+                        <label className="text-sm font-semibold text-slate-700">PAN Number</label>
                         <input 
                           type="text" 
                           value={formData.pan || ''}
                           onChange={(e) => setFormData({...formData, pan: e.target.value})}
-                          className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-mono font-bold text-gray-900"
+                          className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-mono font-bold text-gray-900"
                         />
                       </div>
 
                       <div className="col-span-2 space-y-4">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Property Description</label>
+                          <label className="text-sm font-semibold text-slate-700">Property Description</label>
                           <button className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
                             <Sparkles size={14} /> Generate with AI
                           </button>
@@ -621,9 +621,81 @@ const PropertyOnboarding = () => {
                           rows={4}
                           value={formData.description || ''}
                           onChange={(e) => setFormData({...formData, description: e.target.value})}
-                          className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 leading-relaxed"
+                          className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 leading-relaxed"
                           placeholder="Tell guests what makes your property unique..."
                         />
+                      </div>
+
+                      {/* Contact Matrix */}
+                      <div className="col-span-2 mt-8 pt-8 border-t border-gray-100">
+                        <h3 className="text-lg font-black text-gray-900 mb-6">Contact Matrix</h3>
+                        <div className="grid grid-cols-2 gap-8">
+                          {/* Reservation Contact */}
+                          <div className="space-y-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                <ShieldCheck size={16} />
+                              </div>
+                              <h4 className="font-bold text-slate-800">Reservation Contact</h4>
+                            </div>
+                            <div className="space-y-3">
+                              <input 
+                                type="text" 
+                                placeholder="Contact Name"
+                                value={formData.reservationContactName || ''}
+                                onChange={(e) => setFormData({...formData, reservationContactName: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                              <input 
+                                type="email" 
+                                placeholder="Email Address (for booking alerts)"
+                                value={formData.reservationContactEmail || ''}
+                                onChange={(e) => setFormData({...formData, reservationContactEmail: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                              <input 
+                                type="tel" 
+                                placeholder="Phone Number"
+                                value={formData.reservationContactPhone || ''}
+                                onChange={(e) => setFormData({...formData, reservationContactPhone: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Management Contact */}
+                          <div className="space-y-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <Building2 size={16} />
+                              </div>
+                              <h4 className="font-bold text-slate-800">Management Contact</h4>
+                            </div>
+                            <div className="space-y-3">
+                              <input 
+                                type="text" 
+                                placeholder="Contact Name"
+                                value={formData.managementContactName || ''}
+                                onChange={(e) => setFormData({...formData, managementContactName: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                              <input 
+                                type="email" 
+                                placeholder="Email Address (for finance/legal)"
+                                value={formData.managementContactEmail || ''}
+                                onChange={(e) => setFormData({...formData, managementContactEmail: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                              <input 
+                                type="tel" 
+                                placeholder="Phone Number"
+                                value={formData.managementContactPhone || ''}
+                                onChange={(e) => setFormData({...formData, managementContactPhone: e.target.value})}
+                                className="w-full p-3.5 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-900"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -696,57 +768,57 @@ const PropertyOnboarding = () => {
                     <div className="grid grid-cols-12 gap-8">
                       <div className="col-span-8 space-y-6">
                         <div className="space-y-2">
-                          <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Full Property Address</label>
+                          <label className="text-sm font-semibold text-slate-700">Full Property Address</label>
                           <textarea 
                             rows={3}
                             value={formData.location || ''}
                             onChange={(e) => setFormData({...formData, location: e.target.value})}
-                            className="w-full p-5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700"
+                            className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700"
                             placeholder="Plot number, Street, Area..."
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Landmark</label>
+                            <label className="text-sm font-semibold text-slate-700">Landmark</label>
                             <input 
                               type="text" 
                               value={formData.landmark || ''}
                               onChange={(e) => setFormData({...formData, landmark: e.target.value})}
-                              className="w-full p-5 bg-gray-50 border-0 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500" 
+                              className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                               placeholder="e.g. Near Gateway of India" 
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">City</label>
+                            <label className="text-sm font-semibold text-slate-700">City</label>
                             <input 
                               type="text" 
                               value={formData.city || ''}
                               onChange={(e) => setFormData({...formData, city: e.target.value})}
-                              className="w-full p-5 bg-gray-50 border-0 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500" 
+                              className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                               placeholder="e.g. Mumbai" 
                             />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Latitude</label>
+                            <label className="text-sm font-semibold text-slate-700">Latitude</label>
                             <input 
                               type="number" 
                               step="any"
                               value={formData.latitude || ''}
                               onChange={(e) => setFormData({...formData, latitude: e.target.value})}
-                              className="w-full p-5 bg-gray-50 border-0 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500" 
+                              className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                               placeholder="e.g. 18.9220" 
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Longitude</label>
+                            <label className="text-sm font-semibold text-slate-700">Longitude</label>
                             <input 
                               type="number" 
                               step="any"
                               value={formData.longitude || ''}
                               onChange={(e) => setFormData({...formData, longitude: e.target.value})}
-                              className="w-full p-5 bg-gray-50 border-0 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500" 
+                              className="w-full p-4 bg-gray-50 border border-gray-200 shadow-sm rounded-2xl font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500" 
                               placeholder="e.g. 72.8347" 
                             />
                           </div>
@@ -1342,11 +1414,57 @@ const PropertyOnboarding = () => {
                                 </div>
                               )}
 
+                              <div className="grid grid-cols-2 gap-4 mb-6">
+                                {/* Highlighted Couple Friendly Toggle */}
+                                <div className="p-5 bg-pink-50 border border-pink-100 rounded-2xl flex flex-col justify-between shadow-sm">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center">
+                                      <Heart size={20} />
+                                    </div>
+                                    <button 
+                                      onClick={() => updatePolicy('couple_friendly', activePolicies['couple_friendly'] === 'true' ? 'false' : 'true')}
+                                      className={`w-14 h-7 rounded-full relative transition-all ${
+                                        activePolicies['couple_friendly'] === 'true' ? 'bg-pink-500' : 'bg-gray-300'
+                                      }`}
+                                    >
+                                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-sm ${
+                                        activePolicies['couple_friendly'] === 'true' ? 'right-1' : 'left-1'
+                                      }`} />
+                                    </button>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-bold text-slate-900 block mb-1">Couple Friendly</span>
+                                    <span className="text-[11px] text-slate-600 font-medium">Allow unmarried couples</span>
+                                  </div>
+                                </div>
+
+                                {/* Highlighted Local ID Toggle */}
+                                <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col justify-between shadow-sm">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                      <ShieldCheck size={20} />
+                                    </div>
+                                    <button 
+                                      onClick={() => updatePolicy('local_id_accepted', activePolicies['local_id_accepted'] === 'true' ? 'false' : 'true')}
+                                      className={`w-14 h-7 rounded-full relative transition-all ${
+                                        activePolicies['local_id_accepted'] === 'true' ? 'bg-blue-500' : 'bg-gray-300'
+                                      }`}
+                                    >
+                                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-sm ${
+                                        activePolicies['local_id_accepted'] === 'true' ? 'right-1' : 'left-1'
+                                      }`} />
+                                    </button>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-bold text-slate-900 block mb-1">Local IDs Accepted</span>
+                                    <span className="text-[11px] text-slate-600 font-medium">Allow guests from same city</span>
+                                  </div>
+                                </div>
+                              </div>
+
                               <div className="space-y-3">
-                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rule Toggles</h5>
+                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Other Rule Toggles</h5>
                                 {[
-                                  { id: 'couple_friendly', label: 'Couple Friendly', note: 'Allows unmarried couples to check in' },
-                                  { id: 'local_id_accepted', label: 'Local ID Accepted', note: 'Permits guests residing in the same city' },
                                   { id: 'smoking_allowed', label: 'Smoking Allowed', note: 'Permits smoking in smoking rooms/zones' },
                                   { id: 'alcohol_allowed', label: 'Alcohol Allowed', note: 'Permits consumption of alcohol in rooms' },
                                   { id: 'visitors_allowed', label: 'Visitors Allowed', note: 'Allows external visitors in guest rooms' },
@@ -2162,26 +2280,43 @@ const PropertyOnboarding = () => {
                   <div className="space-y-10">
                     <div className="grid grid-cols-12 gap-8">
                       <div className="col-span-8 space-y-8">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xl font-black text-gray-900 tracking-tight">Property Gallery</h4>
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Min 5 photos required</span>
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                          <h4 className="text-xl font-black text-slate-900 tracking-tight">Property Gallery</h4>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Categorized Upload Required</span>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-6">
-                          <div className="relative col-span-1 h-56 border-4 border-dashed border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center gap-3 bg-gray-50/50 group cursor-pointer hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" multiple />
-                            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100">
-                              <ImageIcon size={28} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Upload Media</span>
-                          </div>
-                          {[1, 2].map(i => (
-                            <div key={i} className="h-56 bg-gray-100 rounded-[2.5rem] relative overflow-hidden group shadow-sm">
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <ImageIcon size={32} className="text-gray-200" />
+                        <div className="space-y-4">
+                          {/* Categorized Buckets */}
+                          {[
+                            { id: 'facade', label: 'Exterior / Facade', min: 1, icon: Building2 },
+                            { id: 'lobby', label: 'Lobby & Reception', min: 1, icon: Coffee },
+                            { id: 'rooms', label: 'Guest Rooms', min: 2, icon: Bed },
+                            { id: 'bathrooms', label: 'Bathrooms', min: 1, icon: CheckCircle2 }
+                          ].map(bucket => (
+                            <div key={bucket.id} className="p-5 border border-slate-200 rounded-3xl bg-slate-50 transition-all hover:border-indigo-200 hover:shadow-md">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-indigo-600">
+                                    <bucket.icon size={20} />
+                                  </div>
+                                  <div>
+                                    <h5 className="font-bold text-slate-900">{bucket.label}</h5>
+                                    <span className="text-[11px] text-slate-500 font-medium">Minimum {bucket.min} photo{bucket.min > 1 ? 's' : ''} required</span>
+                                  </div>
+                                </div>
+                                <div className="relative">
+                                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" multiple />
+                                  <button className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-2 shadow-sm">
+                                    <ImageIcon size={14} /> Upload {bucket.label}
+                                  </button>
+                                </div>
                               </div>
-                              <div className="absolute top-4 left-4 flex items-center gap-2">
-                                <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest">HQ</span>
+                              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
+                                {/* Placeholder for empty state */}
+                                <div className="min-w-[140px] h-28 bg-white border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 gap-2">
+                                  <ImageIcon size={20} className="text-slate-300" />
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Empty</span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -2241,38 +2376,72 @@ const PropertyOnboarding = () => {
                       </button>
                     </div>
                     
-                    <div className="space-y-6">
-                      {[
-                        { name: 'Deluxe Room', size: '250 sqft', capacity: '2 Adults', boost: '+18%' },
-                        { name: 'Executive Suite', size: '450 sqft', capacity: '3 Adults', boost: '+24%' }
-                      ].map((room, i) => (
-                        <div key={i} className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 flex items-center justify-between group hover:border-indigo-200 transition-all">
-                          <div className="flex items-center gap-6">
-                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-300 group-hover:text-indigo-600 shadow-sm transition-all">
-                              <Bed size={32} />
+                      <div className="space-y-6">
+                        {/* Inline Add Room Form */}
+                        <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm space-y-6">
+                          <h5 className="font-bold text-slate-800 text-lg">Add New Room Category</h5>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-slate-700">Room Name</label>
+                              <input type="text" placeholder="e.g. Deluxe Double Room" className="w-full p-4 bg-slate-50 border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900" />
                             </div>
-                            <div>
-                              <p className="font-black text-gray-900 text-lg uppercase tracking-tight">{room.name}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{room.size}</span>
-                                <div className="w-1 h-1 bg-gray-200 rounded-full" />
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{room.capacity}</span>
-                              </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-slate-700">Bed Type</label>
+                              <select className="w-full p-4 bg-slate-50 border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900">
+                                <option>King Bed</option>
+                                <option>Queen Bed</option>
+                                <option>Twin Beds</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-slate-700">Room Size (sq. ft.)</label>
+                              <input type="number" placeholder="e.g. 250" className="w-full p-4 bg-slate-50 border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-slate-700">Base Capacity</label>
+                              <input type="number" placeholder="e.g. 2" className="w-full p-4 bg-slate-50 border border-slate-200 shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900" />
                             </div>
                           </div>
-                          <div className="flex items-center gap-8">
-                            <div className="text-right">
-                              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{room.boost} Yield</p>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Market Optimized</p>
-                            </div>
-                            <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600 shadow-sm transition-all">
-                              <ChevronRight size={20} />
+                          <div className="flex justify-end">
+                            <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-all">
+                              Save Room
                             </button>
                           </div>
                         </div>
-                      ))}
+
+                        {/* Existing Rooms List */}
+                        {[
+                          { name: 'Deluxe Room', size: '250 sqft', bed: 'King Bed', capacity: '2 Adults', boost: '+18%' },
+                          { name: 'Executive Suite', size: '450 sqft', bed: 'Queen Bed', capacity: '3 Adults', boost: '+24%' }
+                        ].map((room, i) => (
+                          <div key={i} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:border-indigo-200 transition-all">
+                            <div className="flex items-center gap-6">
+                              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-indigo-400 group-hover:text-indigo-600 shadow-sm transition-all">
+                                <Bed size={24} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900 text-lg">{room.name}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-[11px] font-semibold text-slate-500">{room.size}</span>
+                                  <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                                  <span className="text-[11px] font-semibold text-slate-500">{room.bed}</span>
+                                  <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                                  <span className="text-[11px] font-semibold text-slate-500">{room.capacity}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                              <div className="text-right">
+                                <p className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">{room.boost} Yield</p>
+                              </div>
+                              <button className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-all">
+                                <ChevronRight size={20} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
                 )}
 
                 {currentStep === 8 && (

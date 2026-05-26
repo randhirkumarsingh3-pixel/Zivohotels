@@ -5,7 +5,8 @@ import {
   Building2, ChevronRight
 } from 'lucide-react';
 
-const API_URL = '/api/v1/admin';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_URL = `${BASE_URL}/admin`;
 const getAuthHeaders = () => {
   const token = localStorage.getItem('jwt_token');
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };

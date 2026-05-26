@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Mail, Copy, Check, AlertCircle, Clock } from 'lucide-react';
 
-const API_URL = '/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const getAuthHeaders = () => {
   const token = localStorage.getItem('jwt_token');
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };

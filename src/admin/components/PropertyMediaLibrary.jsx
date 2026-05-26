@@ -11,7 +11,8 @@ const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
     try {
       const token = localStorage.getItem('jwt_token');
       const query = new URLSearchParams({ hotelId, ...filter }).toString();
-      const res = await fetch(`/api/v1/admin/images?${query}`, {
+      const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      const res = await fetch(`${BASE_URL}/admin/images?${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();

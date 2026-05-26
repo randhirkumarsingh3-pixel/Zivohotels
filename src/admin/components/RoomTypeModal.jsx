@@ -60,7 +60,8 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
         isPrimary: false
       };
 
-      const res = await fetch('/api/v1/admin/images', {
+      const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      const res = await fetch(`${BASE_URL}/admin/images`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

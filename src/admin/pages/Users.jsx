@@ -7,7 +7,8 @@ import UserEditModal from '../components/users/UserEditModal';
 import AddUserModal from '../components/users/AddUserModal';
 import InviteUserModal from '../components/users/InviteUserModal';
 
-const API_URL = '/api/v1/admin';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_URL = `${BASE_URL}/admin`;
 const PAGE_LIMIT = 10;
 
 const getAuthHeaders = () => {

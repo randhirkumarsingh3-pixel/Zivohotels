@@ -33,8 +33,9 @@ const AcceptInvite = () => {
     }
 
     setLoading(true);
+    const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
     try {
-      const res = await fetch('/api/v1/users/accept-invite', {
+      const res = await fetch(`${BASE_URL}/users/accept-invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password: form.password }),

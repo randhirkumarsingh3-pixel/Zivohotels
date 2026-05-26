@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { MapPin, Search, Navigation, History, Map as MapIcon, Building, AlertCircle } from 'lucide-react';
 import { track } from '../../utils/analytics';
 
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
 // Global memory cache for autocomplete
 const searchCache = new Map();
 
@@ -31,7 +33,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
 
     const fetchPopular = async () => {
       try {
-        const res = await fetch('/api/v1/public/search/popular');
+        const res = await fetch(`${BASE_URL}/public/search/popular`);
         if (res.ok) {
           const data = await res.json();
           setPopularCities(data);
@@ -79,7 +81,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/v1/public/search?q=${encodeURIComponent(query)}`, {
+        const res = await fetch(`${BASE_URL}/public/search?q=${encodeURIComponent(query)}`, {
           signal: controller.signal
         });
         
@@ -126,7 +128,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const res = await fetch(`/api/v1/public/search/nearby?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+          const res = await fetch(`${BASE_URL}/public/search/nearby?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
           if (res.ok) {
             const data = await res.json();
             if (data.length > 0) {

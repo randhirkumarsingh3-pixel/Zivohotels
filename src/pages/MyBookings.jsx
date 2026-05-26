@@ -6,7 +6,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
-const API_URL = '/api/v1/bookings';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_URL = `${BASE_URL}/bookings`;
 
 const MyBookings = () => {
   const { user } = useAuth();

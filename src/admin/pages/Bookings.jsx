@@ -6,7 +6,8 @@ import {
   ChevronDown, X
 } from 'lucide-react';
 
-const API_URL = '/api/v1/admin';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_URL = `${BASE_URL}/admin`;
 const PAGE_LIMIT = 15;
 
 const getAuthHeaders = () => {
@@ -322,7 +323,7 @@ const Bookings = () => {
   const handleCancellation = async (id) => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/bookings/${id}/cancel`, {
+      const res = await fetch(`${BASE_URL}/bookings/${id}/cancel`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
