@@ -113,7 +113,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     track("DESTINATION_SELECTED", { type: item.type, label: item.label });
 
     // Update Recent Searches
-    const updatedRecent = [item, ...recentSearches.filter(r => r.value !== item.value)].slice(0, 3);
+    const getUniqueKey = (x) => x.id || x.value || x.label;
+    const updatedRecent = [item, ...recentSearches.filter(r => getUniqueKey(r) !== getUniqueKey(item))].slice(0, 3);
     setRecentSearches(updatedRecent);
     localStorage.setItem('zivo_recent_searches', JSON.stringify(updatedRecent));
 

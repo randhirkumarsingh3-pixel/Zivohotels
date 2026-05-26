@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
-import DestinationSearch from './search/DestinationSearch';
+import DestinationAutocomplete from './search/DestinationAutocomplete';
 import DatePicker from './search/DatePicker';
 import GuestSelector from './search/GuestSelector';
 
@@ -12,7 +12,11 @@ const SearchBar = ({ inline = false }) => {
   const { searchParams, updateSearchParams } = useBooking();
   
   // Local state for the search bar, initialized from global context
-  const [destination, setDestination] = useState(searchParams.destination || '');
+  const [destination, setDestination] = useState(
+    searchParams.destination
+      ? { label: searchParams.destination, value: searchParams.destination }
+      : null
+  );
   const [checkIn, setCheckIn] = useState(searchParams.checkIn || '');
   const [checkOut, setCheckOut] = useState(searchParams.checkOut || '');
   const [guests, setGuests] = useState(searchParams.guests || 2);
@@ -23,7 +27,11 @@ const SearchBar = ({ inline = false }) => {
 
   // Sync back if context changes externally
   useEffect(() => {
-    setDestination(searchParams.destination || '');
+    setDestination(
+      searchParams.destination
+        ? { label: searchParams.destination, value: searchParams.destination }
+        : null
+    );
     setCheckIn(searchParams.checkIn || '');
     setCheckOut(searchParams.checkOut || '');
     setGuests(searchParams.guests || 2);
@@ -33,7 +41,7 @@ const SearchBar = ({ inline = false }) => {
   const handleSearch = () => {
     // Validate
     const newErrors = {
-      destination: !destination.trim(),
+      destination: !destination,
       dates: !checkIn || !checkOut,
     };
     
@@ -44,21 +52,35 @@ const SearchBar = ({ inline = false }) => {
       return;
     }
 
+    const searchVal = destination.value || destination.label;
+
     // Update global context
     updateSearchParams({ 
-      destination, 
+      destination: searchVal, 
       checkIn, 
       checkOut, 
       guests, 
       rooms 
     });
 
+    if (destination.type === 'hotel') {
+      const detailParams = new URLSearchParams({
+        checkin: checkIn,
+        checkout: checkOut,
+        guests: guests.toString(),
+        rooms: rooms.toString()
+      });
+      navigate(`/hotel/${destination.id}?${detailParams.toString()}`);
+      return;
+    }
+
     // Navigate with URL params for sharing/refreshing
     const queryParams = new URLSearchParams({
-      city: destination,
+      city: searchVal,
       checkin: checkIn,
       checkout: checkOut,
-      guests: guests.toString()
+      guests: guests.toString(),
+      rooms: rooms.toString()
     }).toString();
 
     navigate(`/hotels?${queryParams}`);
@@ -68,10 +90,11 @@ const SearchBar = ({ inline = false }) => {
     <div className={`glass-panel rounded-2xl p-4 md:p-6 w-full ${inline ? '' : 'mx-4 mt-8 lg:mx-0 max-w-5xl relative z-10 animate-fade-in-up'}`}>
       <div className={`flex flex-col ${inline ? 'lg:flex-row' : 'md:flex-row'} gap-4`}>
         
-        <DestinationSearch 
+        <DestinationAutocomplete 
           destination={destination} 
           setDestination={setDestination} 
           error={errors.destination} 
+          onFocusNext={() => {}}
         />
         
         <DatePicker 

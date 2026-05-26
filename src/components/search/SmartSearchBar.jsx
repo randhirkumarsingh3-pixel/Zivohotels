@@ -58,8 +58,20 @@ const SmartSearchBar = ({ isMobile }) => {
       rooms 
     });
 
+    if (destination.type === 'hotel') {
+      const detailParams = new URLSearchParams({
+        checkin: checkIn,
+        checkout: checkOut,
+        guests: guests.toString(),
+        rooms: rooms.toString()
+      });
+      navigate(`/hotel/${destination.id}?${detailParams.toString()}`);
+      return;
+    }
+
+    const searchVal = destination.value || destination.label;
     const params = new URLSearchParams({
-      city: destination.value,
+      city: searchVal,
       checkin: checkIn,
       checkout: checkOut,
       guests: guests.toString(),

@@ -439,7 +439,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // 1. Fetch active hotels in city (limit to 100 for latency)
   const hotels = await prisma.hotel.findMany({
     where: { 
-      city: { equals: city, mode: 'insensitive' },
+      OR: [
+        { city: { equals: city, mode: 'insensitive' } },
+        { location: { contains: city, mode: 'insensitive' } }
+      ],
       status: 'ACTIVE',
       isDeleted: false
     },

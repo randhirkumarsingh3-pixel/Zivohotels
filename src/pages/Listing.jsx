@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { getHotels, trackEvent } from '../services/api';
 import { useAllExperiments } from '../context/ExperimentContext';
@@ -22,8 +23,9 @@ const SORT_OPTIONS = [
 ];
 
 const Listing = () => {
-  const { searchParams } = useBooking();
+  const { searchParams, updateSearchParams } = useBooking();
   const allExperiments = useAllExperiments();
+  const location = useLocation();
 
   const [hotels, setHotels]   = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,50 @@ const Listing = () => {
   const [selectedStars, setSelectedStars] = useState([]);   // array of star values
   const [sortBy, setSortBy]               = useState('recommended');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  // Parse URL query params, falling back to BookingContext if empty
+  const activeSearchParams = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const city = params.get('city');
+    if (city !== null) {
+      return {
+        destination: city,
+        checkIn: params.get('checkin') || '',
+        checkOut: params.get('checkout') || '',
+        guests: parseInt(params.get('guests')) || 2,
+        rooms: parseInt(params.get('rooms')) || 1,
+      };
+    }
+    return searchParams;
+  }, [location.search, searchParams]);
+
+  // Sync URL query params back to BookingContext if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const city = params.get('city');
+    if (city !== null) {
+      const checkin = params.get('checkin') || '';
+      const checkout = params.get('checkout') || '';
+      const guests = parseInt(params.get('guests')) || 2;
+      const rooms = parseInt(params.get('rooms')) || 1;
+
+      if (
+        city !== searchParams.destination ||
+        checkin !== searchParams.checkIn ||
+        checkout !== searchParams.checkOut ||
+        guests !== searchParams.guests ||
+        rooms !== searchParams.rooms
+      ) {
+        updateSearchParams({
+          destination: city,
+          checkIn: checkin,
+          checkOut: checkout,
+          guests,
+          rooms
+        });
+      }
+    }
+  }, [location.search, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, updateSearchParams]);
 
   // Build the active filters object to pass to API
   const buildFilters = useCallback(() => {
@@ -62,7 +108,7 @@ const Listing = () => {
   const fetchHotels = useCallback(async () => {
     setLoading(true);
     try {
-      const responseData = await getHotels(searchParams, buildFilters());
+      const responseData = await getHotels(activeSearchParams, buildFilters());
       setHotels(responseData.hotels || responseData || []);
     } catch (err) {
       console.error('Failed to fetch hotels:', err);
@@ -70,14 +116,14 @@ const Listing = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchParams, buildFilters, sortBy]);
+  }, [activeSearchParams, buildFilters]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchHotels();
     
     // Analytics
-    trackEvent('SEARCH_STARTED', { filters: buildFilters() }, null, searchParams.destination, allExperiments);
+    trackEvent('SEARCH_STARTED', { filters: buildFilters() }, null, activeSearchParams.destination, allExperiments);
   }, [fetchHotels]);
 
   const clearFilters = () => {
@@ -166,7 +212,7 @@ const Listing = () => {
       <div className="bg-brand-900 pb-12 pt-8 px-4 sm:px-6 lg:px-8 mb-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-6">
-            {searchParams.destination ? `Hotels in ${searchParams.destination}` : 'Explore All Hotels'}
+            {activeSearchParams.destination ? `Hotels in ${activeSearchParams.destination}` : 'Explore All Hotels'}
           </h1>
           <SearchBar inline={true} />
         </div>
