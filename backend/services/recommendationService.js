@@ -235,6 +235,7 @@ function mapHotelBasic(hotel) {
     rating: hotel.rating || 0,
     reviewCount: hotel.reviews || 0,
     price: minPrice === Infinity ? 0 : minPrice,
+    startingPrice: minPrice === Infinity ? 0 : minPrice,
     image: hotel.media?.[0]?.url || hotel.images?.[0] || null,
     amenities: hotel.amenities || []
   };

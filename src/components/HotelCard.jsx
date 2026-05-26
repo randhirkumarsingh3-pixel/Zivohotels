@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 const HotelCard = ({ hotel }) => {
   const [imgError, setImgError] = useState(false);
 
-  // Use startingPrice from backend (lowest configured rate plan)
-  const displayPrice = hotel.startingPrice || 0;
+  // Use startingPrice or price from backend (lowest configured rate plan)
+  const displayPrice = hotel.startingPrice || hotel.price || 0;
   // If originalPrice exists, use it, else calculate a 20% markup for visual discount
   const originalPrice = hotel.originalPrice || Math.round(displayPrice * 1.2);
   

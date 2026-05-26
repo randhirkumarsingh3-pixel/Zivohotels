@@ -362,7 +362,8 @@ export const getAllHotels = asyncHandler(async (req, res) => {
     return {
       ...hotel,
       image: hotel.media[0].url,
-      startingPrice: startingPrice
+      startingPrice: startingPrice,
+      price: startingPrice
     };
   }).filter(h => h !== null); // Remove blocked properties
 
@@ -448,6 +449,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
     },
     take: 100,
     include: {
+      media: { take: 1 },
       roomTypes: {
         where: { isActive: true },
         include: {
@@ -518,6 +520,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
         id: hotel.id,
         name: hotel.name,
         price: hotelMinPrice === Infinity ? 0 : hotelMinPrice,
+        startingPrice: hotelMinPrice === Infinity ? 0 : hotelMinPrice,
         rating: hotel.rating || 0,
         reviewCount: hotel.reviews || 0,
         commission: agreementMap[hotel.id]?.commissionRate || 15,
