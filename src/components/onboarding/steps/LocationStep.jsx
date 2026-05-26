@@ -3,43 +3,75 @@ import { MapPin, Navigation, Search, Info, Loader2 } from 'lucide-react';
 
 const LocationStep = ({ formData, updateForm }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const autocompleteRef = useRef(null);
 
-  // Load Leaflet dynamically
+  // Parse Google Address Components
+  const parseAddressComponents = (components) => {
+    let houseNo = '';
+    let street = '';
+    let sublocality = '';
+    let city = '';
+    let state = '';
+    let country = '';
+    let pincode = '';
+
+    components.forEach(c => {
+      const types = c.types;
+      if (types.includes('street_number')) {
+        houseNo = c.long_name;
+      } else if (types.includes('premise') || types.includes('subpremise')) {
+        houseNo = c.long_name;
+      } else if (types.includes('route')) {
+        street = c.long_name;
+      } else if (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood')) {
+        sublocality = c.long_name;
+      } else if (types.includes('locality')) {
+        city = c.long_name;
+      } else if (types.includes('administrative_area_level_1')) {
+        state = c.long_name;
+      } else if (types.includes('country')) {
+        country = c.long_name;
+      } else if (types.includes('postal_code')) {
+        pincode = c.long_name;
+      }
+    });
+
+    return {
+      houseNo: houseNo || '',
+      area: [street, sublocality].filter(Boolean).join(', '),
+      city: city || '',
+      state: state || '',
+      country: country || 'India',
+      pincode: pincode || ''
+    };
+  };
+
+  // Load Google Maps script dynamically
   useEffect(() => {
-    if (window.L) {
-      setLeafletLoaded(true);
+    if (window.google && window.google.maps) {
+      setGoogleLoaded(true);
       return;
     }
 
-    const cssId = 'leaflet-css';
-    if (!document.getElementById(cssId)) {
-      const link = document.createElement('link');
-      link.id = cssId;
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    const jsId = 'leaflet-js';
-    if (!document.getElementById(jsId)) {
+    const scriptId = 'google-maps-script';
+    if (!document.getElementById(scriptId)) {
       const script = document.createElement('script');
-      script.id = jsId;
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.id = scriptId;
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       script.onload = () => {
-        setLeafletLoaded(true);
+        setGoogleLoaded(true);
       };
       document.body.appendChild(script);
     } else {
       const interval = setInterval(() => {
-        if (window.L) {
-          setLeafletLoaded(true);
+        if (window.google && window.google.maps) {
+          setGoogleLoaded(true);
           clearInterval(interval);
         }
       }, 100);
@@ -47,97 +79,137 @@ const LocationStep = ({ formData, updateForm }) => {
     }
   }, []);
 
-  // Initialize Map
+  // Initialize Map & Autocomplete
   useEffect(() => {
-    if (!leafletLoaded) return;
-    
-    const mapElement = document.getElementById('onboarding-map');
-    if (!mapElement) return;
+    if (!googleLoaded) return;
 
-    // Use current or default lat/lng
-    const initialLat = parseFloat(formData.latitude) || 28.6139; // Delhi
+    const mapElement = document.getElementById('onboarding-map');
+    const inputElement = document.getElementById('search-input');
+    if (!mapElement || !inputElement) return;
+
+    // Use current coordinates or default to Delhi
+    const initialLat = parseFloat(formData.latitude) || 28.6139;
     const initialLng = parseFloat(formData.longitude) || 77.2090;
 
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    const map = window.L.map('onboarding-map', {
-      zoomControl: false
-    }).setView([initialLat, initialLng], 14);
-
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    const customIcon = window.L.divIcon({
-      html: `
-        <div class="relative flex items-center justify-center">
-          <div class="absolute w-8 h-8 bg-blue-500/30 rounded-full animate-ping"></div>
-          <svg class="w-8 h-8 text-blue-600 drop-shadow-md relative z-10" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </div>
-      `,
-      className: 'custom-leaflet-marker',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32]
+    // Create Map
+    const map = new window.google.maps.Map(mapElement, {
+      center: { lat: initialLat, lng: initialLng },
+      zoom: 14,
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: {
+        position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+      }
     });
 
-    const marker = window.L.marker([initialLat, initialLng], {
-      draggable: true,
-      icon: customIcon
-    }).addTo(map);
+    // Create Marker
+    const marker = new window.google.maps.Marker({
+      position: { lat: initialLat, lng: initialLng },
+      map: map,
+      draggable: true
+    });
 
     mapRef.current = map;
     markerRef.current = marker;
 
-    window.L.control.zoom({
-      position: 'bottomright'
-    }).addTo(map);
+    // Create Autocomplete
+    const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
+      types: ['geocode', 'establishment']
+    });
 
-    // Coordinate / Reverse geocode handler
-    const handleLocationUpdate = (lat, lng) => {
+    // Prevent form submission on Enter inside search box
+    window.google.maps.event.addDomListener(inputElement, 'keydown', (e) => {
+      if (e.keyCode === 13) {
+        e.preventDefault();
+      }
+    });
+
+    // Handle place selection
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry || !place.geometry.location) {
+        console.error("No geometry returned for place:", place.name);
+        return;
+      }
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      updateForm('latitude', lat.toFixed(6));
+      updateForm('longitude', lng.toFixed(6));
+
+      marker.setPosition({ lat, lng });
+      map.setCenter({ lat, lng });
+      map.setZoom(16);
+
+      if (place.address_components) {
+        const parsed = parseAddressComponents(place.address_components);
+        updateForm('houseNo', parsed.houseNo);
+        updateForm('area', parsed.area);
+        updateForm('pincode', parsed.pincode);
+        updateForm('country', parsed.country);
+        updateForm('state', parsed.state);
+        updateForm('city', parsed.city);
+        updateForm('address', place.formatted_address || '');
+      }
+
+      setSearchQuery(place.formatted_address || place.name || '');
+    });
+
+    autocompleteRef.current = autocomplete;
+
+    // Marker drag handler
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition();
+      const lat = pos.lat();
+      const lng = pos.lng();
       updateForm('latitude', lat.toFixed(6));
       updateForm('longitude', lng.toFixed(6));
       reverseGeocode(lat, lng);
-    };
-
-    marker.on('dragend', () => {
-      const position = marker.getLatLng();
-      handleLocationUpdate(position.lat, position.lng);
     });
 
-    map.on('click', (e) => {
-      const { lat, lng } = e.latlng;
-      marker.setLatLng([lat, lng]);
-      handleLocationUpdate(lat, lng);
+    // Map click handler
+    map.addListener('click', (e) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      marker.setPosition({ lat, lng });
+      updateForm('latitude', lat.toFixed(6));
+      updateForm('longitude', lng.toFixed(6));
+      reverseGeocode(lat, lng);
     });
+
+    // If address is already set (editing), prefill search input
+    if (formData.address) {
+      setSearchQuery(formData.address);
+    }
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+      if (window.google) {
+        window.google.maps.event.clearInstanceListeners(marker);
+        window.google.maps.event.clearInstanceListeners(map);
       }
     };
-  }, [leafletLoaded]);
+  }, [googleLoaded]);
 
-  // Sync coords from inputs to map pin
+  // Sync coords from manual inputs to map pin
   useEffect(() => {
-    if (!mapRef.current || !markerRef.current) return;
+    if (!googleLoaded || !mapRef.current || !markerRef.current) return;
 
     const lat = parseFloat(formData.latitude);
     const lng = parseFloat(formData.longitude);
 
     if (!isNaN(lat) && !isNaN(lng)) {
-      const currentPos = markerRef.current.getLatLng();
-      if (Math.abs(currentPos.lat - lat) > 0.0001 || Math.abs(currentPos.lng - lng) > 0.0001) {
-        markerRef.current.setLatLng([lat, lng]);
-        mapRef.current.setView([lat, lng], mapRef.current.getZoom());
+      const currentPos = markerRef.current.getPosition();
+      if (currentPos) {
+        const currLat = currentPos.lat();
+        const currLng = currentPos.lng();
+        if (Math.abs(currLat - lat) > 0.0001 || Math.abs(currLng - lng) > 0.0001) {
+          markerRef.current.setPosition({ lat, lng });
+          mapRef.current.setCenter({ lat, lng });
+        }
       }
     }
-  }, [formData.latitude, formData.longitude]);
+  }, [formData.latitude, formData.longitude, googleLoaded]);
 
   // Build combined address string from pieces for legacy backend structure
   useEffect(() => {
@@ -156,100 +228,27 @@ const LocationStep = ({ formData, updateForm }) => {
     }
   }, [formData.houseNo, formData.area, formData.city, formData.state, formData.pincode, formData.country]);
 
-  // Search Autocomplete Nominatim
-  useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      fetchSuggestions();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const fetchSuggestions = async () => {
-    setSearching(true);
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=5`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSuggestions(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching suggestions:', error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleSelectSuggestion = (item) => {
-    const lat = parseFloat(item.lat);
-    const lng = parseFloat(item.lon);
-    
-    updateForm('latitude', lat.toFixed(6));
-    updateForm('longitude', lng.toFixed(6));
-
-    if (mapRef.current && markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-      mapRef.current.setView([lat, lng], 15);
-    }
-
-    const addr = item.address || {};
-    
-    const houseNo = addr.house_number || addr.building || addr.amenity || '';
-    const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
-    const pincode = addr.postcode || '';
-    const country = addr.country || 'India';
-    const state = addr.state || '';
-    const city = addr.city || addr.town || addr.village || addr.municipality || '';
-    
-    updateForm('houseNo', houseNo);
-    updateForm('area', area);
-    updateForm('pincode', pincode);
-    updateForm('country', country);
-    updateForm('state', state);
-    updateForm('city', city);
-    updateForm('address', item.display_name || '');
-
-    setSearchQuery(item.display_name || '');
-    setSuggestions([]);
-  };
-
   // Reverse Geocoding
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.address) {
-          const addr = data.address;
-          
-          const houseNo = addr.house_number || addr.building || addr.amenity || '';
-          const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
-          const pincode = addr.postcode || '';
-          const country = addr.country || 'India';
-          const state = addr.state || '';
-          const city = addr.city || addr.town || addr.village || addr.municipality || '';
-          
-          updateForm('houseNo', houseNo);
-          updateForm('area', area);
-          updateForm('pincode', pincode);
-          updateForm('country', country);
-          updateForm('state', state);
-          updateForm('city', city);
-          updateForm('address', data.display_name || '');
-        }
+  const reverseGeocode = (lat, lng) => {
+    if (!window.google || !window.google.maps) return;
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const place = results[0];
+        const parsed = parseAddressComponents(place.address_components);
+        
+        updateForm('houseNo', parsed.houseNo);
+        updateForm('area', parsed.area);
+        updateForm('pincode', parsed.pincode);
+        updateForm('country', parsed.country);
+        updateForm('state', parsed.state);
+        updateForm('city', parsed.city);
+        updateForm('address', place.formatted_address || '');
+        setSearchQuery(place.formatted_address || '');
+      } else {
+        console.error('Geocoder failed due to:', status);
       }
-    } catch (error) {
-      console.error('Error reverse geocoding:', error);
-    }
+    });
   };
 
   // Current Location
@@ -262,8 +261,9 @@ const LocationStep = ({ formData, updateForm }) => {
           updateForm('longitude', longitude.toFixed(6));
           
           if (mapRef.current && markerRef.current) {
-            markerRef.current.setLatLng([latitude, longitude]);
-            mapRef.current.setView([latitude, longitude], 15);
+            markerRef.current.setPosition({ lat: latitude, lng: longitude });
+            mapRef.current.setCenter({ lat: latitude, lng: longitude });
+            mapRef.current.setZoom(16);
           }
           
           reverseGeocode(latitude, longitude);
@@ -300,32 +300,13 @@ const LocationStep = ({ formData, updateForm }) => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
+                id="search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search here"
                 className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
               />
-              {searching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
-              )}
             </div>
-            
-            {/* Search Suggestions Dropdown */}
-            {suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-[9999]">
-                {suggestions.map((item) => (
-                  <button
-                    key={item.place_id}
-                    type="button"
-                    onClick={() => handleSelectSuggestion(item)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0 flex items-start gap-2"
-                  >
-                    <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                    <span>{item.display_name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
 
             <button
               type="button"
@@ -471,12 +452,12 @@ const LocationStep = ({ formData, updateForm }) => {
         {/* Right Side: Map Container */}
         <div className="w-full lg:w-[45%] flex flex-col">
           <div className="border border-gray-300 rounded-lg overflow-hidden shadow-sm h-[480px] lg:h-[500px] xl:h-[600px] sticky top-4 relative bg-gray-100 flex flex-col justify-center items-center">
-            {leafletLoaded ? (
+            {googleLoaded ? (
               <div id="onboarding-map" className="w-full h-full z-0"></div>
             ) : (
               <div className="text-center text-gray-500 flex flex-col items-center gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                <span>Loading Interactive Map...</span>
+                <span>Loading Google Map...</span>
               </div>
             )}
           </div>
