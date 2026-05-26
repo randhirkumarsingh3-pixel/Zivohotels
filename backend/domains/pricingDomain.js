@@ -118,16 +118,28 @@ export const pricingDomain = {
 
         basePricePerRoom = dynamicBreakdown.finalPrice;
 
-        // GST Floor Guard: prevent dynamic drop from pushing room into a lower GST slab
-        // The floor is the minimum threshold of the applicable tax rule, so revenue isn't harmed
+        // GST Floor Guard: prevent dynamic pricing from dropping a room into a LOWER GST slab
+        // than what the original base price (before dynamic adjustment) belonged to.
+        // This only applies if the original base price was in a HIGHER slab than the dynamic result.
         if (taxRules?.length > 0) {
-          const lowestActiveThreshold = Math.min(
-            ...taxRules
-              .filter(r => r.minThreshold > 0)
-              .map(r => r.minThreshold)
-          );
-          if (lowestActiveThreshold && basePricePerRoom < lowestActiveThreshold) {
-            basePricePerRoom = lowestActiveThreshold;
+          // Find the original base price's tax slab (before dynamic adjustment)
+          const originalBasePrice = nightlyContext.basePrice;
+          const originalTaxRule = taxRules.find(rule => {
+            if (rule.maxThreshold !== null) {
+              return originalBasePrice >= rule.minThreshold && originalBasePrice <= rule.maxThreshold;
+            } else {
+              return originalBasePrice > rule.minThreshold;
+            }
+          });
+
+          // Only apply the floor if the original base price belonged to a slab
+          // with minThreshold > 0 AND dynamic pricing dropped below that threshold
+          if (
+            originalTaxRule &&
+            originalTaxRule.minThreshold > 0 &&
+            basePricePerRoom < originalTaxRule.minThreshold
+          ) {
+            basePricePerRoom = originalTaxRule.minThreshold;
             if (dynamicBreakdown) dynamicBreakdown.gstFloorApplied = true;
           }
         }

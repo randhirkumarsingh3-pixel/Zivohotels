@@ -9,6 +9,7 @@ import settlementService from './finance/settlementService.js';
 import loyaltyService from './finance/loyaltyService.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
+import { sendBookingConfirmationEmail } from './emailService.js';
 
 export const bookingService = {
 
@@ -52,9 +53,12 @@ export const bookingService = {
       }
     }
 
-    // 2. Pricing Validation
+    // 2. Pricing Preview (Safe Mode - no dynamic pricing adjustments)
+    // Preview always shows stable base-rate pricing so the checkout matches
+    // what the user saw on the hotel detail page. Dynamic pricing is applied
+    // only when the actual booking is confirmed (createBooking).
     const dynamicContext = {
-      safeMode: false,
+      safeMode: true,
       availableRooms: roomType.totalInventory,
       userSegment: 'STANDARD',
       device: 'WEB'
@@ -189,7 +193,7 @@ export const bookingService = {
         ratePlanId,
         paymentType,
         couponCode,
-        status: 'PENDING',
+        status: paymentType === 'PAY_AT_HOTEL' ? 'CONFIRMED' : 'PENDING',
         expiresAt,
         requestId,
         userId: userId || null,
@@ -296,6 +300,10 @@ export const bookingService = {
         .catch(e => console.error('[Loyalty] Error awarding points:', e));
     }
 
+    if (paymentType === 'PAY_AT_HOTEL') {
+      sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
+    }
+
     return { booking: bookingResult, isIdempotent: false };
   },
 
@@ -319,6 +327,11 @@ export const bookingService = {
       });
     });
     return true;
+  },
+
+  updateBookingStatus: async (bookingId, newStatus, context) => {
+    const { transitionBookingStatus } = await import('./bookingStateMachine.js');
+    return transitionBookingStatus(bookingId, newStatus, context.userId);
   }
 };
 

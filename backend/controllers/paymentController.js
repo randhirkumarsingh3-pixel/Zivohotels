@@ -5,6 +5,7 @@ import { getDatesInRange } from '../utils/dateUtils.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { z } from 'zod';
+import { sendBookingConfirmationEmail } from '../services/emailService.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
 const razorpay = new Razorpay({
@@ -178,6 +179,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       }
     });
 
+    sendBookingConfirmationEmail(bookingId).catch(err => console.error("[EmailService] verifyPayment confirmation email dispatch failed:", err));
+
     res.status(200).json({ success: true, message: 'Payment verified successfully', requestId: req.id });
 });
 
@@ -233,6 +236,8 @@ export const webhook = asyncHandler(async (req, res) => {
         await prisma.auditLog.create({
           data: { action: 'WEBHOOK_PAYMENT_CONFIRMED', entityType: 'BOOKING', entityId: booking.id, details: { event } }
         });
+
+        sendBookingConfirmationEmail(booking.id).catch(err => console.error("[EmailService] Webhook confirmation email dispatch failed:", err));
       }
     } 
     else if (event === 'payment.refunded') {
