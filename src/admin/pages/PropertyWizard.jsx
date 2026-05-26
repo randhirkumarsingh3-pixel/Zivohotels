@@ -20,6 +20,87 @@ const getAuthHeaders = () => {
   };
 };
 
+const mapMealPlanToBackend = (mp) => {
+  switch (mp) {
+    case 'FREE Breakfast': return 'CP';
+    case 'Room Only': return 'EP';
+    case 'Breakfast & Dinner': return 'MAP';
+    case 'All Meals': return 'AP';
+    default: return 'NONE';
+  }
+};
+
+const mapMealPlanToFrontend = (mp) => {
+  switch (mp) {
+    case 'CP': return 'FREE Breakfast';
+    case 'EP': return 'Room Only';
+    case 'MAP': return 'Breakfast & Dinner';
+    case 'AP': return 'All Meals';
+    default: return 'Room Only';
+  }
+};
+
+const parseBackendRoomTypes = (roomTypes) => {
+  if (!Array.isArray(roomTypes)) return [];
+  return roomTypes.map(rt => {
+    let beds = [{ type: 'Queen Bed', count: 1 }];
+    if (rt.bedType) {
+      const parts = rt.bedType.split(',').map(p => p.trim());
+      const parsed = parts.map(part => {
+        const match = part.match(/^(\d+)x\s+(.+)$/);
+        if (match) {
+          return { type: match[2], count: parseInt(match[1]) };
+        }
+        return { type: part, count: 1 };
+      });
+      if (parsed.length > 0) beds = parsed;
+    }
+
+    let size = '';
+    let sizeUnit = 'Square Feet';
+    if (rt.roomSize) {
+      const match = rt.roomSize.match(/^([\d\.]+)\s+(.+)$/);
+      if (match) {
+        size = match[1];
+        sizeUnit = match[2];
+      } else {
+        size = rt.roomSize;
+      }
+    }
+
+    const standardRatePlan = rt.ratePlans?.find(rp => rp.isActive) || rt.ratePlans?.[0] || {};
+
+    return {
+      id: rt.id,
+      code: rt.code || '',
+      type: rt.name.includes('Deluxe') ? 'Deluxe' : rt.name.includes('Suite') ? 'Suite' : rt.name.includes('Standard') ? 'Standard' : 'Deluxe',
+      view: rt.viewType || 'Airport View',
+      size: size,
+      sizeUnit: sizeUnit,
+      name: rt.name,
+      count: rt.totalInventory || 1,
+      description: rt.description || '',
+      beds: beds,
+      allowExtraBed: rt.extraBedAllowed ? 'Yes' : 'No',
+      allowAlternateSleeping: 'No',
+      baseAdults: rt.baseOccupancy || 2,
+      maxAdults: rt.maxOccupancy || 2,
+      baseChildren: 1,
+      maxChildren: 1,
+      maxOccupancy: rt.capacity || 3,
+      bathrooms: 1,
+      mealPlan: mapMealPlanToFrontend(standardRatePlan.mealPlan),
+      basePrice: standardRatePlan.basePrice || '',
+      extraAdultPrice: standardRatePlan.extraAdultPrice || '',
+      childPrice: standardRatePlan.extraChildPrice || '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+      amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
+      ratePlanId: standardRatePlan.id
+    };
+  });
+};
+
 const PropertyWizard = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -28,6 +109,7 @@ const PropertyWizard = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [initialRoomIds, setInitialRoomIds] = useState([]);
 
   const [formData, setFormData] = useState({
     // Basic Info
@@ -70,6 +152,9 @@ const PropertyWizard = () => {
       const json = await res.json();
       if (json.success) {
         const hotel = json.data;
+        const parsedRooms = parseBackendRoomTypes(hotel.roomTypes);
+        setInitialRoomIds(parsedRooms.map(r => r.id));
+
         setFormData(prev => ({
           ...prev,
           name: hotel.name || '',
@@ -95,7 +180,7 @@ const PropertyWizard = () => {
           ownerPhone: hotel.owner?.phone || '',
           
           amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
-          rooms: Array.isArray(hotel.rooms) ? hotel.rooms : [],
+          rooms: parsedRooms,
           images: Array.isArray(hotel.images) ? hotel.images : [],
           policies: Array.isArray(hotel.policies) ? hotel.policies : [],
           
@@ -161,7 +246,6 @@ const PropertyWizard = () => {
           tags: img.tags || []
         })),
         amenities: formData.amenities,
-        rooms: formData.rooms,
         policies: formData.policies,
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
@@ -206,6 +290,90 @@ const PropertyWizard = () => {
           throw new Error(`${firstField.charAt(0).toUpperCase() + firstField.slice(1)}: ${firstMsg}`);
         }
         throw new Error(data.message || 'Failed to save property');
+      }
+
+      const hotelId = isEditing ? id : data.data.id;
+
+      // 1. Delete removed rooms
+      const currentRoomIds = new Set(formData.rooms.map(r => r.id).filter(id => id && id.includes('-')));
+      const roomsToDelete = initialRoomIds.filter(id => !currentRoomIds.has(id));
+      for (const roomId of roomsToDelete) {
+        await fetch(`${API_URL}/admin/rooms/${roomId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+      }
+
+      // 2. Create/Update remaining rooms and rate plans
+      for (const room of formData.rooms) {
+        const isUUID = typeof room.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room.id);
+        const isNewRoom = !isUUID;
+
+        const roomPayload = {
+          name: room.name,
+          code: room.code || (room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6)),
+          description: room.description || '',
+          maxOccupancy: parseInt(room.maxOccupancy) || 2,
+          baseOccupancy: parseInt(room.baseAdults) || 2,
+          totalRooms: parseInt(room.count) || 1,
+          hotelId: hotelId,
+          amenities: room.amenities || [],
+          bedType: room.beds?.map(b => `${b.count}x ${b.type}`).join(', ') || 'King Bed',
+          roomSize: room.size ? `${room.size} ${room.sizeUnit}` : 'Standard',
+          viewType: room.view || 'Airport View',
+          extraBedAllowed: room.allowExtraBed === 'Yes',
+          maxExtraBeds: room.allowExtraBed === 'Yes' ? 1 : 0
+        };
+
+        let roomTypeId;
+        let ratePlanId;
+
+        if (isNewRoom) {
+          const res = await fetch(`${API_URL}/admin/rooms`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(roomPayload)
+          });
+          const resJson = await res.json();
+          if (!res.ok) {
+            throw new Error(resJson.message || `Failed to create room: ${room.name}`);
+          }
+          roomTypeId = resJson.data.id;
+          ratePlanId = resJson.data.ratePlans?.[0]?.id;
+        } else {
+          const res = await fetch(`${API_URL}/admin/rooms/${room.id}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(roomPayload)
+          });
+          const resJson = await res.json();
+          if (!res.ok) {
+            throw new Error(resJson.message || `Failed to update room: ${room.name}`);
+          }
+          roomTypeId = room.id;
+          ratePlanId = room.ratePlanId;
+        }
+
+        if (ratePlanId) {
+          const ratePlanPayload = {
+            basePrice: parseFloat(room.basePrice) || 0,
+            mealPlan: mapMealPlanToBackend(room.mealPlan),
+            extraAdultPrice: parseFloat(room.extraAdultPrice) || 0,
+            extraChildPrice: parseFloat(room.childPrice) || 0,
+            mealPriceAdult: 0,
+            mealPriceChild: 0
+          };
+
+          const res = await fetch(`${API_URL}/admin/rate-plans/${ratePlanId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(ratePlanPayload)
+          });
+          const resJson = await res.json();
+          if (!res.ok) {
+            throw new Error(resJson.message || `Failed to update standard rate plan for room: ${room.name}`);
+          }
+        }
       }
 
       if (isEditing) {
