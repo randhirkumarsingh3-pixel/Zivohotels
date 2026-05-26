@@ -32,6 +32,7 @@ const useCountdown = (expiresAt) => {
 const Checkout = () => {
   const navigate = useNavigate();
   const { selectedHotel, searchParams, clearBooking } = useBooking();
+  const allExperiments = useAllExperiments();
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
