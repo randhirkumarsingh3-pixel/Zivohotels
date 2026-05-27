@@ -575,3 +575,25 @@ export const syncInventoryDrift = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMyBookings = async (req, res, next) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: { userId: req.user.id },
+      include: {
+        hotel:    { select: { id: true, name: true, city: true } },
+        roomType: { select: { id: true, name: true } },
+        ratePlan: { select: { id: true, name: true, mealPlan: true } },
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: bookings,
+      requestId: req.id
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -21,7 +21,7 @@ const MyBookings = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('jwt_token');
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/my-bookings`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();

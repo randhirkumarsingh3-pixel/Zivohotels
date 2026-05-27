@@ -1,5 +1,5 @@
 import express from 'express';
-import { createBooking, previewBooking, getBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking } from '../controllers/bookingController.js';
+import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking } from '../controllers/bookingController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { bookingSchema } from '../schemas/bookingSchema.js';
@@ -8,6 +8,9 @@ const router = express.Router();
 
 router.route('/preview')
   .post(protect, previewBooking);
+
+router.route('/my-bookings')
+  .get(protect, getMyBookings);
 
 router.route('/')
   .get(protect, authorizeRoles('ADMIN', 'OWNER'), getBookings)
