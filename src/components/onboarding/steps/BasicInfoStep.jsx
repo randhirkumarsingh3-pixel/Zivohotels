@@ -8,9 +8,11 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
+  const [sentEmailOtp, setSentEmailOtp] = useState('');
   
   const [verifyingMobile, setVerifyingMobile] = useState(false);
   const [mobileOtp, setMobileOtp] = useState('');
+  const [sentMobileOtp, setSentMobileOtp] = useState('');
 
   const isEmailVerified = formData.isEmailVerified !== undefined 
     ? formData.isEmailVerified 
@@ -21,22 +23,26 @@ const BasicInfoStep = ({ formData, updateForm }) => {
     : Boolean(formData.guestMobile || formData.receptionPhone);
 
   const confirmEmailVerify = () => {
-    if (emailOtp.length === 4) {
+    if (emailOtp === sentEmailOtp && sentEmailOtp !== '') {
       updateForm('isEmailVerified', true);
       setVerifyingEmail(false);
       setEmailOtp('');
+      setSentEmailOtp('');
+      alert("Email address verified successfully!");
     } else {
-      alert("Please enter the 4-digit code.");
+      alert("Please enter the correct 4-digit code shown in the alert.");
     }
   };
 
   const confirmMobileVerify = () => {
-    if (mobileOtp.length === 4) {
+    if (mobileOtp === sentMobileOtp && sentMobileOtp !== '') {
       updateForm('isMobileVerified', true);
       setVerifyingMobile(false);
       setMobileOtp('');
+      setSentMobileOtp('');
+      alert("Mobile number verified successfully!");
     } else {
-      alert("Please enter the 4-digit OTP.");
+      alert("Please enter the correct 4-digit OTP shown in the alert.");
     }
   };
 
@@ -241,6 +247,9 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                       onClick={() => {
                         const email = formData.guestEmail || formData.receptionEmail;
                         if (email && email.includes('@')) {
+                          const code = Math.floor(1000 + Math.random() * 9000).toString();
+                          setSentEmailOtp(code);
+                          alert(`[Mock OTP Service] A verification code has been sent to ${email}.\nYour 4-digit OTP is: ${code}`);
                           setVerifyingEmail(true);
                         } else {
                           alert("Please enter a valid email address first.");
@@ -338,6 +347,9 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                       onClick={() => {
                         const phone = formData.guestMobile || formData.receptionPhone;
                         if (phone && phone.length >= 10) {
+                          const code = Math.floor(1000 + Math.random() * 9000).toString();
+                          setSentMobileOtp(code);
+                          alert(`[Mock OTP Service] An OTP code has been sent to +91 ${phone}.\nYour 4-digit OTP is: ${code}`);
                           setVerifyingMobile(true);
                         } else {
                           alert("Please enter a valid 10-digit mobile number first.");

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Landmark, FileText, CheckCircle2, AlertCircle, UploadCloud, 
-  Trash2, FileCheck, Building, HelpCircle, ChevronDown, Check
+  Trash2, FileCheck, Building, HelpCircle, ChevronDown, Check, Loader2
 } from 'lucide-react';
 
 const MAJOR_BANKS = [
@@ -33,7 +33,13 @@ const FinanceStep = ({ formData, updateForm }) => {
   const [ifscVerifying, setIfscVerifying] = useState(false);
   const [ifscVerified, setIfscVerified] = useState(!!formData.ifscCode);
   const [detectedBranch, setDetectedBranch] = useState(formData.branchName || '');
+  
+  const [panVerifying, setPanVerifying] = useState(false);
+  const [panVerified, setPanVerified] = useState(!!formData.pan && !!formData.legalName);
   const [panValid, setPanValid] = useState(true);
+
+  const [gstVerifying, setGstVerifying] = useState(false);
+  const [gstVerified, setGstVerified] = useState(!!formData.gstin);
 
   // Sync reAccountNumber if formData changes
   useEffect(() => {
@@ -49,7 +55,7 @@ const FinanceStep = ({ formData, updateForm }) => {
     }
   }, [formData.commission]);
 
-  // Handle syncing account holder name with legal entity name automatically
+  // Sync account holder name with legal entity name automatically for backend compliance
   useEffect(() => {
     if (formData.legalName && formData.accountName !== formData.legalName) {
       updateForm('accountName', formData.legalName);
@@ -59,22 +65,31 @@ const FinanceStep = ({ formData, updateForm }) => {
   // MOCK IFSC Code Verification
   const handleVerifyIFSC = () => {
     const ifsc = formData.ifscCode?.trim().toUpperCase();
-    if (!ifsc || ifsc.length < 11) return;
+    if (!ifsc || ifsc.length < 11) {
+      alert("Please enter a valid 11-character IFSC code first.");
+      return;
+    }
 
     setIfscVerifying(true);
     setTimeout(() => {
       setIfscVerifying(false);
       setIfscVerified(true);
       const bankCode = ifsc.substring(0, 4);
-      let bankNameGuess = "Unknown Bank";
+      let bankNameGuess = "Other";
       if (bankCode.startsWith("HDFC")) bankNameGuess = "HDFC Bank";
       else if (bankCode.startsWith("ICIC")) bankNameGuess = "ICICI Bank";
-      else if (bankCode.startsWith("SBIN")) bankNameGuess = "State Bank of India";
+      else if (bankCode.startsWith("SBIN")) bankNameGuess = "State Bank of India (SBI)";
       else if (bankCode.startsWith("UTIB")) bankNameGuess = "Axis Bank";
       else if (bankCode.startsWith("KKBK")) bankNameGuess = "Kotak Mahindra Bank";
       else if (bankCode.startsWith("INDB")) bankNameGuess = "IndusInd Bank";
+      else if (bankCode.startsWith("YESB")) bankNameGuess = "Yes Bank";
+      else if (bankCode.startsWith("PUNB")) bankNameGuess = "Punjab National Bank";
+      else if (bankCode.startsWith("BARB")) bankNameGuess = "Bank of Baroda";
+      else if (bankCode.startsWith("CNRB")) bankNameGuess = "Canara Bank";
+      else if (bankCode.startsWith("UBIN")) bankNameGuess = "Union Bank of India";
+      else if (bankCode.startsWith("IDFB")) bankNameGuess = "IDFC First Bank";
       
-      const branchName = "MAIN METRO BRANCH, NEW DELHI";
+      const branchName = "CONNAUGHT PLACE MAIN BRANCH, NEW DELHI";
       setDetectedBranch(branchName);
       
       updateForm({
@@ -85,10 +100,11 @@ const FinanceStep = ({ formData, updateForm }) => {
     }, 1000);
   };
 
-  // PAN Validation Check
+  // PAN Validation and Mock Verification
   const handlePanChange = (val) => {
     const cleaned = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
     updateForm('pan', cleaned);
+    setPanVerified(false);
     
     // PAN Regex: 5 letters, 4 numbers, 1 letter
     if (cleaned.length === 10) {
@@ -97,6 +113,51 @@ const FinanceStep = ({ formData, updateForm }) => {
     } else {
       setPanValid(cleaned.length === 0);
     }
+  };
+
+  const handleVerifyPAN = () => {
+    const pan = formData.pan?.trim().toUpperCase();
+    if (!pan || pan.length < 10) {
+      alert("Please enter a valid 10-character PAN number first.");
+      return;
+    }
+
+    setPanVerifying(true);
+    setTimeout(() => {
+      setPanVerifying(false);
+      setPanVerified(true);
+      
+      // Auto-populate Legal Entity Name (pushed from verification details)
+      const mockName = "ZIVO LODGING & SUITES PRIVATE LIMITED";
+      updateForm({
+        pan: pan,
+        legalName: mockName,
+        accountName: mockName // Sync payout holder name
+      });
+    }, 1000);
+  };
+
+  // GST Mock Verification
+  const handleVerifyGST = () => {
+    const gstin = formData.gstin?.trim().toUpperCase();
+    if (!gstin || gstin.length < 15) {
+      alert("Please enter a valid 15-character GSTIN first.");
+      return;
+    }
+
+    setGstVerifying(true);
+    setTimeout(() => {
+      setGstVerifying(false);
+      setGstVerified(true);
+      
+      // Auto-populate Legal Entity Name (pushed from verification details)
+      const mockName = "ZIVO HOTELS & RESORTS PRIVATE LIMITED";
+      updateForm({
+        gstin: gstin,
+        legalName: mockName,
+        accountName: mockName // Sync payout holder name
+      });
+    }, 1000);
   };
 
   // Mock Document Upload Handler
@@ -131,6 +192,7 @@ const FinanceStep = ({ formData, updateForm }) => {
           {/* ────── STEP 1: BANK ACCOUNT INFORMATION ────── */}
           <div className="relative flex gap-6 z-10 items-start">
             <button
+              type="button"
               onClick={() => toggleSection(1)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 1
@@ -157,7 +219,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     {/* Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
-                        Bank Account Number <span className="text-red-500">*</span>
+                        Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input
@@ -173,7 +235,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     {/* Re-Enter Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
-                        Re-Enter Bank Account Number <span className="text-red-500">*</span>
+                        Re-Enter Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input
@@ -199,7 +261,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                       <div className="md:col-span-1">
                         <label className="text-xs font-black text-gray-700 uppercase tracking-wider block">
-                          Bank IFSC Code <span className="text-red-500">*</span>
+                          Bank IFSC Code <span className="text-red-550 text-red-500">*</span>
                         </label>
                         <span className="text-[10px] text-gray-400 font-medium block mt-1 leading-relaxed">
                           You can find this on your cheque book or bank statement
@@ -224,13 +286,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                             disabled={ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
                             className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            {ifscVerifying ? 'Verifying...' : 'Verify'}
+                            {ifscVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify'}
                           </button>
                         </div>
                         {ifscVerified && (
                           <div className="p-2.5 bg-emerald-50 text-emerald-800 text-[11px] rounded-lg border border-emerald-100 flex items-center gap-1.5 font-bold">
-                            <CheckCircle2 size={14} className="text-emerald-600" />
-                            IFSC Verified: {detectedBranch || 'Main Branch'}
+                            <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                            IFSC Verified: {formData.bankName} - {detectedBranch || 'Main Branch'}
                           </div>
                         )}
                       </div>
@@ -239,7 +301,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     {/* Bank Name */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
-                        Bank Name <span className="text-red-500">*</span>
+                        Bank Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <select
@@ -253,6 +315,22 @@ const FinanceStep = ({ formData, updateForm }) => {
                           ))}
                           <option value="Other">Other Bank</option>
                         </select>
+                      </div>
+                    </div>
+
+                    {/* Branch Name */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                        Branch Name <span className="text-red-550 text-red-500">*</span>
+                      </label>
+                      <div className="md:col-span-2">
+                        <input
+                          type="text"
+                          value={formData.branchName || ''}
+                          onChange={e => updateForm('branchName', e.target.value)}
+                          placeholder="e.g. Connaught Place, New Delhi"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
+                        />
                       </div>
                     </div>
 
@@ -276,8 +354,9 @@ const FinanceStep = ({ formData, updateForm }) => {
               ) : (
                 // COLLAPSED STATE
                 <button
+                  type="button"
                   onClick={() => toggleSection(1)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
                     <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Bank Account Information</h3>
@@ -292,6 +371,7 @@ const FinanceStep = ({ formData, updateForm }) => {
           {/* ────── STEP 2: TAX, MSME AND REGISTRATION ────── */}
           <div className="relative flex gap-6 z-10 items-start">
             <button
+              type="button"
               onClick={() => toggleSection(2)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 2
@@ -314,44 +394,42 @@ const FinanceStep = ({ formData, updateForm }) => {
                   </div>
 
                   <div className="p-6 space-y-5">
-                    
-                    {/* Legal Entity Name */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
-                        Legal Entity Name <span className="text-red-500">*</span>
-                      </label>
-                      <div className="md:col-span-2">
-                        <input
-                          type="text"
-                          value={formData.legalName || ''}
-                          onChange={e => updateForm('legalName', e.target.value)}
-                          placeholder="e.g. Zivo Hotels Pvt Ltd"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
-                        />
-                        <p className="text-[10px] text-gray-400 mt-1">Must exactly match the name registered on your PAN card / GST certificate.</p>
-                      </div>
-                    </div>
 
                     {/* PAN Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
-                        PAN Number <span className="text-red-500">*</span>
+                        PAN Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <input
-                          type="text"
-                          value={formData.pan || ''}
-                          onChange={e => handlePanChange(e.target.value)}
-                          placeholder="ABCDE1234F"
-                          maxLength={10}
-                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-gray-900 bg-white font-mono uppercase ${
-                            !panValid ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-brand-500'
-                          }`}
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={formData.pan || ''}
+                            onChange={e => handlePanChange(e.target.value)}
+                            placeholder="ABCDE1234F"
+                            maxLength={10}
+                            className={`flex-1 w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-gray-900 bg-white font-mono uppercase ${
+                              !panValid ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-brand-500'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyPAN}
+                            disabled={panVerifying || !formData.pan || formData.pan.length < 10}
+                            className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
+                          >
+                            {panVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify PAN'}
+                          </button>
+                        </div>
                         {!panValid && (
                           <p className="text-[11px] text-red-600 mt-1 font-semibold flex items-center gap-1">
                             <AlertCircle size={12} /> Please enter a valid 10-digit PAN format (e.g., ABCDE1234F)
                           </p>
+                        )}
+                        {panVerified && (
+                          <div className="p-2 bg-emerald-50 text-emerald-800 text-[10px] rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
+                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> PAN Verified & Legal Name Synchronized!
+                          </div>
                         )}
                       </div>
                     </div>
@@ -362,14 +440,49 @@ const FinanceStep = ({ formData, updateForm }) => {
                         GSTIN (Optional)
                       </label>
                       <div className="md:col-span-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={formData.gstin || ''}
+                            onChange={e => {
+                              updateForm('gstin', e.target.value.toUpperCase());
+                              setGstVerified(false);
+                            }}
+                            placeholder="15 Digit GST Number"
+                            maxLength={15}
+                            className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono uppercase"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyGST}
+                            disabled={gstVerifying || !formData.gstin || formData.gstin.length < 15}
+                            className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
+                          >
+                            {gstVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify GST'}
+                          </button>
+                        </div>
+                        {gstVerified && (
+                          <div className="p-2 bg-emerald-50 text-emerald-800 text-[10px] rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
+                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> GST Verified & Legal Name Synchronized!
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Legal Entity Name (Either verified or manually edited) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                        Legal Entity Name <span className="text-red-550 text-red-500">*</span>
+                      </label>
+                      <div className="md:col-span-2">
                         <input
                           type="text"
-                          value={formData.gstin || ''}
-                          onChange={e => updateForm('gstin', e.target.value.toUpperCase())}
-                          placeholder="15 Digit GST Number"
-                          maxLength={15}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono uppercase"
+                          value={formData.legalName || ''}
+                          onChange={e => updateForm('legalName', e.target.value)}
+                          placeholder="e.g. Zivo Hotels Pvt Ltd"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
                         />
+                        <p className="text-[10px] text-gray-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
                       </div>
                     </div>
 
@@ -407,14 +520,25 @@ const FinanceStep = ({ formData, updateForm }) => {
                       </div>
                     </div>
 
-                    {/* Read-Only Commission Display for SaaS Transparency */}
-                    <div className="mt-4 p-4 rounded-2xl bg-brand-50/50 border border-brand-100/50 flex items-start gap-3">
-                      <Building className="text-brand-600 mt-0.5 shrink-0" size={16} />
-                      <div className="text-xs">
-                        <p className="font-black text-brand-950">Platform Commission & Terms</p>
-                        <p className="text-gray-500 leading-relaxed mt-1">
-                          As a premium SaaS partner, your current commission rate is configured at <strong className="text-brand-700">{formData.commission || 15}%</strong>. Commissions are auto-settled in real-time on prepaid checkout bookings.
-                        </p>
+                    {/* Platform Commission (MANUAL ENTRY SETTING) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-3 border-t border-gray-100">
+                      <div className="md:col-span-1">
+                        <label className="text-xs font-black text-gray-700 uppercase tracking-wider block">
+                          Platform Commission (%) <span className="text-red-550 text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-gray-400 block mt-0.5">Define platform commission percentage</span>
+                      </div>
+                      <div className="md:col-span-2 relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.commission !== undefined ? formData.commission : 15}
+                          onChange={e => updateForm('commission', parseFloat(e.target.value) || 0)}
+                          placeholder="15"
+                          className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 font-bold bg-white"
+                        />
+                        <span className="absolute right-4 top-3 text-gray-400 font-bold text-sm">%</span>
                       </div>
                     </div>
 
@@ -425,7 +549,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                 <button
                   type="button"
                   onClick={() => toggleSection(2)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
                     <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Tax, MSME and Registration Information</h3>
@@ -440,6 +564,7 @@ const FinanceStep = ({ formData, updateForm }) => {
           {/* ────── STEP 3: PROPERTY DOCUMENTS ────── */}
           <div className="relative flex gap-6 z-10 items-start">
             <button
+              type="button"
               onClick={() => toggleSection(3)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 3
@@ -518,7 +643,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                 <button
                   type="button"
                   onClick={() => toggleSection(3)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
                     <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Property Documents</h3>
@@ -532,6 +657,22 @@ const FinanceStep = ({ formData, updateForm }) => {
 
         </div>
       </div>
+
+      {/* Terms & Conditions Checkbox at the bottom of the page */}
+      <div className="mt-8 pt-6 border-t border-gray-200 animate-fade-in">
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={formData.acceptTerms === true}
+            onChange={e => updateForm('acceptTerms', e.target.checked)}
+            className="w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500 mt-0.5 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-gray-700 group-hover:text-gray-900 transition-colors leading-relaxed">
+            I accept the ZivoHotels Platform Agreement, Terms of Service, and Payout Policies. I confirm that all banking, tax registrations, and corporate documents provided are authentic and legally binding.
+          </span>
+        </label>
+      </div>
+
     </div>
   );
 };
@@ -584,7 +725,7 @@ const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, requir
             className="hidden"
             onChange={handleFileChange}
           />
-          <UploadCloud size={18} className="text-gray-400 group-hover:text-brand-500" />
+          <UploadCloud size={18} className="text-gray-400" />
           <span className="text-[10px] font-bold text-gray-600 mt-1">Upload Document</span>
           <span className="text-[8px] text-gray-400 mt-0.5">PDF, PNG, JPG · Max 5MB</span>
         </label>

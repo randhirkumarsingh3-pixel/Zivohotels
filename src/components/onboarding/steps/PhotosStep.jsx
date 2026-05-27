@@ -232,8 +232,14 @@ const PhotosStep = ({ formData, updateForm }) => {
   const untaggedCount = library.filter(img => !img.tags || img.tags.length === 0).length;
 
   if (currentView === 'tagging' && selectedImageForTagging) {
-    const currentImg = library.find(img => img.id === selectedImageForTagging.id) || selectedImageForTagging;
-    const filteredTags = TAG_OPTIONS.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()));
+    const baseTags = [
+      ...TAG_OPTIONS,
+      "ROOMS",
+      "BATHROOM"
+    ];
+    const roomTags = (rooms || []).map(r => r.name.toUpperCase().trim().replace(/[^A-Z0-9_]+/g, '_')).filter(Boolean);
+    const dynamicTagOptions = Array.from(new Set([...baseTags, ...roomTags]));
+    const filteredTags = dynamicTagOptions.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()));
 
     return (
       <div className="p-4 sm:p-8 animate-fade-in bg-gray-50/50 space-y-6 min-h-[70vh] pb-24">

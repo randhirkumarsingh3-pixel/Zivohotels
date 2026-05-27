@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useExtranet } from '../context/ExtranetContext';
+import { Check, Sparkles } from 'lucide-react';
 
 import PropertyWizardLayout from '../../components/onboarding/PropertyWizardLayout';
 import BasicInfoStep from '../../components/onboarding/steps/BasicInfoStep';
@@ -114,6 +115,8 @@ const PropertyOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialRoomIds, setInitialRoomIds] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState('');
 
   const [formData, setFormData] = useState({
     // Basic Info
@@ -293,6 +296,7 @@ const PropertyOnboarding = () => {
         if (!formData.accountNumber?.trim()) return "Account Number is required.";
         if (!formData.ifscCode?.trim()) return "IFSC Code is required.";
         if (!formData.commission) return "Platform Commission is required.";
+        if (formData.acceptTerms !== true) return "You must accept the terms and conditions to proceed.";
         break;
       default:
         break;
@@ -434,6 +438,7 @@ const PropertyOnboarding = () => {
         } : undefined,
         
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
+        status: 'PENDING',
       };
 
       const draftId = localStorage.getItem('currentHotelId');
@@ -563,11 +568,13 @@ const PropertyOnboarding = () => {
         }
       }
 
-      addToast(isEditing ? 'Property updated successfully!' : 'Property created successfully!', 'success');
+      const refNo = 'ZIVO-PROP-' + (hotelId ? hotelId.substring(0, 8).toUpperCase() : Math.random().toString(36).substring(2, 10).toUpperCase());
+      setReferenceNumber(refNo);
+      setShowSuccessModal(true);
+      
       localStorage.removeItem('zivo_onboarding_draft');
       localStorage.removeItem('zivo_onboarding_step');
       localStorage.removeItem('currentHotelId');
-      navigate('/extranet/dashboard');
       
     } catch (err) {
       addToast(err.message || 'An error occurred during submission.', 'error');
@@ -598,17 +605,68 @@ const PropertyOnboarding = () => {
   };
 
   return (
-    <PropertyWizardLayout 
-      title={isEditing ? 'Property Settings' : 'List New Property'}
-      subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
-      currentStep={currentStep}
-      setCurrentStep={handleStepChange}
-      onSave={handleSubmit}
-      isSubmitting={isSubmitting}
-      isEditing={isEditing}
-    >
-      {renderStepContent()}
-    </PropertyWizardLayout>
+    <>
+      <PropertyWizardLayout 
+        title={isEditing ? 'Property Settings' : 'List New Property'}
+        subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
+        currentStep={currentStep}
+        setCurrentStep={handleStepChange}
+        onSave={handleSubmit}
+        isSubmitting={isSubmitting}
+        isEditing={isEditing}
+      >
+        {renderStepContent()}
+      </PropertyWizardLayout>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-100 text-center relative overflow-hidden animate-scale-up">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-50 rounded-full blur-2xl opacity-70"></div>
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-50 rounded-full blur-2xl opacity-70"></div>
+
+            <div className="mx-auto w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6 relative">
+              <div className="absolute inset-0 bg-teal-100 rounded-full animate-ping opacity-25"></div>
+              <Check className="text-teal-600 w-10 h-10 stroke-[3px]" />
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Onboarding Submitted!</h3>
+            <p className="text-sm text-slate-500 mb-6 px-4">
+              Your property details, bank configurations, and statutory documents have been uploaded successfully.
+            </p>
+
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-150 mb-6 font-mono text-center relative overflow-hidden">
+              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                Reference Number
+              </span>
+              <span className="text-lg font-black text-brand-600 tracking-wider">
+                {referenceNumber}
+              </span>
+            </div>
+
+            <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 text-left mb-8 flex gap-3">
+              <Sparkles className="text-amber-600 mt-0.5 shrink-0 w-5 h-5" />
+              <div>
+                <span className="block text-xs font-bold text-amber-900">Awaiting Admin Approval</span>
+                <span className="text-[11px] text-amber-800/80 leading-relaxed block mt-0.5">
+                  As this is submitted by an extranet owner, our Super Admin team will verify the PAN/GST records, trade licenses, and payout details. Status updates are processed within 12-24 hours.
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate('/extranet/dashboard');
+              }}
+              className="w-full bg-[#E05A3E] hover:bg-[#c64f35] text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-xl shadow-brand-100 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
