@@ -40,24 +40,80 @@ const isReviewUnlocked = (booking) => {
   return today() >= dayAfterCheckIn;
 };
 
-/* ─── Star Rating Widget ──────────────────────────────────────────────── */
-const StarRating = ({ value, onChange }) => (
-  <div className="flex gap-1.5">
-    {[1, 2, 3, 4, 5].map((star) => (
-      <button
-        key={star}
-        type="button"
-        onClick={() => onChange(star)}
-        className="transition-transform hover:scale-110"
-      >
-        <Star
-          size={28}
-          className={star <= value ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
-        />
-      </button>
-    ))}
-  </div>
-);
+/* ─── Premium Star Rating Widget ─────────────────────────────────────── */
+const RATING_META = [
+  null,
+  { label: 'Very Bad',   sub: "We're really sorry your stay didn't meet expectations.",   color: 'text-red-500',    glow: 'shadow-red-300' },
+  { label: 'Bad',        sub: "We're sorry your experience wasn't great. Your feedback helps us improve.", color: 'text-orange-500', glow: 'shadow-orange-300' },
+  { label: 'Good',       sub: 'Thanks! Tell us what we can do to make it even better.',    color: 'text-amber-500',  glow: 'shadow-amber-300' },
+  { label: 'Great',      sub: 'Glad you had a great stay! What stood out the most?',       color: 'text-lime-600',   glow: 'shadow-lime-300' },
+  { label: 'Exceptional',sub: 'Awesome! What made your stay truly memorable?',             color: 'text-emerald-600',glow: 'shadow-emerald-300' },
+];
+
+const StarRating = ({ value, onChange }) => {
+  const [hovered, setHovered] = useState(0);
+  const active = hovered || value;
+  return (
+    <div>
+      <div className="flex gap-3 mb-3">
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => onChange(star)}
+            onMouseEnter={() => setHovered(star)}
+            onMouseLeave={() => setHovered(0)}
+            className={`transition-all duration-150 ${
+              star <= active
+                ? `scale-110 drop-shadow-lg ${RATING_META[Math.floor(active)]?.glow || ''}`
+                : 'scale-100 opacity-40'
+            }`}
+            style={{ filter: star <= active ? 'drop-shadow(0 0 6px rgba(251,191,36,0.6))' : 'none' }}
+          >
+            <Star
+              size={40}
+              className={star <= active ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
+              style={{ transition: 'all 0.15s cubic-bezier(.4,0,.2,1)' }}
+            />
+          </button>
+        ))}
+      </div>
+      {active > 0 && (
+        <div className="mt-1 min-h-[40px]">
+          <p className={`font-black text-base ${RATING_META[Math.floor(active)]?.color}`}>{RATING_META[Math.floor(active)]?.label}</p>
+          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{RATING_META[Math.floor(active)]?.sub}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── Aspect Mini Stars ───────────────────────────────────────────────── */
+const AspectStars = ({ value, onChange }) => {
+  const [hov, setHov] = useState(0);
+  const active = hov || value;
+  return (
+    <div className="flex gap-1.5">
+      {[1,2,3,4,5].map(s => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          onMouseEnter={() => setHov(s)}
+          onMouseLeave={() => setHov(0)}
+          className="transition-transform hover:scale-125 active:scale-95"
+        >
+          <Star
+            size={22}
+            className={s <= active ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
+            style={{ transition: 'all 0.12s ease' }}
+          />
+        </button>
+      ))}
+      {value > 0 && <span className="ml-1 text-xs font-black text-amber-600 self-center">{value}.0</span>}
+    </div>
+  );
+};
 
 /* ─── Section Header ──────────────────────────────────────────────────── */
 const SectionHeader = ({ icon, title, count, accent }) => (
@@ -91,6 +147,10 @@ const MyBookings = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [aspectRatings, setAspectRatings] = useState({ cleanliness: 0, staff: 0, comfort: 0, location: 0, value: 0 });
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [reviewPhotos, setReviewPhotos] = useState([]);
+  const [photoDragOver, setPhotoDragOver] = useState(false);
 
   /* ── Data fetching ── */
   const fetchMyBookings = async () => {
@@ -704,127 +764,324 @@ const MyBookings = () => {
                 </div>
               )}
 
-              {/* ── REVIEW TAB ───────────────────────────────── */}
-              {activeTab === 'review' && (
-                <div className="space-y-6">
-                  {!isReviewUnlocked(activeBooking) ? (
-                    /* Locked state */
-                    <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Lock size={28} className="text-gray-300" />
+              {/* ── REVIEW TAB ─── PREMIUM OTA GRADE ──────── */}
+              {activeTab === 'review' && (() => {
+                /* ── Locked state ── */
+                if (!isReviewUnlocked(activeBooking)) return (
+                  <div className="flex flex-col items-center justify-center py-14 text-center gap-5">
+                    <div className="relative">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-inner">
+                        <Lock size={32} className="text-gray-300" />
                       </div>
-                      <div>
-                        <h4 className="text-lg font-black text-gray-900 mb-2">Review Not Yet Available</h4>
-                        <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-                          Your review option unlocks the <span className="font-bold text-gray-700">day after check-in</span> on{' '}
-                          <span className="font-bold text-brand-600">
-                            {new Date(new Date(activeBooking.checkIn).setDate(new Date(activeBooking.checkIn).getDate() + 1)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </span>.
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center shadow-md">
+                        <Clock size={13} className="text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-gray-900 mb-2">Review Unlocks Soon</h4>
+                      <p className="text-sm text-gray-500 leading-relaxed max-w-[260px] mx-auto">
+                        Your verified review becomes available on{' '}
+                        <span className="font-black text-brand-600">
+                          {new Date(new Date(activeBooking.checkIn).setDate(new Date(activeBooking.checkIn).getDate() + 1)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>{' '}— the day after check-in.
+                      </p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 max-w-[280px] w-full flex items-start gap-2.5">
+                      <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-500" />
+                      <p className="leading-relaxed">Only checked-in guests can post verified reviews — this keeps our community trustworthy.</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-4 py-2">
+                      <Gift size={13} className="text-emerald-500" />
+                      <span className="font-bold">You'll earn 50 Zivo Points on submission</span>
+                    </div>
+                  </div>
+                );
+
+                /* ── Success state ── */
+                if (reviewSuccess) return (
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-5">
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-300/40">
+                        <CheckCircle2 size={44} className="text-white" />
+                      </div>
+                      <div className="absolute -top-1 -right-1">
+                        <span className="text-2xl">🎉</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Review Submitted</p>
+                      <h4 className="text-2xl font-black text-gray-900 mb-2">Thank You!</h4>
+                      <p className="text-sm text-gray-500 max-w-[260px] mx-auto leading-relaxed">
+                        Your review helps the ZivoHotels community make smarter travel decisions.
+                      </p>
+                    </div>
+                    <div className="flex gap-1 my-1">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} size={26} className={s <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
+                      ))}
+                    </div>
+                    <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-2xl px-6 py-4 flex items-center gap-3 shadow-lg shadow-amber-300/30 w-full max-w-[280px]">
+                      <Award size={28} className="shrink-0" />
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Points Earned</p>
+                        <p className="text-xl font-black">+50 Zivo Points</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">Your review will appear after moderation · usually within 24 hours</p>
+                  </div>
+                );
+
+                /* ── Active form ── */
+                const ASPECTS = [
+                  { key: 'cleanliness', icon: '🧼', title: 'Cleanliness',      hint: 'How clean was the property?' },
+                  { key: 'staff',       icon: '👨‍💼', title: 'Staff & Service',  hint: 'How was the hospitality experience?' },
+                  { key: 'comfort',     icon: '🛏',  title: 'Room Comfort',     hint: 'How comfortable was your room?' },
+                  { key: 'location',    icon: '📍',  title: 'Location',         hint: 'How convenient was the property location?' },
+                  { key: 'value',       icon: '💰',  title: 'Value for Money',  hint: 'Was the stay worth the amount paid?' },
+                ];
+                const POS_TAGS = ['Clean Rooms','Friendly Staff','Great Location','Comfortable Stay','Fast Check-in'];
+                const NEG_TAGS = ['Noise Issue','Slow Service','Poor Cleanliness','AC Issue','Maintenance Issue'];
+                const toggleTag = (t) => setSelectedTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+
+                const hotelImg = activeBooking.hotel?.media?.[0]?.url
+                  ? (activeBooking.hotel.media[0].url.startsWith('http')
+                      ? activeBooking.hotel.media[0].url
+                      : `${BASE_URL.replace('/api/v1', '')}${activeBooking.hotel.media[0].url}`)
+                  : null;
+
+                const handlePhotoFiles = (files) => {
+                  const arr = Array.from(files).slice(0, 6 - reviewPhotos.length);
+                  arr.forEach(f => {
+                    const reader = new FileReader();
+                    reader.onload = e => setReviewPhotos(prev => [...prev, { url: e.target.result, name: f.name }]);
+                    reader.readAsDataURL(f);
+                  });
+                };
+
+                return (
+                  <div className="space-y-8 pb-2">
+
+                    {/* ── Property context banner ─── */}
+                    <div className="relative rounded-2xl overflow-hidden">
+                      {hotelImg ? (
+                        <img src={hotelImg} alt="Hotel" className="w-full h-32 object-cover" />
+                      ) : (
+                        <div className="w-full h-32 bg-gradient-to-r from-brand-600 to-brand-800" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 p-4">
+                        <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-0.5">Reviewing your stay at</p>
+                        <h4 className="font-black text-white text-base leading-tight">{activeBooking.hotel?.name}</h4>
+                        <p className="text-xs text-white/70 flex items-center gap-1 mt-0.5">
+                          <MapPin size={10} />{activeBooking.hotel?.city} · {new Date(activeBooking.checkIn).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} – {new Date(activeBooking.checkOut).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
                         </p>
                       </div>
-                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 max-w-xs w-full">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle size={14} className="shrink-0 mt-0.5 text-amber-600" />
-                          <p className="leading-relaxed">Only guests who have checked in can submit verified reviews. This ensures authentic feedback on ZivoHotels.</p>
-                        </div>
+                      <div className="absolute top-3 right-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                        Verified Stay
                       </div>
                     </div>
-                  ) : reviewSuccess ? (
-                    /* Success state */
-                    <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
-                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <CheckCircle2 size={32} className="text-emerald-600" />
-                      </div>
-                      <div>
-                        <h4 className="text-xl font-black text-gray-900 mb-2">Thank You for Your Review!</h4>
-                        <p className="text-sm text-gray-500 max-w-xs mx-auto">Your review has been submitted and will be published after moderation. You earned <span className="font-bold text-brand-600">+50 Zivo Points</span>!</p>
-                      </div>
-                      <div className="flex items-center gap-1 mt-2">
-                        {[1,2,3,4,5].map(s => (
-                          <Star key={s} size={22} className={s <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    /* Active review form */
-                    <div className="space-y-6">
-                      {/* Hotel summary */}
-                      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-200">
-                          {activeBooking.hotel?.media?.[0]?.url ? (
-                            <img src={activeBooking.hotel.media[0].url.startsWith('http') ? activeBooking.hotel.media[0].url : `${BASE_URL.replace('/api/v1', '')}${activeBooking.hotel.media[0].url}`}
-                              alt="Hotel" className="w-full h-full object-cover" />
-                          ) : <div className="w-full h-full flex items-center justify-center text-gray-400"><Calendar size={20} /></div>}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-sm">{activeBooking.hotel?.name}</h4>
-                          <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={10} />{activeBooking.hotel?.city} · {activeBooking.roomType?.name}</p>
-                          <p className="text-[10px] text-gray-400 font-mono mt-1">{activeBooking.bookingRef}</p>
-                        </div>
-                      </div>
 
-                      {/* Star rating input */}
-                      <div className="space-y-3">
-                        <label className="block text-sm font-black text-gray-900">Overall Experience</label>
-                        <StarRating value={reviewRating} onChange={setReviewRating} />
+                    {/* ── Step 1: Overall rating ─── */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 1</p>
+                          <h4 className="font-black text-gray-900 text-base">Overall Experience</h4>
+                        </div>
                         {reviewRating > 0 && (
-                          <p className="text-xs font-bold text-amber-600">
-                            {['', 'Very Poor', 'Poor', 'Average', 'Good', 'Excellent'][reviewRating]}
-                          </p>
+                          <span className="text-2xl">{['','😞','😕','🙂','😃','🤩'][reviewRating]}</span>
                         )}
                       </div>
+                      <StarRating value={reviewRating} onChange={setReviewRating} />
+                      {reviewRating === 0 && (
+                        <p className="text-xs text-gray-400">Tap a star to rate your overall stay experience</p>
+                      )}
+                    </div>
 
-                      {/* Category quick ratings */}
-                      <div className="border border-gray-100 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-xs font-black text-gray-700 uppercase tracking-wider">Rate Specific Aspects</h4>
-                        {['Cleanliness', 'Comfort', 'Location', 'Value for Money', 'Staff Service'].map(cat => (
-                          <div key={cat} className="flex items-center justify-between">
-                            <span className="text-xs text-gray-600 font-medium">{cat}</span>
-                            <div className="flex gap-1">
-                              {[1,2,3,4,5].map(s => (
-                                <Star key={s} size={14} className="text-amber-300 fill-amber-300 cursor-default" />
-                              ))}
+                    {/* ── Step 2: Aspect cards ─── */}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 2</p>
+                        <h4 className="font-black text-gray-900 text-base">Rate Specific Aspects</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">Help future travelers with detailed ratings</p>
+                      </div>
+                      {ASPECTS.map(asp => (
+                        <div key={asp.key} className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center justify-between gap-4 transition-all ${
+                          aspectRatings[asp.key] > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl w-8 text-center">{asp.icon}</span>
+                            <div>
+                              <p className="font-black text-gray-900 text-sm">{asp.title}</p>
+                              <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{asp.hint}</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          <div className="shrink-0">
+                            <AspectStars
+                              value={aspectRatings[asp.key]}
+                              onChange={v => setAspectRatings(prev => ({ ...prev, [asp.key]: v }))}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-                      {/* Written review */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-black text-gray-900">
-                          Share Your Experience <span className="text-gray-400 font-normal text-xs">(Optional)</span>
-                        </label>
-                        <textarea
-                          rows={4}
-                          value={reviewComment}
-                          onChange={e => setReviewComment(e.target.value)}
-                          placeholder="Tell others about your stay — the service, ambience, food, or anything that stood out..."
-                          className="w-full border border-gray-200 rounded-2xl p-4 text-sm text-gray-800 resize-none focus:outline-none focus:border-brand-500 placeholder-gray-400 leading-relaxed"
-                        />
-                        <p className="text-[10px] text-gray-400 text-right">{reviewComment.length}/500 characters</p>
+                    {/* ── Step 3: Experience tags ─── */}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 3 · Optional</p>
+                        <h4 className="font-black text-gray-900 text-base">Quick Experience Tags</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">Select all that apply to your stay</p>
                       </div>
-
-                      {/* Loyalty incentive notice */}
-                      <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs">
-                        <Gift size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                        <div className="text-amber-800">
-                          <p className="font-bold mb-0.5">Earn Loyalty Points</p>
-                          <p className="leading-relaxed">Submitting a verified review credits your account with <span className="font-bold">50 Zivo Points</span> instantly.</p>
+                      <div>
+                        <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-2">Positive Highlights</p>
+                        <div className="flex flex-wrap gap-2">
+                          {POS_TAGS.map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => toggleTag(t)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                                selectedTags.includes(t)
+                                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200 scale-105'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400 hover:text-emerald-600'
+                              }`}
+                            >
+                              {selectedTags.includes(t) ? '✓ ' : ''}{t}
+                            </button>
+                          ))}
                         </div>
                       </div>
-
-                      {/* Submit button */}
-                      <button
-                        onClick={handleSubmitReview}
-                        disabled={reviewRating === 0 || reviewSubmitting}
-                        className="w-full bg-brand-600 text-white font-black py-4 rounded-2xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {reviewSubmitting ? <RefreshCw size={18} className="animate-spin" /> : <><Star size={18} className="fill-white" />Submit Review</>}
-                      </button>
+                      <div>
+                        <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mb-2">Areas for Improvement</p>
+                        <div className="flex flex-wrap gap-2">
+                          {NEG_TAGS.map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => toggleTag(t)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                                selectedTags.includes(t)
+                                  ? 'bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-200 scale-105'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:border-rose-400 hover:text-rose-600'
+                              }`}
+                            >
+                              {selectedTags.includes(t) ? '✓ ' : ''}{t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* ── Step 4: Written review ─── */}
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 4 · Optional</p>
+                        <h4 className="font-black text-gray-900 text-base">Share Your Story</h4>
+                      </div>
+                      <div className={`relative border rounded-2xl transition-all ${
+                        reviewComment.length > 0 ? 'border-brand-400 shadow-sm shadow-brand-100' : 'border-gray-200'
+                      }`}>
+                        <textarea
+                          rows={5}
+                          value={reviewComment}
+                          maxLength={500}
+                          onChange={e => setReviewComment(e.target.value)}
+                          placeholder="What did you enjoy most during your stay? Share details about the service, ambience, room, or location..."
+                          className="w-full bg-transparent p-4 text-sm text-gray-800 resize-none focus:outline-none placeholder-gray-400 leading-relaxed rounded-2xl"
+                        />
+                        <div className="flex items-center justify-between px-4 pb-3">
+                          <p className="text-[10px] text-gray-400">
+                            {reviewComment.length >= 50
+                              ? <span className="text-emerald-600 font-bold">✓ Great detail!</span>
+                              : <span>Add at least 50 chars for a featured review</span>}
+                          </p>
+                          <p className={`text-[10px] font-bold ${
+                            reviewComment.length > 450 ? 'text-rose-500' : 'text-gray-400'
+                          }`}>{reviewComment.length}/500</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Step 5: Photo upload ─── */}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 5 · Optional</p>
+                        <h4 className="font-black text-gray-900 text-base">Add Photos</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">Reviews with photos get 3× more helpful votes</p>
+                      </div>
+                      {reviewPhotos.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {reviewPhotos.map((ph, i) => (
+                            <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">
+                              <img src={ph.url} alt={ph.name} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setReviewPhotos(prev => prev.filter((_,j) => j !== i))}
+                                className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                              >✕</button>
+                            </div>
+                          ))}
+                          {reviewPhotos.length < 6 && (
+                            <label className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-400 transition-colors bg-gray-50">
+                              <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoFiles(e.target.files)} />
+                              <span className="text-2xl text-gray-300">+</span>
+                              <span className="text-[9px] text-gray-400 mt-0.5">Add</span>
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      {reviewPhotos.length === 0 && (
+                        <label
+                          onDragOver={e => { e.preventDefault(); setPhotoDragOver(true); }}
+                          onDragLeave={() => setPhotoDragOver(false)}
+                          onDrop={e => { e.preventDefault(); setPhotoDragOver(false); handlePhotoFiles(e.dataTransfer.files); }}
+                          className={`flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+                            photoDragOver ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-gray-50 hover:border-brand-300'
+                          }`}
+                        >
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoFiles(e.target.files)} />
+                          <div className="w-12 h-12 bg-white rounded-xl border border-gray-200 flex items-center justify-center shadow-sm text-xl">📷</div>
+                          <div className="text-center">
+                            <p className="text-sm font-bold text-gray-700">Drag photos here or tap to upload</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Up to 6 photos · JPG, PNG · Max 5MB each</p>
+                          </div>
+                        </label>
+                      )}
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
+                        Reviews with photos help other travelers make better decisions.
+                      </p>
+                    </div>
+
+                    {/* ── Loyalty notice ─── */}
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-4">
+                      <div className="w-11 h-11 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                        <Award size={22} className="text-white" />
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-black text-amber-900">Earn 50 Zivo Points instantly</p>
+                        <p className="text-amber-700 leading-relaxed mt-0.5">Submitting a verified review credits your loyalty wallet immediately upon publication.</p>
+                      </div>
+                    </div>
+
+                    {/* ── Submit button ─── */}
+                    <button
+                      onClick={handleSubmitReview}
+                      disabled={reviewRating === 0 || reviewSubmitting}
+                      className="w-full bg-gradient-to-r from-brand-600 to-brand-700 text-white font-black py-4 rounded-2xl hover:from-brand-700 hover:to-brand-800 transition-all shadow-xl shadow-brand-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 text-sm"
+                    >
+                      {reviewSubmitting
+                        ? <><RefreshCw size={18} className="animate-spin" />Submitting...</>
+                        : <><Star size={18} className="fill-white" />Submit My Review</>}
+                    </button>
+                    {reviewRating === 0 && (
+                      <p className="text-center text-xs text-gray-400">Please rate your overall experience to continue</p>
+                    )}
+
+                  </div>
+                );
+              })()}
 
               {/* SUPPORT */}
               {activeTab === 'support' && (
