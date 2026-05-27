@@ -600,7 +600,8 @@ export const getMyBookings = async (req, res, next) => {
         invoice: { select: { id: true, invoiceRef: true, status: true } },
         timelineEvents: { orderBy: { createdAt: 'asc' } },
         intelligence: true,
-        notificationSyncs: true
+        notificationSyncs: true,
+        review: { select: { id: true, rating: true, comment: true } }
       },
       orderBy: { createdAt: 'desc' }
     });

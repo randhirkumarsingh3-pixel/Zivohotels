@@ -23,10 +23,19 @@ export const reviewService = {
       throw new Error('You can only review your own bookings');
     }
 
-    // 3. Strict Status Validation
-    if (booking.status !== 'COMPLETED') {
-      throw new Error('You can only review a completed stay');
+    // 3. Strict Status & Date-based Validation
+    const checkInDate = new Date(booking.checkIn);
+    const dayAfterCheckIn = new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate() + 1);
+    const isNextDayOfCheckIn = new Date() >= dayAfterCheckIn;
+
+    if (booking.status === 'CANCELLED' || booking.status === 'REFUNDED') {
+      throw new Error('You cannot review a cancelled booking');
     }
+
+    if (booking.status !== 'COMPLETED' && !isNextDayOfCheckIn) {
+      throw new Error('Review options are activated from the next day of your check-in date.');
+    }
+
 
     // 4. Duplicate Check (Idempotency)
     const existing = await reviewRepository.findByBookingId(bookingId);
