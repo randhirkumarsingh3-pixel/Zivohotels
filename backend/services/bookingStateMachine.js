@@ -65,15 +65,48 @@ export const transitionBookingStatus = async (bookingId, newStatus, userId) => {
   }
 
   // Update booking status
+  const updateOp = prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: newStatus }
+  });
+  transactionOps.push(updateOp);
+
+  // Append timeline event based on status change
+  let eventTitle = 'Booking Status Updated';
+  let eventMessage = `Booking status changed to ${newStatus}`;
+  
+  if (newStatus === 'CONFIRMED') {
+    eventTitle = 'Booking Confirmed';
+    eventMessage = 'Your stay is confirmed! We look forward to hosting you.';
+  } else if (newStatus === 'CANCELLED') {
+    eventTitle = 'Booking Cancelled';
+    eventMessage = 'Your booking has been cancelled.';
+  } else if (newStatus === 'CHECKED_IN') {
+    eventTitle = 'Checked In';
+    eventMessage = `Welcome! Your check-in at ${booking.hotel?.name || 'the hotel'} is complete.`;
+  } else if (newStatus === 'CHECKED_OUT') {
+    eventTitle = 'Checked Out';
+    eventMessage = 'You have checked out. Safe travels!';
+  } else if (newStatus === 'NO_SHOW') {
+    eventTitle = 'No Show';
+    eventMessage = 'The booking was marked as No Show.';
+  }
+
   transactionOps.push(
-    prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: newStatus }
+    prisma.bookingTimelineEvent.create({
+      data: {
+        bookingId,
+        status: newStatus,
+        title: eventTitle,
+        message: eventMessage
+      }
     })
   );
 
-  // Execute transaction
-  const [_, updatedBooking] = await prisma.$transaction(transactionOps);
+  // Execute transaction safely and extract the updated booking object
+  const transactionResults = await prisma.$transaction(transactionOps);
+  const updatedBooking = transactionResults[transactionOps.indexOf(updateOp)];
+
 
   // 4. Log Activity & Notifications
   await logActivity({

@@ -236,6 +236,9 @@ model Booking {
   invoice           Invoice?
   refund            Refund?
   review            Review?
+  timelineEvents    BookingTimelineEvent[]
+  intelligence      BookingIntelligence?
+  notificationSyncs NotificationSyncLog[]
 }
 
 model TaxRule {
@@ -1187,4 +1190,40 @@ model HotelPolicy {
   hotel      Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 
   @@unique([hotelId, policyCode])
+}
+
+model BookingTimelineEvent {
+  id        String   @id @default(uuid())
+  bookingId String
+  status    String
+  title     String
+  message   String
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([createdAt])
+}
+
+model BookingIntelligence {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  wifiRating      String   @default("Excellent")
+  peakCheckIn     String   @default("12 PM - 2 PM")
+  airportDistance String   @default("20 mins")
+  trafficAlert    String?
+  aiTags          String[] @default([])
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model NotificationSyncLog {
+  id        String   @id @default(uuid())
+  bookingId String
+  channel   String
+  status    String
+  recipient String
+  sentAt    DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
