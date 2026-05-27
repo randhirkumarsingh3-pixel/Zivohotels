@@ -8,6 +8,7 @@ import {
   Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight 
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
+import { getImageUrl } from '../utils/image';
 
 const useCountdown = (expiresAt) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -377,7 +378,7 @@ const Checkout = () => {
               <div className="p-8 bg-gray-900 text-white">
                 <div className="flex justify-between items-start mb-6">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/10 border border-white/10">
-                    <img src={selectedHotel.image} alt="Hotel" className="w-full h-full object-cover opacity-80" />
+                    <img src={getImageUrl(selectedHotel.image)} alt="Hotel" className="w-full h-full object-cover opacity-80" />
                   </div>
                   {countdown && (
                     <div className={`px-4 py-2 rounded-xl flex items-center gap-2 border ${countdown.expired ? 'bg-red-500/20 border-red-500 text-red-100' : 'bg-white/10 border-white/20 text-white'}`}>
