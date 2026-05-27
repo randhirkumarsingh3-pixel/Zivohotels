@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Bed, Search, Info, PlusCircle, MinusCircle, HelpCircle } from 'lucide-react';
 
-const ROOM_TYPES = ["Deluxe", "Standard", "Suite", "Executive", "Family", "Villa", "Studio"];
+const ROOM_TYPES = ["Deluxe", "Standard", "Suite", "Executive", "Family", "Villa", "Studio", "Premium", "Apartment"];
 const ROOM_VIEWS = ["Airport View", "Pool View", "Garden View", "City View", "Ocean View", "Mountain View"];
 const MEAL_PLANS = ["FREE Breakfast", "Room Only", "Breakfast & Dinner", "All Meals"];
 const BED_OPTIONS = [

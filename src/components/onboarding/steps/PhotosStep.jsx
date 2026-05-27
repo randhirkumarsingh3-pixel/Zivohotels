@@ -44,7 +44,9 @@ const PhotosStep = ({ formData, updateForm }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        setLibrary(data.data || []);
+        const imgs = data.data || [];
+        setLibrary(imgs);
+        updateForm('images', imgs);
       }
     } catch (err) {
       console.error('Failed to fetch media library:', err);

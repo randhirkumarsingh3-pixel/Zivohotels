@@ -205,7 +205,90 @@ const PropertyWizard = () => {
   };
 
   const updateForm = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (typeof field === 'object' && field !== null) {
+      setFormData(prev => ({ ...prev, ...field }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const validateStep = (stepIndex) => {
+    switch (stepIndex) {
+      case 1:
+        if (!formData.name?.trim()) return "Property Name is required.";
+        if (!formData.type?.trim()) return "Property Type is required.";
+        if (!formData.rating?.trim()) return "Star Rating is required.";
+        if (!(formData.guestEmail || formData.receptionEmail)?.trim()) return "Email ID is required.";
+        if (!(formData.guestMobile || formData.receptionPhone)?.trim()) return "Mobile number is required.";
+        break;
+      case 2:
+        if (!formData.houseNo?.trim()) return "House/Building/Apartment No. is required.";
+        if (!formData.area?.trim()) return "Locality/Area/Street/Sector is required.";
+        if (!formData.pincode?.trim()) return "Pincode is required.";
+        if (!formData.country?.trim()) return "Country is required.";
+        if (!formData.state?.trim()) return "State is required.";
+        if (!formData.city?.trim()) return "City is required.";
+        if (!formData.latitude || isNaN(parseFloat(formData.latitude))) return "Latitude is required and must be a valid number.";
+        if (!formData.longitude || isNaN(parseFloat(formData.longitude))) return "Longitude is required and must be a valid number.";
+        if (formData.agreeAddress !== true) return "You must agree to the terms and confirm the address.";
+        break;
+      case 4:
+        if (!formData.rooms || formData.rooms.length === 0) {
+          return "At least one room type configuration must be added.";
+        }
+        break;
+      case 5:
+        if (!formData.images || formData.images.length === 0) {
+          return "Please upload at least one photo of your property.";
+        }
+        break;
+      case 6:
+        if (!formData.checkInTime) return "Check-in time is required.";
+        if (!formData.checkOutTime) return "Check-out time is required.";
+        break;
+      case 7:
+        if (!formData.legalName?.trim()) return "Legal Entity Name is required.";
+        if (!formData.pan?.trim()) return "PAN Number is required.";
+        if (!formData.accountName?.trim()) return "Account Holder Name is required.";
+        if (!formData.bankName?.trim()) return "Bank Name is required.";
+        if (!formData.accountNumber?.trim()) return "Account Number is required.";
+        if (!formData.ifscCode?.trim()) return "IFSC Code is required.";
+        if (!formData.commission) return "Platform Commission is required.";
+        break;
+      default:
+        break;
+    }
+    return null;
+  };
+
+  const handleStepChange = async (targetStepOrFn) => {
+    let targetStep = typeof targetStepOrFn === 'function' ? targetStepOrFn(currentStep) : targetStepOrFn;
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    for (let step = currentStep; step < targetStep; step++) {
+      const errorMsg = validateStep(step);
+      if (errorMsg) {
+        alert(errorMsg);
+        setCurrentStep(step);
+        window.scrollTo(0, 0);
+        return;
+      }
+      if (step === 2) {
+        const success = await saveDraftIfNeeded();
+        if (!success) {
+          setCurrentStep(2);
+          window.scrollTo(0, 0);
+          return;
+        }
+      }
+    }
+
+    setCurrentStep(targetStep);
+    window.scrollTo(0, 0);
   };
 
   const saveDraftIfNeeded = async () => {
@@ -232,7 +315,8 @@ const PropertyWizard = () => {
         const resJson = await res.json();
         if (res.ok && resJson.data && resJson.data.id) {
           localStorage.setItem('currentHotelId', resJson.data.id);
-          updateForm('id', resJson.data.id);
+          // Set in form data directly using setFormData since we are inside validation context
+          setFormData(prev => ({ ...prev, id: resJson.data.id }));
         }
       } catch (err) {
         console.error('Failed to auto-save property draft:', err);
@@ -246,6 +330,11 @@ const PropertyWizard = () => {
 
     // Advance to next step if not on last step
     if (currentStep < 7) {
+      const errorMsg = validateStep(currentStep);
+      if (errorMsg) {
+        alert(errorMsg);
+        return;
+      }
       if (currentStep === 2) {
         const success = await saveDraftIfNeeded();
         if (!success) return;
@@ -256,9 +345,9 @@ const PropertyWizard = () => {
     }
 
     // Final Validation before submit
-    if (!formData.name || !formData.city || !formData.address) {
-      alert('Name, City, and Address are required.');
-      setCurrentStep(1);
+    const errorMsg = validateStep(7);
+    if (errorMsg) {
+      alert(errorMsg);
       return;
     }
     
@@ -453,7 +542,7 @@ const PropertyWizard = () => {
       title={isEditing ? 'Edit Property' : 'List New Property'}
       subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
       currentStep={currentStep}
-      setCurrentStep={setCurrentStep}
+      setCurrentStep={handleStepChange}
       onSave={handleSubmit}
       isSubmitting={isSubmitting}
       isEditing={isEditing}

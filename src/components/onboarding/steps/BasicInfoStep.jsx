@@ -21,7 +21,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Name */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-center">
-              <span className="font-bold text-gray-900 text-sm">Name of the Property</span>
+              <span className="font-bold text-gray-900 text-sm">Name of the Property <span className="text-red-550 text-red-500">*</span></span>
               <span className="text-xs text-gray-500 mt-1">Enter the name as on the property documents</span>
             </div>
             <div className="w-full md:w-3/5 flex items-center">
@@ -37,7 +37,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Property Type */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-center">
-              <span className="font-bold text-gray-900 text-sm">Property Type</span>
+              <span className="font-bold text-gray-900 text-sm">Property Type <span className="text-red-500">*</span></span>
               <span className="text-xs text-gray-500 mt-1">Select the classification of your property</span>
             </div>
             <div className="w-full md:w-3/5 flex items-center">
@@ -59,7 +59,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Star Rating */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-center">
-              <span className="font-bold text-gray-900 text-sm">Hotel Star Rating</span>
+              <span className="font-bold text-gray-900 text-sm">Hotel Star Rating <span className="text-red-500">*</span></span>
             </div>
             <div className="w-full md:w-3/5 flex items-center">
               <select 
@@ -177,7 +177,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Email ID */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-start pt-3">
-              <span className="font-bold text-gray-900 text-sm">Email ID</span>
+              <span className="font-bold text-gray-900 text-sm">Email ID <span className="text-red-500">*</span></span>
             </div>
             <div className="w-full md:w-3/5 flex flex-col">
               <div className="relative">
@@ -201,7 +201,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Mobile Number */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-start pt-3">
-              <span className="font-bold text-gray-900 text-sm">Mobile number</span>
+              <span className="font-bold text-gray-900 text-sm">Mobile number <span className="text-red-500">*</span></span>
             </div>
             <div className="w-full md:w-3/5 flex flex-col">
               <div className="flex shadow-sm rounded-md relative">

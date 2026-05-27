@@ -94,10 +94,12 @@ app.use('/api', globalLimiter);
 
 // Body Parsing
 app.use(express.json({
+  limit: '50mb',
   verify: (req, res, buf) => {
     if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
   }
 }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Ensure public/uploads directory exists
 const uploadDir = path.join(__dirname, 'public/uploads');

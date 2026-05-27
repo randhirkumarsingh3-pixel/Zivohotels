@@ -194,24 +194,27 @@ const LocationStep = ({ formData, updateForm }) => {
           const lat = place.geometry.location.lat();
           const lng = place.geometry.location.lng();
 
-          updateForm('latitude', lat.toFixed(6));
-          updateForm('longitude', lng.toFixed(6));
-
           marker.setPosition({ lat, lng });
           map.setCenter({ lat, lng });
           map.setZoom(16);
 
+          const bulkUpdate = {
+            latitude: lat.toFixed(6),
+            longitude: lng.toFixed(6)
+          };
+
           if (place.address_components) {
             const parsed = parseGoogleAddressComponents(place.address_components);
-            updateForm('houseNo', parsed.houseNo);
-            updateForm('area', parsed.area);
-            updateForm('pincode', parsed.pincode);
-            updateForm('country', parsed.country);
-            updateForm('state', parsed.state);
-            updateForm('city', parsed.city);
-            updateForm('address', place.formatted_address || '');
+            bulkUpdate.houseNo = parsed.houseNo;
+            bulkUpdate.area = parsed.area;
+            bulkUpdate.pincode = parsed.pincode;
+            bulkUpdate.country = parsed.country;
+            bulkUpdate.state = parsed.state;
+            bulkUpdate.city = parsed.city;
+            bulkUpdate.address = place.formatted_address || '';
           }
 
+          updateForm(bulkUpdate);
           setSearchQuery(place.formatted_address || place.name || '');
         });
 
@@ -223,8 +226,10 @@ const LocationStep = ({ formData, updateForm }) => {
         const pos = marker.getPosition();
         const lat = pos.lat();
         const lng = pos.lng();
-        updateForm('latitude', lat.toFixed(6));
-        updateForm('longitude', lng.toFixed(6));
+        updateForm({
+          latitude: lat.toFixed(6),
+          longitude: lng.toFixed(6)
+        });
         googleReverseGeocode(lat, lng);
       });
 
@@ -233,8 +238,10 @@ const LocationStep = ({ formData, updateForm }) => {
         const lat = e.latLng.lat();
         const lng = e.latLng.lng();
         marker.setPosition({ lat, lng });
-        updateForm('latitude', lat.toFixed(6));
-        updateForm('longitude', lng.toFixed(6));
+        updateForm({
+          latitude: lat.toFixed(6),
+          longitude: lng.toFixed(6)
+        });
         googleReverseGeocode(lat, lng);
       });
 
@@ -288,8 +295,10 @@ const LocationStep = ({ formData, updateForm }) => {
       }).addTo(map);
 
       const handleLocationUpdate = (lat, lng) => {
-        updateForm('latitude', lat.toFixed(6));
-        updateForm('longitude', lng.toFixed(6));
+        updateForm({
+          latitude: lat.toFixed(6),
+          longitude: lng.toFixed(6)
+        });
         osmReverseGeocode(lat, lng);
       };
 
@@ -394,9 +403,6 @@ const LocationStep = ({ formData, updateForm }) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
     
-    updateForm('latitude', lat.toFixed(6));
-    updateForm('longitude', lng.toFixed(6));
-
     if (leafletMapRef.current && leafletMarkerRef.current) {
       leafletMarkerRef.current.setLatLng([lat, lng]);
       leafletMapRef.current.setView([lat, lng], 15);
@@ -407,16 +413,20 @@ const LocationStep = ({ formData, updateForm }) => {
     const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
     const pincode = addr.postcode || '';
     const country = addr.country || 'India';
-    const state = addr.state || '';
+    const state = addr.state || addr.province || addr.region || '';
     const city = addr.city || addr.town || addr.village || addr.municipality || '';
     
-    updateForm('houseNo', houseNo);
-    updateForm('area', area);
-    updateForm('pincode', pincode);
-    updateForm('country', country);
-    updateForm('state', state);
-    updateForm('city', city);
-    updateForm('address', item.display_name || '');
+    updateForm({
+      latitude: lat.toFixed(6),
+      longitude: lng.toFixed(6),
+      houseNo,
+      area,
+      pincode,
+      country,
+      state,
+      city,
+      address: item.display_name || ''
+    });
 
     setSearchQuery(item.display_name || '');
     setSuggestions([]);
@@ -431,13 +441,15 @@ const LocationStep = ({ formData, updateForm }) => {
         const place = results[0];
         const parsed = parseGoogleAddressComponents(place.address_components);
         
-        updateForm('houseNo', parsed.houseNo);
-        updateForm('area', parsed.area);
-        updateForm('pincode', parsed.pincode);
-        updateForm('country', parsed.country);
-        updateForm('state', parsed.state);
-        updateForm('city', parsed.city);
-        updateForm('address', place.formatted_address || '');
+        updateForm({
+          houseNo: parsed.houseNo,
+          area: parsed.area,
+          pincode: parsed.pincode,
+          country: parsed.country,
+          state: parsed.state,
+          city: parsed.city,
+          address: place.formatted_address || ''
+        });
         setSearchQuery(place.formatted_address || '');
       } else {
         console.warn('Google Geocoder failed due to status:', status, '- Attempting OSM Fallback.');
@@ -460,16 +472,18 @@ const LocationStep = ({ formData, updateForm }) => {
           const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
           const pincode = addr.postcode || '';
           const country = addr.country || 'India';
-          const state = addr.state || '';
+          const state = addr.state || addr.province || addr.region || '';
           const city = addr.city || addr.town || addr.village || addr.municipality || '';
           
-          updateForm('houseNo', houseNo);
-          updateForm('area', area);
-          updateForm('pincode', pincode);
-          updateForm('country', country);
-          updateForm('state', state);
-          updateForm('city', city);
-          updateForm('address', data.display_name || '');
+          updateForm({
+            houseNo,
+            area,
+            pincode,
+            country,
+            state,
+            city,
+            address: data.display_name || ''
+          });
           setSearchQuery(data.display_name || '');
         }
       }
@@ -484,8 +498,10 @@ const LocationStep = ({ formData, updateForm }) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          updateForm('latitude', latitude.toFixed(6));
-          updateForm('longitude', longitude.toFixed(6));
+          updateForm({
+            latitude: latitude.toFixed(6),
+            longitude: longitude.toFixed(6)
+          });
           
           if (useGoogle && googleLoaded && googleMarkerRef.current && googleMapRef.current) {
             googleMarkerRef.current.setPosition({ lat: latitude, lng: longitude });
@@ -570,7 +586,7 @@ const LocationStep = ({ formData, updateForm }) => {
           {/* House No */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              House/Building/Apartment No.
+              House/Building/Apartment No. <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -584,7 +600,7 @@ const LocationStep = ({ formData, updateForm }) => {
           {/* Area */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              Locality/Area/Street/Sector
+              Locality/Area/Street/Sector <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -599,7 +615,7 @@ const LocationStep = ({ formData, updateForm }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-                Pincode
+                Pincode <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -611,7 +627,7 @@ const LocationStep = ({ formData, updateForm }) => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-                Country
+                Country <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -626,7 +642,7 @@ const LocationStep = ({ formData, updateForm }) => {
           {/* State */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              State
+              State <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -640,7 +656,7 @@ const LocationStep = ({ formData, updateForm }) => {
           {/* City */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              City
+              City <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
