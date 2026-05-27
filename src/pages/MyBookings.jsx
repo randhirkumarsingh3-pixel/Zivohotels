@@ -80,6 +80,7 @@ const MyBookings = () => {
   const [error, setError] = useState('');
   const [activeBooking, setActiveBooking] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeSection, setActiveSection] = useState('upcoming'); // upcoming | ongoing | past
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [conciergeActionLoading, setConciergeActionLoading] = useState('');
@@ -390,48 +391,81 @@ const MyBookings = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
           {/* Main Sections (2/3) */}
-          <div className="lg:col-span-2 space-y-10">
+          <div className="lg:col-span-2">
 
-            {/* ── ONGOING ─────────────────────────────────── */}
-            <div>
-              <SectionHeader
-                icon={<MapPin size={18} className="text-violet-500" />}
-                title="Ongoing Stays"
-                count={ongoing.length}
-                accent="border-violet-100"
-              />
-              {ongoing.length === 0
-                ? <EmptySection label="ongoing" />
-                : ongoing.map(b => <BookingCard key={b.id} booking={b} />)
-              }
+            {/* ── Pill Tab Switcher ───────────────────────── */}
+            <div className="flex gap-3 mb-8 flex-wrap">
+              {/* Upcoming */}
+              <button
+                onClick={() => setActiveSection('upcoming')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
+                  activeSection === 'upcoming'
+                    ? 'bg-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/25'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
+                }`}
+              >
+                <Calendar size={15} />
+                Upcoming Bookings
+                <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                  activeSection === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>{upcoming.length}</span>
+              </button>
+
+              {/* Ongoing */}
+              <button
+                onClick={() => setActiveSection('ongoing')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
+                  activeSection === 'ongoing'
+                    ? 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-500/25'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-violet-400 hover:text-violet-600'
+                }`}
+              >
+                <MapPin size={15} />
+                Ongoing Stays
+                {ongoing.length > 0 && (
+                  <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                    activeSection === 'ongoing' ? 'bg-white/20 text-white' : 'bg-violet-100 text-violet-600'
+                  }`}>{ongoing.length}</span>
+                )}
+                {ongoing.length > 0 && activeSection !== 'ongoing' && (
+                  <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                )}
+              </button>
+
+              {/* Past */}
+              <button
+                onClick={() => setActiveSection('past')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
+                  activeSection === 'past'
+                    ? 'bg-gray-700 text-white border-gray-700 shadow-md shadow-gray-500/20'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-700'
+                }`}
+              >
+                <Clock size={15} />
+                Past Bookings
+                <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                  activeSection === 'past' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>{past.length}</span>
+              </button>
             </div>
 
-            {/* ── UPCOMING ────────────────────────────────── */}
-            <div>
-              <SectionHeader
-                icon={<Calendar size={18} className="text-brand-600" />}
-                title="Upcoming Bookings"
-                count={upcoming.length}
-                accent="border-brand-100"
-              />
-              {upcoming.length === 0
-                ? <EmptySection label="upcoming" />
-                : <div className="space-y-5">{upcoming.map(b => <BookingCard key={b.id} booking={b} />)}</div>
-              }
-            </div>
-
-            {/* ── PAST ────────────────────────────────────── */}
-            <div>
-              <SectionHeader
-                icon={<Clock size={18} className="text-gray-400" />}
-                title="Past Bookings"
-                count={past.length}
-                accent="border-gray-100"
-              />
-              {past.length === 0
-                ? <EmptySection label="past" />
-                : <div className="space-y-5 opacity-90">{past.map(b => <BookingCard key={b.id} booking={b} />)}</div>
-              }
+            {/* ── Active Section Content ───────────────────── */}
+            <div className="space-y-5">
+              {activeSection === 'upcoming' && (
+                upcoming.length === 0
+                  ? <EmptySection label="upcoming" />
+                  : upcoming.map(b => <BookingCard key={b.id} booking={b} />)
+              )}
+              {activeSection === 'ongoing' && (
+                ongoing.length === 0
+                  ? <EmptySection label="ongoing" />
+                  : ongoing.map(b => <BookingCard key={b.id} booking={b} />)
+              )}
+              {activeSection === 'past' && (
+                past.length === 0
+                  ? <EmptySection label="past" />
+                  : <div className="opacity-90 space-y-5">{past.map(b => <BookingCard key={b.id} booking={b} />)}</div>
+              )}
             </div>
 
           </div>
