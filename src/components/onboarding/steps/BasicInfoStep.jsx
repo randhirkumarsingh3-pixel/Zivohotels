@@ -1,10 +1,44 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
 const BasicInfoStep = ({ formData, updateForm }) => {
   // Generate array of years from 1950 to current year + 2
   const currentYear = new Date().getFullYear();
   const years = Array.from(new Array(currentYear - 1950 + 3), (val, index) => currentYear + 2 - index);
+
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  
+  const [verifyingMobile, setVerifyingMobile] = useState(false);
+  const [mobileOtp, setMobileOtp] = useState('');
+
+  const isEmailVerified = formData.isEmailVerified !== undefined 
+    ? formData.isEmailVerified 
+    : Boolean(formData.guestEmail || formData.receptionEmail);
+    
+  const isMobileVerified = formData.isMobileVerified !== undefined 
+    ? formData.isMobileVerified 
+    : Boolean(formData.guestMobile || formData.receptionPhone);
+
+  const confirmEmailVerify = () => {
+    if (emailOtp.length === 4) {
+      updateForm('isEmailVerified', true);
+      setVerifyingEmail(false);
+      setEmailOtp('');
+    } else {
+      alert("Please enter the 4-digit code.");
+    }
+  };
+
+  const confirmMobileVerify = () => {
+    if (mobileOtp.length === 4) {
+      updateForm('isMobileVerified', true);
+      setVerifyingMobile(false);
+      setMobileOtp('');
+    } else {
+      alert("Please enter the 4-digit OTP.");
+    }
+  };
 
   return (
     <div className="p-4 sm:p-8 animate-fade-in bg-gray-50/50">
@@ -21,7 +55,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           {/* Name */}
           <div className="flex flex-col md:flex-row p-4 sm:p-6 border-b border-gray-200 gap-2 md:gap-6">
             <div className="w-full md:w-2/5 flex flex-col justify-center">
-              <span className="font-bold text-gray-900 text-sm">Name of the Property <span className="text-red-550 text-red-500">*</span></span>
+              <span className="font-bold text-gray-900 text-sm">Name of the Property <span className="text-red-500">*</span></span>
               <span className="text-xs text-gray-500 mt-1">Enter the name as on the property documents</span>
             </div>
             <div className="w-full md:w-3/5 flex items-center">
@@ -184,17 +218,87 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 <input 
                   type="email" 
                   value={formData.guestEmail || formData.receptionEmail || ''} 
-                  onChange={e => updateForm('guestEmail', e.target.value)} 
-                  className="w-full px-3 py-2.5 pr-24 border border-gray-300 bg-gray-100 rounded-md focus:border-blue-500 outline-none text-gray-800 text-sm shadow-sm" 
+                  onChange={e => {
+                    updateForm('guestEmail', e.target.value);
+                    if (formData.isEmailVerified) updateForm('isEmailVerified', false);
+                  }} 
+                  disabled={isEmailVerified}
+                  className={`w-full px-3 py-2.5 pr-24 border rounded-md outline-none text-sm shadow-sm transition-all ${
+                    isEmailVerified 
+                      ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed font-medium' 
+                      : 'border-gray-400 bg-white text-gray-900 focus:border-blue-500'
+                  }`}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-teal-600 font-bold text-xs gap-1">
-                  <CheckCircle2 size={14} className="fill-teal-600 text-white" />
-                  Verified
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  {isEmailVerified ? (
+                    <span className="flex items-center text-teal-600 font-bold text-xs gap-1.5">
+                      <CheckCircle2 size={14} className="fill-teal-600 text-white" />
+                      Verified
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const email = formData.guestEmail || formData.receptionEmail;
+                        if (email && email.includes('@')) {
+                          setVerifyingEmail(true);
+                        } else {
+                          alert("Please enter a valid email address first.");
+                        }
+                      }}
+                      className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer hover:underline"
+                    >
+                      Verify
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="text-right mt-1">
-                <button className="text-blue-500 hover:text-blue-700 text-xs font-semibold cursor-pointer">Change</button>
-              </div>
+              
+              {verifyingEmail && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-between gap-3 animate-fade-in">
+                  <div className="flex-1">
+                    <span className="text-[10px] text-blue-600 font-bold block mb-1">ENTER 4-DIGIT VERIFICATION CODE</span>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 1234" 
+                      maxLength={4}
+                      value={emailOtp} 
+                      onChange={e => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs font-mono w-24 text-center focus:outline-none focus:border-blue-500" 
+                    />
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => setVerifyingEmail(false)}
+                      className="px-3 py-1.5 bg-white text-gray-600 rounded border border-gray-300 text-xs font-bold hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={confirmEmailVerify}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isEmailVerified && (
+                <div className="text-right mt-1">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      updateForm('isEmailVerified', false);
+                    }}
+                    className="text-blue-500 hover:text-blue-700 text-xs font-semibold cursor-pointer"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -211,17 +315,87 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 <input 
                   type="tel" 
                   value={formData.guestMobile || formData.receptionPhone || ''} 
-                  onChange={e => updateForm('guestMobile', e.target.value)} 
-                  className="flex-1 w-full px-3 py-2.5 pr-24 border border-gray-300 bg-gray-100 rounded-r-md focus:border-blue-500 outline-none text-gray-800 text-sm" 
+                  onChange={e => {
+                    updateForm('guestMobile', e.target.value.replace(/\D/g, ''));
+                    if (formData.isMobileVerified) updateForm('isMobileVerified', false);
+                  }} 
+                  disabled={isMobileVerified}
+                  className={`flex-1 w-full px-3 py-2.5 pr-24 border border-l-0 rounded-r-md outline-none text-sm transition-all ${
+                    isMobileVerified 
+                      ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed font-medium' 
+                      : 'border-gray-400 bg-white text-gray-900 focus:border-blue-500'
+                  }`}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-teal-600 font-bold text-xs gap-1">
-                  <CheckCircle2 size={14} className="fill-teal-600 text-white" />
-                  Verified
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  {isMobileVerified ? (
+                    <span className="flex items-center text-teal-600 font-bold text-xs gap-1.5">
+                      <CheckCircle2 size={14} className="fill-teal-600 text-white" />
+                      Verified
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const phone = formData.guestMobile || formData.receptionPhone;
+                        if (phone && phone.length >= 10) {
+                          setVerifyingMobile(true);
+                        } else {
+                          alert("Please enter a valid 10-digit mobile number first.");
+                        }
+                      }}
+                      className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer hover:underline"
+                    >
+                      Verify
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="text-right mt-1 mb-3">
-                <button className="text-blue-500 hover:text-blue-700 text-xs font-semibold cursor-pointer">Change</button>
-              </div>
+              
+              {verifyingMobile && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-between gap-3 animate-fade-in">
+                  <div className="flex-1">
+                    <span className="text-[10px] text-blue-600 font-bold block mb-1">ENTER 4-DIGIT OTP</span>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 1234" 
+                      maxLength={4}
+                      value={mobileOtp} 
+                      onChange={e => setMobileOtp(e.target.value.replace(/\D/g, ''))}
+                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs font-mono w-24 text-center focus:outline-none focus:border-blue-500" 
+                    />
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => setVerifyingMobile(false)}
+                      className="px-3 py-1.5 bg-white text-gray-600 rounded border border-gray-300 text-xs font-bold hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={confirmMobileVerify}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isMobileVerified && (
+                <div className="text-right mt-1 mb-3">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      updateForm('isMobileVerified', false);
+                    }}
+                    className="text-blue-500 hover:text-blue-700 text-xs font-semibold cursor-pointer"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
 
               <label className="flex items-center cursor-pointer mt-1">
                 <input 

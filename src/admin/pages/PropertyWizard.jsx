@@ -143,8 +143,36 @@ const PropertyWizard = () => {
   useEffect(() => {
     if (isEditing) {
       fetchProperty();
+    } else {
+      const saved = localStorage.getItem('zivo_onboarding_draft_admin');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(prev => ({ ...prev, ...parsed }));
+          
+          const savedStep = localStorage.getItem('zivo_onboarding_step_admin');
+          if (savedStep) {
+            setCurrentStep(parseInt(savedStep));
+          }
+        } catch (e) {
+          console.error("Failed to restore onboarding draft:", e);
+        }
+      }
     }
   }, [id]);
+
+  // Auto-save form progress to localStorage in real time (except when editing active property)
+  useEffect(() => {
+    if (!isEditing && formData.name) {
+      localStorage.setItem('zivo_onboarding_draft_admin', JSON.stringify(formData));
+    }
+  }, [formData, isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      localStorage.setItem('zivo_onboarding_step_admin', String(currentStep));
+    }
+  }, [currentStep, isEditing]);
 
   const fetchProperty = async () => {
     try {
@@ -397,8 +425,12 @@ const PropertyWizard = () => {
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
       };
 
-      const url = isEditing ? `${API_URL}/hotels/${id}` : `${API_URL}/hotels`;
-      const method = isEditing ? 'PATCH' : 'POST';
+      const draftId = localStorage.getItem('currentHotelId');
+      const targetHotelId = id || draftId;
+      const usePatch = isEditing || Boolean(draftId);
+
+      const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
+      const method = usePatch ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {
         method,
@@ -418,7 +450,9 @@ const PropertyWizard = () => {
         throw new Error(data.message || 'Failed to save property');
       }
 
-      const hotelId = isEditing ? id : data.data.id;
+      const targetHotelIdForRoom = id || localStorage.getItem('currentHotelId');
+      const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId'));
+      const hotelId = usePatchForRoom ? targetHotelIdForRoom : data.data.id;
 
       // 1. Delete removed rooms
       const currentRoomIds = new Set(formData.rooms.map(r => r.id).filter(id => id && id.includes('-')));
@@ -517,6 +551,10 @@ const PropertyWizard = () => {
           }
         }
       }
+
+      localStorage.removeItem('zivo_onboarding_draft_admin');
+      localStorage.removeItem('zivo_onboarding_step_admin');
+      localStorage.removeItem('currentHotelId');
 
       if (isEditing) {
         alert('Property updated successfully!');
