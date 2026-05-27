@@ -104,8 +104,6 @@ function App() {
             
             {/* Supply */}
             <Route path="properties" element={<Properties />} />
-            <Route path="properties/new" element={<PropertyWizard />} />
-            <Route path="properties/edit/:id" element={<PropertyWizard />} />
             <Route path="agreements" element={<Agreements />} />
 
             {/* Inventory & Distro */}
@@ -139,7 +137,23 @@ function App() {
             <Route path="settings" element={<SystemHealth />} />
           </Route>
 
-          {/* PROPERTY ONBOARDING (Fullscreen Wizard) */}
+          {/* FULLSCREEN ADMIN PROPERTY WIZARD ROUTES */}
+          <Route 
+            path="/admin/properties/new" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <PropertyWizard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/properties/edit/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <PropertyWizard />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/extranet/onboarding" 
             element={

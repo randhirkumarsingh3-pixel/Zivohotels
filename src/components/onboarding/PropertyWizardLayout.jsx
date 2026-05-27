@@ -1,6 +1,6 @@
 import React from 'react';
 import { Save, Loader2, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const STEPS = [
   { num: 1, title: 'Basic Info' },
@@ -23,6 +23,15 @@ const PropertyWizardLayout = ({
   isEditing = false
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBackNavigation = () => {
+    if (location.pathname.startsWith('/admin')) {
+      navigate('/admin/properties');
+    } else {
+      navigate('/extranet/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] font-sans pb-32">
@@ -31,9 +40,9 @@ const PropertyWizardLayout = ({
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/admin/properties')} 
+              onClick={handleBackNavigation} 
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
-              title="Back to Properties"
+              title="Back"
             >
               <ArrowLeft size={20} />
             </button>
