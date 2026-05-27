@@ -137,6 +137,9 @@ const PropertyOnboarding = () => {
     
     // Policies
     policies: [], checkInTime: '14:00', checkOutTime: '11:00',
+    cancellationPolicy: 'FREE_CANCEL_24H',
+    policyRules: {},
+    mealPrices: {},
     
     // Finance & Legal
     legalName: '', pan: '', gstin: '',
@@ -191,6 +194,9 @@ const PropertyOnboarding = () => {
           
           checkInTime: hotel.checkInTime || '14:00',
           checkOutTime: hotel.checkOutTime || '11:00',
+          cancellationPolicy: hotel.cancellationPolicy || 'FREE_CANCEL_24H',
+          policyRules: hotel.policyRules || {},
+          mealPrices: hotel.mealPrices || {},
           
           legalName: hotel.legalName || '',
           pan: hotel.pan || '',
@@ -377,6 +383,9 @@ const PropertyOnboarding = () => {
         policies: formData.policies,
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
+        cancellationPolicy: formData.cancellationPolicy,
+        policyRules: formData.policyRules,
+        mealPrices: formData.mealPrices,
         
         receptionPhone: formData.receptionPhone,
         receptionEmail: formData.receptionEmail,
