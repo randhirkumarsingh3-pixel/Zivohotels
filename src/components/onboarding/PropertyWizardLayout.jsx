@@ -112,7 +112,7 @@ const PropertyWizardLayout = ({
           className="bg-[#E05A3E] hover:bg-[#c64f35] text-white px-8 py-2.5 rounded font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-md cursor-pointer"
         >
           {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-          Save And Continue
+          Save & Continue
         </button>
       </div>
     </div>
