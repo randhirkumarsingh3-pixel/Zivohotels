@@ -1,12 +1,12 @@
 import express from 'express';
 import { createHotel, updateHotel, deleteHotel, getAllHotels, getHotelById, searchHotels } from '../controllers/hotelController.js';
 import { getHotelReviews } from '../controllers/reviewController.js';
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.route('/')
-  .get(getAllHotels)
+  .get(extractUser, getAllHotels)
   .post(protect, authorizeRoles('ADMIN', 'OWNER'), createHotel);
 
 router.get('/search', searchHotels);

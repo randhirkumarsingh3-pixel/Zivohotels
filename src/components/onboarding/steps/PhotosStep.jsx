@@ -24,6 +24,7 @@ const PhotosStep = ({ formData, updateForm }) => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignRoomType, setAssignRoomType] = useState(null);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [tagSearch, setTagSearch] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -207,7 +208,6 @@ const PhotosStep = ({ formData, updateForm }) => {
 
   if (currentView === 'tagging' && selectedImageForTagging) {
     const currentImg = library.find(img => img.id === selectedImageForTagging.id) || selectedImageForTagging;
-    const [tagSearch, setTagSearch] = useState('');
     const filteredTags = TAG_OPTIONS.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()));
 
     return (

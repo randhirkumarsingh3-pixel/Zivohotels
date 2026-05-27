@@ -355,15 +355,22 @@ export const getAllHotels = asyncHandler(async (req, res) => {
       }
     });
 
-    // P0 DATA INTEGRITY GUARD: Skip hotels with no price or no images
-    if (!startingPrice || startingPrice <= 0) return null;
-    if (!hotel.media || hotel.media.length === 0) return null;
+    const hasPrice = startingPrice !== null && startingPrice > 0;
+    const hasMedia = hotel.media && hotel.media.length > 0;
+
+    // Check if the user is an admin or owner to show draft/incomplete properties
+    const isAdminOrOwner = req.user && (req.user.role === 'ADMIN' || req.user.role === 'OWNER');
+
+    if (!isAdminOrOwner) {
+      // P0 DATA INTEGRITY GUARD: Skip hotels with no price or no images for public listing
+      if (!hasPrice || !hasMedia) return null;
+    }
 
     return {
       ...hotel,
-      image: hotel.media[0].url,
-      startingPrice: startingPrice,
-      price: startingPrice
+      image: hasMedia ? hotel.media[0].url : '',
+      startingPrice: startingPrice || 0,
+      price: startingPrice || 0
     };
   }).filter(h => h !== null); // Remove blocked properties
 

@@ -106,8 +106,8 @@ export const extractUser = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      // We don't fetch full user to save DB calls, just attach ID
-      req.user = { id: decoded.id };
+      // We don't fetch full user to save DB calls, just attach ID and role
+      req.user = { id: decoded.id, role: decoded.role };
     }
   } catch (error) {
     // Ignore invalid tokens for soft-auth
