@@ -2,9 +2,18 @@ import React from 'react';
 import { Tag, Check } from 'lucide-react';
 
 const IMAGE_TAGS = [
-  "BEDROOM", "BATHROOM", "LIVING_AREA", "VIEW", "BALCONY",
-  "DINING", "WORKSPACE", "EXTERIOR", "AMENITIES", "FOOD_DRINK"
+  "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
+  "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
+  "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
 ];
+
+const formatTag = (tag) => {
+  return tag
+    .toLowerCase()
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 const ImageTagSelector = ({ selectedTags = [], onChange }) => {
   const toggleTag = (tag) => {
@@ -37,7 +46,7 @@ const ImageTagSelector = ({ selectedTags = [], onChange }) => {
               `}
             >
               {isActive && <Check className="inline-block h-3 w-3 mr-1" />}
-              {tag.replace('_', ' ')}
+              {formatTag(tag)}
             </button>
           );
         })}

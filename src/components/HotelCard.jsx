@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Star, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../utils/image';
 
 const HotelCard = ({ hotel }) => {
   const [imgError, setImgError] = useState(false);
@@ -44,7 +45,7 @@ const HotelCard = ({ hotel }) => {
           </div>
         ) : (
           <img 
-            src={hotel.image || fallbackImg} 
+            src={getImageUrl(hotel.image || fallbackImg)} 
             alt={hotel.name} 
             className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
             onError={() => setImgError(true)}

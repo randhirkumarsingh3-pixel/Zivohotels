@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Image as ImageIcon, CheckCircle2, Plus } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
+
+const formatTag = (tag) => {
+  return tag
+    .toLowerCase()
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
   const [images, setImages] = useState([]);
@@ -74,12 +83,12 @@ const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
                   ${isAttached ? 'border-brand-500 opacity-60 grayscale' : 'border-transparent hover:border-brand-300'}
                 `}
               >
-                <img src={img.url} className="w-full h-full object-cover" alt="Library" />
+                <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="Library" />
                 <div className="absolute inset-x-0 bottom-0 bg-black/50 p-1">
                   <div className="flex flex-wrap gap-0.5">
                     {img.tags.slice(0, 2).map(t => (
-                      <span key={t} className="text-[7px] text-white bg-white/20 px-1 rounded-sm uppercase font-bold">
-                        {t.replace('_', ' ')}
+                      <span key={t} className="text-[7px] text-white bg-white/20 px-1 rounded-sm font-bold">
+                        {formatTag(t)}
                       </span>
                     ))}
                   </div>

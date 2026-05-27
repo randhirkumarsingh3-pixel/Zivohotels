@@ -500,6 +500,22 @@ const PropertyWizard = () => {
             throw new Error(resJson.message || `Failed to update standard rate plan for room: ${room.name}`);
           }
         }
+
+        // Link locally assigned images to this room type (both new and updated rooms)
+        const assignedImages = (formData.images || []).filter(img =>
+          img.roomLinks?.some(link => link.roomTypeId === room.id)
+        );
+        for (const img of assignedImages) {
+          try {
+            await fetch(`${API_URL}/admin/images/room-types/${roomTypeId}`, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({ imageId: img.id, isPrimary: false })
+            });
+          } catch (err) {
+            console.error('Failed to link image to room:', err);
+          }
+        }
       }
 
       if (isEditing) {

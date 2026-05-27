@@ -4,6 +4,7 @@ import TagInput from './TagInput';
 import ImageTagSelector from './ImageTagSelector';
 import PropertyMediaLibrary from './PropertyMediaLibrary';
 import { Camera, X, Info, Library, Upload, Star, Image } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
 
 const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId = null }) => {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'library'
@@ -235,7 +236,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                 <div className="grid grid-cols-2 gap-3">
                   {formData.roomImages.map(img => (
                     <div key={img.id} className="group relative aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm">
-                      <img src={img.url} className="w-full h-full object-cover" alt="Attached" />
+                      <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="Attached" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button 
                           type="button" 

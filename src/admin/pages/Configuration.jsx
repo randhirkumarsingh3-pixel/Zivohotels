@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Settings2, Building2, Tag, ChevronDown, ChevronUp, Trash2, Network } from 'lucide-react';
 import RoomTypeModal from '../components/RoomTypeModal';
 import RatePlanModal from '../components/RatePlanModal';
+import { getImageUrl } from '../../utils/image';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const API_URL = `${BASE_URL}/admin`;
@@ -227,7 +228,7 @@ const Configuration = () => {
                       <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
                         {room.images?.find(img => img.isPrimary)?.image.url ? (
                           <img 
-                            src={room.images.find(img => img.isPrimary).image.url} 
+                            src={getImageUrl(room.images.find(img => img.isPrimary).image.url)} 
                             className="w-full h-full object-cover" 
                             alt="Primary" 
                           />

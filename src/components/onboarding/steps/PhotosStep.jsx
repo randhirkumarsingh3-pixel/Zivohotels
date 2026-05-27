@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, Trash2, Tag, Star, Eye, X, Check, Search, ChevronLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { getImageUrl } from '../../../utils/image';
 
 const TAG_OPTIONS = [
-  "BEDROOM", "BATHROOM", "LIVING_AREA", "VIEW", "BALCONY",
-  "DINING", "WORKSPACE", "EXTERIOR", "AMENITIES", "FOOD_DRINK"
+  "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
+  "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
+  "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
 ];
+
+const formatTag = (tag) => {
+  return tag
+    .toLowerCase()
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 const PhotosStep = ({ formData, updateForm }) => {
   const hotelId = formData.id || localStorage.getItem('currentHotelId');
@@ -181,7 +191,22 @@ const PhotosStep = ({ formData, updateForm }) => {
 
   const handleToggleRoomAssignment = async (image, roomType) => {
     const isLinked = image.roomLinks?.some(link => link.roomTypeId === roomType.id);
+    const isUUID = typeof roomType.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomType.id);
     
+    if (!isUUID) {
+      // Local-only toggle since room type is not saved in backend yet
+      const updatedLinks = isLinked
+        ? (image.roomLinks || []).filter(link => link.roomTypeId !== roomType.id)
+        : [...(image.roomLinks || []), { roomTypeId: roomType.id, imageId: image.id }];
+      
+      const updatedLibrary = library.map(img => 
+        img.id === image.id ? { ...img, roomLinks: updatedLinks } : img
+      );
+      setLibrary(updatedLibrary);
+      updateForm('images', updatedLibrary);
+      return;
+    }
+
     try {
       if (isLinked) {
         const res = await fetch(`${API_URL}/admin/images/room-types/${roomType.id}/images/${image.id}`, {
@@ -244,7 +269,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                       isActive ? 'border-blue-600 scale-[1.02] shadow' : 'border-transparent hover:border-gray-300'
                     }`}
                   >
-                    <img src={img.url} className="w-full h-full object-cover" alt="thumbnail" />
+                    <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="thumbnail" />
                     {!hasTags && (
                       <span className="absolute bottom-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-sm">
                         MISSING
@@ -259,7 +284,7 @@ const PhotosStep = ({ formData, updateForm }) => {
           {/* Central Preview Panel */}
           <div className="lg:col-span-2 space-y-4">
             <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black flex items-center justify-center group shadow-md">
-              <img src={currentImg.url} className="max-w-full max-h-full object-contain" alt="Preview" />
+              <img src={getImageUrl(currentImg.url)} className="max-w-full max-h-full object-contain" alt="Preview" />
               
               {/* Delete Icon Trigger */}
               <button
@@ -320,7 +345,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                       isTagged ? 'border-blue-500 bg-blue-50/50 font-bold text-blue-700 shadow-sm' : 'border-gray-150 hover:bg-gray-50 text-gray-700'
                     }`}
                   >
-                    <span>{tag.replace('_', ' ')}</span>
+                    <span>{formatTag(tag)}</span>
                     <input
                       type="checkbox"
                       checked={isTagged}
@@ -379,7 +404,7 @@ const PhotosStep = ({ formData, updateForm }) => {
       <div className="relative aspect-video sm:h-72 w-full rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow">
         {coverImage ? (
           <>
-            <img src={coverImage.url} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
+            <img src={getImageUrl(coverImage.url)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-6">
               <span className="text-[10px] bg-blue-600 text-white font-black px-2 py-0.5 rounded uppercase w-fit tracking-wider shadow-sm mb-1.5">
                 Property cover photo
@@ -445,7 +470,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                     !hasTags ? 'border-red-400 hover:border-red-500' : 'border-gray-200'
                   }`}
                 >
-                  <img src={img.url} className="w-full h-full object-cover" alt="grid-asset" />
+                  <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="grid-asset" />
                   
                   {/* Hover Tag overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -493,7 +518,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                   {/* Assigned images thumbnails */}
                   {assignedImages.slice(0, 4).map(img => (
                     <div key={img.id} className="w-12 h-12 rounded-lg overflow-hidden border border-gray-250 shrink-0 bg-gray-50">
-                      <img src={img.url} className="w-full h-full object-cover" alt="assigned" />
+                      <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="assigned" />
                     </div>
                   ))}
                   {assignedImages.length > 4 && (
@@ -567,7 +592,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                         isLinked ? 'border-blue-600 ring-2 ring-blue-100' : 'border-gray-200'
                       }`}
                     >
-                      <img src={image.url} className="w-full h-full object-cover" alt="assign-thumb" />
+                      <img src={getImageUrl(image.url)} className="w-full h-full object-cover" alt="assign-thumb" />
                       
                       {/* Checkbox Overlay */}
                       <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded border border-gray-300 bg-white/95">

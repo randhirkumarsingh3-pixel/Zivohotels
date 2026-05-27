@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getHotelById, trackEvent } from '../services/api';
+import { getImageUrl } from '../utils/image';
 import { useBooking } from '../context/BookingContext';
 import {
   MapPin, Star, Wifi, Coffee, Car, Dumbbell, Waves, CheckCircle2,
@@ -218,7 +219,7 @@ const Detail = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[40vh] md:h-[60vh] rounded-2xl overflow-hidden">
           <div className="md:col-span-2 h-full">
-            <img src={hotel.images?.[0]?.url || hotel.image} alt={hotel.name}
+            <img src={getImageUrl(hotel.images?.[0]?.url || hotel.image)} alt={hotel.name}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
           </div>
           <div className="hidden md:grid col-span-2 grid-cols-2 gap-4 h-full">
@@ -228,7 +229,7 @@ const Detail = () => {
               'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800',
               'https://images.unsplash.com/photo-1414235077428-33898ed1e814?w=800',
             ].map((src, i) => (
-              <img key={i} src={src} alt="Hotel" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+              <img key={i} src={getImageUrl(src)} alt="Hotel" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
             ))}
           </div>
         </div>

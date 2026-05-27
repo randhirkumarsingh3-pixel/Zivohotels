@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../utils/image';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const API_URL = `${BASE_URL}/bookings`;
@@ -284,11 +285,7 @@ const MyBookings = () => {
 
   /* ── Booking card renderer ── */
   const BookingCard = ({ booking }) => {
-    const mainImageUrl = booking.hotel?.media?.[0]?.url
-      ? (booking.hotel.media[0].url.startsWith('http')
-          ? booking.hotel.media[0].url
-          : `${BASE_URL.replace('/api/v1', '')}${booking.hotel.media[0].url}`)
-      : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
+    const mainImageUrl = getImageUrl(booking.hotel?.media?.[0]?.url) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
 
     const reviewReady = isReviewUnlocked(booking);
     const cat = classifyBooking(booking);
@@ -843,11 +840,7 @@ const MyBookings = () => {
                 const NEG_TAGS = ['Noise Issue','Slow Service','Poor Cleanliness','AC Issue','Maintenance Issue'];
                 const toggleTag = (t) => setSelectedTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
-                const hotelImg = activeBooking.hotel?.media?.[0]?.url
-                  ? (activeBooking.hotel.media[0].url.startsWith('http')
-                      ? activeBooking.hotel.media[0].url
-                      : `${BASE_URL.replace('/api/v1', '')}${activeBooking.hotel.media[0].url}`)
-                  : null;
+                const hotelImg = getImageUrl(activeBooking.hotel?.media?.[0]?.url) || null;
 
                 const handlePhotoFiles = (files) => {
                   const arr = Array.from(files).slice(0, 6 - reviewPhotos.length);

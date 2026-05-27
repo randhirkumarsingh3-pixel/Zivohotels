@@ -9,8 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const IMAGE_TAGS = [
-  "BEDROOM", "BATHROOM", "LIVING_AREA", "VIEW", "BALCONY",
-  "DINING", "WORKSPACE", "EXTERIOR", "AMENITIES", "FOOD_DRINK"
+  "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
+  "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
+  "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
 ];
 
 const IMAGE_CATEGORIES = ["ROOM", "EXTERIOR", "AMENITIES", "FOOD"];
