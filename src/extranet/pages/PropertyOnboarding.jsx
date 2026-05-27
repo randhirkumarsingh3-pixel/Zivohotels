@@ -186,7 +186,7 @@ const PropertyOnboarding = () => {
           
           amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
           rooms: parsedRooms,
-          images: Array.isArray(hotel.images) ? hotel.images : [],
+          images: Array.isArray(hotel.media) ? hotel.media : [],
           policies: Array.isArray(hotel.policies) ? hotel.policies : [],
           
           checkInTime: hotel.checkInTime || '14:00',
@@ -213,9 +213,45 @@ const PropertyOnboarding = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const saveDraftIfNeeded = async () => {
+    const currentId = effectiveId || localStorage.getItem('currentHotelId');
+    if (!currentId) {
+      if (!formData.name) {
+        addToast("Please specify a property name on Step 1 before proceeding.", "warning");
+        return false;
+      }
+      try {
+        const payload = {
+          name: formData.name,
+          propertyType: formData.type || 'Hotel',
+          city: formData.city || 'Default City',
+          address: formData.address || 'Default Address',
+          description: formData.description || ''
+        };
+        const res = await fetch(`${API_URL}/hotels`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (res.ok && resJson.data && resJson.data.id) {
+          localStorage.setItem('currentHotelId', resJson.data.id);
+          updateForm('id', resJson.data.id);
+        }
+      } catch (err) {
+        console.error('Failed to auto-save property draft:', err);
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async () => {
     // Advance to next step if not on last step
     if (currentStep < 7) {
+      if (currentStep === 2) {
+        const success = await saveDraftIfNeeded();
+        if (!success) return;
+      }
       setCurrentStep(prev => prev + 1);
       window.scrollTo(0, 0);
       return;

@@ -2,6 +2,12 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import hotelRoutes from './routes/hotelRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -92,6 +98,15 @@ app.use(express.json({
     if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
   }
 }));
+
+// Ensure public/uploads directory exists
+const uploadDir = path.join(__dirname, 'public/uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Serve uploaded images statically
+app.use('/uploads', express.static(uploadDir));
 
 // Static File Serving for Invoices removed for security, use /api/v1/invoices/:id/download
 
