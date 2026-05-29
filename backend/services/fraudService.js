@@ -36,7 +36,7 @@ export const trackOtpAbuse = async (email, ipAddress) => {
   }
 
   if (riskLevel !== 'LOW') {
-    eventBus.emit('OTP_ABUSE_DETECTED', { email, ipAddress, riskLevel, reason, timestamp: new Date() });
+    eventBus.emitEvent('OTP_ABUSE_DETECTED', { email, ipAddress, riskLevel, reason, timestamp: new Date() });
     
     // Log fraud
     await prisma.fraudLog.create({

@@ -13,7 +13,7 @@ class EmailOTPProvider {
     await createOTP(email, ipAddress, userAgent);
 
     // Emit event
-    eventBus.emit('AUTH_CHALLENGE_ISSUED', { 
+    eventBus.emitEvent('AUTH_CHALLENGE_ISSUED', { 
       provider: 'EmailOTP',
       email, 
       ipAddress,
@@ -34,7 +34,7 @@ class EmailOTPProvider {
     await verifyOTP(email, otp);
 
     // Emit event
-    eventBus.emit('AUTH_CHALLENGE_VERIFIED', { 
+    eventBus.emitEvent('AUTH_CHALLENGE_VERIFIED', { 
       provider: 'EmailOTP',
       email, 
       ipAddress,

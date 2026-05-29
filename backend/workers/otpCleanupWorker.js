@@ -34,7 +34,7 @@ export const startOtpCleanupWorker = () => {
         });
 
         // Emit cleanup metrics
-        eventBus.emit('SYSTEM_METRIC', {
+        eventBus.emitEvent('SYSTEM_METRIC', {
           metric: 'otp_cleanup_count',
           value: result.count,
           timestamp: new Date()

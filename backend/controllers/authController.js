@@ -204,12 +204,12 @@ export const sendOtp = asyncHandler(async (req, res) => {
       }
     });
 
-    eventBus.emit('OTP_SENT', { email, ipAddress, timestamp: new Date() });
+    eventBus.emitEvent('OTP_SENT', { email, ipAddress, timestamp: new Date() });
 
     res.status(200).json({ success: true, message: 'OTP sent successfully' });
   } catch (error) {
     if (error.message.includes('Too many OTP requests')) {
-      eventBus.emit('OTP_RATE_LIMITED', { email, ipAddress });
+      eventBus.emitEvent('OTP_RATE_LIMITED', { email, ipAddress });
       await prisma.securityLog.create({
         data: {
           type: 'OTP_RATE_LIMITED',
@@ -252,7 +252,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   try {
     await verifyOTP(email, otp);
 
-    eventBus.emit('OTP_VERIFIED', { email, ipAddress, timestamp: new Date() });
+    eventBus.emitEvent('OTP_VERIFIED', { email, ipAddress, timestamp: new Date() });
 
     await prisma.securityLog.create({
       data: {
@@ -271,7 +271,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 
     res.status(200).json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    eventBus.emit('OTP_FAILED', { email, ipAddress, reason: error.message });
+    eventBus.emitEvent('OTP_FAILED', { email, ipAddress, reason: error.message });
     
     await prisma.securityLog.create({
       data: {

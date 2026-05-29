@@ -27,7 +27,7 @@ export const handleResendWebhook = asyncHandler(async (req, res) => {
   });
 
   // Emit to EventBus for analytics
-  eventBus.emit('EMAIL_DELIVERY_EVENT', payload);
+  eventBus.emitEvent('EMAIL_DELIVERY_EVENT', payload);
 
   res.status(200).json({ success: true, message: 'Webhook received' });
 });
