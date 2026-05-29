@@ -2,7 +2,8 @@ import nodemailer from 'nodemailer';
 import prisma from '../config/db.js';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Use a fallback to prevent the server from crashing on startup if the API key is not set in Render yet.
+const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_to_prevent_crash');
 
 // Configure SMTP transport with Hostinger credentials
 const transporter = nodemailer.createTransport({
@@ -705,7 +706,7 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
  * @param {number} expiryMinutes - Expiry time
  */
 export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
-  if (!process.env.RESEND_API_KEY) {
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_dummy_key_to_prevent_crash') {
     console.warn('[EmailService] Missing RESEND_API_KEY. Simulating OTP email send to:', to, 'OTP:', otp);
     return { success: true, simulated: true };
   }
