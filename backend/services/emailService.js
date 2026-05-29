@@ -706,11 +706,6 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
  * @param {number} expiryMinutes - Expiry time
  */
 export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_dummy_key_to_prevent_crash') {
-    console.warn('[EmailService] Missing RESEND_API_KEY. Simulating OTP email send to:', to, 'OTP:', otp);
-    return { success: true, simulated: true };
-  }
-
   const subject = 'Verify Your Email Address – ZivoHotels';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
@@ -725,16 +720,19 @@ export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
     </div>
   `;
 
+  const mailOptions = {
+    from: '"ZivoHotels Accounts" <bookings@zivohotels.com>',
+    to,
+    subject,
+    html
+  };
+
   try {
-    const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'accounts@zivohotels.com',
-      to,
-      subject,
-      html,
-    });
-    return { success: true, data };
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EmailService] OTP Email sent successfully to ${to}! Message ID: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[EmailService] Error sending OTP email via Resend:', error);
+    console.error('[EmailService] Error sending OTP email via SMTP:', error);
     throw error;
   }
 };
