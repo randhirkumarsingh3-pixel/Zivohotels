@@ -525,49 +525,52 @@ const LocationStep = ({ formData, updateForm }) => {
   };
 
   return (
-    <div className="p-4 sm:p-8 animate-fade-in bg-gray-50/50">
-      <h1 className="text-2xl font-extrabold text-black mb-1">Property Location Details</h1>
-      <p className="text-sm text-gray-500 mb-6">Please fill in the location details of your property.</p>
+    <div className="animate-fade-in flex flex-col h-full">
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Where is your property located?</h1>
+        <p className="text-slate-500 mt-2 text-lg">Pin it on the map or search for the exact address below.</p>
+      </div>
 
       {/* Info Warning Alert */}
-      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 text-blue-900 p-4 rounded-lg mb-6 shadow-sm">
+      <div className="flex items-start gap-3 bg-blue-50/50 border border-blue-100 text-blue-900 p-4 rounded-xl mb-8 shadow-sm">
         <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-        <p className="text-sm">
-          Please enter the same address as on your address proof document (to be uploaded in the next step), to avoid rejections due to mismatch.
+        <p className="text-sm font-medium">
+          Please enter the exact address as shown on your official property documents. This helps us verify your listing faster and prevents rejection.
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-10">
         {/* Left Side: Inputs Form */}
-        <div className="w-full lg:w-[55%] space-y-5">
+        <div className="w-full lg:w-[50%] flex flex-col gap-6">
           {/* Search bar */}
           <div className="relative">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <label className="font-bold text-slate-800 text-base block mb-2">Search for Address</label>
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-blue-600 transition-colors" />
               <input
                 type="text"
                 id="search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search here"
-                className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
+                placeholder="e.g. 123 Main Street, New Delhi"
+                className="w-full pl-12 pr-12 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
               />
               {!useGoogle && searching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+                <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 w-5 h-5 animate-spin" />
               )}
             </div>
             
             {/* Search Suggestions Dropdown (Only rendered in OpenStreetMap/Leaflet fallback mode) */}
             {!useGoogle && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-[9999]">
+              <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-[9999]">
                 {suggestions.map((item) => (
                   <button
                     key={item.place_id}
                     type="button"
                     onClick={() => handleSelectOSMSuggestion(item)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0 flex items-start gap-2"
+                    className="w-full text-left px-5 py-3 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-start gap-3 transition-colors"
                   >
-                    <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                    <MapPin className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
                     <span>{item.display_name}</span>
                   </button>
                 ))}
@@ -577,56 +580,87 @@ const LocationStep = ({ formData, updateForm }) => {
             <button
               type="button"
               onClick={handleUseCurrentLocation}
-              className="text-sm font-semibold text-blue-600 hover:text-blue-800 mt-2 flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-sm font-bold text-blue-600 hover:text-blue-800 mt-3 flex items-center gap-1.5 cursor-pointer transition-colors px-2 py-1 hover:bg-blue-50 rounded-lg w-fit"
             >
-              Or Use My Current Location
+              <Navigation className="w-4 h-4" />
+              Use My Current Location
             </button>
           </div>
 
+          <div className="h-px w-full bg-slate-200 my-2"></div>
+
           {/* House No */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              House/Building/Apartment No. <span className="text-red-500">*</span>
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">
+              House / Building / Apartment No. <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.houseNo || ''}
               onChange={(e) => updateForm('houseNo', e.target.value)}
               placeholder="e.g. A-102, Shanti Apartments"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
             />
           </div>
 
           {/* Area */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              Locality/Area/Street/Sector <span className="text-red-500">*</span>
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">
+              Locality / Area / Street <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.area || ''}
               onChange={(e) => updateForm('area', e.target.value)}
               placeholder="e.g. Sector 62, Sadar Bazaar"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
             />
+          </div>
+
+          {/* City & State */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-800 text-base">
+                City <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.city || ''}
+                onChange={(e) => updateForm('city', e.target.value)}
+                placeholder="e.g. Mumbai"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-800 text-base">
+                State <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.state || ''}
+                onChange={(e) => updateForm('state', e.target.value)}
+                placeholder="e.g. Maharashtra"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
+              />
+            </div>
           </div>
 
           {/* Pincode & Country */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1.5">
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-800 text-base">
                 Pincode <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.pincode || ''}
                 onChange={(e) => updateForm('pincode', e.target.value)}
-                placeholder="e.g. 110006"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
+                placeholder="e.g. 400001"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1.5">
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-800 text-base">
                 Country <span className="text-red-500">*</span>
               </label>
               <input
@@ -634,98 +668,78 @@ const LocationStep = ({ formData, updateForm }) => {
                 value={formData.country || 'India'}
                 onChange={(e) => updateForm('country', e.target.value)}
                 placeholder="e.g. India"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-base shadow-sm bg-white text-slate-900 transition-all"
               />
             </div>
           </div>
 
-          {/* State */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              State <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.state || ''}
-              onChange={(e) => updateForm('state', e.target.value)}
-              placeholder="e.g. Delhi"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
-            />
-          </div>
-
-          {/* City */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              City <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.city || ''}
-              onChange={(e) => updateForm('city', e.target.value)}
-              placeholder="e.g. Delhi"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white text-gray-900"
-            />
-          </div>
-
-          {/* Latitude & Longitude */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
-            <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-blue-600" />
-              <span>Map Coordinates (Latitude & Longitude)</span>
+          {/* Latitude & Longitude (Collapsed style) */}
+          <div className="flex flex-col gap-3 p-5 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+            <div className="text-sm font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span>Map Coordinates</span>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Latitude
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={formData.latitude || ''}
-                onChange={(e) => updateForm('latitude', e.target.value)}
-                placeholder="e.g. 28.6139"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 outline-none text-xs font-mono bg-white text-gray-900 shadow-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Longitude
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={formData.longitude || ''}
-                onChange={(e) => updateForm('longitude', e.target.value)}
-                placeholder="e.g. 77.2090"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 outline-none text-xs font-mono bg-white text-gray-900 shadow-sm"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={formData.latitude || ''}
+                  onChange={(e) => updateForm('latitude', e.target.value)}
+                  placeholder="e.g. 28.6139"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-blue-500 outline-none text-sm font-mono bg-white text-slate-900 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={formData.longitude || ''}
+                  onChange={(e) => updateForm('longitude', e.target.value)}
+                  placeholder="e.g. 77.2090"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-blue-500 outline-none text-sm font-mono bg-white text-slate-900 shadow-sm"
+                />
+              </div>
             </div>
           </div>
 
           {/* Checkbox agreement */}
-          <label className="flex items-start gap-2.5 text-sm text-gray-700 mt-4 cursor-pointer select-none">
+          <label className="flex items-start gap-3 text-base text-slate-700 mt-2 cursor-pointer select-none group w-fit">
             <input
               type="checkbox"
               checked={formData.agreeAddress === true}
               onChange={(e) => updateForm('agreeAddress', e.target.checked)}
-              className="mt-1 w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
+              className="mt-1 w-5 h-5 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
             />
-            <span className="leading-snug">
-              I agree to the <span className="text-blue-600 font-semibold hover:underline">terms and conditions</span> and confirm the address provided here is as per the registration or lease document.
+            <span className="leading-relaxed group-hover:text-slate-900 transition-colors">
+              I agree to the <span className="text-blue-600 font-bold hover:underline">terms and conditions</span> and confirm the address provided here is as per the official registration or lease document.
             </span>
           </label>
         </div>
 
         {/* Right Side: Map Container */}
-        <div className="w-full lg:w-[45%] flex flex-col">
-          <div className="border border-gray-300 rounded-lg overflow-hidden shadow-sm h-[480px] lg:h-[500px] xl:h-[600px] sticky top-4 relative bg-gray-100 flex flex-col justify-center items-center">
+        <div className="w-full lg:w-[50%] flex flex-col mt-8 lg:mt-0">
+          <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-sm h-[400px] lg:h-[calc(100vh-280px)] lg:min-h-[600px] lg:sticky lg:top-24 bg-slate-100 flex flex-col justify-center items-center relative group">
             {(useGoogle && googleLoaded) || (!useGoogle && leafletLoaded) ? (
               <div id="onboarding-map" className="w-full h-full z-0"></div>
             ) : (
-              <div className="text-center text-gray-500 flex flex-col items-center gap-2">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                <span>Loading Map...</span>
+              <div className="text-center text-slate-500 flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <span className="font-medium">Loading Map...</span>
               </div>
             )}
+            
+            {/* Map overlay hint */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-slate-200 text-sm font-bold text-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              Drag pin to exact location
+            </div>
           </div>
         </div>
       </div>

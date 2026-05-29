@@ -26,7 +26,7 @@ export const checkRateLimits = async (email) => {
     }
   });
 
-  if (recentOtps >= 3) {
+  if (recentOtps >= 20) {
     throw new Error('Too many OTP requests. Please try again in 15 minutes.');
   }
 };

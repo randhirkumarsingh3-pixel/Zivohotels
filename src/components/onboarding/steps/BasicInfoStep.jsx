@@ -319,10 +319,10 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
           {verifyingEmail && (
             <div className="mt-3 p-5 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col gap-4 animate-fade-in">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex-1 w-full sm:w-auto">
+              <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
+                <div className="flex-1 w-full md:w-auto overflow-hidden">
                   <span className="text-[10px] text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit Code</span>
-                  <div className="flex gap-2 w-full justify-between sm:justify-start" onPaste={handleOtpPaste}>
+                  <div className="flex gap-2 w-full justify-start overflow-x-auto pb-1" onPaste={handleOtpPaste}>
                     {otpValues.map((digit, idx) => (
                       <input
                         key={`otp-${idx}`}

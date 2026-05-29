@@ -178,9 +178,9 @@ const FinanceStep = ({ formData, updateForm }) => {
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in pb-16">
       
-      <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 leading-tight">Finance & Legal</h2>
-        <p className="text-sm text-gray-500 mt-2">Set up your payouts, tax registrations, and statutory compliance documentation.</p>
+      <div className="mb-10">
+        <h2 className="text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">Legal & Financials</h2>
+        <p className="text-lg text-slate-500 mt-2">Set up your payouts, tax registrations, and statutory compliance documentation.</p>
       </div>
 
       <div className="relative pl-14">
@@ -196,10 +196,10 @@ const FinanceStep = ({ formData, updateForm }) => {
               onClick={() => toggleSection(1)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 1
-                  ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-100 scale-105'
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
                   : formData.accountNumber && formData.ifscCode
                     ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+                    : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
               }`}
             >
               {formData.accountNumber && formData.ifscCode && activeStep !== 1 ? <Check size={16} /> : "1"}
@@ -208,17 +208,17 @@ const FinanceStep = ({ formData, updateForm }) => {
             <div className="w-full">
               {activeStep === 1 ? (
                 // EXPANDED STATE
-                <div className="bg-white border border-gray-200 rounded-2xl shadow-xl shadow-gray-100/50 overflow-hidden transition-all duration-300">
-                  <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-lg font-black text-gray-900">Bank Account Information</h3>
-                    <p className="text-xs text-gray-500 mt-1">Please provide your bank details to receive payouts without delay</p>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100/50 overflow-hidden transition-all duration-300">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-black text-slate-900">Bank Account Information</h3>
+                    <p className="text-xs text-slate-500 mt-1">Please provide your bank details to receive payouts without delay</p>
                   </div>
 
                   <div className="p-6 space-y-5">
                     
                     {/* Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
@@ -227,14 +227,14 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={formData.accountNumber || ''}
                           onChange={e => updateForm('accountNumber', e.target.value.replace(/\D/g, ''))}
                           placeholder="1234567890123456"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white font-mono"
                         />
                       </div>
                     </div>
 
                     {/* Re-Enter Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Re-Enter Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
@@ -243,10 +243,10 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={reAccountNumber}
                           onChange={e => setReAccountNumber(e.target.value.replace(/\D/g, ''))}
                           placeholder="1234567890123456"
-                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-gray-900 bg-white font-mono ${
+                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-slate-900 bg-white font-mono ${
                             reAccountNumber && reAccountNumber !== formData.accountNumber
                               ? 'border-red-300 focus:ring-red-200'
-                              : 'border-gray-200 focus:ring-brand-500'
+                              : 'border-slate-200 focus:ring-blue-500'
                           }`}
                         />
                         {reAccountNumber && reAccountNumber !== formData.accountNumber && (
@@ -260,10 +260,10 @@ const FinanceStep = ({ formData, updateForm }) => {
                     {/* Bank IFSC Code */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                       <div className="md:col-span-1">
-                        <label className="text-xs font-black text-gray-700 uppercase tracking-wider block">
+                        <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
                           Bank IFSC Code <span className="text-red-550 text-red-500">*</span>
                         </label>
-                        <span className="text-[10px] text-gray-400 font-medium block mt-1 leading-relaxed">
+                        <span className="text-[10px] text-slate-400 font-medium block mt-1 leading-relaxed">
                           You can find this on your cheque book or bank statement
                         </span>
                       </div>
@@ -278,13 +278,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                             }}
                             placeholder="HDFC0001234"
                             maxLength={11}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono uppercase"
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white font-mono uppercase"
                           />
                           <button
                             type="button"
                             onClick={handleVerifyIFSC}
                             disabled={ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
-                            className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
+                            className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {ifscVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify'}
                           </button>
@@ -300,14 +300,14 @@ const FinanceStep = ({ formData, updateForm }) => {
 
                     {/* Bank Name */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Bank Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <select
                           value={formData.bankName || ''}
                           onChange={e => updateForm('bankName', e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         >
                           <option value="">Select your bank from the list</option>
                           {MAJOR_BANKS.map(bank => (
@@ -320,7 +320,7 @@ const FinanceStep = ({ formData, updateForm }) => {
 
                     {/* Branch Name */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Branch Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
@@ -329,21 +329,21 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={formData.branchName || ''}
                           onChange={e => updateForm('branchName', e.target.value)}
                           placeholder="e.g. Connaught Place, New Delhi"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         />
                       </div>
                     </div>
 
                     {/* Account Holder Verification Consent */}
-                    <div className="pt-3 border-t border-gray-100">
+                    <div className="pt-3 border-t border-slate-100">
                       <label className="flex items-start gap-3 cursor-pointer group">
                         <input
                           type="checkbox"
                           checked={formData.verificationConsent === true}
                           onChange={e => updateForm('verificationConsent', e.target.checked)}
-                          className="w-4.5 h-4.5 text-brand-600 border-gray-300 rounded focus:ring-brand-500 mt-0.5"
+                          className="w-4.5 h-4.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 mt-0.5"
                         />
-                        <span className="text-xs font-bold text-gray-800 group-hover:text-gray-950 transition-colors leading-relaxed">
+                        <span className="text-xs font-bold text-slate-800 group-hover:text-slate-950 transition-colors leading-relaxed">
                           I consent to third-party bank account verification, ₹1 will be deposited in given bank account.
                         </span>
                       </label>
@@ -356,13 +356,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                 <button
                   type="button"
                   onClick={() => toggleSection(1)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
+                  className="w-full text-left bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
-                    <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Bank Account Information</h3>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">Please provide your bank details to receive payouts without delay</p>
+                    <h3 className="font-bold text-slate-800 group-hover:text-slate-900 transition-colors">Bank Account Information</h3>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">Please provide your bank details to receive payouts without delay</p>
                   </div>
-                  <ChevronDown className="text-gray-400 group-hover:text-gray-600 transition-colors" size={18} />
+                  <ChevronDown className="text-slate-400 group-hover:text-slate-600 transition-colors" size={18} />
                 </button>
               )}
             </div>
@@ -375,10 +375,10 @@ const FinanceStep = ({ formData, updateForm }) => {
               onClick={() => toggleSection(2)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 2
-                  ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-100 scale-105'
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
                   : formData.legalName && formData.pan
                     ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+                    : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
               }`}
             >
               {formData.legalName && formData.pan && activeStep !== 2 ? <Check size={16} /> : "2"}
@@ -387,17 +387,17 @@ const FinanceStep = ({ formData, updateForm }) => {
             <div className="w-full">
               {activeStep === 2 ? (
                 // EXPANDED STATE
-                <div className="bg-white border border-gray-200 rounded-2xl shadow-xl shadow-gray-100/50 overflow-hidden transition-all duration-300">
-                  <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-lg font-black text-gray-900">Tax, MSME and Registration Information</h3>
-                    <p className="text-xs text-gray-500 mt-1">These tax details will be used for invoicing and statutory compliance</p>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100/50 overflow-hidden transition-all duration-300">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-black text-slate-900">Tax, MSME and Registration Information</h3>
+                    <p className="text-xs text-slate-500 mt-1">These tax details will be used for invoicing and statutory compliance</p>
                   </div>
 
                   <div className="p-6 space-y-5">
 
                     {/* PAN Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         PAN Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
@@ -408,15 +408,15 @@ const FinanceStep = ({ formData, updateForm }) => {
                             onChange={e => handlePanChange(e.target.value)}
                             placeholder="ABCDE1234F"
                             maxLength={10}
-                            className={`flex-1 w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-gray-900 bg-white font-mono uppercase ${
-                              !panValid ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-brand-500'
+                            className={`flex-1 w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none text-sm text-slate-900 bg-white font-mono uppercase ${
+                              !panValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-500'
                             }`}
                           />
                           <button
                             type="button"
                             onClick={handleVerifyPAN}
                             disabled={panVerifying || !formData.pan || formData.pan.length < 10}
-                            className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
+                            className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {panVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify PAN'}
                           </button>
@@ -436,7 +436,7 @@ const FinanceStep = ({ formData, updateForm }) => {
 
                     {/* GSTIN */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         GSTIN (Optional)
                       </label>
                       <div className="md:col-span-2">
@@ -450,13 +450,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                             }}
                             placeholder="15 Digit GST Number"
                             maxLength={15}
-                            className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono uppercase"
+                            className="flex-1 w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white font-mono uppercase"
                           />
                           <button
                             type="button"
                             onClick={handleVerifyGST}
                             disabled={gstVerifying || !formData.gstin || formData.gstin.length < 15}
-                            className="px-5 py-3 bg-brand-50 hover:bg-brand-100 text-brand-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold text-xs rounded-xl transition-all border border-brand-200/50 flex items-center gap-1.5 whitespace-nowrap"
+                            className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {gstVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify GST'}
                           </button>
@@ -471,7 +471,7 @@ const FinanceStep = ({ formData, updateForm }) => {
 
                     {/* Legal Entity Name (Either verified or manually edited) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Legal Entity Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
@@ -480,15 +480,15 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={formData.legalName || ''}
                           onChange={e => updateForm('legalName', e.target.value)}
                           placeholder="e.g. Zivo Hotels Pvt Ltd"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         />
-                        <p className="text-[10px] text-gray-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
                       </div>
                     </div>
 
                     {/* MSME Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         MSME Number (Optional)
                       </label>
                       <div className="md:col-span-2">
@@ -497,21 +497,21 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={formData.msme || ''}
                           onChange={e => updateForm('msme', e.target.value.toUpperCase())}
                           placeholder="UDYAM-XX-00-1234567"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white font-mono uppercase"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white font-mono uppercase"
                         />
                       </div>
                     </div>
 
                     {/* Incorporation Type */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <label className="text-xs font-black text-gray-700 uppercase tracking-wider md:col-span-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
                         Incorporation Type
                       </label>
                       <div className="md:col-span-2">
                         <select
                           value={formData.incorporationType || 'INDIVIDUAL'}
                           onChange={e => updateForm('incorporationType', e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 bg-white"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         >
                           {INCORPORATION_TYPES.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
@@ -521,12 +521,12 @@ const FinanceStep = ({ formData, updateForm }) => {
                     </div>
 
                     {/* Platform Commission (MANUAL ENTRY SETTING) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-3 border-t border-slate-100">
                       <div className="md:col-span-1">
-                        <label className="text-xs font-black text-gray-700 uppercase tracking-wider block">
+                        <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
                           Platform Commission (%) <span className="text-red-550 text-red-500">*</span>
                         </label>
-                        <span className="text-[10px] text-gray-400 block mt-0.5">Define platform commission percentage</span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">Define platform commission percentage</span>
                       </div>
                       <div className="md:col-span-2 relative">
                         <input
@@ -536,9 +536,9 @@ const FinanceStep = ({ formData, updateForm }) => {
                           value={formData.commission !== undefined ? formData.commission : 15}
                           onChange={e => updateForm('commission', parseFloat(e.target.value) || 0)}
                           placeholder="15"
-                          className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm text-gray-900 font-bold bg-white"
+                          className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 font-bold bg-white"
                         />
-                        <span className="absolute right-4 top-3 text-gray-400 font-bold text-sm">%</span>
+                        <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
 
@@ -549,13 +549,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                 <button
                   type="button"
                   onClick={() => toggleSection(2)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
+                  className="w-full text-left bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
-                    <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Tax, MSME and Registration Information</h3>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">These tax details will be used for invoicing and statutory compliance</p>
+                    <h3 className="font-bold text-slate-800 group-hover:text-slate-900 transition-colors">Tax, MSME and Registration Information</h3>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">These tax details will be used for invoicing and statutory compliance</p>
                   </div>
-                  <ChevronDown className="text-gray-400 group-hover:text-gray-600 transition-colors" size={18} />
+                  <ChevronDown className="text-slate-400 group-hover:text-slate-600 transition-colors" size={18} />
                 </button>
               )}
             </div>
@@ -568,10 +568,10 @@ const FinanceStep = ({ formData, updateForm }) => {
               onClick={() => toggleSection(3)}
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 3
-                  ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-100 scale-105'
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
                   : formData.panDocName && formData.bankProofDocName
                     ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+                    : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
               }`}
             >
               {formData.panDocName && formData.bankProofDocName && activeStep !== 3 ? <Check size={16} /> : "3"}
@@ -580,10 +580,10 @@ const FinanceStep = ({ formData, updateForm }) => {
             <div className="w-full">
               {activeStep === 3 ? (
                 // EXPANDED STATE
-                <div className="bg-white border border-gray-200 rounded-2xl shadow-xl shadow-gray-100/50 overflow-hidden transition-all duration-300">
-                  <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-lg font-black text-gray-900">Property Documents</h3>
-                    <p className="text-xs text-gray-500 mt-1">Provide necessary documents for verification and onboarding completion</p>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100/50 overflow-hidden transition-all duration-300">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-black text-slate-900">Property Documents</h3>
+                    <p className="text-xs text-slate-500 mt-1">Provide necessary documents for verification and onboarding completion</p>
                   </div>
 
                   <div className="p-6 space-y-4">
@@ -643,13 +643,13 @@ const FinanceStep = ({ formData, updateForm }) => {
                 <button
                   type="button"
                   onClick={() => toggleSection(3)}
-                  className="w-full text-left bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
+                  className="w-full text-left bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
                 >
                   <div>
-                    <h3 className="font-bold text-gray-800 group-hover:text-gray-900 transition-colors">Property Documents</h3>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">Provide necessary documents for verification and onboarding completion</p>
+                    <h3 className="font-bold text-slate-800 group-hover:text-slate-900 transition-colors">Property Documents</h3>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">Provide necessary documents for verification and onboarding completion</p>
                   </div>
-                  <ChevronDown className="text-gray-400 group-hover:text-gray-600 transition-colors" size={18} />
+                  <ChevronDown className="text-slate-400 group-hover:text-slate-600 transition-colors" size={18} />
                 </button>
               )}
             </div>
@@ -659,15 +659,15 @@ const FinanceStep = ({ formData, updateForm }) => {
       </div>
 
       {/* Terms & Conditions Checkbox at the bottom of the page */}
-      <div className="mt-8 pt-6 border-t border-gray-200 animate-fade-in">
+      <div className="mt-8 pt-6 border-t border-slate-200 animate-fade-in">
         <label className="flex items-start gap-3 cursor-pointer group">
           <input
             type="checkbox"
             checked={formData.acceptTerms === true}
             onChange={e => updateForm('acceptTerms', e.target.checked)}
-            className="w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500 mt-0.5 cursor-pointer"
+            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 mt-0.5 cursor-pointer"
           />
-          <span className="text-xs font-bold text-gray-700 group-hover:text-gray-900 transition-colors leading-relaxed">
+          <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-colors leading-relaxed">
             I accept the ZivoHotels Platform Agreement, Terms of Service, and Payout Policies. I confirm that all banking, tax registrations, and corporate documents provided are authentic and legally binding.
           </span>
         </label>
@@ -687,13 +687,13 @@ const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, requir
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 flex flex-col justify-between min-h-[140px] hover:border-gray-300 hover:bg-gray-50 transition-all">
+    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col justify-between min-h-[140px] hover:border-slate-300 hover:bg-slate-50 transition-all">
       <div className="flex justify-between items-start">
         <div>
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest block">
+          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">
             {required ? 'Required *' : 'Optional'}
           </span>
-          <h4 className="text-xs font-bold text-gray-850 mt-0.5 leading-snug">{label}</h4>
+          <h4 className="text-xs font-bold text-slate-850 mt-0.5 leading-snug">{label}</h4>
         </div>
         {fileName && (
           <span className="bg-emerald-500/10 text-emerald-700 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
@@ -703,10 +703,10 @@ const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, requir
       </div>
 
       {fileName ? (
-        <div className="mt-3 p-2.5 bg-white rounded-lg border border-gray-100 flex items-center justify-between shadow-sm">
+        <div className="mt-3 p-2.5 bg-white rounded-lg border border-slate-100 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2 overflow-hidden mr-2">
             <FileCheck size={16} className="text-emerald-500 shrink-0" />
-            <span className="text-[11px] font-bold text-gray-700 truncate">{fileName}</span>
+            <span className="text-[11px] font-bold text-slate-700 truncate">{fileName}</span>
           </div>
           <button
             type="button"
@@ -718,16 +718,16 @@ const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, requir
           </button>
         </div>
       ) : (
-        <label className="mt-4 border-2 border-dashed border-gray-200 hover:border-brand-400 bg-white hover:bg-brand-50/10 rounded-xl py-3 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm">
+        <label className="mt-4 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/10 rounded-xl py-3 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm">
           <input
             type="file"
             accept="image/*,application/pdf"
             className="hidden"
             onChange={handleFileChange}
           />
-          <UploadCloud size={18} className="text-gray-400" />
-          <span className="text-[10px] font-bold text-gray-600 mt-1">Upload Document</span>
-          <span className="text-[8px] text-gray-400 mt-0.5">PDF, PNG, JPG · Max 5MB</span>
+          <UploadCloud size={18} className="text-slate-400" />
+          <span className="text-[10px] font-bold text-slate-600 mt-1">Upload Document</span>
+          <span className="text-[8px] text-slate-400 mt-0.5">PDF, PNG, JPG · Max 5MB</span>
         </label>
       )}
     </div>

@@ -381,19 +381,19 @@ const PhotosStep = ({ formData, updateForm }) => {
   }
 
   return (
-    <div className="p-4 sm:p-8 animate-fade-in bg-white space-y-6 pb-24">
+    <div className="animate-fade-in flex flex-col h-full pb-24">
       {/* Step Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-black flex items-center gap-2">
-            Photos & Videos <span className="text-gray-400 font-medium">({library.length})</span>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+            Show off your property with stunning photos. <span className="text-slate-400 font-medium text-xl">({library.length})</span>
           </h1>
-          <p className="text-sm text-gray-500">Manage, tag, and assign media items of your property.</p>
+          <p className="text-slate-500 mt-2 text-lg">Manage, tag, and assign media items of your property.</p>
         </div>
 
         {/* Upload More Button Trigger */}
-        <label className="bg-[#E05A3E] hover:bg-[#c64f35] text-white px-5 py-2.5 rounded font-bold text-sm transition-colors shadow flex items-center gap-2 cursor-pointer shrink-0">
-          <UploadCloud size={16} />
+        <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer shrink-0">
+          <UploadCloud size={18} />
           Upload More
           <input
             type="file"
@@ -407,88 +407,90 @@ const PhotosStep = ({ formData, updateForm }) => {
       </div>
 
       {/* Main Cover Banner */}
-      <div className="relative aspect-video sm:h-72 w-full rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow">
+      <div className="relative aspect-video sm:h-80 w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm mb-10">
         {coverImage ? (
           <>
             <img src={getImageUrl(coverImage.url)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-6">
-              <span className="text-[10px] bg-blue-600 text-white font-black px-2 py-0.5 rounded uppercase w-fit tracking-wider shadow-sm mb-1.5">
-                Property cover photo
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex flex-col justify-end p-8">
+              <span className="text-[10px] bg-blue-600 text-white font-black px-3 py-1 rounded-md uppercase w-fit tracking-widest shadow-sm mb-3">
+                Property Cover Photo
               </span>
               <button
                 type="button"
                 onClick={() => openTaggingView(coverImage)}
-                className="text-xs text-white/90 hover:text-white font-bold underline text-left w-fit"
+                className="text-sm text-white/90 hover:text-white font-bold underline text-left w-fit transition-colors"
               >
-                Change
+                Change Cover Photo
               </button>
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-gray-400">
-            <UploadCloud size={40} className="mb-2" />
-            <p className="text-sm font-semibold">No cover image set yet</p>
-            <p className="text-xs text-gray-550 mt-1">Upload files below to get started</p>
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-slate-400">
+            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+              <UploadCloud size={48} className="text-blue-500" />
+            </div>
+            <p className="text-lg font-bold text-slate-700">No cover image set yet</p>
+            <p className="text-sm text-slate-500 mt-1">Upload files above to get started</p>
           </div>
         )}
       </div>
 
       {/* Review Alert Notice */}
-      <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 flex items-center justify-between text-xs text-amber-800 shadow-sm gap-4">
-        <div className="flex items-center gap-2.5">
-          <Sparkles className="text-amber-600 shrink-0 w-4 h-4" />
-          <span>{library.length} photos & videos are being reviewed. It will take up to 24 hrs.</span>
+      <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-amber-900 shadow-sm gap-4 mb-10">
+        <div className="flex items-center gap-3">
+          <Sparkles className="text-amber-600 shrink-0 w-5 h-5" />
+          <span className="font-medium">{library.length} photos & videos are being reviewed. It will take up to 24 hrs.</span>
         </div>
         <button
           type="button"
           onClick={() => {
             if (library.length > 0) openTaggingView(library[0]);
           }}
-          className="font-bold underline text-blue-700 hover:text-blue-900"
+          className="font-bold underline text-amber-700 hover:text-amber-900 transition-colors shrink-0"
         >
           View Items
         </button>
       </div>
 
       {/* Untagged Files Section Box */}
-      <div className="border border-red-200 rounded-xl p-5 bg-red-50/10 space-y-4 shadow-sm">
+      <div className="border-2 border-red-200 rounded-2xl p-6 bg-red-50/30 space-y-6 shadow-sm mb-10">
         <div>
-          <h3 className="text-sm font-extrabold text-gray-900">Untagged Photos & Videos ({untaggedCount})</h3>
-          <p className="text-xs text-gray-500">Click here to tag photos & videos. Tagged photos & videos help to address customer queries.</p>
+          <h3 className="text-lg font-extrabold text-slate-900">Untagged Photos & Videos ({untaggedCount})</h3>
+          <p className="text-sm text-slate-500 mt-1">Click here to tag photos & videos. Tagged photos & videos help address customer queries effectively.</p>
         </div>
 
         {loading ? (
-          <div className="py-8 text-center text-xs text-gray-400 italic">Loading media assets...</div>
+          <div className="py-8 text-center text-sm text-slate-400 italic font-medium">Loading media assets...</div>
         ) : library.length === 0 ? (
-          <div className="py-12 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-center">
-            <UploadCloud size={36} className="text-gray-300 mb-2" />
-            <span className="text-xs text-gray-400 font-semibold">No files uploaded yet</span>
+          <div className="py-16 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-center bg-white">
+            <UploadCloud size={48} className="text-slate-300 mb-3" />
+            <span className="text-sm text-slate-400 font-bold">No files uploaded yet</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
             {library.map(img => {
               const hasTags = img.tags && img.tags.length > 0;
               return (
                 <div
                   key={img.id}
                   onClick={() => openTaggingView(img)}
-                  className={`group relative aspect-video rounded-lg overflow-hidden border cursor-pointer bg-gray-50 shadow-sm hover:shadow transition-all ${
-                    !hasTags ? 'border-red-400 hover:border-red-500' : 'border-gray-200'
+                  className={`group relative aspect-square sm:aspect-video rounded-xl overflow-hidden border-2 cursor-pointer bg-slate-50 shadow-sm hover:shadow-md transition-all ${
+                    !hasTags ? 'border-red-400 hover:border-red-500' : 'border-slate-200 hover:border-blue-300'
                   }`}
                 >
                   <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="grid-asset" />
                   
                   {/* Hover Tag overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-[10px] bg-white text-gray-800 px-2 py-1 rounded font-bold flex items-center gap-1.5">
-                      <Tag size={10} /> + Add Tag
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                    <span className="text-xs bg-white text-slate-900 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-lg">
+                      <Tag size={14} /> Add Tag
                     </span>
                   </div>
 
                   {/* Warning Pill if tag missing */}
                   {!hasTags && (
-                    <span className="absolute bottom-1.5 left-1.5 right-1.5 bg-red-600 text-white text-[8px] font-black py-0.5 rounded-sm text-center uppercase tracking-wider">
-                      🛈 Tag Missing
+                    <span className="absolute bottom-2 left-2 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-sm">
+                      Missing Tag
                     </span>
                   )}
                 </div>
@@ -499,36 +501,36 @@ const PhotosStep = ({ formData, updateForm }) => {
       </div>
 
       {/* Room Specific Photo Assignments Grid */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <h3 className="text-sm font-extrabold text-gray-900">Photos & Videos assigned to the rooms & restaurant(s)</h3>
-          <p className="text-xs text-gray-500">Photos help customers visualize what the room looks like</p>
+          <h3 className="text-xl font-extrabold text-slate-900">Photos assigned to rooms & spaces</h3>
+          <p className="text-sm text-slate-500 mt-1">Photos help customers visualize what the room looks like. It is highly recommended to assign photos.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rooms.map(room => {
             const assignedImages = library.filter(img => 
               img.roomLinks?.some(link => link.roomTypeId === room.id)
             );
 
             return (
-              <div key={room.id} className="border border-gray-200 rounded-xl bg-white p-4 space-y-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                <div>
-                  <h4 className="font-extrabold text-gray-950 text-sm">{room.name}</h4>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-tighter font-semibold mt-0.5">
-                    {assignedImages.length} photo(s) assigned
+              <div key={room.id} className="border-2 border-slate-200 rounded-2xl bg-white p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all group">
+                <div className="mb-4">
+                  <h4 className="font-extrabold text-slate-900 text-lg group-hover:text-blue-700 transition-colors">{room.name}</h4>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">
+                    {assignedImages.length} photo{assignedImages.length !== 1 ? 's' : ''} assigned
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto py-1 custom-scrollbar scrollbar-thin">
+                <div className="flex items-center gap-3 overflow-x-auto py-2 custom-scrollbar hidden-scrollbar">
                   {/* Assigned images thumbnails */}
                   {assignedImages.slice(0, 4).map(img => (
-                    <div key={img.id} className="w-12 h-12 rounded-lg overflow-hidden border border-gray-250 shrink-0 bg-gray-50">
+                    <div key={img.id} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-slate-50">
                       <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="assigned" />
                     </div>
                   ))}
                   {assignedImages.length > 4 && (
-                    <div className="w-12 h-12 rounded-lg bg-gray-150 text-gray-700 flex items-center justify-center font-bold text-xs border shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-slate-200 shrink-0">
                       +{assignedImages.length - 4}
                     </div>
                   )}
@@ -537,10 +539,10 @@ const PhotosStep = ({ formData, updateForm }) => {
                   <button
                     type="button"
                     onClick={() => openAssignModal(room)}
-                    className="w-12 h-12 border-2 border-dashed border-blue-400 hover:border-blue-600 hover:bg-blue-50/50 rounded-lg flex items-center justify-center font-bold text-blue-600 transition-colors shrink-0 outline-none"
+                    className="w-14 h-14 border-2 border-dashed border-blue-300 hover:border-blue-600 hover:bg-blue-50/50 rounded-xl flex items-center justify-center font-bold text-blue-600 transition-all shrink-0 shadow-sm"
                     title="Assign images to room"
                   >
-                    +
+                    <Plus size={20} />
                   </button>
                 </div>
               </div>
