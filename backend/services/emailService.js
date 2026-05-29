@@ -726,8 +726,10 @@ export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
   `;
 
   try {
+    const fromAddress = process.env.RESEND_FROM_EMAIL || 'accounts@zivohotels.com';
+    const formattedFrom = `ZivoHotels Verification <${fromAddress}>`;
     const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'accounts@zivohotels.com',
+      from: formattedFrom,
       to,
       subject,
       html,
