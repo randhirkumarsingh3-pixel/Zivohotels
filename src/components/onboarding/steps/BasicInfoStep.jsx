@@ -351,10 +351,10 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
               {verifyingEmail && (
                 <div className="mt-3 p-4 bg-blue-50/50 rounded-lg border border-blue-100 flex flex-col gap-4 animate-fade-in">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex-1 min-w-[200px]">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex-1 w-full sm:w-auto">
                       <span className="text-[10px] text-blue-600 font-bold block mb-2">ENTER 6-DIGIT VERIFICATION CODE</span>
-                      <div className="flex gap-2" onPaste={handleOtpPaste}>
+                      <div className="flex gap-2 w-full justify-between sm:justify-start" onPaste={handleOtpPaste}>
                         {otpValues.map((digit, idx) => (
                           <input
                             key={`otp-${idx}`}
@@ -365,12 +365,12 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                             autoComplete={idx === 0 ? "one-time-code" : "off"}
                             onChange={(e) => handleOtpChange(idx, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                            className="w-10 h-12 border border-gray-300 rounded-md text-lg font-bold text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-sm transition-all bg-white"
+                            className="w-10 sm:w-12 h-12 border border-gray-300 rounded-md text-lg font-bold text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-sm transition-all bg-white"
                           />
                         ))}
                       </div>
                     </div>
-                    <div className="flex gap-2 shrink-0 self-end mt-2 sm:mt-0">
+                    <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0 mt-2 sm:mt-0">
                       <button 
                         type="button"
                         onClick={() => { setVerifyingEmail(false); setEmailTimer(0); setOtpValues(['','','','','','']); setEmailOtp(''); }}
