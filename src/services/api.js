@@ -62,6 +62,38 @@ export const signupUser = async (userData) => {
   }
 };
 
+export const sendVerificationOtp = async (email) => {
+  try {
+    const response = await fetch(`${PUBLIC_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, type: 'VERIFICATION' }),
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to send OTP');
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const verifyOtpApi = async (email, otp) => {
+  try {
+    const response = await fetch(`${PUBLIC_BASE}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, type: 'VERIFICATION' }),
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to verify OTP');
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // --- HOTELS API ---
 export const getHotels = async (searchParams = {}, filters = {}) => {
   const params = new URLSearchParams();

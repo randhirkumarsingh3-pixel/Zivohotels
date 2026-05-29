@@ -264,8 +264,8 @@ const LocationStep = ({ formData, updateForm }) => {
         zoomControl: false
       }).setView([initialLat, initialLng], 14);
 
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+      window.L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: 'Map data © Google'
       }).addTo(map);
 
       const customIcon = window.L.divIcon({
@@ -410,11 +410,11 @@ const LocationStep = ({ formData, updateForm }) => {
 
     const addr = item.address || {};
     const houseNo = addr.house_number || addr.building || addr.amenity || '';
-    const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
+    const area = addr.suburb || addr.neighbourhood || addr.road || addr.residential || '';
     const pincode = addr.postcode || '';
     const country = addr.country || 'India';
     const state = addr.state || addr.province || addr.region || '';
-    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+    const city = addr.city || addr.town || addr.municipality || addr.village || addr.state_district || addr.county || '';
     
     updateForm({
       latitude: lat.toFixed(6),
@@ -469,11 +469,11 @@ const LocationStep = ({ formData, updateForm }) => {
         if (data && data.address) {
           const addr = data.address;
           const houseNo = addr.house_number || addr.building || addr.amenity || '';
-          const area = addr.road || addr.suburb || addr.neighbourhood || addr.state_district || '';
+          const area = addr.suburb || addr.neighbourhood || addr.road || addr.residential || '';
           const pincode = addr.postcode || '';
           const country = addr.country || 'India';
           const state = addr.state || addr.province || addr.region || '';
-          const city = addr.city || addr.town || addr.village || addr.municipality || '';
+          const city = addr.city || addr.town || addr.municipality || addr.village || addr.state_district || addr.county || '';
           
           updateForm({
             houseNo,

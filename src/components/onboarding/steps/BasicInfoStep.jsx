@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
 const BasicInfoStep = ({ formData, updateForm }) => {
   // Generate array of years from 1950 to current year + 2
@@ -8,29 +9,35 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
-  const [sentEmailOtp, setSentEmailOtp] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   
   const [verifyingMobile, setVerifyingMobile] = useState(false);
   const [mobileOtp, setMobileOtp] = useState('');
   const [sentMobileOtp, setSentMobileOtp] = useState('');
 
-  const isEmailVerified = formData.isEmailVerified !== undefined 
-    ? formData.isEmailVerified 
-    : Boolean(formData.guestEmail || formData.receptionEmail);
+  const isEmailVerified = Boolean(formData.isEmailVerified);
     
-  const isMobileVerified = formData.isMobileVerified !== undefined 
-    ? formData.isMobileVerified 
-    : Boolean(formData.guestMobile || formData.receptionPhone);
+  const isMobileVerified = Boolean(formData.isMobileVerified);
 
-  const confirmEmailVerify = () => {
-    if (emailOtp === sentEmailOtp && sentEmailOtp !== '') {
+  const confirmEmailVerify = async () => {
+    const email = formData.guestEmail || formData.receptionEmail;
+    if (!emailOtp || emailOtp.length < 4) {
+      alert("Please enter the 4-digit code.");
+      return;
+    }
+    
+    setIsVerifyingOtp(true);
+    try {
+      await verifyOtpApi(email, emailOtp);
       updateForm('isEmailVerified', true);
       setVerifyingEmail(false);
       setEmailOtp('');
-      setSentEmailOtp('');
       alert("Email address verified successfully!");
-    } else {
-      alert("Please enter the correct 4-digit code shown in the alert.");
+    } catch (error) {
+      alert(`Verification failed: ${error.message}`);
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -244,20 +251,27 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const email = formData.guestEmail || formData.receptionEmail;
-                        if (email && email.includes('@')) {
-                          const code = Math.floor(1000 + Math.random() * 9000).toString();
-                          setSentEmailOtp(code);
-                          alert(`[Mock OTP Service] A verification code has been sent to ${email}.\nYour 4-digit OTP is: ${code}`);
-                          setVerifyingEmail(true);
+                        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                          setIsSendingOtp(true);
+                          try {
+                            await sendVerificationOtp(email);
+                            setVerifyingEmail(true);
+                            alert(`An OTP has been sent to ${email}`);
+                          } catch (error) {
+                            alert(`Failed to send OTP: ${error.message}`);
+                          } finally {
+                            setIsSendingOtp(false);
+                          }
                         } else {
                           alert("Please enter a valid email address first.");
                         }
                       }}
-                      className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer hover:underline"
+                      disabled={isSendingOtp}
+                      className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                     >
-                      Verify
+                      {isSendingOtp ? <><Loader2 size={12} className="animate-spin" /> Sending...</> : 'Verify'}
                     </button>
                   )}
                 </div>
@@ -287,8 +301,10 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                     <button 
                       type="button"
                       onClick={confirmEmailVerify}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold"
+                      disabled={isVerifyingOtp}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold disabled:opacity-50 flex items-center gap-1.5"
                     >
+                      {isVerifyingOtp ? <Loader2 size={12} className="animate-spin" /> : null}
                       Confirm
                     </button>
                   </div>
@@ -307,8 +323,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                     Change
                   </button>
                 </div>
-              )}
-            </div>
+              )}            </div>
           </div>
 
           {/* Mobile Number */}
