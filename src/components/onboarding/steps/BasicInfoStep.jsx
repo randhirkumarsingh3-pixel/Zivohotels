@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Loader2, Info } from 'lucide-react';
 import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
 const BasicInfoStep = ({ formData, updateForm }) => {
@@ -9,8 +9,11 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [emailTimer, setEmailTimer] = useState(0);
+  const [emailSuccessMsg, setEmailSuccessMsg] = useState('');
   
   const [verifyingMobile, setVerifyingMobile] = useState(false);
   const [mobileOtp, setMobileOtp] = useState('');
@@ -20,10 +23,61 @@ const BasicInfoStep = ({ formData, updateForm }) => {
     
   const isMobileVerified = Boolean(formData.isMobileVerified);
 
+  const maskEmail = (email) => {
+    if (!email) return '';
+    const [name, domain] = email.split('@');
+    if (!domain) return email;
+    if (name.length <= 2) return `${name[0]}***@${domain}`;
+    return `${name[0]}***${name[name.length-1]}@${domain}`;
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (/[^0-9]/.test(value)) return;
+    const newOtp = [...otpValues];
+    newOtp[index] = value;
+    setOtpValues(newOtp);
+    setEmailOtp(newOtp.join(''));
+    
+    if (value && index < 5) {
+      document.getElementById(`otp-${index + 1}`)?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`)?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pastedData) {
+      const newOtp = [...otpValues];
+      for (let i = 0; i < pastedData.length; i++) {
+        newOtp[i] = pastedData[i];
+      }
+      setOtpValues(newOtp);
+      setEmailOtp(newOtp.join(''));
+      const focusIndex = Math.min(pastedData.length, 5);
+      document.getElementById(`otp-${focusIndex}`)?.focus();
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (emailTimer > 0) {
+      interval = setInterval(() => {
+        setEmailTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [emailTimer]);
+
   const confirmEmailVerify = async () => {
     const email = formData.guestEmail || formData.receptionEmail;
-    if (!emailOtp || emailOtp.length < 4) {
-      alert("Please enter the 4-digit code.");
+    if (!emailOtp || emailOtp.length < 6) {
+      alert("Please enter the 6-digit code.");
       return;
     }
     
@@ -33,9 +87,16 @@ const BasicInfoStep = ({ formData, updateForm }) => {
       updateForm('isEmailVerified', true);
       setVerifyingEmail(false);
       setEmailOtp('');
-      alert("Email address verified successfully!");
+      setOtpValues(['', '', '', '', '', '']);
+      setEmailSuccessMsg("Email address verified successfully!");
+      setTimeout(() => setEmailSuccessMsg(''), 3000);
     } catch (error) {
-      alert(`Verification failed: ${error.message}`);
+      let friendlyError = "Verification failed.";
+      if (error.message.includes('expired')) friendlyError = "Code expired. Please request a new one.";
+      else if (error.message.includes('Invalid')) friendlyError = "Invalid code. Please check and try again.";
+      else if (error.message.includes('exceeded')) friendlyError = "Too many attempts. Please request a new code.";
+      else friendlyError = `Verification failed: ${error.message}`;
+      alert(friendlyError);
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -258,9 +319,13 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                           try {
                             await sendVerificationOtp(email);
                             setVerifyingEmail(true);
-                            alert(`An OTP has been sent to ${email}`);
+                            setEmailTimer(30);
+                            setEmailSuccessMsg(`✓ Verification code sent to ${maskEmail(email)}`);
+                            setTimeout(() => setEmailSuccessMsg(''), 5000);
                           } catch (error) {
-                            alert(`Failed to send OTP: ${error.message}`);
+                            let friendlyError = error.message;
+                            if (error.message.includes('Too many OTP')) friendlyError = "Too many requests. Please wait before trying again.";
+                            alert(`Failed to send OTP: ${friendlyError}`);
                           } finally {
                             setIsSendingOtp(false);
                           }
@@ -277,36 +342,91 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 </div>
               </div>
               
+              {emailSuccessMsg && (
+                <div className="mt-2 text-sm text-green-600 font-medium flex items-center gap-1.5 animate-fade-in">
+                  <CheckCircle2 size={16} className="text-green-600" />
+                  {emailSuccessMsg}
+                </div>
+              )}
+
               {verifyingEmail && (
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-between gap-3 animate-fade-in">
-                  <div className="flex-1">
-                    <span className="text-[10px] text-blue-600 font-bold block mb-1">ENTER 4-DIGIT VERIFICATION CODE</span>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. 1234" 
-                      maxLength={4}
-                      value={emailOtp} 
-                      onChange={e => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs font-mono w-24 text-center focus:outline-none focus:border-blue-500" 
-                    />
+                <div className="mt-3 p-4 bg-blue-50/50 rounded-lg border border-blue-100 flex flex-col gap-4 animate-fade-in">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <span className="text-[10px] text-blue-600 font-bold block mb-2">ENTER 6-DIGIT VERIFICATION CODE</span>
+                      <div className="flex gap-2" onPaste={handleOtpPaste}>
+                        {otpValues.map((digit, idx) => (
+                          <input
+                            key={`otp-${idx}`}
+                            id={`otp-${idx}`}
+                            type="text"
+                            maxLength={1}
+                            value={digit}
+                            autoComplete={idx === 0 ? "one-time-code" : "off"}
+                            onChange={(e) => handleOtpChange(idx, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                            className="w-10 h-12 border border-gray-300 rounded-md text-lg font-bold text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-sm transition-all bg-white"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0 self-end mt-2 sm:mt-0">
+                      <button 
+                        type="button"
+                        onClick={() => { setVerifyingEmail(false); setEmailTimer(0); setOtpValues(['','','','','','']); setEmailOtp(''); }}
+                        className="px-4 py-2 bg-white text-gray-700 rounded-md border border-gray-300 text-xs font-bold hover:bg-gray-50 shadow-sm transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={confirmEmailVerify}
+                        disabled={isVerifyingOtp}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold disabled:opacity-50 flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        {isVerifyingOtp ? <Loader2 size={14} className="animate-spin" /> : null}
+                        Verify
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button 
-                      type="button"
-                      onClick={() => setVerifyingEmail(false)}
-                      className="px-3 py-1.5 bg-white text-gray-600 rounded border border-gray-300 text-xs font-bold hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={confirmEmailVerify}
-                      disabled={isVerifyingOtp}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isVerifyingOtp ? <Loader2 size={12} className="animate-spin" /> : null}
-                      Confirm
-                    </button>
+                  
+                  <div className="text-xs text-gray-500 border-t border-blue-100 pt-3">
+                    <div className="flex items-start gap-1.5 mb-1.5">
+                      <Info size={14} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <strong>Didn't receive the code?</strong>
+                        <ul className="list-disc pl-4 mt-1 space-y-0.5 text-gray-500">
+                          <li>Check your Spam/Junk folder</li>
+                          <li>Verify email spelling</li>
+                          <li>
+                            {emailTimer > 0 ? (
+                              <span className="text-gray-400">Request a new OTP in {emailTimer} seconds</span>
+                            ) : (
+                              <button 
+                                type="button"
+                                onClick={async () => {
+                                  const email = formData.guestEmail || formData.receptionEmail;
+                                  setIsSendingOtp(true);
+                                  try {
+                                    await sendVerificationOtp(email);
+                                    setEmailTimer(30);
+                                    setEmailSuccessMsg(`✓ Verification code resent to ${maskEmail(email)}`);
+                                    setTimeout(() => setEmailSuccessMsg(''), 5000);
+                                  } catch (error) {
+                                    alert(`Failed to resend code. Please try again.`);
+                                  } finally {
+                                    setIsSendingOtp(false);
+                                  }
+                                }}
+                                className="text-blue-600 hover:underline font-semibold"
+                              >
+                                Request a new OTP
+                              </button>
+                            )}
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

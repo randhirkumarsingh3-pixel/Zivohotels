@@ -799,6 +799,22 @@ model PayoutQueue {
   holdUntil DateTime @default(now())
 }
 
+model EmailOTP {
+  id         String    @id @default(uuid())
+  email      String
+  otpHash    String
+  attempts   Int       @default(0)
+  verified   Boolean   @default(false)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+}
+
+
 model LoyaltyPoint {
   id        String   @id @default(uuid())
   userId    String

@@ -4,6 +4,9 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import systemCache from '../utils/systemCache.js';
 import { z } from 'zod';
+import eventBus from '../events/eventBus.js';
+import { createOTP, verifyOTP } from '../services/otpService.js';
+import { trackOtpAbuse } from '../services/fraudService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -165,6 +168,135 @@ export const login = asyncHandler(async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId } 
     }
   });
+});
+
+/**
+ * @desc    Send Email OTP
+ */
+export const sendOtp = asyncHandler(async (req, res) => {
+  const schema = z.object({ email: z.string().email() });
+  const validation = schema.safeParse(req.body);
+  
+  if (!validation.success) {
+    return res.status(422).json({ success: false, message: 'Invalid email address' });
+  }
+
+  const { email } = validation.data;
+  const ipAddress = req.ip;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    await createOTP(email, ipAddress, userAgent);
+
+    // Audit & Security Logs
+    await prisma.securityLog.create({
+      data: {
+        type: 'OTP_SENT',
+        ip: ipAddress,
+        userAgent,
+        requestId: req.id,
+        details: { 
+          email, 
+          action: 'SEND_OTP',
+          deviceType: userAgent?.includes('Mobile') ? 'Mobile' : 'Desktop',
+          status: 'SUCCESS'
+        }
+      }
+    });
+
+    eventBus.emit('OTP_SENT', { email, ipAddress, timestamp: new Date() });
+
+    res.status(200).json({ success: true, message: 'OTP sent successfully' });
+  } catch (error) {
+    if (error.message.includes('Too many OTP requests')) {
+      eventBus.emit('OTP_RATE_LIMITED', { email, ipAddress });
+      await prisma.securityLog.create({
+        data: {
+          type: 'OTP_RATE_LIMITED',
+          ip: ipAddress,
+          userAgent,
+          requestId: req.id,
+          details: { 
+            email,
+            action: 'SEND_OTP',
+            deviceType: userAgent?.includes('Mobile') ? 'Mobile' : 'Desktop',
+            status: 'RATE_LIMITED'
+          }
+        }
+      });
+      await trackOtpAbuse(email, ipAddress);
+      return res.status(429).json({ success: false, message: error.message });
+    }
+    throw error;
+  }
+});
+
+/**
+ * @desc    Verify Email OTP
+ */
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const schema = z.object({ 
+    email: z.string().email(),
+    otp: z.string().length(6)
+  });
+  
+  const validation = schema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(422).json({ success: false, message: 'Invalid email or OTP format' });
+  }
+
+  const { email, otp } = validation.data;
+  const ipAddress = req.ip;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    await verifyOTP(email, otp);
+
+    eventBus.emit('OTP_VERIFIED', { email, ipAddress, timestamp: new Date() });
+
+    await prisma.securityLog.create({
+      data: {
+        type: 'OTP_VERIFIED',
+        ip: ipAddress,
+        userAgent,
+        requestId: req.id,
+        details: { 
+          email,
+          action: 'VERIFY_OTP',
+          deviceType: userAgent?.includes('Mobile') ? 'Mobile' : 'Desktop',
+          status: 'SUCCESS'
+        }
+      }
+    });
+
+    res.status(200).json({ success: true, message: 'OTP verified successfully' });
+  } catch (error) {
+    eventBus.emit('OTP_FAILED', { email, ipAddress, reason: error.message });
+    
+    await prisma.securityLog.create({
+      data: {
+        type: 'OTP_FAILED',
+        ip: ipAddress,
+        userAgent,
+        requestId: req.id,
+        details: { 
+          email, 
+          action: 'VERIFY_OTP',
+          deviceType: userAgent?.includes('Mobile') ? 'Mobile' : 'Desktop',
+          status: 'FAILED',
+          reason: error.message 
+        }
+      }
+    });
+
+    await trackOtpAbuse(email, ipAddress);
+
+    let statusCode = 400;
+    if (error.message.includes('expired')) statusCode = 410;
+    else if (error.message.includes('attempts exceeded')) statusCode = 429;
+
+    res.status(statusCode).json({ success: false, message: error.message });
+  }
 });
 
 /**

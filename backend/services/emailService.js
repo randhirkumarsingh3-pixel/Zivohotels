@@ -1,5 +1,8 @@
 import nodemailer from 'nodemailer';
 import prisma from '../config/db.js';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Configure SMTP transport with Hostinger credentials
 const transporter = nodemailer.createTransport({
@@ -692,5 +695,45 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
   } catch (error) {
     console.error('[EmailService] Error sending booking confirmation email:', error);
     return false;
+  }
+};
+
+/**
+ * Send OTP Email using Resend
+ * @param {string} to - Recipient email
+ * @param {string} otp - 6-digit OTP
+ * @param {number} expiryMinutes - Expiry time
+ */
+export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[EmailService] Missing RESEND_API_KEY. Simulating OTP email send to:', to, 'OTP:', otp);
+    return { success: true, simulated: true };
+  }
+
+  const subject = 'Verify Your Email Address – ZivoHotels';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #333;">ZivoHotels Verification</h2>
+      <p style="color: #555; font-size: 16px;">Your ZivoHotels verification code is:</p>
+      <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${otp}</span>
+      </div>
+      <p style="color: #555; font-size: 14px;">This code will expire in ${expiryMinutes} minutes.</p>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+      <p style="color: #999; font-size: 12px; text-align: center;">If you did not request this code, please ignore this email.</p>
+    </div>
+  `;
+
+  try {
+    const data = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'accounts@zivohotels.com',
+      to,
+      subject,
+      html,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error('[EmailService] Error sending OTP email via Resend:', error);
+    throw error;
   }
 };

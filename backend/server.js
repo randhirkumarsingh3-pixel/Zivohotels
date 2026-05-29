@@ -35,6 +35,7 @@ import { startPricingWorker } from './workers/pricingWorker.js';
 import { startPricingTrainer } from './workers/pricingTrainer.js';
 import { startFinanceWorker } from './workers/financeWorker.js';
 import { startMarketplaceBalancer } from './workers/marketplaceBalancer.js';
+import { startOtpCleanupWorker } from './workers/otpCleanupWorker.js';
 import workerManager from './services/workerManager.js';
 import masterAdminRoutes from './routes/masterAdminRoutes.js';
 import extranetRoutes from './routes/extranetRoutes.js';
@@ -183,4 +184,5 @@ server.listen(PORT, () => {
   workerManager.register('PricingTrainer', startPricingTrainer);
   workerManager.register('FinanceWorker', startFinanceWorker);
   workerManager.register('MarketplaceBalancer', startMarketplaceBalancer);
+  workerManager.register('OtpCleanupWorker', startOtpCleanupWorker);
 });
