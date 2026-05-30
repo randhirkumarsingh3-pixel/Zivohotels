@@ -70,10 +70,11 @@ const PhotosStep = ({ formData, updateForm }) => {
     fetchLibrary();
   }, [hotelId]);
 
+  const [isDragging, setIsDragging] = useState(false);
+
   // Handle uploading files and converting to base64
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+  const processFiles = async (filesArray) => {
+    if (filesArray.length === 0) return;
     if (!hotelId) {
       alert("Please ensure the property details are saved first.");
       return;
@@ -81,7 +82,7 @@ const PhotosStep = ({ formData, updateForm }) => {
 
     setUploading(true);
     try {
-      for (const file of files) {
+      for (const file of filesArray) {
         // Read file as base64
         const reader = new FileReader();
         const base64Promise = new Promise((resolve) => {
@@ -113,7 +114,31 @@ const PhotosStep = ({ formData, updateForm }) => {
       alert(err.message || 'Failed to upload one or more files.');
     } finally {
       setUploading(false);
-      e.target.value = '';
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    processFiles(files);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      processFiles(files);
     }
   };
 
@@ -406,8 +431,22 @@ const PhotosStep = ({ formData, updateForm }) => {
         </label>
       </div>
 
-      {/* Main Cover Banner */}
-      <div className="relative aspect-video sm:h-80 w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm mb-10">
+      {/* Main Cover Banner / Drag Drop Zone */}
+      <div 
+        className={`relative aspect-video sm:h-80 w-full rounded-2xl overflow-hidden border-2 transition-all shadow-sm mb-10 ${
+          isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-slate-200 bg-slate-100'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 z-50 bg-blue-500/10 backdrop-blur-sm flex flex-col items-center justify-center text-blue-700">
+            <UploadCloud size={64} className="animate-bounce mb-4" />
+            <p className="text-2xl font-extrabold">Drop photos here</p>
+          </div>
+        )}
+        
         {coverImage ? (
           <>
             <img src={getImageUrl(coverImage.url)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
@@ -429,8 +468,8 @@ const PhotosStep = ({ formData, updateForm }) => {
             <div className="bg-white p-4 rounded-full shadow-sm mb-4">
               <UploadCloud size={48} className="text-blue-500" />
             </div>
-            <p className="text-lg font-bold text-slate-700">No cover image set yet</p>
-            <p className="text-sm text-slate-500 mt-1">Upload files above to get started</p>
+            <p className="text-lg font-bold text-slate-700">Drag & Drop photos here</p>
+            <p className="text-sm text-slate-500 mt-1">Or click 'Upload More' above to get started</p>
           </div>
         )}
       </div>

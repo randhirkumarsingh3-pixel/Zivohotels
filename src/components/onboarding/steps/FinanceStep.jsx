@@ -183,6 +183,43 @@ const FinanceStep = ({ formData, updateForm }) => {
         <p className="text-lg text-slate-500 mt-2">Set up your payouts, tax registrations, and statutory compliance documentation.</p>
       </div>
 
+      {/* Commission & Fee Summary Card */}
+      <div className="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+        {/* Abstract background shapes */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 rounded-full bg-indigo-500/30 blur-2xl pointer-events-none"></div>
+
+        <div className="relative z-10 max-w-lg">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-[10px] font-black uppercase tracking-widest mb-4">
+            <Landmark size={12} /> Standard Partnership
+          </div>
+          <h3 className="text-2xl font-extrabold mb-2">Platform Fee Structure</h3>
+          <p className="text-blue-200 text-sm leading-relaxed">
+            We operate on a performance-based model. You only pay when a guest successfully books and completes their stay. There are no hidden setup or subscription fees.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
+          <div className="text-center px-4">
+            <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-4xl font-black">{formData.commission || 15}</span>
+              <span className="text-xl font-bold text-blue-300">%</span>
+            </div>
+            <p className="text-[10px] text-blue-300 mt-1">per completed booking</p>
+          </div>
+          <div className="w-px h-16 bg-white/20 hidden sm:block"></div>
+          <div className="h-px w-full bg-white/20 sm:hidden"></div>
+          <div className="text-center px-4">
+            <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-2xl font-black">Weekly</span>
+            </div>
+            <p className="text-[10px] text-blue-300 mt-1">Every Wednesday</p>
+          </div>
+        </div>
+      </div>
+
       <div className="relative pl-14">
         {/* Stepper Vertical Connector Line */}
         <div className="absolute left-6 top-8 bottom-8 w-[2px] bg-gray-200 z-0"></div>

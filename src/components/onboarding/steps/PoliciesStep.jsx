@@ -265,12 +265,15 @@ const PoliciesStep = ({ formData, updateForm }) => {
           </Section>
 
           {/* Property Restrictions */}
-          <Section icon="🚫" title="Property Restrictions" badgeCount={countAnswered(['smokingAllowed','partiesAllowed','wheelchairAccessible','outsideVisitors'])} badgeTotal={4}>
-            <RuleRow label="Is smoking allowed anywhere within the premises? (Select 'No' if it's not permitted, even in outdoor spaces like balconies or lawns, or any designated smoking area)">
+          <Section icon="🚫" title="Property Restrictions" badgeCount={countAnswered(['smokingAllowed','partiesAllowed','wheelchairAccessible','outsideVisitors', 'alcoholAllowed'])} badgeTotal={5}>
+            <RuleRow label="Is smoking allowed anywhere within the premises?">
               <YesNo value={rules.smokingAllowed} onChange={v => setRule('smokingAllowed', v)} />
             </RuleRow>
             <RuleRow label="Are private parties or events allowed at the property?">
               <YesNo value={rules.partiesAllowed} onChange={v => setRule('partiesAllowed', v)} />
+            </RuleRow>
+            <RuleRow label="Is alcohol consumption allowed on the property?">
+              <YesNo value={rules.alcoholAllowed} onChange={v => setRule('alcoholAllowed', v)} />
             </RuleRow>
             <RuleRow label="Is your property accessible for guests who use a wheelchair?">
               <YesNo value={rules.wheelchairAccessible} onChange={v => setRule('wheelchairAccessible', v)} />
