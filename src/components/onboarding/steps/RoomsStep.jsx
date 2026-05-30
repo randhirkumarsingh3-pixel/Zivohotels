@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Bed, Search, Info, PlusCircle, MinusCircle, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, Bed, Search, Info, PlusCircle, MinusCircle, HelpCircle, Copy } from 'lucide-react';
 
 const ROOM_TYPES = ["Deluxe", "Standard", "Suite", "Executive", "Family", "Villa", "Studio", "Premium", "Apartment"];
 const ROOM_VIEWS = ["Airport View", "Pool View", "Garden View", "City View", "Ocean View", "Mountain View"];
@@ -189,6 +189,26 @@ const RoomsStep = ({ formData, updateForm }) => {
     if (confirm("Are you sure you want to remove this room configuration?")) {
       updateForm('rooms', rooms.filter(r => r.id !== id));
     }
+  };
+
+  const handleDuplicateRoom = (room, e) => {
+    e.stopPropagation();
+    const duplicatedRoom = {
+      ...room,
+      id: Date.now().toString(), // assign a new temporary ID
+      name: `Copy of ${room.name}`
+    };
+    
+    // Auto-save it to the list
+    const newRoomsList = [...rooms, duplicatedRoom];
+    updateForm('rooms', newRoomsList);
+    
+    // Optionally automatically open it in edit mode
+    setRoomForm(duplicatedRoom);
+    setEditRoomId(duplicatedRoom.id);
+    setIsEditing(true);
+    setActiveAmenityCategory('Mandatory');
+    setAmenitySearchQuery('');
   };
 
   // Beds list handlers
@@ -1002,13 +1022,22 @@ const RoomsStep = ({ formData, updateForm }) => {
                       <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Base Rate</p>
                       <p className="font-black text-slate-900 text-2xl">₹{room.basePrice}</p>
                     </div>
-                    <button 
-                      onClick={(e) => handleRemoveRoom(room.id, e)}
-                      className="text-slate-400 hover:text-red-500 transition-colors p-3 rounded-xl hover:bg-red-50 shrink-0 border border-transparent hover:border-red-100 bg-white"
-                      title="Remove Room Type"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={(e) => handleDuplicateRoom(room, e)}
+                        className="text-slate-400 hover:text-blue-600 transition-colors p-3 rounded-xl hover:bg-blue-50 shrink-0 border border-transparent hover:border-blue-100 bg-white"
+                        title="Duplicate Room Type"
+                      >
+                        <Copy size={20} />
+                      </button>
+                      <button 
+                        onClick={(e) => handleRemoveRoom(room.id, e)}
+                        className="text-slate-400 hover:text-red-500 transition-colors p-3 rounded-xl hover:bg-red-50 shrink-0 border border-transparent hover:border-red-100 bg-white"
+                        title="Remove Room Type"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

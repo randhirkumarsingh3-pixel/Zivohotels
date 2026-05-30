@@ -42,6 +42,7 @@ const hotelSchema = z.object({
     branchName: z.string().optional(),
   }).optional(),
   commissionRate: z.number().optional(),
+  channelProvider: z.string().optional(),
 });
 
 const hotelUpdateSchema = hotelSchema.partial().extend({
@@ -59,7 +60,7 @@ const normalizeHotelPayload = (data) => {
     amenities, policies, checkInTime, checkOutTime,
     media, images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail,
-    bankDetail, commissionRate, status
+    bankDetail, commissionRate, status, channelProvider
   } = data;
   
   // 1. Consistent location derived from address and city
@@ -75,7 +76,13 @@ const normalizeHotelPayload = (data) => {
     amenities,
     policies,
     checkInTime,
-    checkOutTime
+    checkOutTime,
+    receptionPhone,
+    receptionEmail,
+    managerName,
+    managerPhone,
+    managerEmail,
+    channelProvider
   };
   
   if (status) {

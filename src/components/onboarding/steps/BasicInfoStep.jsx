@@ -247,10 +247,11 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
         <div className="h-px w-full bg-slate-200 my-4"></div>
 
-        <div className="mb-2">
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Contact Information</h2>
-          <p className="text-slate-500 mt-2 text-base">How should guests contact your front desk?</p>
-        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6">
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Guest Facing Contacts</h2>
+            <p className="text-slate-500 mt-1 text-sm">How should guests contact your front desk?</p>
+          </div>
 
         {/* Email ID */}
         <div className="flex flex-col gap-2">
@@ -518,7 +519,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
         </div>
 
         {/* Landline Number */}
-        <div className="flex flex-col gap-2 mt-4">
+        <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">Landline Number <span className="font-normal text-slate-500 ml-1">(Optional)</span></label>
           <input 
             type="tel" 
@@ -529,6 +530,60 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           />
         </div>
       </div>
+
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6 mt-8">
+        <div>
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Management Contacts</h2>
+          <p className="text-slate-500 mt-1 text-sm">Internal contact details for platform notifications (not shown to guests).</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">Manager Name</label>
+            <input 
+              type="text" 
+              value={formData.managerName || ''} 
+              onChange={e => updateForm('managerName', e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+              placeholder="e.g. Rahul Sharma"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">Manager Phone</label>
+            <input 
+              type="tel" 
+              value={formData.managerPhone || ''} 
+              onChange={e => updateForm('managerPhone', e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+              placeholder="e.g. 9876543210"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">Owner Name</label>
+            <input 
+              type="text" 
+              value={formData.ownerName || ''} 
+              onChange={e => updateForm('ownerName', e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+              placeholder="e.g. Priya Patel"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">Owner Email</label>
+            <input 
+              type="email" 
+              value={formData.ownerEmail || ''} 
+              onChange={e => updateForm('ownerEmail', e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+              placeholder="e.g. owner@property.com"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   );
 };

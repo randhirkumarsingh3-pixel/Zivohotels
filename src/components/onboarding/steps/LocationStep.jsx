@@ -353,6 +353,9 @@ const LocationStep = ({ formData, updateForm }) => {
 
   // Build combined address string from pieces for legacy backend structure
   useEffect(() => {
+    const hasMeaningfulParts = formData.houseNo || formData.area || formData.city || formData.pincode;
+    if (!hasMeaningfulParts) return; // Prevent overwriting a fetched address if form is just mounted
+
     const parts = [
       formData.houseNo,
       formData.area,

@@ -21,6 +21,8 @@ const roomTypeSchema = z.object({
   maxExtraBeds: z.number().int().optional().default(0),
   imageIds: z.array(z.string().uuid()).optional(),
   primaryImageId: z.string().uuid().optional(),
+  basePrice: z.number().optional(),
+  mealPlan: z.string().optional(),
 }).strict();
 
 const roomTypeUpdateSchema = roomTypeSchema.partial();
@@ -28,12 +30,16 @@ const roomTypeUpdateSchema = roomTypeSchema.partial();
 // --- HELPERS ---
 
 const normalizeRoomPayload = (data) => {
-  const { maxOccupancy, totalRooms, imageIds, primaryImageId, ...rest } = data;
+  const { maxOccupancy, totalRooms, imageIds, primaryImageId, basePrice, mealPlan, ...rest } = data;
   
   return {
-    ...rest,
-    capacity: maxOccupancy,
-    totalInventory: totalRooms,
+    prismaData: {
+      ...rest,
+      capacity: maxOccupancy,
+      totalInventory: totalRooms,
+    },
+    basePrice,
+    mealPlan
   };
 };
 
@@ -49,7 +55,7 @@ export const createRoomType = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeRoomPayload(validation.data);
-  const { hotelId, code } = normalized;
+  const { hotelId, code } = normalized.prismaData;
 
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
   if (!hotel || hotel.isDeleted) return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
@@ -60,15 +66,15 @@ export const createRoomType = asyncHandler(async (req, res) => {
 
   const roomType = await prisma.$transaction(async (tx) => {
     const room = await tx.roomType.create({
-      data: normalized
+      data: normalized.prismaData
     });
 
     // Create Default Rate Plan (Clean Default)
     const ratePlan = await tx.ratePlan.create({
       data: {
         name: 'Standard Rate Plan',
-        mealPlan: 'NONE',
-        basePrice: 0,
+        mealPlan: normalized.mealPlan || 'NONE',
+        basePrice: normalized.basePrice || 0,
         extraAdultPrice: 0,
         extraChildPrice: 0,
         roomTypeId: room.id,
@@ -105,7 +111,7 @@ export const createRoomType = asyncHandler(async (req, res) => {
         entityId: room.id,
         userId: req.user.id,
         requestId: req.id,
-        details: { name: normalized.name, hotelId, autoInventoryDays: 60, defaultRatePlanId: ratePlan.id }
+        details: { name: normalized.prismaData.name, hotelId, autoInventoryDays: 60, defaultRatePlanId: ratePlan.id }
       }
     });
 
@@ -157,8 +163,23 @@ export const updateRoomType = asyncHandler(async (req, res) => {
   const roomType = await prisma.$transaction(async (tx) => {
     const updated = await tx.roomType.update({
       where: { id },
-      data: normalized
+      data: normalized.prismaData
     });
+
+    // Update Default Rate Plan
+    const standardRate = await tx.ratePlan.findFirst({
+      where: { roomTypeId: id, name: 'Standard Rate Plan' }
+    });
+
+    if (standardRate && (normalized.basePrice !== undefined || normalized.mealPlan !== undefined)) {
+      await tx.ratePlan.update({
+        where: { id: standardRate.id },
+        data: {
+          basePrice: normalized.basePrice !== undefined ? normalized.basePrice : standardRate.basePrice,
+          mealPlan: normalized.mealPlan !== undefined ? normalized.mealPlan : standardRate.mealPlan
+        }
+      });
+    }
 
     // Update Occupancy Pricing for Standard Rate Plan
     if (validation.data.occupancyPricing) {

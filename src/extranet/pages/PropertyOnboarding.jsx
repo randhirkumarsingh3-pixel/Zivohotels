@@ -121,12 +121,15 @@ const PropertyOnboarding = () => {
   const [formData, setFormData] = useState({
     // Basic Info
     name: '', type: 'Hotel', description: '', rating: '3',
+    guestEmail: '', guestMobile: '', guestLandline: '',
+    isEmailVerified: false, isMobileVerified: false,
+    hasChannelManager: false, channelManagerName: 'Axisrooms',
     receptionPhone: '', receptionEmail: '',
     managerName: '', managerPhone: '', managerEmail: '',
     ownerName: '', ownerEmail: '', ownerPhone: '',
     
     // Location
-    country: 'India', state: '', city: '', area: '', address: '',
+    country: 'India', state: '', city: '', area: '', houseNo: '', pincode: '', address: '',
     latitude: '', longitude: '',
     
     // Amenities
@@ -151,8 +154,19 @@ const PropertyOnboarding = () => {
   });
 
   useEffect(() => {
+    const effectiveId = urlHotelId || contextHotelId;
     if (isEditing) {
-      fetchProperty();
+      const saved = localStorage.getItem(`zivo_onboarding_draft_${effectiveId}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          fetchProperty();
+        }
+      } else {
+        fetchProperty();
+      }
     } else {
       const saved = localStorage.getItem('zivo_onboarding_draft');
       if (saved) {
@@ -169,14 +183,15 @@ const PropertyOnboarding = () => {
         }
       }
     }
-  }, [effectiveId]);
+  }, [urlHotelId, contextHotelId, isEditing]);
 
-  // Auto-save form progress to localStorage in real time (except when editing active property)
+  // Auto-save form progress to localStorage in real time
   useEffect(() => {
-    if (!isEditing && formData.name) {
-      localStorage.setItem('zivo_onboarding_draft', JSON.stringify(formData));
+    const effectiveId = urlHotelId || contextHotelId;
+    if (formData.name) {
+      localStorage.setItem(`zivo_onboarding_draft${effectiveId ? '_' + effectiveId : ''}`, JSON.stringify(formData));
     }
-  }, [formData, isEditing]);
+  }, [formData, urlHotelId, contextHotelId]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -211,6 +226,12 @@ const PropertyOnboarding = () => {
           
           receptionPhone: hotel.receptionPhone || '',
           receptionEmail: hotel.receptionEmail || '',
+          guestEmail: hotel.receptionEmail || '',
+          guestMobile: hotel.receptionPhone || '',
+          isEmailVerified: Boolean(hotel.receptionEmail),
+          isMobileVerified: Boolean(hotel.receptionPhone),
+          hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
+          channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
           managerName: hotel.managerName || '',
           managerPhone: hotel.managerPhone || '',
           managerEmail: hotel.managerEmail || '',
@@ -419,11 +440,12 @@ const PropertyOnboarding = () => {
         policyRules: formData.policyRules,
         mealPrices: formData.mealPrices,
         
-        receptionPhone: formData.receptionPhone,
-        receptionEmail: formData.receptionEmail,
+        receptionPhone: formData.guestMobile || formData.receptionPhone,
+        receptionEmail: formData.guestEmail || formData.receptionEmail,
         managerName: formData.managerName,
         managerPhone: formData.managerPhone,
         managerEmail: formData.managerEmail,
+        channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
         
         legalName: formData.legalName,
         pan: formData.pan,
@@ -498,7 +520,9 @@ const PropertyOnboarding = () => {
           roomSize: room.size ? `${room.size} ${room.sizeUnit}` : 'Standard',
           viewType: room.view || 'Airport View',
           extraBedAllowed: room.allowExtraBed === 'Yes',
-          maxExtraBeds: room.allowExtraBed === 'Yes' ? 1 : 0
+          maxExtraBeds: room.allowExtraBed === 'Yes' ? 1 : 0,
+          basePrice: parseInt(room.basePrice) || 0,
+          mealPlan: room.mealPlan || 'NONE'
         };
 
         let roomTypeId;
