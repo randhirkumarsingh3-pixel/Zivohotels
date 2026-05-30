@@ -6,28 +6,7 @@ import { Resend } from 'resend';
 const actualApiKey = process.env.RESEND_API_KEY || 're_5aMVgoS9_Hzpv1ykUA3unMjYPEvn3F18R';
 const resend = new Resend(actualApiKey);
 
-// Configure SMTP transport with Hostinger credentials
-const transporter = nodemailer.createTransport({
-  host: 'smtp.hostinger.com',
-  port: 465,
-  secure: true, // true for port 465
-  auth: {
-    user: 'bookings@zivohotels.com',
-    pass: 'Singh@rk1'
-  },
-  pool: true, // use pooled connections
-  rateLimit: 5, // limit to 5 messages per second
-  timeout: 10000 // 10s timeout
-});
 
-// Verify connection configuration on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ SMTP Connection Error:', error);
-  } else {
-    console.log('🚀 SMTP Server is ready to send confirmation emails');
-  }
-});
 
 /**
  * Generate premium HTML Booking Confirmation Email & Hotel Voucher
@@ -683,19 +662,19 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 
     const emailHtml = generateEmailHtml(booking, booking.hotel, booking.roomType, booking.ratePlan);
 
-    const mailOptions = {
-      from: '"ZivoHotels Bookings" <bookings@zivohotels.com>',
+    console.log(`[EmailService] Sending confirmation email for booking ${booking.bookingRef} to ${booking.guestEmail} via Resend...`);
+    
+    const data = await resend.emails.send({
+      from: 'ZivoHotels Bookings <bookings@zivohotels.com>',
       to: booking.guestEmail,
       subject: `Booking Confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`,
       html: emailHtml
-    };
-
-    console.log(`[EmailService] Sending confirmation email for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EmailService] Email sent successfully! Message ID: ${info.messageId}`);
+    });
+    
+    console.log(`[EmailService] Booking Confirmation Email sent successfully! Data:`, data);
     return true;
   } catch (error) {
-    console.error('[EmailService] Error sending booking confirmation email:', error);
+    console.error('[EmailService] Error sending booking confirmation email via Resend:', error);
     return false;
   }
 };
