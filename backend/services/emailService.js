@@ -3,7 +3,8 @@ import prisma from '../config/db.js';
 import { Resend } from 'resend';
 
 // Use a fallback to prevent the server from crashing on startup if the API key is not set in Render yet.
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_to_prevent_crash');
+const actualApiKey = process.env.RESEND_API_KEY || 're_5aMVgoS9_Hzpv1ykUA3unMjYPEvn3F18R';
+const resend = new Resend(actualApiKey);
 
 // Configure SMTP transport with Hostinger credentials
 const transporter = nodemailer.createTransport({
@@ -706,11 +707,6 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
  * @param {number} expiryMinutes - Expiry time
  */
 export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_dummy_key_to_prevent_crash') {
-    console.warn('[EmailService] Missing RESEND_API_KEY. Simulating OTP email send to:', to, 'OTP:', otp);
-    return { success: true, simulated: true };
-  }
-
   const subject = 'Verify Your Email Address – ZivoHotels';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
