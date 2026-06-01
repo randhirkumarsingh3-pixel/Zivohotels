@@ -504,7 +504,7 @@ const PropertyOnboarding = () => {
         } : undefined,
         
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
-        status: 'PENDING',
+        status: 'ACTIVE',
       };
 
       const draftId = localStorage.getItem('currentHotelId');

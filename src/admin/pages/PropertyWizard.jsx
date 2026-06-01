@@ -435,8 +435,8 @@ const PropertyWizard = () => {
           ifscCode: formData.ifscCode,
           branchName: formData.branchName,
         } : undefined,
-        
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
+        status: 'ACTIVE',
       };
 
       const draftId = localStorage.getItem('currentHotelId');
