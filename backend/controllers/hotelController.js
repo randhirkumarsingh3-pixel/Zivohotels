@@ -87,11 +87,17 @@ const normalizeHotelPayload = (data) => {
   // Clean up undefined fields
   Object.keys(prismaData).forEach(key => prismaData[key] === undefined && delete prismaData[key]);
   
+  const _contactInfo = {
+    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail
+  };
+  Object.keys(_contactInfo).forEach(key => _contactInfo[key] === undefined && delete _contactInfo[key]);
+
   return {
     prismaData,
     _bankDetail: bankDetail,
     _commissionRate: commissionRate,
-    _media: media
+    _media: media,
+    _contactInfo
   };
 };
 
@@ -109,7 +115,7 @@ export const createHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo } = normalized;
 
   // Soft Delete Collision Prevention
   const existing = await prisma.hotel.findFirst({
@@ -131,7 +137,8 @@ export const createHotel = asyncHandler(async (req, res) => {
     data: { 
       ...prismaData,
       ownerId: req.user.id,
-      status: 'PENDING'
+      status: 'PENDING',
+      integrationSettings: Object.keys(_contactInfo).length > 0 ? { contactInfo: _contactInfo } : {}
     }
   });
 
@@ -205,7 +212,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo } = normalized;
 
   if (prismaData.status === 'ACTIVE' && existingHotel.status !== 'ACTIVE') {
     const agreement = await prisma.agreement.findUnique({ where: { hotelId: id } });
@@ -214,11 +221,25 @@ export const updateHotel = asyncHandler(async (req, res) => {
     }
   }
 
+  // Safely merge new contact info into integrationSettings without overwriting everything
+  let newSettings = undefined;
+  if (_contactInfo && Object.keys(_contactInfo).length > 0) {
+    const existingSettings = existingHotel.integrationSettings && typeof existingHotel.integrationSettings === 'object' ? existingHotel.integrationSettings : {};
+    newSettings = {
+      ...existingSettings,
+      contactInfo: {
+        ...(existingSettings.contactInfo || {}),
+        ..._contactInfo
+      }
+    };
+  }
+
   const hotel = await prisma.hotel.update({
     where: { id },
     data: {
       ...prismaData,
       status: prismaData.status || existingHotel.status,
+      ...(newSettings ? { integrationSettings: newSettings } : {})
     }
   });
 
