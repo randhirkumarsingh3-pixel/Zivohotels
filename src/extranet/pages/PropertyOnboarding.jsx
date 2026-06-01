@@ -11,6 +11,7 @@ import RoomsStep from '../../components/onboarding/steps/RoomsStep';
 import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
+import { getImageUrl } from '../../utils/image';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -474,7 +475,7 @@ const PropertyOnboarding = () => {
         rating: formData.rating,
         
         media: formData.images.map(img => ({
-          url: img.url,
+          url: getImageUrl(img.url),
           tags: img.tags || []
         })),
         amenities: formData.amenities,
