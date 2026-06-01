@@ -46,7 +46,7 @@ const PhotosStep = ({ formData, updateForm }) => {
     };
   };
 
-  const fetchLibrary = async () => {
+  const fetchLibrary = async (extraLocalLinks = []) => {
     if (!hotelId) return;
     setLoading(true);
     try {
@@ -55,9 +55,32 @@ const PhotosStep = ({ formData, updateForm }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        const imgs = data.data || [];
-        setLibrary(imgs);
-        updateForm('images', imgs);
+        const dbImgs = data.data || [];
+        // Preserve local roomLinks for temporary room types from CURRENT formData.images
+        const preservedImgs = dbImgs.map(dbImg => {
+           let tempLinks = [];
+           const localImg = formData.images?.find(i => i.id === dbImg.id);
+           if (localImg && localImg.roomLinks) {
+             tempLinks = localImg.roomLinks.filter(link => 
+               !(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(link.roomTypeId))
+             );
+           }
+           // Check extra local links
+           const extraLinksForImg = extraLocalLinks.filter(el => el.imageId === dbImg.id);
+           for (const el of extraLinksForImg) {
+             if (!tempLinks.some(tl => tl.roomTypeId === el.roomTypeId)) {
+               tempLinks.push(el);
+             }
+           }
+
+           if (tempLinks.length > 0) {
+              const existingDbLinks = dbImg.roomLinks || [];
+              return { ...dbImg, roomLinks: [...existingDbLinks, ...tempLinks] };
+           }
+           return dbImg;
+        });
+        setLibrary(preservedImgs);
+        updateForm('images', preservedImgs);
       }
     } catch (err) {
       console.error('Failed to fetch media library:', err);
@@ -521,10 +544,17 @@ const PhotosStep = ({ formData, updateForm }) => {
                   <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="grid-asset" />
                   
                   {/* Hover Tag overlay */}
-                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-[1px]">
                     <span className="text-xs bg-white text-slate-900 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-lg">
                       <Tag size={14} /> Add Tag
                     </span>
+                    <button 
+                      type="button"
+                      onClick={(e) => handleDeleteImage(img.id, e)}
+                      className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-lg transition-colors"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
                   </div>
 
                   {/* Warning Pill if tag missing */}
@@ -694,6 +724,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                       
                       setUploading(true);
                       try {
+                        const newLocalLinks = [];
                         for (const file of files) {
                           const reader = new FileReader();
                           const base64Promise = new Promise((resolve) => {
@@ -717,14 +748,19 @@ const PhotosStep = ({ formData, updateForm }) => {
                           const data = await res.json();
                           if (res.ok) {
                             // Automatically link to room type
-                            await fetch(`${API_URL}/admin/images/room-types/${assignRoomType.id}`, {
-                              method: 'POST',
-                              headers: getAuthHeaders(),
-                              body: JSON.stringify({ imageId: data.data.id, isPrimary: false })
-                            });
+                            const isUUID = typeof assignRoomType.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignRoomType.id);
+                            if (isUUID) {
+                              await fetch(`${API_URL}/admin/images/room-types/${assignRoomType.id}`, {
+                                method: 'POST',
+                                headers: getAuthHeaders(),
+                                body: JSON.stringify({ imageId: data.data.id, isPrimary: false })
+                              });
+                            } else {
+                              newLocalLinks.push({ roomTypeId: assignRoomType.id, imageId: data.data.id });
+                            }
                           }
                         }
-                        await fetchLibrary();
+                        await fetchLibrary(newLocalLinks);
                       } catch (err) {
                         alert('Upload failed');
                       } finally {
