@@ -400,7 +400,14 @@ const PropertyOnboarding = () => {
         });
         if (res.status === 404) {
           localStorage.removeItem('currentHotelId');
-          addToast('Saved property draft was not found. Please click next to create a new draft.', 'warning');
+          addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
+          setTimeout(() => {
+            if (urlHotelId) {
+              navigate('/admin/properties/add');
+            } else {
+              window.location.reload();
+            }
+          }, 1500);
           return false;
         }
       } catch (err) {
@@ -420,7 +427,8 @@ const PropertyOnboarding = () => {
       }
       
       // Always sync to backend on step advance to prevent data loss across devices
-      await syncDraftToBackend();
+      const syncSuccess = await syncDraftToBackend();
+      if (!syncSuccess) return;
       
       setCurrentStep(prev => prev + 1);
       window.scrollTo(0, 0);
