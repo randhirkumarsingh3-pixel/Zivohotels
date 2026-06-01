@@ -203,6 +203,20 @@ const PropertyOnboarding = () => {
     try {
       // Re-use the main backend API which fully supports nested models for Owners
       const res = await fetch(`${API_URL}/hotels/${effectiveId}`, { headers: getAuthHeaders() });
+      
+      if (res.status === 404) {
+        localStorage.removeItem('currentHotelId');
+        addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
+        setTimeout(() => {
+          if (urlHotelId) {
+            navigate('/extranet/onboarding');
+          } else {
+            window.location.reload();
+          }
+        }, 1500);
+        return;
+      }
+
       const json = await res.json();
       if (json.success) {
         const hotel = json.data;

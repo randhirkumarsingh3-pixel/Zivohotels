@@ -180,6 +180,16 @@ const PropertyWizard = () => {
   const fetchProperty = async () => {
     try {
       const res = await fetch(`${API_URL}/hotels/${id}`, { headers: getAuthHeaders() });
+      
+      if (res.status === 404) {
+        localStorage.removeItem('currentHotelId');
+        alert('Saved property draft was not found. Redirecting to start a new property...');
+        setTimeout(() => {
+          navigate('/admin/properties/new');
+        }, 1500);
+        return;
+      }
+
       const json = await res.json();
       if (json.success) {
         const hotel = json.data;
