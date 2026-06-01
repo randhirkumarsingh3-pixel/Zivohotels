@@ -403,7 +403,7 @@ const PropertyOnboarding = () => {
           addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
           setTimeout(() => {
             if (urlHotelId) {
-              navigate('/admin/properties/add');
+              navigate('/extranet/onboarding');
             } else {
               window.location.reload();
             }
@@ -509,6 +509,19 @@ const PropertyOnboarding = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 404 && usePatch) {
+          localStorage.removeItem('currentHotelId');
+          addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
+          setTimeout(() => {
+            if (urlHotelId) {
+              navigate('/extranet/onboarding');
+            } else {
+              window.location.reload();
+            }
+          }, 1500);
+          return;
+        }
+
         if (data.errors && data.errors.fieldErrors) {
           const fieldErrors = data.errors.fieldErrors;
           const firstField = Object.keys(fieldErrors)[0];
