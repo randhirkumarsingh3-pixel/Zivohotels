@@ -257,6 +257,7 @@ const PhotosStep = ({ formData, updateForm }) => {
   const untaggedCount = library.filter(img => !img.tags || img.tags.length === 0).length;
 
   if (currentView === 'tagging' && selectedImageForTagging) {
+    const currentImg = selectedImageForTagging;
     const baseTags = [
       ...TAG_OPTIONS,
       "ROOMS",
