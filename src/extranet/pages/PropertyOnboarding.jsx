@@ -387,6 +387,7 @@ const PropertyOnboarding = () => {
       managerPhone: formData.managerPhone || undefined,
       managerEmail: formData.managerEmail || undefined,
       channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
+      status: 'DRAFT',
     };
 
     if (!currentId) {
@@ -504,7 +505,7 @@ const PropertyOnboarding = () => {
         } : undefined,
         
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
-        status: 'ACTIVE',
+        status: 'PENDING',
       };
 
       const draftId = localStorage.getItem('currentHotelId');

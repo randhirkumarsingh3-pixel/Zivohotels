@@ -347,7 +347,8 @@ const PropertyWizard = () => {
           propertyType: formData.type || 'Hotel',
           city: formData.city || 'Default City',
           address: formData.address || 'Default Address',
-          description: formData.description || ''
+          description: formData.description || '',
+          status: 'DRAFT'
         };
         const res = await fetch(`${API_URL}/hotels`, {
           method: 'POST',
@@ -435,8 +436,8 @@ const PropertyWizard = () => {
           ifscCode: formData.ifscCode,
           branchName: formData.branchName,
         } : undefined,
+        
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
-        status: 'ACTIVE',
       };
 
       const draftId = localStorage.getItem('currentHotelId');
