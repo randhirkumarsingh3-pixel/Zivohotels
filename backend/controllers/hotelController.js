@@ -77,11 +77,6 @@ const normalizeHotelPayload = (data) => {
     policies,
     checkInTime,
     checkOutTime,
-    receptionPhone,
-    receptionEmail,
-    managerName,
-    managerPhone,
-    managerEmail,
     channelProvider
   };
   
