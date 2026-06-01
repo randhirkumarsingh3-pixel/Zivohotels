@@ -521,21 +521,22 @@ const PropertyOnboarding = () => {
         body: JSON.stringify(payload)
       });
 
+      if (response.status === 404 && usePatch) {
+        localStorage.removeItem('currentHotelId');
+        addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
+        setTimeout(() => {
+          if (urlHotelId) {
+            navigate('/extranet/onboarding');
+          } else {
+            window.location.reload();
+          }
+        }, 1500);
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 404 && usePatch) {
-          localStorage.removeItem('currentHotelId');
-          addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
-          setTimeout(() => {
-            if (urlHotelId) {
-              navigate('/extranet/onboarding');
-            } else {
-              window.location.reload();
-            }
-          }, 1500);
-          return;
-        }
 
         if (data.errors && data.errors.fieldErrors) {
           const fieldErrors = data.errors.fieldErrors;
