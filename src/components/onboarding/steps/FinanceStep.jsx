@@ -203,7 +203,7 @@ const FinanceStep = ({ formData, updateForm }) => {
           <div className="text-center px-4">
             <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-black">{formData.commission || 15}</span>
+              <span className="text-4xl font-black">{formData.commission !== undefined ? formData.commission : 15}</span>
               <span className="text-xl font-bold text-blue-300">%</span>
             </div>
             <p className="text-[10px] text-blue-300 mt-1">per completed booking</p>
@@ -213,9 +213,11 @@ const FinanceStep = ({ formData, updateForm }) => {
           <div className="text-center px-4">
             <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-2xl font-black">Weekly</span>
+              <span className="text-2xl font-black">{formData.payoutCycle || 'Weekly'}</span>
             </div>
-            <p className="text-[10px] text-blue-300 mt-1">Every Wednesday</p>
+            <p className="text-[10px] text-blue-300 mt-1">
+              {formData.payoutCycle === 'Monthly' ? 'First week of month' : formData.payoutCycle === '15 days' ? '1st & 16th' : 'Every Wednesday'}
+            </p>
           </div>
         </div>
       </div>
@@ -557,27 +559,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                       </div>
                     </div>
 
-                    {/* Platform Commission (MANUAL ENTRY SETTING) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-3 border-t border-slate-100">
-                      <div className="md:col-span-1">
-                        <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                          Platform Commission (%) <span className="text-red-550 text-red-500">*</span>
-                        </label>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">Define platform commission percentage</span>
-                      </div>
-                      <div className="md:col-span-2 relative">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={formData.commission !== undefined ? formData.commission : 15}
-                          onChange={e => updateForm('commission', parseFloat(e.target.value) || 0)}
-                          placeholder="15"
-                          className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 font-bold bg-white"
-                        />
-                        <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
+
 
                   </div>
                 </div>
@@ -692,6 +674,91 @@ const FinanceStep = ({ formData, updateForm }) => {
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* ────── STEP 4: PLATFORM COMMISSION & PAYOUT ────── */}
+      <div className="relative flex gap-6 z-10 items-start mt-6">
+        <button
+          type="button"
+          onClick={() => toggleSection(4)}
+          className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
+            activeStep === 4
+              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
+              : formData.commission !== undefined && formData.payoutCycle
+                ? 'bg-emerald-500 border-emerald-500 text-white'
+                : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
+          }`}
+        >
+          {formData.commission !== undefined && formData.payoutCycle && activeStep !== 4 ? <Check size={16} /> : "4"}
+        </button>
+
+        <div className="w-full">
+          {activeStep === 4 ? (
+            // EXPANDED STATE
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100/50 overflow-hidden transition-all duration-300">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="text-lg font-black text-slate-900">Platform Commission & Payout</h3>
+                <p className="text-xs text-slate-500 mt-1">Configure your commission rate and payout frequency</p>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Platform Commission */}
+                  <div>
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2">
+                      Platform Commission (%) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.commission !== undefined ? formData.commission : 15}
+                        onChange={e => updateForm('commission', parseFloat(e.target.value) || 0)}
+                        placeholder="15"
+                        className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 font-bold bg-white"
+                      />
+                      <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Standard platform fee applied per booking</p>
+                  </div>
+
+                  {/* Payout Cycle */}
+                  <div>
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2">
+                      Payout Cycle <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.payoutCycle || 'Weekly'}
+                      onChange={e => updateForm('payoutCycle', e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
+                    >
+                      <option value="Weekly">Weekly (Every Wednesday)</option>
+                      <option value="15 days">15 days (1st & 16th)</option>
+                      <option value="Monthly">Monthly (First week)</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">Frequency of earnings remittance to your account</p>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          ) : (
+            // COLLAPSED STATE
+            <button
+              type="button"
+              onClick={() => toggleSection(4)}
+              className="w-full text-left bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group animate-fade-in"
+            >
+              <div>
+                <h3 className="font-bold text-slate-800 group-hover:text-slate-900 transition-colors">Platform Commission & Payout</h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">Configure your commission rate and payout frequency</p>
+              </div>
+              <ChevronDown className="text-slate-400 group-hover:text-slate-600 transition-colors" size={18} />
+            </button>
+          )}
         </div>
       </div>
 

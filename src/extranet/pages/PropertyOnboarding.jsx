@@ -393,11 +393,16 @@ const PropertyOnboarding = () => {
       }
     } else {
       try {
-        await fetch(`${API_URL}/hotels/${currentId}`, {
+        const res = await fetch(`${API_URL}/hotels/${currentId}`, {
           method: 'PATCH',
           headers: getAuthHeaders(),
           body: JSON.stringify(payload)
         });
+        if (res.status === 404) {
+          localStorage.removeItem('currentHotelId');
+          addToast('Saved property draft was not found. Please click next to create a new draft.', 'warning');
+          return false;
+        }
       } catch (err) {
         console.error('Failed to sync property draft:', err);
       }
