@@ -341,13 +341,12 @@ const PropertyOnboarding = () => {
         window.scrollTo(0, 0);
         return;
       }
-      if (step === 2) {
-        const success = await saveDraftIfNeeded();
-        if (!success) {
-          setCurrentStep(2);
-          window.scrollTo(0, 0);
-          return;
-        }
+      
+      const success = await syncDraftToBackend();
+      if (!success) {
+        setCurrentStep(step);
+        window.scrollTo(0, 0);
+        return;
       }
     }
 
@@ -355,21 +354,30 @@ const PropertyOnboarding = () => {
     window.scrollTo(0, 0);
   };
 
-  const saveDraftIfNeeded = async () => {
+  const syncDraftToBackend = async () => {
     const currentId = effectiveId || localStorage.getItem('currentHotelId');
+    
+    // Only send contact info if they are verified
+    const finalEmail = formData.isEmailVerified ? (formData.guestEmail || formData.receptionEmail) : formData.receptionEmail;
+    const finalPhone = formData.isMobileVerified ? (formData.guestMobile || formData.receptionPhone) : formData.receptionPhone;
+
+    const payload = {
+      name: formData.name,
+      propertyType: formData.type || 'Hotel',
+      city: formData.city || 'Default City',
+      address: formData.address || 'Default Address',
+      description: formData.description || '',
+      receptionPhone: finalPhone || undefined,
+      receptionEmail: finalEmail || undefined,
+      managerName: formData.managerName || undefined,
+      managerPhone: formData.managerPhone || undefined,
+      managerEmail: formData.managerEmail || undefined,
+      channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
+    };
+
     if (!currentId) {
-      if (!formData.name) {
-        addToast("Please specify a property name on Step 1 before proceeding.", "warning");
-        return false;
-      }
+      if (!formData.name) return true; // Wait until they have a name
       try {
-        const payload = {
-          name: formData.name,
-          propertyType: formData.type || 'Hotel',
-          city: formData.city || 'Default City',
-          address: formData.address || 'Default Address',
-          description: formData.description || ''
-        };
         const res = await fetch(`${API_URL}/hotels`, {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -378,11 +386,20 @@ const PropertyOnboarding = () => {
         const resJson = await res.json();
         if (res.ok && resJson.data && resJson.data.id) {
           localStorage.setItem('currentHotelId', resJson.data.id);
-          // Set in form data directly using setFormData since we are inside validation context
           setFormData(prev => ({ ...prev, id: resJson.data.id }));
         }
       } catch (err) {
         console.error('Failed to auto-save property draft:', err);
+      }
+    } else {
+      try {
+        await fetch(`${API_URL}/hotels/${currentId}`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error('Failed to sync property draft:', err);
       }
     }
     return true;
@@ -396,10 +413,10 @@ const PropertyOnboarding = () => {
         addToast(errorMsg, 'warning');
         return;
       }
-      if (currentStep === 2) {
-        const success = await saveDraftIfNeeded();
-        if (!success) return;
-      }
+      
+      // Always sync to backend on step advance to prevent data loss across devices
+      await syncDraftToBackend();
+      
       setCurrentStep(prev => prev + 1);
       window.scrollTo(0, 0);
       return;

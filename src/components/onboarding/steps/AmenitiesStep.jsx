@@ -554,6 +554,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
                 );
               })}
             </div>
+            )}
           </div>
         </div>
       </div>
