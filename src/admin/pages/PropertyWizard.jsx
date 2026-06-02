@@ -206,10 +206,11 @@ const PropertyWizard = () => {
           rating: String(hotel.rating || '3'),
           
           country: hotel.country || 'India',
-          state: hotel.state || '',
+          state: hotel.state || hotel.integrationSettings?.addressDetails?.state || '',
           city: hotel.city || '',
-          area: hotel.area || '',
-          address: hotel.location || '',
+          area: hotel.area || hotel.integrationSettings?.addressDetails?.area || '',
+          address: hotel.addressLine || hotel.integrationSettings?.addressDetails?.address || hotel.location || '',
+          pincode: hotel.pincode || hotel.integrationSettings?.addressDetails?.pincode || '',
           latitude: hotel.latitude || '',
           longitude: hotel.longitude || '',
           
@@ -410,10 +411,12 @@ const PropertyWizard = () => {
         name: formData.name,
         propertyType: formData.type,
         address: formData.address,
-        location: formData.address, // Mapping to backend
+        location: formData.address,
         city: formData.city,
         state: formData.state,
         country: formData.country,
+        area: formData.area,
+        pincode: formData.pincode,
         description: formData.description || '',
         latitude: formData.latitude,
         longitude: formData.longitude,
@@ -452,8 +455,8 @@ const PropertyWizard = () => {
       };
 
       const draftId = localStorage.getItem('currentHotelId');
-      const targetHotelId = id || draftId;
-      const usePatch = isEditing || Boolean(draftId);
+      const targetHotelId = id || formData.id || draftId;
+      const usePatch = isEditing || Boolean(targetHotelId);
 
       const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
       const method = usePatch ? 'PATCH' : 'POST';

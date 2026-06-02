@@ -119,7 +119,7 @@ const PropertyWizardLayout = ({
             className="bg-slate-900 hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 hover:shadow-blue-600/30 active:scale-95"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            {currentStep === STEPS.length ? 'Submit Property' : 'Next Step'}
+            {currentStep === STEPS.length ? (isEditing ? 'Save Property Info' : 'Submit Property') : 'Next Step'}
           </button>
         </div>
       </div>

@@ -14,6 +14,8 @@ const hotelSchema = z.object({
   city: z.string().min(2, 'City is required'),
   state: z.string().optional(),
   country: z.string().optional(),
+  area: z.string().optional(),
+  pincode: z.string().optional(),
   propertyType: z.string().optional(),
   rating: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().min(0).max(5).optional()),
   description: z.string().optional().default(''),
@@ -67,7 +69,8 @@ const normalizeHotelPayload = (data) => {
     media, images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
     bankDetail, commissionRate, status, channelProvider,
-    propertyType, rating, legalName, pan, gstin
+    propertyType, rating, legalName, pan, gstin,
+    state, country, area, pincode
   } = data;
   
   // 1. Consistent location derived from address and city
@@ -107,12 +110,21 @@ const normalizeHotelPayload = (data) => {
   };
   Object.keys(_contactInfo).forEach(key => _contactInfo[key] === undefined && delete _contactInfo[key]);
 
+  // Address breakdown for edit property
+  const _addressDetails = {};
+  if (address) _addressDetails.address = address;
+  if (area) _addressDetails.area = area;
+  if (state) _addressDetails.state = state;
+  if (pincode) _addressDetails.pincode = pincode;
+  if (country) _addressDetails.country = country;
+
   return {
     prismaData,
     _bankDetail: bankDetail,
     _commissionRate: commissionRate,
     _media: media,
-    _contactInfo
+    _contactInfo,
+    _addressDetails
   };
 };
 
@@ -130,7 +142,7 @@ export const createHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails } = normalized;
 
   // Check for existing draft with same name — return it instead of blocking
   const existing = await prisma.hotel.findFirst({
@@ -141,16 +153,21 @@ export const createHotel = asyncHandler(async (req, res) => {
     }
   });
   
+  // Build integrationSettings with contactInfo and addressDetails
+  const buildSettings = (base = {}) => {
+    const settings = typeof base === 'object' && base ? { ...base } : {};
+    if (Object.keys(_contactInfo).length > 0) settings.contactInfo = { ...(settings.contactInfo || {}), ..._contactInfo };
+    if (Object.keys(_addressDetails).length > 0) settings.addressDetails = { ...(settings.addressDetails || {}), ..._addressDetails };
+    return settings;
+  };
+
   let hotel;
   if (existing) {
-    // Update the existing draft/property instead of failing
     hotel = await prisma.hotel.update({
       where: { id: existing.id },
       data: {
         ...prismaData,
-        integrationSettings: Object.keys(_contactInfo).length > 0 
-          ? { ...(typeof existing.integrationSettings === 'object' ? existing.integrationSettings : {}), contactInfo: _contactInfo } 
-          : existing.integrationSettings
+        integrationSettings: buildSettings(existing.integrationSettings)
       }
     });
   } else {
@@ -159,7 +176,7 @@ export const createHotel = asyncHandler(async (req, res) => {
         ...prismaData,
         ownerId: req.user.id,
         status: prismaData.status || 'PENDING',
-        integrationSettings: Object.keys(_contactInfo).length > 0 ? { contactInfo: _contactInfo } : {}
+        integrationSettings: buildSettings()
       }
     });
   }
@@ -234,7 +251,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails } = normalized;
 
   if (prismaData.status === 'ACTIVE' && existingHotel.status !== 'ACTIVE') {
     const agreement = await prisma.agreement.findUnique({ where: { hotelId: id } });
@@ -243,17 +260,19 @@ export const updateHotel = asyncHandler(async (req, res) => {
     }
   }
 
-  // Safely merge new contact info into integrationSettings without overwriting everything
+  // Safely merge new contact info and address details into integrationSettings
   let newSettings = undefined;
-  if (_contactInfo && Object.keys(_contactInfo).length > 0) {
+  const hasContact = _contactInfo && Object.keys(_contactInfo).length > 0;
+  const hasAddress = _addressDetails && Object.keys(_addressDetails).length > 0;
+  if (hasContact || hasAddress) {
     const existingSettings = existingHotel.integrationSettings && typeof existingHotel.integrationSettings === 'object' ? existingHotel.integrationSettings : {};
-    newSettings = {
-      ...existingSettings,
-      contactInfo: {
-        ...(existingSettings.contactInfo || {}),
-        ..._contactInfo
-      }
-    };
+    newSettings = { ...existingSettings };
+    if (hasContact) {
+      newSettings.contactInfo = { ...(existingSettings.contactInfo || {}), ..._contactInfo };
+    }
+    if (hasAddress) {
+      newSettings.addressDetails = { ...(existingSettings.addressDetails || {}), ..._addressDetails };
+    }
   }
 
   const hotel = await prisma.hotel.update({
@@ -470,9 +489,10 @@ export const getHotelById = asyncHandler(async (req, res) => {
 
   // Flatten contactInfo from integrationSettings into top-level response
   // so the frontend can always read receptionPhone, managerName, etc. directly
-  const contactInfo = (hotel.integrationSettings && typeof hotel.integrationSettings === 'object')
-    ? (hotel.integrationSettings.contactInfo || {})
-    : {};
+  const integSettings = (hotel.integrationSettings && typeof hotel.integrationSettings === 'object')
+    ? hotel.integrationSettings : {};
+  const contactInfo = integSettings.contactInfo || {};
+  const addressDetails = integSettings.addressDetails || {};
 
   const data = {
     ...hotel,
@@ -483,6 +503,12 @@ export const getHotelById = asyncHandler(async (req, res) => {
     managerPhone: contactInfo.managerPhone || null,
     managerEmail: contactInfo.managerEmail || null,
     guestLandline: contactInfo.guestLandline || null,
+    // Flatten address details to top-level for frontend consumption
+    addressLine: addressDetails.address || null,
+    area: addressDetails.area || null,
+    state: addressDetails.state || null,
+    pincode: addressDetails.pincode || null,
+    country: addressDetails.country || null,
     agreement,
     bankDetail,
     viewsToday,
