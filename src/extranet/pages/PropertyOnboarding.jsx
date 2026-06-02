@@ -226,6 +226,7 @@ const PropertyOnboarding = () => {
 
         setFormData(prev => ({
           ...prev,
+          id: hotel.id,
           name: hotel.name || '',
           type: hotel.propertyType || 'Hotel',
           description: hotel.description || '',
