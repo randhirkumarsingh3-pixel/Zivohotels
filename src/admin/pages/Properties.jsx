@@ -300,7 +300,7 @@ const DeleteConfirmModal = ({ hotel, onClose, onDeleted }) => {
         </div>
         <h3 className="text-lg font-bold text-gray-900 mb-1">Delete Property?</h3>
         <p className="text-sm text-gray-500 mb-2">
-          <strong>{hotel.name}</strong> will be soft-deleted and hidden from the platform. This action can be reversed by an admin.
+          <strong>{hotel.name}</strong> will be <span className="text-red-600 font-semibold">permanently deleted</span> from the platform, including all rooms, bookings, and related data. This action cannot be undone.
         </p>
         {apiError && <p className="text-red-500 text-xs mb-3">{apiError}</p>}
         <div className="flex gap-3 justify-center mt-6">

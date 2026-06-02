@@ -309,16 +309,55 @@ export const deleteHotel = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
-  await prisma.hotel.update({
-    where: { id },
-    data: { isDeleted: true, status: 'INACTIVE' }
+  // Permanent hard delete for ADMIN — cascade delete all related records
+  await prisma.$transaction(async (tx) => {
+    // Get all room type IDs for this hotel
+    const roomTypes = await tx.roomType.findMany({ where: { hotelId: id }, select: { id: true } });
+    const roomTypeIds = roomTypes.map(rt => rt.id);
+
+    // Delete deepest children first, then work up
+    if (roomTypeIds.length > 0) {
+      await tx.occupancyPricing.deleteMany({ where: { ratePlan: { roomTypeId: { in: roomTypeIds } } } });
+      await tx.ratePlan.deleteMany({ where: { roomTypeId: { in: roomTypeIds } } });
+      await tx.roomTypeImage.deleteMany({ where: { roomTypeId: { in: roomTypeIds } } });
+      await tx.roomType.deleteMany({ where: { hotelId: id } });
+    }
+
+    // Delete hotel-level related records
+    await tx.hotelImage.deleteMany({ where: { hotelId: id } });
+    await tx.hotelView.deleteMany({ where: { hotelId: id } });
+    await tx.agreement.deleteMany({ where: { hotelId: id } });
+    await tx.bankDetail.deleteMany({ where: { hotelId: id } });
+    await tx.cancellationPolicy.deleteMany({ where: { hotelId: id } });
+    await tx.review.deleteMany({ where: { hotelId: id } });
+    await tx.channelMapping.deleteMany({ where: { hotelId: id } });
+    await tx.propertyAgreement.deleteMany({ where: { hotelId: id } });
+    await tx.propertyAudit.deleteMany({ where: { hotelId: id } });
+    await tx.propertyTask.deleteMany({ where: { hotelId: id } });
+    await tx.kYCRecord.deleteMany({ where: { hotelId: id } });
+    await tx.hotelPolicy.deleteMany({ where: { hotelId: id } });
+    await tx.inventory.deleteMany({ where: { hotelId: id } });
+
+    // Delete bookings and their children
+    const bookings = await tx.booking.findMany({ where: { hotelId: id }, select: { id: true } });
+    const bookingIds = bookings.map(b => b.id);
+    if (bookingIds.length > 0) {
+      await tx.refund.deleteMany({ where: { bookingId: { in: bookingIds } } });
+      await tx.bookingTimelineEvent.deleteMany({ where: { bookingId: { in: bookingIds } } });
+      await tx.bookingIntelligence.deleteMany({ where: { bookingId: { in: bookingIds } } });
+      await tx.invoice.deleteMany({ where: { bookingId: { in: bookingIds } } });
+      await tx.booking.deleteMany({ where: { hotelId: id } });
+    }
+
+    // Finally delete the hotel itself
+    await tx.hotel.delete({ where: { id } });
   });
 
   await prisma.auditLog.create({
-    data: { action: 'DELETE_HOTEL', entityType: 'HOTEL', entityId: id, userId: req.user.id, requestId: req.id }
+    data: { action: 'HARD_DELETE_HOTEL', entityType: 'HOTEL', entityId: id, userId: req.user.id, requestId: req.id }
   });
 
-  res.status(200).json({ success: true, message: 'Property deleted successfully', requestId: req.id });
+  res.status(200).json({ success: true, message: 'Property permanently deleted', requestId: req.id });
 });
 
 export const getAllHotels = asyncHandler(async (req, res) => {
