@@ -33,6 +33,7 @@ const hotelSchema = z.object({
   managerName: z.string().optional(),
   managerPhone: z.string().optional(),
   managerEmail: z.string().optional(),
+  guestLandline: z.string().optional(),
   // Step 4: Commercials
   bankDetail: z.object({
     accountName: z.string(),
@@ -59,7 +60,7 @@ const normalizeHotelPayload = (data) => {
     name, address, location, city, description, latitude, longitude,
     amenities, policies, checkInTime, checkOutTime,
     media, images,
-    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail,
+    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
     bankDetail, commissionRate, status, channelProvider
   } = data;
   
@@ -88,7 +89,7 @@ const normalizeHotelPayload = (data) => {
   Object.keys(prismaData).forEach(key => prismaData[key] === undefined && delete prismaData[key]);
   
   const _contactInfo = {
-    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail
+    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline
   };
   Object.keys(_contactInfo).forEach(key => _contactInfo[key] === undefined && delete _contactInfo[key]);
 
@@ -447,7 +448,26 @@ export const getHotelById = asyncHandler(async (req, res) => {
     prisma.booking.count({ where: { hotelId: id, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: today } } })
   ]);
 
-  const data = { ...hotel, agreement, bankDetail, viewsToday, bookingsToday };
+  // Flatten contactInfo from integrationSettings into top-level response
+  // so the frontend can always read receptionPhone, managerName, etc. directly
+  const contactInfo = (hotel.integrationSettings && typeof hotel.integrationSettings === 'object')
+    ? (hotel.integrationSettings.contactInfo || {})
+    : {};
+
+  const data = {
+    ...hotel,
+    // Flatten contact fields to top-level for frontend consumption
+    receptionPhone: contactInfo.receptionPhone || null,
+    receptionEmail: contactInfo.receptionEmail || null,
+    managerName: contactInfo.managerName || null,
+    managerPhone: contactInfo.managerPhone || null,
+    managerEmail: contactInfo.managerEmail || null,
+    guestLandline: contactInfo.guestLandline || null,
+    agreement,
+    bankDetail,
+    viewsToday,
+    bookingsToday
+  };
 
   res.status(200).json({ success: true, data, requestId: req.id });
 });
