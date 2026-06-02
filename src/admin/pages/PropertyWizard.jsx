@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
 
 import PropertyWizardLayout from '../../components/onboarding/PropertyWizardLayout';
@@ -105,8 +105,11 @@ const parseBackendRoomTypes = (roomTypes) => {
 
 const PropertyWizard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEditing = Boolean(id);
+
+  const [hasDraftLoaded, setHasDraftLoaded] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,22 +151,40 @@ const PropertyWizard = () => {
     if (isEditing) {
       fetchProperty();
     } else {
-      const saved = localStorage.getItem('zivo_onboarding_draft_admin');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setFormData(prev => ({ ...prev, ...parsed }));
-          
-          const savedStep = localStorage.getItem('zivo_onboarding_step_admin');
-          if (savedStep) {
-            setCurrentStep(parseInt(savedStep));
+      if (location.state?.resetDraft) {
+        localStorage.removeItem('zivo_onboarding_draft_admin');
+        localStorage.removeItem('zivo_onboarding_step_admin');
+        localStorage.removeItem('currentHotelId');
+        // Clear state to prevent loop on reload
+        navigate(location.pathname, { replace: true, state: {} });
+      } else {
+        const saved = localStorage.getItem('zivo_onboarding_draft_admin');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setFormData(prev => ({ ...prev, ...parsed }));
+            setHasDraftLoaded(true);
+            
+            const savedStep = localStorage.getItem('zivo_onboarding_step_admin');
+            if (savedStep) {
+              setCurrentStep(parseInt(savedStep));
+            }
+          } catch (e) {
+            console.error("Failed to restore onboarding draft:", e);
           }
-        } catch (e) {
-          console.error("Failed to restore onboarding draft:", e);
         }
       }
     }
-  }, [id]);
+  }, [id, location.state]);
+
+  const handleResetDraft = () => {
+    if (window.confirm("Are you sure you want to clear your current draft and start fresh? All unsaved progress will be lost.")) {
+      localStorage.removeItem('zivo_onboarding_draft_admin');
+      localStorage.removeItem('zivo_onboarding_step_admin');
+      localStorage.removeItem('currentHotelId');
+      window.location.reload();
+    }
+  };
 
   // Auto-save form progress to localStorage in real time (except when editing active property)
   useEffect(() => {
@@ -641,6 +662,14 @@ const PropertyWizard = () => {
         isSubmitting={isSubmitting}
         isEditing={isEditing}
       >
+        {!isEditing && hasDraftLoaded && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl mb-6 flex justify-between items-center">
+            <p className="text-sm">You are continuing a previously saved draft.</p>
+            <button type="button" onClick={handleResetDraft} className="text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-100/50 hover:bg-amber-200/50 px-3 py-1.5 rounded-lg transition-colors">
+              Start Fresh
+            </button>
+          </div>
+        )}
         {renderStepContent()}
       </PropertyWizardLayout>
 

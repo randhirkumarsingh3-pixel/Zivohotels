@@ -16,10 +16,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const NavItem = ({ name, path, icon, exact }) => (
+const NavItem = ({ name, path, icon, exact, state }) => (
   <li>
     <NavLink
       to={path}
+      state={state}
       end={exact}
       className={({ isActive }) =>
         `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
@@ -64,7 +65,7 @@ const ExtranetSidebar = () => {
             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Management</span>
           </div>
           <NavItem name="Property Info" path="/extranet/property" icon={<Building2 size={18} />} />
-          <NavItem name="Add New Property" path="/extranet/onboarding" icon={<Plus size={18} />} />
+          <NavItem name="Add New Property" path="/extranet/onboarding" state={{ resetDraft: true }} icon={<Plus size={18} />} />
           <NavItem name="Rooms & Rate Plans" path="/extranet/rooms" icon={<BedDouble size={18} />} />
           <NavItem name="Inventory Calendar" path="/extranet/inventory" icon={<CalendarDays size={18} />} />
           <NavItem name="Dynamic Pricing" path="/extranet/pricing" icon={<IndianRupee size={18} />} />
