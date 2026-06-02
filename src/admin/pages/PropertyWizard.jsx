@@ -422,11 +422,12 @@ const PropertyWizard = () => {
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
         
-        receptionPhone: formData.receptionPhone,
-        receptionEmail: formData.receptionEmail,
+        receptionPhone: formData.guestMobile || formData.receptionPhone,
+        receptionEmail: formData.guestEmail || formData.receptionEmail,
         managerName: formData.managerName,
         managerPhone: formData.managerPhone,
         managerEmail: formData.managerEmail,
+        channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
         
         legalName: formData.legalName,
         pan: formData.pan,

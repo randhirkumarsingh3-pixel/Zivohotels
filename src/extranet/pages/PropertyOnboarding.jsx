@@ -372,22 +372,27 @@ const PropertyOnboarding = () => {
   const syncDraftToBackend = async () => {
     const currentId = effectiveId || localStorage.getItem('currentHotelId');
     
-    // Only send contact info if they are verified
-    const finalEmail = formData.isEmailVerified ? (formData.guestEmail || formData.receptionEmail) : formData.receptionEmail;
-    const finalPhone = formData.isMobileVerified ? (formData.guestMobile || formData.receptionPhone) : formData.receptionPhone;
+    const finalEmail = formData.guestEmail || formData.receptionEmail;
+    const finalPhone = formData.guestMobile || formData.receptionPhone;
 
     const payload = {
       name: formData.name,
       propertyType: formData.type || 'Hotel',
       city: formData.city || 'Default City',
       address: formData.address || 'Default Address',
+      location: formData.address || 'Default Address',
       description: formData.description || '',
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+      rating: formData.rating,
+      
       receptionPhone: finalPhone || undefined,
       receptionEmail: finalEmail || undefined,
       managerName: formData.managerName || undefined,
       managerPhone: formData.managerPhone || undefined,
       managerEmail: formData.managerEmail || undefined,
       channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
+      
       status: 'DRAFT',
     };
 
