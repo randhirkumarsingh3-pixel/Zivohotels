@@ -13,6 +13,9 @@ const hotelSchema = z.object({
   location: z.string().optional(),
   city: z.string().min(2, 'City is required'),
   state: z.string().optional(),
+  country: z.string().optional(),
+  propertyType: z.string().optional(),
+  rating: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().min(0).max(5).optional()),
   description: z.string().optional().default(''),
   latitude: z.preprocess((val) => (val === '' || val === null ? undefined : parseFloat(val)), z.number().min(-90).max(90).optional()),
   longitude: z.preprocess((val) => (val === '' || val === null ? undefined : parseFloat(val)), z.number().min(-180).max(180).optional()),
@@ -27,14 +30,14 @@ const hotelSchema = z.object({
   policies: z.array(z.string()).optional().default([]),
   checkInTime: z.string().optional().default('14:00'),
   checkOutTime: z.string().optional().default('11:00'),
-  // Step 3: Contact (Optional for now to prevent breaking changes)
+  // Step 3: Contact
   receptionPhone: z.string().optional(),
   receptionEmail: z.string().optional(),
   managerName: z.string().optional(),
   managerPhone: z.string().optional(),
   managerEmail: z.string().optional(),
   guestLandline: z.string().optional(),
-  // Step 4: Commercials
+  // Step 4: Commercials & Legal
   bankDetail: z.object({
     accountName: z.string(),
     bankName: z.string(),
@@ -44,11 +47,13 @@ const hotelSchema = z.object({
   }).optional(),
   commissionRate: z.number().optional(),
   channelProvider: z.string().optional(),
+  legalName: z.string().optional(),
+  pan: z.string().optional(),
+  gstin: z.string().optional(),
+  status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'INACTIVE', 'REJECTED']).optional(),
 });
 
-const hotelUpdateSchema = hotelSchema.partial().extend({
-  status: z.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'REJECTED']).optional()
-});
+const hotelUpdateSchema = hotelSchema.partial();
 
 // --- HELPERS ---
 
@@ -61,7 +66,8 @@ const normalizeHotelPayload = (data) => {
     amenities, policies, checkInTime, checkOutTime,
     media, images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
-    bankDetail, commissionRate, status, channelProvider
+    bankDetail, commissionRate, status, channelProvider,
+    propertyType, rating, legalName, pan, gstin
   } = data;
   
   // 1. Consistent location derived from address and city
@@ -78,8 +84,16 @@ const normalizeHotelPayload = (data) => {
     policies,
     checkInTime,
     checkOutTime,
-    channelProvider
+    channelProvider,
+    legalName,
+    pan,
+    gstin,
   };
+
+  // Map propertyType to Prisma's 'type' field
+  if (propertyType) prismaData.type = propertyType;
+  // Map rating
+  if (rating !== undefined && rating !== null) prismaData.rating = Number(rating);
   
   if (status) {
     prismaData.status = status;
@@ -118,7 +132,7 @@ export const createHotel = asyncHandler(async (req, res) => {
   const normalized = normalizeHotelPayload(validation.data);
   const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo } = normalized;
 
-  // Soft Delete Collision Prevention
+  // Check for existing draft with same name — return it instead of blocking
   const existing = await prisma.hotel.findFirst({
     where: { 
       name: prismaData.name, 
@@ -126,22 +140,29 @@ export const createHotel = asyncHandler(async (req, res) => {
       isDeleted: false 
     }
   });
+  
+  let hotel;
   if (existing) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'You already have an active property with this name', 
-      requestId: req.id 
+    // Update the existing draft/property instead of failing
+    hotel = await prisma.hotel.update({
+      where: { id: existing.id },
+      data: {
+        ...prismaData,
+        integrationSettings: Object.keys(_contactInfo).length > 0 
+          ? { ...(typeof existing.integrationSettings === 'object' ? existing.integrationSettings : {}), contactInfo: _contactInfo } 
+          : existing.integrationSettings
+      }
+    });
+  } else {
+    hotel = await prisma.hotel.create({
+      data: { 
+        ...prismaData,
+        ownerId: req.user.id,
+        status: prismaData.status || 'PENDING',
+        integrationSettings: Object.keys(_contactInfo).length > 0 ? { contactInfo: _contactInfo } : {}
+      }
     });
   }
-
-  const hotel = await prisma.hotel.create({
-    data: { 
-      ...prismaData,
-      ownerId: req.user.id,
-      status: 'PENDING',
-      integrationSettings: Object.keys(_contactInfo).length > 0 ? { contactInfo: _contactInfo } : {}
-    }
-  });
 
   // Handle manual creation of agreement and bank detail to avoid client-sync issues
   if (_commissionRate) {
