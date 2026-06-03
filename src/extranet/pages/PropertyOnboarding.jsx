@@ -551,29 +551,32 @@ const PropertyOnboarding = () => {
       const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
       const method = usePatch ? 'PATCH' : 'POST';
 
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
 
+      let wasDraftDeleted = false;
       if (response.status === 404 && usePatch) {
-        localStorage.removeItem('currentHotelId');
-        addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
-        setTimeout(() => {
-          if (urlHotelId) {
-            navigate('/extranet/onboarding');
-          } else {
-            window.location.reload();
-          }
-        }, 1500);
-        return;
+        if (isEditing) {
+          addToast('Property was not found. It may have been deleted.', 'error');
+          navigate('/extranet');
+          return;
+        } else {
+          localStorage.removeItem('currentHotelId');
+          wasDraftDeleted = true;
+          response = await fetch(`${API_URL}/hotels`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+          });
+        }
       }
 
       const data = await response.json();
 
       if (!response.ok) {
-
         if (data.errors && data.errors.fieldErrors) {
           const fieldErrors = data.errors.fieldErrors;
           const firstField = Object.keys(fieldErrors)[0];
@@ -585,22 +588,24 @@ const PropertyOnboarding = () => {
 
       const targetHotelIdForRoom = effectiveId || localStorage.getItem('currentHotelId');
       const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId'));
-      const hotelId = usePatchForRoom ? targetHotelIdForRoom : data.data.id;
+      const hotelId = usePatchForRoom && !wasDraftDeleted ? targetHotelIdForRoom : data.data.id;
 
       // 1. Delete removed rooms
-      const currentRoomIds = new Set(formData.rooms.map(r => r.id).filter(id => id && id.includes('-')));
-      const roomsToDelete = initialRoomIds.filter(id => !currentRoomIds.has(id));
-      for (const roomId of roomsToDelete) {
-        await fetch(`${API_URL}/admin/rooms/${roomId}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders()
-        });
+      if (!wasDraftDeleted) {
+        const currentRoomIds = new Set(formData.rooms.map(r => r.id).filter(id => id && id.includes('-')));
+        const roomsToDelete = initialRoomIds.filter(id => !currentRoomIds.has(id));
+        for (const roomId of roomsToDelete) {
+          await fetch(`${API_URL}/admin/rooms/${roomId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+          });
+        }
       }
 
       // 2. Create/Update remaining rooms and rate plans
       for (const room of formData.rooms) {
         const isUUID = typeof room.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room.id);
-        const isNewRoom = !isUUID;
+        const isNewRoom = !isUUID || wasDraftDeleted;
 
         const roomPayload = {
           name: room.name,
