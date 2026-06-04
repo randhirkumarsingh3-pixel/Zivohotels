@@ -245,9 +245,9 @@ const PropertyWizard = () => {
           managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
           managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
           managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.owner?.name || '',
-          ownerEmail: hotel.owner?.email || '',
-          ownerPhone: hotel.owner?.phone || '',
+          ownerName: hotel.ownerName || '',
+          ownerEmail: hotel.ownerEmail || '',
+          ownerPhone: hotel.ownerPhone || '',
           hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
           channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
           
@@ -457,6 +457,9 @@ const PropertyWizard = () => {
         managerName: formData.managerName,
         managerPhone: formData.managerPhone,
         managerEmail: formData.managerEmail,
+        ownerName: formData.ownerName,
+        ownerEmail: formData.ownerEmail,
+        ownerPhone: formData.ownerPhone,
         guestLandline: formData.guestLandline,
         channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
         
