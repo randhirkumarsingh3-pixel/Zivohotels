@@ -30,7 +30,7 @@ const roomTypeUpdateSchema = roomTypeSchema.partial();
 // --- HELPERS ---
 
 const normalizeRoomPayload = (data) => {
-  const { maxOccupancy, totalRooms, imageIds, primaryImageId, basePrice, mealPlan, ...rest } = data;
+  const { maxOccupancy, totalRooms, _imageIds, _primaryImageId, basePrice, mealPlan, ...rest } = data;
   
   return {
     prismaData: {
@@ -55,7 +55,7 @@ export const createRoomType = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeRoomPayload(validation.data);
-  const { hotelId, code } = normalized.prismaData;
+  const { hotelId, _code } = normalized.prismaData;
 
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
   if (!hotel || hotel.isDeleted) return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });

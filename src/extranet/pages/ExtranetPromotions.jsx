@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  Tag, Plus, Percent, Calendar, Clock, 
-  Zap, TrendingUp, Eye, Copy, Edit3, 
-  Trash2, CheckCircle2, AlertCircle, 
-  ChevronRight, IndianRupee, Users,
-  ArrowRight, Gift, Loader2, X
+  Tag, Plus, Percent, 
+  Zap, Edit3, 
+  Trash2, IndianRupee, Gift, Loader2, X
 } from 'lucide-react';
 import { fetchPromotions, createPromotion } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
@@ -155,7 +153,7 @@ const ExtranetPromotions = () => {
                  </div>
                  <div className="h-px bg-brand-200 my-2" />
                  <p className="text-[10px] text-brand-600 italic leading-relaxed">
-                   "Based on current market demand in your cluster, this discount level is highly competitive."
+                   &quot;Based on current market demand in your cluster, this discount level is highly competitive.&quot;
                  </p>
                </div>
             </div>

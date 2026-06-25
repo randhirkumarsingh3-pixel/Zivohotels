@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Bed, Search, Info, PlusCircle, MinusCircle, HelpCircle, Copy } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Trash2, Bed, Search, PlusCircle, Copy } from 'lucide-react';
 
 const ROOM_TYPES = ["Deluxe", "Standard", "Suite", "Executive", "Family", "Villa", "Studio", "Premium", "Apartment"];
 const ROOM_VIEWS = ["Airport View", "Pool View", "Garden View", "City View", "Ocean View", "Mountain View"];
@@ -512,7 +512,7 @@ const RoomsStep = ({ formData, updateForm }) => {
             {/* Alternative Sleeping Arrangement */}
             <div>
               <h4 className="text-sm font-bold text-slate-800 mb-1.5 border-b pb-1">Alternative Sleeping Arrangement <span className="font-normal text-slate-500 text-xs">(Optional)</span></h4>
-              <p className="text-xs text-slate-500 mb-3">If the standard sleeping arrangement isn't available, the guest will get one of the alternative bed options below</p>
+              <p className="text-xs text-slate-500 mb-3">If the standard sleeping arrangement isn&apos;t available, the guest will get one of the alternative bed options below</p>
               <div className="flex items-center gap-6">
                 <span className="text-sm font-bold text-slate-800">Does this room offer an alternate sleeping arrangement?</span>
                 <div className="flex items-center gap-4">

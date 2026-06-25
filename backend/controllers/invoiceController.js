@@ -67,7 +67,7 @@ export const downloadInvoice = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'PDF file missing on server' });
     }
 
-    res.download(absolutePath, `Invoice-${invoice.invoiceRef.replace(/\\//g, '_')}.pdf`);
+    res.download(absolutePath, `Invoice-${invoice.invoiceRef.replace(/\//g, '_')}.pdf`);
   } catch (error) {
     next(error);
   }

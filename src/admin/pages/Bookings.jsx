@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Search, RefreshCw, Filter, ChevronLeft, ChevronRight,
-  CheckCircle, XCircle, Eye, AlertCircle, Download,
-  CalendarDays, CreditCard, Building2, Clock4, UserCheck,
-  ChevronDown, X
+  Search, RefreshCw, ChevronLeft, ChevronRight,
+  CheckCircle, XCircle, Eye, AlertCircle, Download, Building2, Clock4, UserCheck, X
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';

@@ -1,7 +1,6 @@
 import prisma from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { sendOTPEmail } from './emailService.js';
-import crypto from 'crypto';
 
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
 

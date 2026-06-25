@@ -28,7 +28,7 @@ class EmailOTPProvider {
    * @param {Object} context - { email, credential, ipAddress, userAgent }
    */
   async verify(context) {
-    const { email, credential: otp, ipAddress, userAgent } = context;
+    const { email, credential: otp, ipAddress, _userAgent } = context;
     
     // Core logic
     await verifyOTP(email, otp);

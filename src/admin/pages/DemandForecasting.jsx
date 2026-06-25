@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { 
-  TrendingUp, TrendingDown, Calendar, BarChart3, 
-  Zap, Target, Eye, RefreshCw, ChevronRight,
-  ArrowRight, Info, AlertTriangle, MapPin,
-  Sun, Cloud, CloudRain, Plane
+  TrendingUp, BarChart3, 
+  Zap, Target, RefreshCw,
+  ArrowRight, MapPin,
+  Sun, Cloud, CloudRain
 } from 'lucide-react';
 
 const forecastData = [

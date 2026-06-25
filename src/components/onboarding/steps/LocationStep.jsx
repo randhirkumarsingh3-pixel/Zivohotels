@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Search, Info, Loader2 } from 'lucide-react';
 
 const LocationStep = ({ formData, updateForm }) => {

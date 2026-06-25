@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
-import { format, addDays, isBefore, startOfToday } from 'date-fns';
+import { format, addDays, startOfToday } from 'date-fns';
 import 'react-day-picker/dist/style.css';
 import { track } from '../../utils/analytics';
 

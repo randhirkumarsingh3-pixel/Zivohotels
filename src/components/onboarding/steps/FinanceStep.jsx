@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Landmark, FileText, CheckCircle2, AlertCircle, UploadCloud, 
-  Trash2, FileCheck, Building, HelpCircle, ChevronDown, Check, Loader2
+  Landmark, CheckCircle2, AlertCircle, UploadCloud, 
+  Trash2, FileCheck, HelpCircle, ChevronDown, Check, Loader2
 } from 'lucide-react';
 
 const MAJOR_BANKS = [

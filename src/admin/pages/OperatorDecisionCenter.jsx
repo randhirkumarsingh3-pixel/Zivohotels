@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { 
-  Zap, ShieldAlert, Activity, FlaskConical, 
-  Search, Filter, Clock, ArrowRight,
-  ShieldCheck, AlertTriangle, PlayCircle,
+  Zap, ShieldAlert, Activity, FlaskConical,
   RotateCcw, Pause, Edit3, MessageSquare
 } from 'lucide-react';
 

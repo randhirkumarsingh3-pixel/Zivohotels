@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { 
-  ShieldAlert, AlertTriangle, UserX, CheckCircle, 
-  Search, Filter, ShieldCheck, Activity, Eye,
-  Lock, Unlock, Zap
+  ShieldAlert, AlertTriangle, UserX, 
+  Search, ShieldCheck, Activity, Eye,
+  Lock, Zap
 } from 'lucide-react';
 
 const RiskMeter = ({ score }) => {

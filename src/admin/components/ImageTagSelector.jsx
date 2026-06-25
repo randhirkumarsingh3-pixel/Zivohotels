@@ -1,4 +1,3 @@
-import React from 'react';
 import { Tag, Check } from 'lucide-react';
 
 const IMAGE_TAGS = [

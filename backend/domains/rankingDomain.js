@@ -21,7 +21,7 @@ export const rankingDomain = {
     const commission = hotel.commission || 15; // default OTA commission
     const totalRooms = hotel.totalRooms || 1;
     const availableRooms = hotel.availableRooms || 0;
-    const price = hotel.price || minPrice;
+    const _price = hotel.price || minPrice;
 
     // 2. Normalize inputs to 0-1 range
     const ratingScore = rating / 5;

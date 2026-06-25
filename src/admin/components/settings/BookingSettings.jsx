@@ -71,7 +71,7 @@ const BookingSettings = () => {
             </div>
           </div>
           <h4 className="font-bold text-gray-900 mb-1">Pay at Hotel</h4>
-          <p className="text-xs text-gray-500 mb-4 h-8">Guests pay nothing upfront. Status remains "Tentative".</p>
+          <p className="text-xs text-gray-500 mb-4 h-8">Guests pay nothing upfront. Status remains &quot;Tentative&quot;.</p>
           
           <div className="space-y-3">
             <div>

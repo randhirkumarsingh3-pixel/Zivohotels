@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { 
   BarChart3, TrendingUp, TrendingDown, Eye, 
   Target, MousePointer2, ChevronRight, Info,
@@ -121,7 +120,7 @@ const ExtranetPerformance = () => {
                  </h4>
                  <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100 hover:scale-105 transition-transform cursor-pointer">
-                       <p className="text-xs text-brand-900 font-bold">Add "Breakfast Included" rates</p>
+                       <p className="text-xs text-brand-900 font-bold">Add &quot;Breakfast Included&quot; rates</p>
                        <ChevronRight size={14} className="text-brand-400" />
                     </div>
                     <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100 hover:scale-105 transition-transform cursor-pointer">

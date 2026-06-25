@@ -1,8 +1,6 @@
 import { 
-  Zap, ShieldAlert, Activity, FlaskConical, 
-  RotateCcw, PauseCircle, PlayCircle, Settings,
-  ShieldCheck, AlertTriangle, Database, Cpu,
-  Layers, HardDrive, RefreshCw
+  Zap, ShieldAlert, Activity, FlaskConical, Database, Cpu,
+  Layers, HardDrive, RefreshCw, History
 } from 'lucide-react';
 
 const ControlCard = ({ title, status, active, onToggle, icon: Icon, color }) => (

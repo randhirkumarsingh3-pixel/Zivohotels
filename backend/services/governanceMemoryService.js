@@ -40,7 +40,7 @@ class GovernanceMemoryService {
   /**
    * Tracks the outcome of a decision after a delay (e.g., did system stabilize?)
    */
-  async trackEffectiveness(traceId, metricsAfter) {
+  async trackEffectiveness(traceId, _metricsAfter) {
     // Logic to update the decision log with outcome metrics
     // e.g., "System stabilized in 4 mins", "Refund rate dropped to 5%"
     console.log(`[Memory] Tracking effectiveness for ${traceId}...`);

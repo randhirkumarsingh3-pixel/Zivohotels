@@ -47,7 +47,7 @@ export const dynamicPricingDomain = {
       availableRooms = 999, 
       userSegment = 'STANDARD',
       experimentModifiers = {},
-      pricingRules = {},
+      _pricingRules = {},
       previousPrice = null,
       holidays = [],
       aiPrediction = null      // From Phase 7.5 pricingModelService
@@ -81,7 +81,7 @@ export const dynamicPricingDomain = {
     // 3. Time-based Pricing with Holiday Proximity Decay
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay();
-    const dateStr = dateObj.toISOString().split('T')[0];
+    const _dateStr = dateObj.toISOString().split('T')[0];
     const dateMs = dateObj.getTime();
 
     // Base: weekend uplift

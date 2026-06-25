@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { 
-  Search, Filter, Activity, MousePointer2, 
-  MapPin, Clock, IndianRupee, ChevronRight,
-  ArrowRight, User, Smartphone as Phone
+  Search, Filter, Activity, ChevronRight,
+  ArrowRight, User
 } from 'lucide-react';
 
 const SessionRow = ({ id, user, path, revenue, status, duration }) => (

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Edit2, Ban, Trash2, CheckCircle, Shield } from 'lucide-react';
 
 const AdminsTable = ({ data, onEdit, onStatusChange }) => {

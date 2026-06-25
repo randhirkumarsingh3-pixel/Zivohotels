@@ -28,7 +28,7 @@ class SystemCache {
 
   // --- STATS ---
   increment(key, amount = 1) {
-    if (this.stats.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(this.stats, key)) {
       this.stats[key] += amount;
     }
   }

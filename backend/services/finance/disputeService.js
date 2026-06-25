@@ -54,7 +54,7 @@ export const disputeService = {
   /**
    * Resolves a dispute
    */
-  resolveDispute: async (disputeId, resolution) => {
+  resolveDispute: async (_disputeId, _resolution) => {
     // Logic to either finalize reversal or release the hold
   }
 };

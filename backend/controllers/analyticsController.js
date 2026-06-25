@@ -215,7 +215,7 @@ export const getFunnelAnalytics = asyncHandler(async (req, res) => {
     const validation = analyticsQuerySchema.safeParse(req.query);
     const { days } = validation.success ? validation.data : { days: 30 };
     
-    const scope = getScopeFilter(req); // Need to apply this effectively for funnel if required, for now mostly global Admin
+    const _scope = getScopeFilter(req); // Need to apply this effectively for funnel if required, for now mostly global Admin
     const from = daysAgo(days);
 
     // 1. Total Searches

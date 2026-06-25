@@ -1,5 +1,4 @@
 import prisma from '../../config/db.js';
-import { criticalLogger } from '../../middleware/logger.js';
 
 /**
  * Initializes a new property onboarding session (DRAFT state)

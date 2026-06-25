@@ -240,12 +240,12 @@ const Checkout = () => {
             <CheckCircle2 className="h-12 w-12 text-green-500" />
           </div>
           <h2 className="text-4xl font-black text-gray-900 mb-4">Confirmed!</h2>
-          <p className="text-gray-500 mb-10 leading-relaxed">Your stay at <span className="font-bold text-gray-800">{selectedHotel.name}</span> is secured. A confirmation email has been sent to <span className="font-medium text-brand-600">{form.email}</span>.</p>
+          <p className="text-gray-500 mb-10 leading-relaxed">Your stay at <span className="font-bold text-gray-800">{selectedHotel.name}</span> is secured. A confirmation email has been sent to <span className="font-medium text-brand-700">{form.email}</span>.</p>
           
           <div className="bg-gray-50 p-8 rounded-3xl mb-10 text-left border border-gray-100 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full -mr-16 -mt-16" />
             <p className="text-xs text-gray-400 uppercase font-black tracking-widest mb-2">Booking Reference</p>
-            <p className="text-4xl font-mono font-black text-brand-600">{bookingRef}</p>
+            <p className="text-4xl font-mono font-black text-brand-700">{bookingRef}</p>
           </div>
           
           <button 
@@ -265,7 +265,7 @@ const Checkout = () => {
     <div className="pt-24 pb-20 bg-[#fcfcfd] min-h-screen">
       {loading && (
         <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-          <div className="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <div className="w-16 h-16 border-4 border-brand-700 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-lg font-bold text-gray-900">Processing your secure booking...</p>
           <p className="text-sm text-gray-500">Please do not refresh or close this window.</p>
         </div>
@@ -273,7 +273,7 @@ const Checkout = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10">
-          <div className="flex items-center gap-2 text-brand-600 font-bold text-sm uppercase tracking-widest mb-2">
+          <div className="flex items-center gap-2 text-brand-700 font-bold text-sm uppercase tracking-widest mb-2">
             <Lock size={14} /> Secure Encryption Active
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-gray-900">Review & Payout</h1>
@@ -297,24 +297,24 @@ const Checkout = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-600 transition-colors" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-700 transition-colors" size={18} />
                   <input required type="text" name="firstName" value={form.firstName} onChange={handleForm}
-                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-600 outline-none transition-all font-medium" placeholder="First Name" />
+                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-700 outline-none transition-all font-medium" placeholder="First Name" />
                 </div>
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-600 transition-colors" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-700 transition-colors" size={18} />
                   <input required type="text" name="lastName" value={form.lastName} onChange={handleForm}
-                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-600 outline-none transition-all font-medium" placeholder="Last Name" />
+                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-700 outline-none transition-all font-medium" placeholder="Last Name" />
                 </div>
                 <div className="relative group md:col-span-2">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-600 transition-colors" size={18} />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-700 transition-colors" size={18} />
                   <input required type="email" name="email" value={form.email} onChange={handleForm}
-                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-600 outline-none transition-all font-medium" placeholder="Email Address" />
+                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-700 outline-none transition-all font-medium" placeholder="Email Address" />
                 </div>
                 <div className="relative group md:col-span-2">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-600 transition-colors" size={18} />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-700 transition-colors" size={18} />
                   <input required type="tel" name="phone" value={form.phone} onChange={handleForm}
-                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-600 outline-none transition-all font-medium" placeholder="Phone Number" />
+                    className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-700 outline-none transition-all font-medium" placeholder="Phone Number" />
                 </div>
               </div>
             </section>
@@ -335,10 +335,10 @@ const Checkout = () => {
                   <div 
                     key={opt.id}
                     onClick={() => setPaymentType(opt.id)}
-                    className={`relative cursor-pointer p-6 rounded-2xl border-2 transition-all group ${paymentType === opt.id ? 'border-brand-600 bg-brand-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
+                    className={`relative cursor-pointer p-6 rounded-2xl border-2 transition-all group ${paymentType === opt.id ? 'border-brand-700 bg-brand-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
                   >
                     {opt.tag && <span className="absolute -top-3 right-4 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-full uppercase">{opt.tag}</span>}
-                    <div className={`mb-4 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${paymentType === opt.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    <div className={`mb-4 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${paymentType === opt.id ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-400'}`}>
                       {opt.icon}
                     </div>
                     <p className="font-black text-gray-900 text-sm leading-tight mb-1">{opt.label}</p>
@@ -353,12 +353,12 @@ const Checkout = () => {
               <label className="flex items-start gap-3 cursor-pointer group">
                 <div className="relative mt-1">
                   <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="sr-only" />
-                  <div className={`w-5 h-5 rounded border-2 transition-all flex items-center justify-center ${agreed ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300 group-hover:border-brand-500'}`}>
+                  <div className={`w-5 h-5 rounded border-2 transition-all flex items-center justify-center ${agreed ? 'bg-brand-700 border-brand-700' : 'bg-white border-gray-300 group-hover:border-brand-500'}`}>
                     {agreed && <CheckCircle2 size={12} className="text-white" />}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  I agree to the <span className="text-brand-600 font-bold hover:underline">Terms of Service</span>, <span className="text-brand-600 font-bold hover:underline">Privacy Policy</span>, and <span className="text-brand-600 font-bold hover:underline">Cancellation Rules</span>. I understand that fraudulent bookings will be reported.
+                  I agree to the <span className="text-brand-700 font-bold hover:underline">Terms of Service</span>, <span className="text-brand-700 font-bold hover:underline">Privacy Policy</span>, and <span className="text-brand-700 font-bold hover:underline">Cancellation Rules</span>. I understand that fraudulent bookings will be reported.
                 </p>
               </label>
             </section>
@@ -366,7 +366,7 @@ const Checkout = () => {
             <button 
               onClick={handleCheckout}
               disabled={loading || (countdown && countdown.expired) || fetchingPreview}
-              className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-6 rounded-2xl shadow-xl shadow-brand-500/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xl disabled:opacity-50 disabled:grayscale disabled:transform-none"
+              className="w-full bg-brand-700 hover:bg-brand-800 text-white font-black py-6 rounded-2xl shadow-xl shadow-brand-500/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xl disabled:opacity-50 disabled:grayscale disabled:transform-none"
             >
               {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Confirm Reservation' : `Secure Payment: ₹${payableNow.toLocaleString()}`}
             </button>
@@ -411,7 +411,7 @@ const Checkout = () => {
 
                 <div className="space-y-4 py-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
+                    <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-700">
                       <BedDouble size={16} />
                     </div>
                     <div>
@@ -420,7 +420,7 @@ const Checkout = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
+                    <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-700">
                       <Users size={16} />
                     </div>
                     <p className="text-sm font-bold text-gray-900">{preview?.rooms || searchParams.rooms} Room, {searchParams.guests} Guests</p>
@@ -476,7 +476,7 @@ const Checkout = () => {
                 <div className="pt-6 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Grand Total</span>
-                    <span className="text-3xl font-black text-brand-600 tracking-tighter">₹{total.toLocaleString()}</span>
+                    <span className="text-3xl font-black text-brand-700 tracking-tighter">₹{total.toLocaleString()}</span>
                   </div>
                   {paymentType === 'PARTIAL' && (
                     <div className="mt-4 p-4 bg-brand-900 rounded-2xl text-white">

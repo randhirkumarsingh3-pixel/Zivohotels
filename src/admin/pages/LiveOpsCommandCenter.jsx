@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import { 
-  Zap, Activity, ShieldAlert, IndianRupee, 
-  MapPin, Clock, ArrowUpRight, Search, 
-  Filter, Radio, Loader2, Play, Pause,
+import { Activity, ShieldAlert, Radio, Loader2, Play, Pause,
   ShieldCheck, AlertTriangle, History
 } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';

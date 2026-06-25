@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import MasterSidebar from '../admin/components/master/MasterSidebar';
-import { Bell, Search, Zap, Globe, ShieldAlert } from 'lucide-react';
+import { Bell, Search, Globe } from 'lucide-react';
 import SystemStatePanel from '../admin/components/SystemStatePanel';
 
 const MasterLayout = () => {

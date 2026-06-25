@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Navigation, History, Map as MapIcon, Building, AlertCircle } from 'lucide-react';
 import { track } from '../../utils/analytics';
 
@@ -9,7 +9,7 @@ const searchCache = new Map();
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNext, isMobile }) => {
+const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNext, _isMobile }) => {
   const [query, setQuery] = useState(destination?.label || '');
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -17,7 +17,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
   const [recentSearches, setRecentSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [_focusedIndex, _setFocusedIndex] = useState(-1);
   const wrapperRef = useRef(null);
 
   // Load recent searches and popular cities on mount
@@ -266,7 +266,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
             {/* Results State */}
             {!showEmptyState && !isLoading && hasResults && (
               <ul className="py-2">
-                {suggestions.map((loc, index) => (
+                {suggestions.map((loc, _index) => (
                   <li 
                     key={loc.id || loc.value}
                     onClick={() => handleSelect(loc)}
@@ -288,7 +288,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
             {!showEmptyState && !isLoading && !hasResults && !fetchError && (
               <div className="p-6 text-center text-gray-500">
                 <MapPin className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-medium">No destinations found matching "{query}"</p>
+                <p className="text-sm font-medium">No destinations found matching &quot;{query}&quot;</p>
                 <p className="text-xs mt-1">Try a different city, area, or hotel name.</p>
               </div>
             )}

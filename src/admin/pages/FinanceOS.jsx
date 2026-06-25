@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { 
-  IndianRupee, ClipboardList, Wallet, ArrowRight, 
-  CheckCircle2, Clock, AlertCircle, FileText, Search,
+  CheckCircle2, Search,
   Filter, Download, Lock, Unlock, ShieldAlert,
   BarChart3, RefreshCw
 } from 'lucide-react';

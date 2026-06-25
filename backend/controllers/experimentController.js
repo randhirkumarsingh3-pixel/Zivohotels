@@ -86,8 +86,8 @@ export const getExperimentResults = asyncHandler(async (req, res) => {
   const controlUsers = control.users.size;
   // Apply 30% sampling rate normalization for searches
   const controlSearches = Math.round(control.searches / 0.3);
-  const controlCtr = controlSearches > 0 ? (control.views / controlSearches) : 0;
-  const controlConv = control.views > 0 ? (control.bookings / control.views) : 0;
+  const _controlCtr = controlSearches > 0 ? (control.views / controlSearches) : 0;
+  const _controlConv = control.views > 0 ? (control.bookings / control.views) : 0;
   const controlRpu = controlUsers > 0 ? (control.revenue / controlUsers) : 0;
 
   const results = [];

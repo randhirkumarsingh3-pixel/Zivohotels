@@ -267,7 +267,7 @@ const DeleteConfirmModal = ({ hotel, onClose, onDeleted }) => {
 
       // Try to parse JSON for error messages
       let data = {};
-      try { data = await res.json(); } catch (_) {}
+      try { data = await res.json(); } catch (_) { /* ignore non-JSON bodies */ }
 
       if (res.status === 401) {
         throw new Error('Session expired. Please log in again as Admin.');

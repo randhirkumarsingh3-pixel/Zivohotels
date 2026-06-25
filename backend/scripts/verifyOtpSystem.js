@@ -39,7 +39,7 @@ const runVerification = async () => {
       console.log('[4] Checking Resend Connectivity...');
       const resend = new Resend(process.env.RESEND_API_KEY);
       try {
-        const domains = await resend.domains.list();
+        const _domains = await resend.domains.list();
         console.log('✅ Resend connected successfully');
       } catch (err) {
         console.warn('⚠️ Resend API Connection failed:', err.message);

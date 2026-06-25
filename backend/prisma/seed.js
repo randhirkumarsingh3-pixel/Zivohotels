@@ -121,7 +121,7 @@ async function main() {
       const isPremium = rt.code === 'PRM';
       const basePrice = isPremium ? hotel.price * 1.5 : hotel.price;
       
-      const ratePlan = await prisma.ratePlan.create({
+      const _ratePlan = await prisma.ratePlan.create({
         data: {
           name: "Standard Rate",
           mealPlan: "NONE",

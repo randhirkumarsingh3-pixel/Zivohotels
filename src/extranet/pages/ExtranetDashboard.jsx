@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Users, ShoppingBag, TrendingUp, IndianRupee,
-  Clock, AlertTriangle, ArrowRight, ChevronRight,
-  Star, Calendar, Activity, Zap, CheckCircle2,
-  Bell, Info, Target, LayoutDashboard, Loader2
+import { TrendingUp,
+  Clock, AlertTriangle, ArrowRight, ChevronRight, Activity,
+  Bell, Info, LayoutDashboard, Loader2
 } from 'lucide-react';
 import StickyKPIStrip from '../../components/shared/StickyKPIStrip';
 import { fetchProperty, fetchActivityTimeline, fetchNotifications } from '../../services/extranetApi';

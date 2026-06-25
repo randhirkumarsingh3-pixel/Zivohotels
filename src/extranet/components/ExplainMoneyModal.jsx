@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, IndianRupee, Info, ShieldCheck, Loader2 } from 'lucide-react';
+import { X, Info, ShieldCheck, Loader2 } from 'lucide-react';
 import { fetchSettlementDetails } from '../../services/extranetApi';
 
 const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {

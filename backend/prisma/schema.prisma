@@ -100,6 +100,10 @@ model Hotel {
   channelMappings    ChannelMapping[]
   lead               PropertyLead?
   policyRecords      HotelPolicy[]
+
+  @@index([ownerId])
+  @@index([city])
+  @@index([status])
 }
 
 model RoomType {
@@ -174,6 +178,8 @@ model RatePlan {
   bookings           Booking[]
   occupancyPricing   OccupancyPricing[]
   roomType           RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@index([roomTypeId])
 }
 
 model OccupancyPricing {
@@ -239,6 +245,11 @@ model Booking {
   timelineEvents    BookingTimelineEvent[]
   intelligence      BookingIntelligence?
   notificationSyncs NotificationSyncLog[]
+
+  @@index([hotelId])
+  @@index([userId])
+  @@index([checkIn, checkOut])
+  @@index([status])
 }
 
 model TaxRule {

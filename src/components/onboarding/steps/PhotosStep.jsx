@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UploadCloud, Trash2, Tag, Star, Eye, X, Check, Search, ChevronLeft, ArrowRight, Sparkles, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { UploadCloud, Trash2, Tag, X, Check, Search, ChevronLeft, Sparkles, Plus } from 'lucide-react';
 import { getImageUrl } from '../../../utils/image';
 
 const TAG_OPTIONS = [
@@ -493,7 +493,7 @@ const PhotosStep = ({ formData, updateForm }) => {
               <UploadCloud size={48} className="text-blue-500" />
             </div>
             <p className="text-lg font-bold text-slate-700">Drag & Drop photos here</p>
-            <p className="text-sm text-slate-500 mt-1">Or click 'Upload More' above to get started</p>
+            <p className="text-sm text-slate-500 mt-1">Or click &apos;Upload More&apos; above to get started</p>
           </div>
         )}
       </div>

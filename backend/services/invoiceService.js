@@ -3,7 +3,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import prisma from '../config/db.js';
 import invoiceDomain from '../domains/invoiceDomain.js';
-import bookingRepository from '../repositories/bookingRepository.js';
 
 let browserInstance = null;
 

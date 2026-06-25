@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   Building2, 
   CalendarDays, 
-  IndianRupee, 
   ClipboardList, 
   Users, 
   Network, 

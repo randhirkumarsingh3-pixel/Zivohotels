@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Users, Plus, Minus } from 'lucide-react';
 import { track } from '../../utils/analytics';
 

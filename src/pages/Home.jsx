@@ -72,9 +72,9 @@ const Home = () => {
           <SmartSearchBar isMobile={isMobile} />
           
           <div className="mt-12 flex flex-wrap justify-center gap-4 md:gap-8 text-sm md:text-base font-medium text-white/95 animate-fade-in drop-shadow-md" style={{ animationDelay: '0.4s' }}>
-            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Book in 30 seconds</div>
-            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> No hidden charges</div>
-            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Pay at hotel available</div>
+            <div className="flex items-center bg-gray-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Free Cancellation</div>
+            <div className="flex items-center bg-gray-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Trusted Partners</div>
+            <div className="flex items-center bg-gray-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> 24/7 Support</div>
           </div>
         </div>
       </section>
@@ -87,7 +87,7 @@ const Home = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Popular Destinations</h2>
               <p className="text-gray-500 text-lg">Explore our most booked cities across the country.</p>
             </div>
-            <Link to="/hotels" className="hidden md:flex items-center text-brand-600 font-semibold hover:text-brand-700 transition-colors">
+            <Link to="/hotels" className="hidden md:flex items-center text-brand-700 font-semibold hover:text-brand-800 transition-colors">
               View All Destinations <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </div>
@@ -110,7 +110,7 @@ const Home = () => {
           
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-700"></div>
             </div>
           ) : (
             <div className="space-y-16">
@@ -119,7 +119,7 @@ const Home = () => {
               {recommendations?.recentlyViewed?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-6">
-                    <History className="text-brand-600" size={24} />
+                    <History className="text-brand-700" size={24} />
                     <h2 className="text-2xl font-bold text-gray-900">Recently Viewed</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

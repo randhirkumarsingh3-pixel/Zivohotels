@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signupUser } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, User, ArrowRight, AlertCircle } from 'lucide-react';
 
 const Signup = () => {
@@ -36,7 +35,7 @@ const Signup = () => {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-brand-600 hover:text-brand-500">
+          <Link to="/login" className="font-medium text-brand-700 hover:text-brand-500">
             Sign in instead
           </Link>
         </p>
@@ -109,7 +108,7 @@ const Signup = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-brand-500/30 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-brand-500/30 text-sm font-bold text-white bg-brand-700 hover:bg-brand-800 focus:outline-none transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></span>

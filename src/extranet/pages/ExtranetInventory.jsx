@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { 
-  Calendar, ChevronLeft, ChevronRight, Lock, 
+import { ChevronLeft, ChevronRight, Lock, 
   RefreshCw, Save, Info, Zap
 } from 'lucide-react';
 
@@ -148,7 +147,7 @@ const ExtranetInventory = () => {
             Pricing Intelligence
           </h3>
           <p className="text-sm text-gray-500 leading-relaxed font-medium">
-            Your current rates are <strong className="text-brand-600">5% higher</strong> than properties with similar ratings in your area. Consider a "Last Minute" promotion for the upcoming weekend to boost occupancy.
+            Your current rates are <strong className="text-brand-600">5% higher</strong> than properties with similar ratings in your area. Consider a &quot;Last Minute&quot; promotion for the upcoming weekend to boost occupancy.
           </p>
           <button className="mt-6 px-6 py-2.5 border border-brand-200 rounded-xl text-xs font-black uppercase tracking-widest text-brand-600 hover:bg-brand-600 hover:text-white transition-all">
             Create Promotion

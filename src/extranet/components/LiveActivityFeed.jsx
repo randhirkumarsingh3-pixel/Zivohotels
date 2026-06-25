@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Activity, Clock, Zap, AlertCircle, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { useState } from 'react';
+import { Activity, Zap, ChevronRight, X } from 'lucide-react';
 import { useSocketEvent } from '../../context/SocketContext';
 
 const LiveActivityFeed = ({ hotelId }) => {

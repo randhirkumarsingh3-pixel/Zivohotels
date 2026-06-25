@@ -27,7 +27,7 @@ export const bookingSchema = {
   guestPhone: (v) => {
     if (!v) return 'Guest phone is required';
     // Accepts: +91-9876543210, 9876543210, +919876543210 (10 digits min)
-    const phoneRegex = /^\+?[\d\s\-]{10,15}$/;
+    const phoneRegex = /^\+?[\d\s-]{10,15}$/;
     return phoneRegex.test(v) ? null : 'Invalid phone number (min 10 digits)';
   },
 

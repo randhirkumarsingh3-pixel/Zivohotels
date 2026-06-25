@@ -1,6 +1,6 @@
-import { Activity, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
-const KPIMetric = ({ label, value, delta, deltaType, color = 'gray' }) => {
+const KPIMetric = ({ label, value, delta, deltaType, _color = 'gray' }) => {
   const colorMap = {
     green: 'text-green-600 bg-green-50',
     yellow: 'text-orange-600 bg-orange-50',

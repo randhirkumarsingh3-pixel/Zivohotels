@@ -72,7 +72,7 @@ const TaxSettings = () => {
         <div className="text-sm text-blue-800">
           <span className="font-bold block mb-1">Dynamic Tax Engine Logic</span>
           Taxes are automatically calculated <strong>per night, per room</strong> based on the base price. 
-          If a booking crosses multiple nights with dynamic pricing, the engine evaluates the tax slab for <i>each specific night's tariff</i> to calculate the final <code>taxAmount</code>.
+          If a booking crosses multiple nights with dynamic pricing, the engine evaluates the tax slab for <i>each specific night&apos;s tariff</i> to calculate the final <code>taxAmount</code>.
         </div>
       </div>
 

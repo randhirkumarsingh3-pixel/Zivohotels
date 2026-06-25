@@ -30,11 +30,11 @@ export const fraudService = {
 
     // 2. Scoring
     const riskScore = fraudModel.score(features);
-    const status = fraudModel.evaluate(riskScore);
+    const _status = fraudModel.evaluate(riskScore);
 
     return { 
       riskScore, 
-      reasons, 
+      reasons: [],
       status: riskScore >= 85 ? 'BLOCKED' : (riskScore >= 50 ? 'VERIFICATION_REQUIRED' : 'FLAGGED'),
       isBlocked: riskScore >= 85 
     };

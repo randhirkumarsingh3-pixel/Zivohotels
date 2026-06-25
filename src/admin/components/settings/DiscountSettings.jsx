@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Settings2, Edit2, Trash2, Save, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, Loader2 } from 'lucide-react';
 import DataTable from '../DataTable';
 import { getSystemConfig, updateSystemConfig } from '../../../services/api';
 
@@ -163,7 +163,7 @@ const DiscountSettings = () => {
             <ol className="list-decimal pl-5 text-sm text-blue-800 space-y-2 font-medium">
               <li>Property-Level Specific Override (Highest Priority)</li>
               <li>Manual Coupon Code entered by User</li>
-              <li>User's Loyalty Tier Discount</li>
+              <li>User&apos;s Loyalty Tier Discount</li>
               <li>Global Promotional Rules (Lowest Priority)</li>
             </ol>
           </div>

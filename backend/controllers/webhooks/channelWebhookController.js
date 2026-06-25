@@ -7,7 +7,7 @@ export const channelWebhookController = {
    */
   handleARIUpdate: async (req, res) => {
     try {
-      const { provider } = req.params; // e.g., staah
+      const { _provider } = req.params; // e.g., staah
       const payload = req.body;
 
       // 1. Authenticate (HMAC / API Key)

@@ -1,3 +1,6 @@
+import Icon from './Icons';
+
+/* global Icon */
 // js/components/Navbar.jsx
 const Navbar = () => {
     return (

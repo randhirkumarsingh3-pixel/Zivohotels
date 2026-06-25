@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { fetchProperty } from '../../services/extranetApi';
 
 const ExtranetContext = createContext();

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { 
-  IndianRupee, Download, Search, Filter, 
-  ArrowRight, CheckCircle2, Clock, AlertCircle,
+import { Download, Search, 
+  ArrowRight,
   HelpCircle
 } from 'lucide-react';
 

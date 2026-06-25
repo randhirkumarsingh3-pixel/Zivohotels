@@ -3,7 +3,7 @@
  * In a real environment, this would push to Mixpanel, Amplitude, or Google Analytics.
  */
 export const track = (eventName, properties = {}) => {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.MODE !== 'production') {
     console.log(`[Analytics] Tracked Event: ${eventName}`, properties);
   }
   

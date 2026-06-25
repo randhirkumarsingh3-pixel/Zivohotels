@@ -11,7 +11,7 @@ const AtomicCard = ({
   subtitle, 
   delta, 
   deltaType, // 'up' | 'down' | 'neutral'
-  type = 'KPI', // 'KPI' | 'ALERT' | 'INSIGHT' | 'ACTION'
+  _type = 'KPI', // 'KPI' | 'ALERT' | 'INSIGHT' | 'ACTION'
   icon: Icon,
   color = 'brand',
   onClick,

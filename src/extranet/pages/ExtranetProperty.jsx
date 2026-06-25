@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { 
-  Building2, MapPin, Phone, Mail, Globe, Camera, 
-  Edit3, Save, CheckCircle2, Star, Clock, Shield,
-  Wifi, Car, Coffee, Waves, Dumbbell, Wind,
-  ChevronRight, Upload, Eye, AlertTriangle, Info, Loader2
+  Building2, 
+  Edit3, Save, CheckCircle2, Clock, Shield,
+  Wifi, Car, Coffee, Waves, Dumbbell, Wind, Loader2
 } from 'lucide-react';
 import { fetchProperty, updateProperty } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
@@ -98,7 +97,7 @@ const ExtranetProperty = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Property Information</h1>
-          <p className="text-gray-500 font-medium mt-1">Manage your hotel's profile as displayed on Zivo.</p>
+          <p className="text-gray-500 font-medium mt-1">Manage your hotel&apos;s profile as displayed on Zivo.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-100">

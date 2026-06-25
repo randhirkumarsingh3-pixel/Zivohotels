@@ -8,13 +8,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const IMAGE_TAGS = [
+const _IMAGE_TAGS = [
   "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
   "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
   "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
 ];
 
-const IMAGE_CATEGORIES = ["ROOM", "EXTERIOR", "AMENITIES", "FOOD"];
+const _IMAGE_CATEGORIES = ["ROOM", "EXTERIOR", "AMENITIES", "FOOD"];
 
 // Loosened schema to allow string tags
 const imageSchema = z.object({
@@ -33,7 +33,7 @@ export const uploadHotelImage = asyncHandler(async (req, res) => {
   // Support base64 upload if 'image' field is present
   if (req.body.image && typeof req.body.image === 'string') {
     const base64Data = req.body.image;
-    const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    const matches = base64Data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
     
     if (matches && matches.length === 3) {
       const mimeType = matches[1];

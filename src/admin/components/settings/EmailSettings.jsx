@@ -7,7 +7,7 @@ const EmailSettings = () => {
   const [templatesData, setTemplatesData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [_error, setError] = useState('');
 
   const templates = [
     { id: 'booking_confirmation', name: 'Booking Confirmation' },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Check, IndianRupee, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Check, IndianRupee, AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
 
 const PricingCalendar = ({ roomTypes }) => {

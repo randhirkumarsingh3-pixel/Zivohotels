@@ -1,6 +1,5 @@
 import { rankingService } from '../services/rankingService.js';
 import { analyticsService } from '../services/rms/analyticsService.js';
-import prisma from '../config/db.js';
 
 async function testRMS() {
   console.log('--- Testing Phase 9 Revenue Management System (RMS) ---');

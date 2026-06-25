@@ -1,55 +1,99 @@
 /**
  * errorHandler.js
- * Standardized error handling with Request ID propagation
+ * Global Express error handler.
+ * Enforces the standard API response shape:
+ *   { success, message, code, data, requestId }
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, next) => {  // eslint-disable-line no-unused-vars
   const statusCode = err.statusCode || 500;
-  const status = err.status || 'error';
 
-  // Log error with Request ID for internal monitoring
-  console.error(`[ERROR][${req.id || 'NO_ID'}] ${req.method} ${req.originalUrl}:`, err);
+  // Log with Request ID for traceability
+  console.error(`[ERROR][${req.id || 'NO_ID'}] ${req.method} ${req.originalUrl}:`, err.message);
+  if (process.env.NODE_ENV === 'development') console.error(err.stack);
 
-  // Prisma Duplicate Key
+  // ── Prisma Errors ──────────────────────────────────────────────────────────
   if (err.code === 'P2002') {
     return res.status(400).json({
       success: false,
-      message: 'Duplicate record found. This code or name is already in use.',
-      requestId: req.id
+      message: 'Duplicate record. This value is already in use.',
+      code:    'DUPLICATE_RECORD',
+      data:    null,
+      requestId: req.id,
     });
   }
 
-  // Prisma Foreign Key Failure
   if (err.code === 'P2003') {
     return res.status(400).json({
       success: false,
-      message: 'Resource link failed. Ensure the related ID exists.',
-      requestId: req.id
+      message: 'Related resource not found. Ensure the referenced ID exists.',
+      code:    'FOREIGN_KEY_VIOLATION',
+      data:    null,
+      requestId: req.id,
     });
   }
 
-  // Prisma Record Not Found
   if (err.code === 'P2025') {
     return res.status(404).json({
       success: false,
       message: 'The requested record could not be found.',
-      requestId: req.id
+      code:    'RECORD_NOT_FOUND',
+      data:    null,
+      requestId: req.id,
     });
   }
 
-  // JWT Errors
-  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+  // ── JWT Errors ─────────────────────────────────────────────────────────────
+  if (err.name === 'TokenExpiredError') {
     return res.status(401).json({
       success: false,
-      message: 'Authentication failed. Please log in again.',
-      requestId: req.id
+      message: 'Your session has expired. Please log in again.',
+      code:    'TOKEN_EXPIRED',
+      data:    null,
+      requestId: req.id,
     });
   }
 
-  // Default Error Response
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid authentication token. Please log in again.',
+      code:    'TOKEN_INVALID',
+      data:    null,
+      requestId: req.id,
+    });
+  }
+
+  // ── Zod Validation Errors (if thrown from middleware) ─────────────────────
+  if (err.name === 'ZodError') {
+    return res.status(422).json({
+      success: false,
+      message: 'Validation failed.',
+      code:    'VALIDATION_ERROR',
+      data:    err.errors,
+      requestId: req.id,
+    });
+  }
+
+  // ── Multer File Upload Errors ──────────────────────────────────────────────
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      success: false,
+      message: 'File is too large. Maximum allowed size exceeded.',
+      code:    'FILE_TOO_LARGE',
+      data:    null,
+      requestId: req.id,
+    });
+  }
+
+  // ── Default ───────────────────────────────────────────────────────────────
   res.status(statusCode).json({
     success: false,
-    message: process.env.NODE_ENV === 'production' ? 'An internal server error occurred' : err.message,
+    message: process.env.NODE_ENV === 'production'
+      ? 'An internal server error occurred.'
+      : err.message,
+    code:    err.code || 'INTERNAL_ERROR',
+    data:    null,
     requestId: req.id,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

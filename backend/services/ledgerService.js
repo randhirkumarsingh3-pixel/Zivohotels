@@ -12,7 +12,7 @@ class LedgerService {
    * Posts a new entry to the ledger with immutable hashing.
    */
   async postEntry({ referenceId, referenceType, traceId, account, type, amount, description, periodId }) {
-    return await prisma.$transaction(async (tx) => {
+    const ledgerEntry = await prisma.$transaction(async (tx) => {
       // 1. Fetch the last hash for the account (or global) to maintain chain
       const lastEntry = await tx.ledgerEntry.findFirst({
         orderBy: { createdAt: 'desc' },
@@ -26,7 +26,7 @@ class LedgerService {
       const hash = crypto.createHash('sha256').update(dataToHash).digest('hex');
 
       // 3. Create the entry
-      return await tx.ledgerEntry.create({
+      return tx.ledgerEntry.create({
         data: {
           referenceId,
           referenceType,
@@ -39,12 +39,12 @@ class LedgerService {
           periodId
         }
       });
-
-      // 4. Trigger Graduated Integrity Autocheck (Async)
-      this.autocheckIntegrity(referenceId, traceId);
-
-      return entry;
     });
+
+    // 4. Trigger Graduated Integrity Autocheck after transaction commits (fire-and-forget)
+    this.autocheckIntegrity(referenceId, traceId);
+
+    return ledgerEntry;
   }
 
   async autocheckIntegrity(referenceId, traceId) {

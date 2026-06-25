@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Calendar, IndianRupee, AlertCircle, RefreshCw, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Building2, Calendar, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const API_URL = `${BASE_URL}/admin`;
@@ -236,7 +236,7 @@ const InventoryPricing = () => {
             <div className="py-12 text-center text-gray-400">Loading Calendar...</div>
           ) : inventoryGrid.length === 0 ? (
              <div className="py-12 text-center text-gray-400 bg-white rounded-xl border border-gray-200">
-                No active Rate Plans found for this property's rooms. Ensure you configure rooms first.
+                No active Rate Plans found for this property&apos;s rooms. Ensure you configure rooms first.
              </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">

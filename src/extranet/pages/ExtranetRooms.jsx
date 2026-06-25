@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  BedDouble, IndianRupee, Plus, Edit3, Trash2, 
-  Copy, ChevronRight, ChevronDown, Users, 
-  CheckCircle2, AlertCircle, Maximize2, 
-  Coffee, Moon, Zap, Save, Eye, X, Loader2, Info
+  BedDouble, Plus, Edit3, AlertCircle, Save, Eye, X, Loader2
 } from 'lucide-react';
 import { fetchRooms, updateRoom } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';

@@ -44,7 +44,7 @@ export const couponService = {
   /**
    * Validates and increments coupon usage atomically (used at booking creation)
    */
-  consumeCoupon: async (tx, code, userId, bookingId) => {
+  consumeCoupon: async (tx, code, userId, _bookingId) => {
     const coupon = await tx.coupon.findUnique({
       where: { code }
     });

@@ -173,9 +173,9 @@ export const bookingService = {
       });
 
       // B. Optional: Consume Coupon
-      let appliedCoupon = null;
+      let _appliedCoupon = null;
       if (couponCode) {
-        appliedCoupon = await couponService.consumeCoupon(tx, couponCode, userId);
+        _appliedCoupon = await couponService.consumeCoupon(tx, couponCode, userId);
       }
 
       // C. Create Booking

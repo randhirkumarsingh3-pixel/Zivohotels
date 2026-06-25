@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from './Modal';
 import TagInput from './TagInput';
 import ImageTagSelector from './ImageTagSelector';
 import PropertyMediaLibrary from './PropertyMediaLibrary';
-import { Camera, X, Info, Library, Upload, Star, Image } from 'lucide-react';
+import { Camera, X, Library, Upload, Star, Image } from 'lucide-react';
 import { getImageUrl } from '../../utils/image';
 
 const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId = null }) => {

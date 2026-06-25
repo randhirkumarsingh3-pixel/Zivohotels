@@ -1,5 +1,4 @@
 import prisma from '../config/db.js';
-import { logActivity } from '../services/activityService.js';
 
 /**
  * Middleware to ensure the authenticated user owns or manages the requested hotel.

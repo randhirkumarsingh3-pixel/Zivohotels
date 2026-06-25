@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Shield, Building2 } from 'lucide-react';
 
 const UserEditModal = ({ user, onClose, onSave }) => {

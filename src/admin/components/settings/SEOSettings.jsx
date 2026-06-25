@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Globe, Code, Loader2 } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { getSystemConfig, updateSystemConfig } from '../../../services/api';
 
 const SEOSettings = () => {

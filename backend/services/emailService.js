@@ -1,9 +1,8 @@
-import nodemailer from 'nodemailer';
 import prisma from '../config/db.js';
 import { Resend } from 'resend';
 
 // Use a fallback to prevent the server from crashing on startup if the API key is not set in Render yet.
-const actualApiKey = process.env.RESEND_API_KEY || 're_5aMVgoS9_Hzpv1ykUA3unMjYPEvn3F18R';
+const actualApiKey = process.env.RESEND_API_KEY;
 const resend = new Resend(actualApiKey);
 
 

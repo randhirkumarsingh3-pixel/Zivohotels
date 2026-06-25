@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  FileSignature, Download, Mail, XCircle, FileText, FileCheck,
+  FileSignature, Mail, XCircle, FileText, FileCheck,
   FileWarning, RefreshCw, Plus, CheckCircle, AlertCircle, X,
-  Building2, ChevronRight
+  Building2
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -156,7 +156,7 @@ const AgreementDrawer = ({ agreement, onClose, onAction, actionLoading }) => {
               <p>2. The Platform shall deduct a commission of <strong>{agreement.commissionRate}%</strong> on all successful bookings.</p>
               <p>3. Payouts will be processed on a monthly cycle directly to the registered bank account.</p>
               <p>4. This agreement is valid for 12 months from the date of signature.</p>
-              <p>5. ZivoHotels reserves the right to suspend properties violating the platform's policies.</p>
+              <p>5. ZivoHotels reserves the right to suspend properties violating the platform&apos;s policies.</p>
             </div>
           </div>
         </div>

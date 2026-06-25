@@ -1,3 +1,4 @@
+/* global React */
 // js/components/Icons.jsx
 // A small wrapper since lucide icons via CDN are loaded globally as lucide.createIcons
 const Icon = ({ name, className = "", size = 24 }) => {

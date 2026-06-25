@@ -4,7 +4,7 @@ import { CheckCircle2, Eye, EyeOff, AlertTriangle, KeyRound } from 'lucide-react
 
 const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const token = searchParams.get('token');
 
   const [form, setForm] = useState({ password: '', confirm: '' });
@@ -77,7 +77,7 @@ const AcceptInvite = () => {
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-gray-900">Set Your Password</h1>
-            <p className="text-xs text-gray-500">You've been invited to ZivoHotels. Set a password to activate your account.</p>
+            <p className="text-xs text-gray-500">You&apos;ve been invited to ZivoHotels. Set a password to activate your account.</p>
           </div>
         </div>
 

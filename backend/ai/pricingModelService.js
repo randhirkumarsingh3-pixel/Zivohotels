@@ -6,12 +6,12 @@
  */
 import prisma from '../config/db.js';
 import featureBuilder from './featureBuilder.js';
-import { eventBus, EVENTS } from '../services/eventBus.js';
+import { eventBus } from '../services/eventBus.js';
 
 // Configuration for the "Arms" (candidate multipliers)
 const CANDIDATE_MULTIPLIERS = [0.90, 1.0, 1.05, 1.10, 1.20];
 const EPSILON = 0.15; // 15% exploration
-const MIN_CONFIDENCE = 0.65;
+const _MIN_CONFIDENCE = 0.65;
 
 export const pricingModelService = {
   /**
@@ -27,8 +27,8 @@ export const pricingModelService = {
 
     try {
       // 1. Session + Date Consistency: Lock multiplier per session/roomType/date for 15 mins
-      const dateKey = features.date.toISOString().split('T')[0];
-      const cachedPrediction = await prisma.pricingPrediction.findFirst({
+      const _dateKey = features.date.toISOString().split('T')[0];
+      const _cachedPrediction = await prisma.pricingPrediction.findFirst({
         where: { 
           contextHash, 
           createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },

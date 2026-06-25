@@ -18,8 +18,7 @@ import {
   Target,
   FlaskConical,
   Activity,
-  AlertTriangle,
-  History
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 

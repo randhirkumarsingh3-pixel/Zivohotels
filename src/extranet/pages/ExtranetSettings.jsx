@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { 
-  Settings, User, Bell, Shield, CreditCard, 
-  Key, Mail, Phone, Globe, ChevronRight,
-  CheckCircle2, AlertCircle, Save, LogOut,
-  Lock, Smartphone, Building2, Users, Eye,
-  EyeOff, ToggleLeft, ToggleRight, Edit3
+import { User, Bell, Shield, CreditCard, 
+  Key, Mail, Phone, Save, LogOut,
+  Lock, Smartphone, Users, Eye,
+  EyeOff, Edit3
 } from 'lucide-react';
 
 const ExtranetSettings = () => {

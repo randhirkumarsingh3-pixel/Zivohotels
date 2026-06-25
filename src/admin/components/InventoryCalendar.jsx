@@ -4,7 +4,7 @@ import Modal from './Modal';
 
 const InventoryCalendar = ({ roomTypes }) => {
   const [startDate, setStartDate] = useState(new Date());
-  const [daysToShow, setDaysToShow] = useState(14); // 14-day view
+  const [daysToShow, _setDaysToShow] = useState(14); // 14-day view
   const [dates, setDates] = useState([]);
   
   // Cell State: { [roomId_dateString]: { available: number, isSynced: boolean } }

@@ -7,7 +7,7 @@ async function testFinanceFlow() {
   console.log('--- Testing Phase 8.5 Financial Flow ---');
 
   const hotelId = 'test-hotel-id'; // Use a real ID from your DB if possible
-  const roomTypeId = 'test-room-id';
+  const _roomTypeId = 'test-room-id';
   const bookingId = 'test-booking-id-' + Date.now();
 
   // 1. Payment Order

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, Loader2, Info } from 'lucide-react';
 import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
@@ -117,7 +117,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Let's start with the basics.</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Let&apos;s start with the basics.</h1>
         <p className="text-slate-500 mt-2 text-lg">Tell us a bit about your property so we can set up your profile.</p>
       </div>
       
@@ -154,7 +154,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
 
         {/* Star Rating */}
         <div className="flex flex-col gap-2">
-          <label className="font-bold text-slate-800 text-base">What is your property's star rating? <span className="text-red-500">*</span></label>
+          <label className="font-bold text-slate-800 text-base">What is your property&apos;s star rating? <span className="text-red-500">*</span></label>
           <select 
             value={formData.rating || '3'} 
             onChange={e => updateForm('rating', e.target.value)} 
@@ -186,7 +186,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
         {/* Accepting Booking Since */}
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">Since when have you been accepting bookings?</label>
-          <span className="text-sm text-slate-500">Helps us build your property's history and credibility.</span>
+          <span className="text-sm text-slate-500">Helps us build your property&apos;s history and credibility.</span>
           <select 
             value={formData.bookingSince || currentYear} 
             onChange={e => updateForm('bookingSince', e.target.value)} 
@@ -212,7 +212,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 checked={formData.hasChannelManager === false || formData.hasChannelManager === undefined}
                 onChange={() => updateForm('hasChannelManager', false)}
               />
-              No, I'll manage it here
+              No, I&apos;ll manage it here
             </label>
             <label className={`flex items-center justify-center py-3 px-6 border rounded-xl cursor-pointer transition-all flex-1 ${formData.hasChannelManager === true ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' : 'border-slate-300 hover:border-slate-400 text-slate-700'}`}>
               <input 
@@ -363,7 +363,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
                 <div className="flex items-start gap-1.5 mb-1.5">
                   <Info size={14} className="text-slate-400 mt-0.5" />
                   <div>
-                    <strong className="text-slate-700">Didn't receive the code?</strong>
+                    <strong className="text-slate-700">Didn&apos;t receive the code?</strong>
                     <ul className="list-disc pl-4 mt-1 text-slate-500">
                       <li>Check your Spam/Junk folder</li>
                       <li>Verify email spelling</li>

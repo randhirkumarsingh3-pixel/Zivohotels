@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import prisma from '../../config/db.js';
 import payoutService from '../../services/finance/payoutService.js';
 import dashboardService from '../../services/finance/dashboardService.js';

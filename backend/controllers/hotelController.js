@@ -38,9 +38,6 @@ const hotelSchema = z.object({
   managerName: z.string().optional(),
   managerPhone: z.string().optional(),
   managerEmail: z.string().optional(),
-  ownerName: z.string().optional(),
-  ownerEmail: z.string().optional(),
-  ownerPhone: z.string().optional(),
   guestLandline: z.string().optional(),
   // Step 4: Commercials & Legal
   bankDetail: z.object({
@@ -69,9 +66,8 @@ const normalizeHotelPayload = (data) => {
   const {
     name, address, location, city, description, latitude, longitude,
     amenities, policies, checkInTime, checkOutTime,
-    media, images,
+    media, _images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
-    ownerName, ownerEmail, ownerPhone,
     bankDetail, commissionRate, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
     state, country, area, pincode
@@ -110,8 +106,7 @@ const normalizeHotelPayload = (data) => {
   Object.keys(prismaData).forEach(key => prismaData[key] === undefined && delete prismaData[key]);
   
   const _contactInfo = {
-    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
-    ownerName, ownerEmail, ownerPhone
+    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline
   };
   Object.keys(_contactInfo).forEach(key => _contactInfo[key] === undefined && delete _contactInfo[key]);
 
@@ -366,7 +361,7 @@ export const deleteHotel = asyncHandler(async (req, res) => {
 });
 
 export const getAllHotels = asyncHandler(async (req, res) => {
-  const { destination, stars, page = 1, limit = 10 } = req.query;
+  const { destination, _stars, page = 1, limit = 10 } = req.query;
   const finalLimit = Math.min(parseInt(limit) || 10, 100);
   const skip = (parseInt(page) - 1) * finalLimit;
 
@@ -383,7 +378,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
     ];
   }
 
-  const [hotels, total] = await Promise.all([
+  const [hotels, _total] = await Promise.all([
     prisma.hotel.findMany({
       where,
       skip,
@@ -507,9 +502,6 @@ export const getHotelById = asyncHandler(async (req, res) => {
     managerName: contactInfo.managerName || null,
     managerPhone: contactInfo.managerPhone || null,
     managerEmail: contactInfo.managerEmail || null,
-    ownerName: contactInfo.ownerName || hotel.owner?.name || null,
-    ownerEmail: contactInfo.ownerEmail || hotel.owner?.email || null,
-    ownerPhone: contactInfo.ownerPhone || hotel.owner?.phone || null,
     guestLandline: contactInfo.guestLandline || null,
     // Flatten address details to top-level for frontend consumption
     addressLine: addressDetails.address || null,

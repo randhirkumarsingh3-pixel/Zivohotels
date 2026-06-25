@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 
 const TagInput = ({ label, placeholder, tags, setTags }) => {

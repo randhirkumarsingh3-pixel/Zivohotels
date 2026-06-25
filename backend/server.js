@@ -29,28 +29,26 @@ import recommendationRoutes from './routes/recommendationRoutes.js';
 import experimentRoutes from './routes/experimentRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
-import { startIntegrityWorker } from './workers/integrityWorker.js';
-import { startExperimentWorker } from './workers/experimentWorker.js';
-import { startPricingWorker } from './workers/pricingWorker.js';
-import { startPricingTrainer } from './workers/pricingTrainer.js';
-import { startFinanceWorker } from './workers/financeWorker.js';
-import { startMarketplaceBalancer } from './workers/marketplaceBalancer.js';
-import { startOtpCleanupWorker } from './workers/otpCleanupWorker.js';
-import workerManager from './services/workerManager.js';
+// Worker initialization has been moved to dedicated standalone processes.
 import masterAdminRoutes from './routes/masterAdminRoutes.js';
 import extranetRoutes from './routes/extranetRoutes.js';
 import socketService from './services/socketService.js';
 import orchestrationService from './services/orchestrationService.js';
+import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
 import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 dotenv.config();
 
 const app = express();
+
+// 0. Security Headers
+app.use(helmet());
 
 // 1. Rate Limiter Definitions
 const globalLimiter = rateLimit({
@@ -112,6 +110,9 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // Static File Serving for Invoices removed for security, use /api/v1/invoices/:id/download
+
+// Apply standard API response formatter
+app.use(responseFormatter);
 
 // ─── PUBLIC APIS ─────────────────────────────────────────────────────────────
 import searchRoutes from './routes/searchRoutes.js';
@@ -177,12 +178,5 @@ server.listen(PORT, () => {
   // Initialize Autonomous Governance
   orchestrationService.init();
   
-  // Register Self-Healing Workers
-  workerManager.register('IntegrityWorker', startIntegrityWorker);
-  workerManager.register('ExperimentWorker', startExperimentWorker);
-  workerManager.register('PricingWorker', startPricingWorker);
-  workerManager.register('PricingTrainer', startPricingTrainer);
-  workerManager.register('FinanceWorker', startFinanceWorker);
-  workerManager.register('MarketplaceBalancer', startMarketplaceBalancer);
-  workerManager.register('OtpCleanupWorker', startOtpCleanupWorker);
+  // Workers are now run in standalone node processes via npm scripts
 });

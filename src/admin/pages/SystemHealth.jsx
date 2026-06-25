@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { 
   Activity, Database, Cpu, Zap, 
-  Search, Filter, Download, ArrowUpRight,
+  Search,
   ShieldCheck, AlertTriangle, RefreshCw, Layers
 } from 'lucide-react';
 

@@ -76,7 +76,7 @@ class PolicyEngine {
   /**
    * Returns all policies for a given category.
    */
-  getPoliciesByCategory(category) {
+  getPoliciesByCategory(_category) {
     // Filter logic...
     return Object.values(this.policies);
   }

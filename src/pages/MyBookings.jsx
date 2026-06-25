@@ -245,7 +245,15 @@ const MyBookings = () => {
     }
   };
 
+  const handleManage = useCallback((booking) => {
+    setActiveBooking(booking);
+    setActiveTab('overview');
+  }, []);
 
+  const handleRateStay = useCallback((booking) => {
+    setActiveBooking(booking);
+    setActiveTab('review');
+  }, []);
 
   /* ── Loading screen ── */
   if (loading && bookings.length === 0) {

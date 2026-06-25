@@ -134,7 +134,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   // Update last login & last active
-  const updatedUser = await prisma.user.update({
+  const _updatedUser = await prisma.user.update({
     where: { id: user.id },
     data: { 
       lastLogin: new Date(),

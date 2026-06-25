@@ -22,7 +22,7 @@ const PresenceAvatarStack = () => {
 
   return (
     <div className="flex items-center -space-x-3 overflow-hidden">
-      {activeUsers.map((user, i) => (
+      {activeUsers.map((user, _i) => (
         <div 
           key={user.id}
           className="relative group cursor-help"

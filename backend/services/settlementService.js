@@ -92,7 +92,7 @@ class SettlementService {
   /**
    * Adjusts an existing settlement (e.g., due to dispute or manual override).
    */
-  async adjustSettlement(settlementId, { adjustmentAmount, reason, traceId }) {
+  async adjustSettlement(_settlementId, { _adjustmentAmount, _reason, _traceId }) {
      // Logic for SettlementVersion increments and Ledger updates would go here
   }
 }

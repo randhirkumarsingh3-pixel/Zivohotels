@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useExtranet } from '../context/ExtranetContext';
 import { Check, Sparkles } from 'lucide-react';
@@ -62,7 +62,7 @@ const parseBackendRoomTypes = (roomTypes) => {
     let size = '';
     let sizeUnit = 'Square Feet';
     if (rt.roomSize) {
-      const match = rt.roomSize.match(/^([\d\.]+)\s+(.+)$/);
+      const match = rt.roomSize.match(/^([\d.]+)\s+(.+)$/);
       if (match) {
         size = match[1];
         sizeUnit = match[2];
@@ -157,10 +157,21 @@ const PropertyOnboarding = () => {
     commission: '',
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const effectiveId = urlHotelId || contextHotelId;
     if (isEditing) {
-      fetchProperty();
+      const saved = localStorage.getItem(`zivo_onboarding_draft_${effectiveId}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          fetchProperty();
+        }
+      } else {
+        fetchProperty();
+      }
     } else {
       if (location.state?.resetDraft) {
         localStorage.removeItem('zivo_onboarding_draft');
@@ -262,9 +273,9 @@ const PropertyOnboarding = () => {
           managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
           managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
           managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.ownerName || '',
-          ownerEmail: hotel.ownerEmail || '',
-          ownerPhone: hotel.ownerPhone || '',
+          ownerName: hotel.owner?.name || '',
+          ownerEmail: hotel.owner?.email || '',
+          ownerPhone: hotel.owner?.phone || '',
           
           amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
           rooms: parsedRooms,
@@ -407,9 +418,6 @@ const PropertyOnboarding = () => {
       managerName: formData.managerName || undefined,
       managerPhone: formData.managerPhone || undefined,
       managerEmail: formData.managerEmail || undefined,
-      ownerName: formData.ownerName || undefined,
-      ownerEmail: formData.ownerEmail || undefined,
-      ownerPhone: formData.ownerPhone || undefined,
       guestLandline: formData.guestLandline || undefined,
       channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
       
@@ -518,9 +526,6 @@ const PropertyOnboarding = () => {
         managerName: formData.managerName,
         managerPhone: formData.managerPhone,
         managerEmail: formData.managerEmail,
-        ownerName: formData.ownerName,
-        ownerEmail: formData.ownerEmail,
-        ownerPhone: formData.ownerPhone,
         guestLandline: formData.guestLandline,
         channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
         

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, ArrowRight, AlertCircle, Building2, ShieldCheck } from 'lucide-react';
 
@@ -133,7 +133,7 @@ const ExtranetLogin = () => {
         </div>
         
         <p className="mt-8 text-center text-xs text-gray-400 font-medium leading-relaxed">
-           By logging in, you agree to Zivo's <span className="text-blue-600 font-bold underline cursor-pointer">Terms of Service</span> and <span className="text-blue-600 font-bold underline cursor-pointer">Privacy Policy</span>. 
+           By logging in, you agree to Zivo&apos;s <span className="text-blue-600 font-bold underline cursor-pointer">Terms of Service</span> and <span className="text-blue-600 font-bold underline cursor-pointer">Privacy Policy</span>. 
            Need help? Contact <span className="text-blue-600 font-bold underline cursor-pointer">Partner Support</span>.
         </p>
       </div>

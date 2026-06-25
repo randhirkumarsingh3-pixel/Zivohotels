@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Image as ImageIcon, CheckCircle2, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { getImageUrl } from '../../utils/image';
 
 const formatTag = (tag) => {

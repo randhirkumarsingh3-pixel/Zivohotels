@@ -216,7 +216,7 @@ const Configuration = () => {
           ) : roomTypes.length === 0 ? (
             <div className="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
               <h3 className="text-lg font-medium text-gray-900">No Rooms Configured</h3>
-              <p className="text-gray-500 mt-1">Click "Add Room Type" to create your first room.</p>
+              <p className="text-gray-500 mt-1">Click &quot;Add Room Type&quot; to create your first room.</p>
             </div>
           ) : (
             <div className="space-y-4">

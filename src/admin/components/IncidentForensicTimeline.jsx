@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { 
-  History, ChevronRight, ChevronDown, 
-  Search, ShieldAlert, Cpu, Database, 
-  ArrowDownCircle, Play, StepForward
+  History, ChevronRight, ChevronDown, Cpu, Play, StepForward
 } from 'lucide-react';
 
 const IncidentForensicTimeline = ({ incidentId, events }) => {
@@ -90,7 +88,7 @@ const IncidentForensicTimeline = ({ incidentId, events }) => {
               <div className="flex-1">
                  <h4 className="text-sm font-black mb-1">Autonomous Reasoning</h4>
                  <p className="text-[11px] text-white/60 leading-relaxed italic">
-                   "Model detected anomalous {selectedEvent.event} pattern. Confidence {selectedEvent.data.confidence || 0.85}. Executed automated {selectedEvent.data.action || 'escalation'} per policy POL_SYS_001."
+                    {`"Model detected anomalous ${selectedEvent.event} pattern. Confidence ${selectedEvent.data.confidence || 0.85}. Executed automated ${selectedEvent.data.action || 'escalation'} per policy POL_SYS_001."`}
                  </p>
               </div>
            </div>

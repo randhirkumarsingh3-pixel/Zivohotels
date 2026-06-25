@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  IndianRupee, TrendingUp, Clock, CheckCircle2, 
-  AlertCircle, ChevronRight, Info, Calendar, 
-  ArrowRight, Filter, Download, History,
+  IndianRupee, Clock, 
+  AlertCircle, Filter, Download, History,
   ShieldCheck, ArrowUpRight, Loader2, Landmark
 } from 'lucide-react';
-import { fetchFinanceOverview, fetchSettlementDetails, fetchPayoutHistory } from '../../services/extranetApi';
+import { fetchFinanceOverview, fetchPayoutHistory } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
 import ExplainMoneyModal from '../components/ExplainMoneyModal';
 

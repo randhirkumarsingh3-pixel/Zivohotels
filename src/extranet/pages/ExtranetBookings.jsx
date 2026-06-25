@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  ClipboardList, Search, Filter, Download, Eye,
+  ClipboardList, Search, Download,
   CheckCircle2, Clock, XCircle, AlertCircle,
-  Phone, Mail, Calendar, Users, IndianRupee,
-  ChevronDown, ArrowRight, MessageSquare, BedDouble, Loader2
+  Phone, Mail, Users,
+  ChevronDown, BedDouble, Loader2
 } from 'lucide-react';
 import { fetchBookings, transitionBookingStatus } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';

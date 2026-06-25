@@ -18,7 +18,7 @@ async function runDailyTraining() {
     where: { createdAt: { gte: yesterday } }
   });
 
-  const feedback = await prisma.pricingFeedback.findMany({
+  const _feedback = await prisma.pricingFeedback.findMany({
     where: { createdAt: { gte: yesterday } }
   });
 

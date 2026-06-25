@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  Star, MessageSquare, ThumbsUp, ThumbsDown, 
-  Reply, Filter, Search, TrendingUp, Award,
-  AlertCircle, ChevronDown, Clock, CheckCircle2,
+  Star, MessageSquare, 
+  Reply,
+  AlertCircle,
   Smile, Frown, Meh, Loader2
 } from 'lucide-react';
 import { fetchReviews, replyToReview } from '../../services/extranetApi';

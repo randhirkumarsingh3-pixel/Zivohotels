@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -61,7 +61,7 @@ const parseBackendRoomTypes = (roomTypes) => {
     let size = '';
     let sizeUnit = 'Square Feet';
     if (rt.roomSize) {
-      const match = rt.roomSize.match(/^([\d\.]+)\s+(.+)$/);
+      const match = rt.roomSize.match(/^([\d.]+)\s+(.+)$/);
       if (match) {
         size = match[1];
         sizeUnit = match[2];
@@ -113,7 +113,7 @@ const PropertyWizard = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState('');
+  const [_apiError, setApiError] = useState('');
   const [initialRoomIds, setInitialRoomIds] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -245,9 +245,9 @@ const PropertyWizard = () => {
           managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
           managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
           managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.ownerName || '',
-          ownerEmail: hotel.ownerEmail || '',
-          ownerPhone: hotel.ownerPhone || '',
+          ownerName: hotel.owner?.name || '',
+          ownerEmail: hotel.owner?.email || '',
+          ownerPhone: hotel.owner?.phone || '',
           hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
           channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
           
@@ -457,9 +457,6 @@ const PropertyWizard = () => {
         managerName: formData.managerName,
         managerPhone: formData.managerPhone,
         managerEmail: formData.managerEmail,
-        ownerName: formData.ownerName,
-        ownerEmail: formData.ownerEmail,
-        ownerPhone: formData.ownerPhone,
         guestLandline: formData.guestLandline,
         channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
         

@@ -1,6 +1,6 @@
 import { 
-  TrendingUp, IndianRupee, Users, ShoppingBag, 
-  ShieldAlert, Clock, AlertTriangle, ArrowUpRight,
+  TrendingUp, IndianRupee, 
+  ShieldAlert, AlertTriangle, ArrowUpRight,
   ChevronRight, Activity, Filter, Download, Zap,
   BarChart3, MousePointer2
 } from 'lucide-react';

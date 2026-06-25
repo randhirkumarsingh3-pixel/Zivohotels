@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { 
-  TrendingUp, Activity, ShieldCheck, Zap, 
-  Search, Filter, ChevronRight, Info,
-  ArrowUpRight, Clock, AlertTriangle,
-  Lock, Unlock, PlayCircle, PauseCircle
+  TrendingUp, Activity, Zap, 
+  Search, Filter, Info, Clock,
+  Lock
 } from 'lucide-react';
 import FactorBreakdownDrawer from '../../components/shared/FactorBreakdownDrawer';
 

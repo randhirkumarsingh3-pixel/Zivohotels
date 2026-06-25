@@ -5,7 +5,7 @@ async function runAuditPhase1And2() {
   console.log('--- 🛡️ ZivoHotels Audit Phase 1 & 2: Pricing & Data Structure ---');
   
   let testHotelId = null;
-  let testRoomTypeId = null;
+  let _testRoomTypeId = null;
 
   try {
     // 1. Property Creation Simulation
@@ -41,7 +41,7 @@ async function runAuditPhase1And2() {
         isActive: true
       }
     });
-    testRoomTypeId = roomType.id;
+    _testRoomTypeId = roomType.id;
     console.log(`✅ Room Type created: ${roomType.id}`);
 
     // 3. Inventory Check

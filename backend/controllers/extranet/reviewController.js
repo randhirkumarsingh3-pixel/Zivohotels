@@ -1,6 +1,5 @@
 import prisma from '../../config/db.js';
 import { logActivity } from '../../services/activityService.js';
-import { createNotification } from '../../services/notificationService.js';
 
 export const getReviews = async (req, res) => {
   try {

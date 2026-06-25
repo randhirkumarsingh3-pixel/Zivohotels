@@ -1,4 +1,3 @@
-import prisma from '../../config/db.js';
 import { logActivity } from '../../services/activityService.js';
 import { checkFeatureGate } from '../../services/featureGateService.js';
 

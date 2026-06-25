@@ -1,4 +1,3 @@
-import React from 'react';
 import { Edit2, Ban, Trash2, CheckCircle, FileText, Building2 } from 'lucide-react';
 
 const OwnersTable = ({ data, onEdit, onStatusChange }) => {

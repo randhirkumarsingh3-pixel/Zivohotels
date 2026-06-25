@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 /* ── Helpers ────────────────────────────────────────────────── */
@@ -47,7 +47,7 @@ const YesNoAvail = ({ value, onChange }) => (
   </div>
 );
 
-const Section = ({ icon, title, badge, badgeCount, badgeTotal, defaultOpen = true, children }) => {
+const Section = ({ icon, title, _badge, badgeCount, badgeTotal, defaultOpen = true, children }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-2 border-slate-200 rounded-xl overflow-hidden mb-4 shadow-sm bg-white">

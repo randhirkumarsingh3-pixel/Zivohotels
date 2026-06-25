@@ -1,10 +1,7 @@
 import { useState } from 'react';
-import { 
-  Wallet, IndianRupee, ArrowUpRight, ArrowDownLeft,
-  Search, Filter, Download, RefreshCw, Plus,
-  CheckCircle2, Clock, AlertCircle, XCircle,
-  Lock, Unlock, ChevronRight, Eye, BarChart3,
-  Users, Building2, Gift, Shield, Zap
+import { ArrowUpRight, ArrowDownLeft,
+  Search, Filter, Download, RefreshCw,
+  Lock, Building2, Gift, Shield, Zap
 } from 'lucide-react';
 
 const walletAccounts = [

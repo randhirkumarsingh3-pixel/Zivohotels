@@ -1,4 +1,3 @@
-import React from 'react';
 import { Edit2, Ban, Trash2, CheckCircle } from 'lucide-react';
 
 const CustomersTable = ({ data, onEdit, onStatusChange }) => {

@@ -1,6 +1,20 @@
 import crypto from 'crypto';
 import systemCache from '../utils/systemCache.js';
 import prisma from '../config/db.js';
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  ],
+});
 
 /**
  * logger.js
@@ -49,11 +63,11 @@ export const requestLogger = (req, res, next) => {
     const logLine = `[${req.id}] ${method} ${url} ${status} - ${duration}ms | User: ${user}`;
     
     if (status >= 500) {
-      console.error(`🔴 ${logLine} | Body: ${JSON.stringify(safeBody)}`);
+      logger.error(`🔴 ${logLine} | Body: ${JSON.stringify(safeBody)}`);
     } else if (status >= 400) {
-      console.warn(`🟡 ${logLine} | Body: ${JSON.stringify(safeBody)}`);
+      logger.warn(`🟡 ${logLine} | Body: ${JSON.stringify(safeBody)}`);
     } else {
-      console.log(`🟢 ${logLine}`);
+      logger.info(`🟢 ${logLine}`);
     }
   });
   
@@ -73,7 +87,7 @@ export const criticalLogger = (action, details = {}, reqId = 'SYSTEM') => {
     ...details
   };
   
-  console.error(`🚨 [CRITICAL] [${reqId}] ${action} | ${JSON.stringify(details)}`);
+  logger.error(`🚨 [CRITICAL] [${reqId}] ${action} | ${JSON.stringify(details)}`);
   
   // In a real environment, this would also trigger a PagerDuty/Email/Slack alert
   // For now, we ensure it's prominently logged for cloud monitoring (CloudWatch/Loki)

@@ -1,4 +1,3 @@
-import prisma from '../../config/db.js';
 import { getNotifications, markAsRead } from '../../services/notificationService.js';
 
 export const fetchNotifications = async (req, res) => {
