@@ -1,5 +1,19 @@
-import cron from 'node-cron';
+import { queueService } from '../services/queueService.js';
 import prisma from '../config/db.js';
+import os from 'os';
+
+const workerId = `pricing-worker-${os.hostname()}-${process.pid}`;
+let isRunning = true;
+
+const shutdown = async () => {
+  console.log(`\n[${workerId}] Received termination signal. Shutting down gracefully...`);
+  isRunning = false;
+  await queueService.unlockJobsForWorker(workerId);
+  process.exit(0);
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 const MAX_EXPECTED_SCORE = 50.0;
 const ZSCORE_THRESHOLD = 3.0;  // Reject spikes beyond 3 standard deviations
@@ -191,11 +205,35 @@ async function aggregateDemandSignals() {
   console.log(`[PricingWorker] Run ${runId}: Aggregated ${written} demand signals.`);
 }
 
-export const startPricingWorker = () => {
-  cron.schedule('*/15 * * * *', () => {
-    aggregateDemandSignals().catch(err => {
-      console.error('[PricingWorker] Unexpected Error:', err);
-    });
-  });
-  console.log('[PricingWorker] Scheduled every 15 minutes.');
+export const startPricingWorker = async () => {
+  console.log(`[${workerId}] Started polling for 'pricing' queue...`);
+  
+  // Seed the first job if the queue is entirely empty (optional, usually done by a seeder/init script)
+  // For safety, we'll let it just poll.
+  
+  while (isRunning) {
+    try {
+      const job = await queueService.fetchAndLock('pricing', workerId);
+      
+      if (job) {
+        console.log(`[${workerId}] Processing job: ${job.id}`);
+        await aggregateDemandSignals();
+        
+        // Enqueue the next run for 15 minutes from now
+        await queueService.enqueue('pricing', 'AGGREGATE_DEMAND', {}, { runAt: new Date(Date.now() + 15 * 60 * 1000) });
+        
+        // Mark complete
+        await queueService.complete(job.id);
+      } else {
+        await new Promise(res => setTimeout(res, 10000));
+      }
+    } catch (err) {
+      console.error(`[${workerId}] Polling error:`, err.message);
+      await new Promise(res => setTimeout(res, 5000));
+    }
+  }
 };
+
+if (process.argv[1] && process.argv[1].endsWith('pricingWorker.js')) {
+  startPricingWorker();
+}

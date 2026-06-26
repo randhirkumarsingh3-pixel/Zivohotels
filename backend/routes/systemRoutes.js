@@ -7,7 +7,8 @@ import {
   getConfig,
   updateConfig,
   getTaxRules,
-  updateTaxRules
+  updateTaxRules,
+  getWorkerHealth
 } from '../controllers/systemController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
@@ -25,5 +26,6 @@ router.get('/config', getConfig);
 router.put('/config', updateConfig);
 router.get('/tax-rules', getTaxRules);
 router.put('/tax-rules', updateTaxRules);
+router.get('/workers/health', getWorkerHealth);
 
 export default router;

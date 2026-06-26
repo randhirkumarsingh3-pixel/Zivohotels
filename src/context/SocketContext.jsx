@@ -49,6 +49,9 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('connect_error', (err) => {
       console.error('[Socket] Connection error:', err.message);
       connectingRef.current = false;
+      if (err.message.includes('Authentication error')) {
+        newSocket.close(); // Don't keep retrying with an invalid token
+      }
     });
 
     // Unified operational event listener

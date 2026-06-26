@@ -1,5 +1,20 @@
+import { queueService } from '../services/queueService.js';
 import prisma from '../config/db.js';
 import systemCache from '../utils/systemCache.js';
+import os from 'os';
+
+const workerId = `integrity-worker-${os.hostname()}-${process.pid}`;
+let isRunning = true;
+
+const shutdown = async () => {
+  console.log(`\n[${workerId}] Received termination signal. Shutting down gracefully...`);
+  isRunning = false;
+  await queueService.unlockJobsForWorker(workerId);
+  process.exit(0);
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 /**
  * integrityWorker.js
@@ -66,10 +81,33 @@ export const runIntegrityScan = async () => {
   }
 };
 
-// Start the worker (Every 10 minutes)
-export const startIntegrityWorker = () => {
-  // Initial run
-  runIntegrityScan();
-  // Schedule
-  setInterval(runIntegrityScan, 10 * 60 * 1000);
+// Start the worker
+export const startIntegrityWorker = async () => {
+  console.log(`[${workerId}] Started polling for 'integrity' queue...`);
+  
+  while (isRunning) {
+    try {
+      const job = await queueService.fetchAndLock('integrity', workerId);
+      
+      if (job) {
+        console.log(`[${workerId}] Processing job: ${job.id}`);
+        await runIntegrityScan();
+        
+        // Enqueue the next run for 10 minutes from now
+        await queueService.enqueue('integrity', 'INTEGRITY_SCAN', {}, { runAt: new Date(Date.now() + 10 * 60 * 1000) });
+        
+        // Mark complete
+        await queueService.complete(job.id);
+      } else {
+        await new Promise(res => setTimeout(res, 60000)); // Sleep for 1 min if no jobs
+      }
+    } catch (err) {
+      console.error(`[${workerId}] Polling error:`, err.message);
+      await new Promise(res => setTimeout(res, 5000));
+    }
+  }
 };
+
+if (process.argv[1] && process.argv[1].endsWith('integrityWorker.js')) {
+  startIntegrityWorker();
+}

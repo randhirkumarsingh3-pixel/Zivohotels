@@ -340,7 +340,7 @@ export const createBooking = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings`
 export const previewBookingApi = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings/preview`, { method: 'POST', body: JSON.stringify(bookingData) });
 export const cancelBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel`, { method: 'POST' });
 export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`, { method: 'PUT', body: JSON.stringify(data) });
-export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/my-bookings`).then(res => res?.data);
+export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);
 export const downloadInvoice = (invoiceId) => apiFetch(`${PUBLIC_BASE}/invoices/${invoiceId}/download`, { responseType: 'blob' });
 

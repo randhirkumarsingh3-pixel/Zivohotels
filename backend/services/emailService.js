@@ -1,9 +1,5 @@
 import prisma from '../config/db.js';
-import { Resend } from 'resend';
-
-// Use a fallback to prevent the server from crashing on startup if the API key is not set in Render yet.
-const actualApiKey = process.env.RESEND_API_KEY;
-const resend = new Resend(actualApiKey);
+import { queueService } from './queueService.js';
 
 
 
@@ -661,19 +657,18 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 
     const emailHtml = generateEmailHtml(booking, booking.hotel, booking.roomType, booking.ratePlan);
 
-    console.log(`[EmailService] Sending confirmation email for booking ${booking.bookingRef} to ${booking.guestEmail} via Resend...`);
+    console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
     
-    const data = await resend.emails.send({
-      from: 'ZivoHotels Bookings <bookings@zivohotels.com>',
+    await queueService.enqueue('email', 'SEND_BOOKING_CONFIRMATION', {
       to: booking.guestEmail,
       subject: `Booking Confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`,
       html: emailHtml
-    });
+    }, { priority: 2 });
     
-    console.log(`[EmailService] Booking Confirmation Email sent successfully! Data:`, data);
+    console.log(`[EmailService] Booking Confirmation Email enqueued successfully!`);
     return true;
   } catch (error) {
-    console.error('[EmailService] Error sending booking confirmation email via Resend:', error);
+    console.error('[EmailService] Error enqueuing booking confirmation email:', error);
     return false;
   }
 };
@@ -700,18 +695,18 @@ export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
   `;
 
   try {
-    const fromAddress = process.env.RESEND_FROM_EMAIL || 'accounts@zivohotels.com';
-    const formattedFrom = `ZivoHotels Verification <${fromAddress}>`;
-    const data = await resend.emails.send({
-      from: formattedFrom,
+    console.log(`[EmailService] Enqueuing OTP Email for ${to}...`);
+    
+    await queueService.enqueue('email', 'SEND_OTP', {
       to,
       subject,
-      html,
-    });
-    console.log(`[EmailService] OTP Email sent successfully to ${to} via Resend! Data:`, data);
-    return { success: true, data };
+      html
+    }, { priority: 1 }); // Priority 1 since it's user blocking
+    
+    console.log(`[EmailService] OTP Email enqueued successfully to ${to}`);
+    return { success: true };
   } catch (error) {
-    console.error('[EmailService] Error sending OTP email via Resend:', error);
+    console.error('[EmailService] Error enqueuing OTP email:', error);
     throw error;
   }
 };

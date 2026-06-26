@@ -1,19 +1,31 @@
 import { startIntegrityWorker } from './integrityWorker.js';
-import { startExperimentWorker } from './experimentWorker.js';
 import { startPricingWorker } from './pricingWorker.js';
+import { startInventoryWorker } from './inventoryWorker.js';
+import { startCleanupWorker } from './cleanupWorker.js';
+import { startEmailWorker } from './emailWorker.js';
+import { startNotificationWorker } from './notificationWorker.js';
+import { startAnalyticsWorker } from './analyticsWorker.js';
+import { startReportWorker } from './reportWorker.js';
+
+// Legacy / Unchanged (for now, unless user specifies)
+import { startExperimentWorker } from './experimentWorker.js';
 import { startPricingTrainer } from './pricingTrainer.js';
 import { startFinanceWorker } from './financeWorker.js';
-import { startMarketplaceBalancer } from './marketplaceBalancer.js';
-import { startOtpCleanupWorker } from './otpCleanupWorker.js';
 
 const workers = {
   integrity: startIntegrityWorker,
-  experiment: startExperimentWorker,
   pricing: startPricingWorker,
+  inventory: startInventoryWorker,
+  cleanup: startCleanupWorker,
+  email: startEmailWorker,
+  notification: startNotificationWorker,
+  analytics: startAnalyticsWorker,
+  report: startReportWorker,
+  
+  // Legacy
+  experiment: startExperimentWorker,
   'pricing-trainer': startPricingTrainer,
   finance: startFinanceWorker,
-  inventory: startMarketplaceBalancer,
-  cleanup: startOtpCleanupWorker,
 };
 
 const workerName = process.argv[2];
@@ -23,11 +35,12 @@ if (!workerName || !workers[workerName]) {
   process.exit(1);
 }
 
-console.log(`Starting ${workerName} worker...`);
+console.log(`Starting ${workerName} worker orchestration...`);
 workers[workerName]();
 
-// Keep process alive
+// The graceful shutdown is handled inside each worker file now via process.on('SIGTERM').
+// But we can also add a global fallback log here.
 process.on('SIGINT', () => {
-  console.log(`\nStopping ${workerName} worker...`);
-  process.exit(0);
+  console.log(`\nStopping ${workerName} orchestration...`);
+  // Will let the individual worker's SIGINT handler do the DB cleanup and exit
 });

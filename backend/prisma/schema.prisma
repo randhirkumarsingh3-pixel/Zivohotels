@@ -1254,3 +1254,34 @@ model NotificationSyncLog {
 
   @@index([bookingId])
 }
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRY
+}
+
+model BackgroundJob {
+  id           String     @id @default(uuid())
+  queue        String     
+  jobType      String     
+  payload      Json       
+  priority     Int        @default(5)
+  status       JobStatus  @default(PENDING)
+  attempts     Int        @default(0)
+  maxAttempts  Int        @default(5)
+  lockedBy     String?    
+  lockedAt     DateTime?
+  runAt        DateTime   @default(now())
+  completedAt  DateTime?
+  failedAt     DateTime?
+  lastError    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([status, queue, runAt])
+  @@index([priority])
+}

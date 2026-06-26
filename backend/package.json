@@ -15,7 +15,11 @@
     "worker:pricing-trainer": "node workers/runWorker.js pricing-trainer",
     "worker:finance": "node workers/runWorker.js finance",
     "worker:inventory": "node workers/runWorker.js inventory",
-    "worker:cleanup": "node workers/runWorker.js cleanup"
+    "worker:cleanup": "node workers/runWorker.js cleanup",
+    "worker:email": "node workers/runWorker.js email",
+    "worker:notification": "node workers/runWorker.js notification",
+    "worker:analytics": "node workers/runWorker.js analytics",
+    "worker:report": "node workers/runWorker.js report"
   },
   "dependencies": {
     "@prisma/client": "^5.11.0",
