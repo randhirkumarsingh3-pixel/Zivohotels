@@ -43,7 +43,7 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
     <div
       onClick={() => onSelect(plan)}
       className={`cursor-pointer border-2 rounded-xl p-4 transition-all ${isSelected
-        ? 'border-brand-700 bg-brand-50 shadow-md shadow-brand-100'
+        ? 'border-brand-600 bg-brand-50 shadow-md shadow-brand-100'
         : 'border-gray-200 hover:border-brand-300 hover:bg-gray-50'
       }`}
     >
@@ -64,15 +64,15 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
         <div className="text-right shrink-0">
           <p className="text-lg font-extrabold text-gray-900">{fmt(totalPerNight)}<span className="text-xs text-gray-400 font-normal">/night</span></p>
           {nights > 1 && (
-            <p className="text-xs text-brand-700 font-medium mt-0.5">{fmt(total)} total</p>
+            <p className="text-xs text-brand-600 font-medium mt-0.5">{fmt(total)} total</p>
           )}
         </div>
       </div>
 
       {/* Selection indicator */}
-      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${isSelected ? 'text-brand-700' : 'text-gray-300'}`}>
-        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-700' : 'border-gray-300'}`}>
-          {isSelected && <div className="w-2 h-2 bg-brand-700 rounded-full" />}
+      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${isSelected ? 'text-brand-600' : 'text-gray-300'}`}>
+        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-600' : 'border-gray-300'}`}>
+          {isSelected && <div className="w-2 h-2 bg-brand-600 rounded-full" />}
         </div>
         {isSelected ? 'Selected' : 'Select this plan'}
       </div>
@@ -93,7 +93,7 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
       >
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isExpanded ? 'bg-brand-100' : 'bg-gray-100'}`}>
-            <BedDouble size={18} className={isExpanded ? 'text-brand-700' : 'text-gray-400'} />
+            <BedDouble size={18} className={isExpanded ? 'text-brand-600' : 'text-gray-400'} />
           </div>
           <div>
             <p className="font-bold text-gray-900 text-sm">{roomType.name}</p>
@@ -103,7 +103,7 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
             </p>
           </div>
         </div>
-        {isExpanded ? <ChevronUp size={16} className="text-brand-700" /> : <ChevronDown size={16} className="text-gray-400" />}
+        {isExpanded ? <ChevronUp size={16} className="text-brand-600" /> : <ChevronDown size={16} className="text-gray-400" />}
       </button>
 
       {/* Rate plans */}
@@ -197,7 +197,7 @@ const Detail = () => {
 
   if (loading) return (
     <div className="min-h-screen pt-24 flex items-center justify-center">
-      <span className="w-12 h-12 border-4 border-brand-700 border-t-transparent rounded-full animate-spin" />
+      <span className="w-12 h-12 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -248,7 +248,7 @@ const Detail = () => {
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
                   <div className="flex items-center text-gray-500 mb-4">
-                    <MapPin className="h-5 w-5 mr-1 text-brand-700" />
+                    <MapPin className="h-5 w-5 mr-1 text-brand-600" />
                     {hotel.location}, {hotel.city}
                   </div>
                   
@@ -402,7 +402,7 @@ const Detail = () => {
               <button
                 onClick={handleBookNow}
                 disabled={!selectedRatePlan}
-                className="w-full bg-brand-700 hover:bg-brand-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-brand-700/30 transition-all transform hover:-translate-y-0.5 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {checkIn && checkOut && selectedRatePlan
                   ? `Book Now — ${fmt(grandTotal)}`

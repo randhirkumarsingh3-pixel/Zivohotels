@@ -148,9 +148,9 @@ const Listing = () => {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-gray-100">
         <h2 className="text-base font-bold flex items-center gap-2 text-gray-900">
-          <Filter className="h-4 w-4 text-brand-700" /> Filters
+          <Filter className="h-4 w-4 text-brand-600" /> Filters
           {activeFilterCount > 0 && (
-            <span className="bg-brand-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+            <span className="bg-brand-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               {activeFilterCount}
             </span>
           )}
@@ -170,7 +170,7 @@ const Listing = () => {
             <label key={i} className="flex items-center cursor-pointer group">
               <div
                 className={`w-4 h-4 rounded border-2 mr-3 flex items-center justify-center transition-colors ${
-                  selectedPrice === i ? 'bg-brand-700 border-brand-700' : 'border-gray-300 group-hover:border-brand-400'
+                  selectedPrice === i ? 'bg-brand-600 border-brand-600' : 'border-gray-300 group-hover:border-brand-400'
                 }`}
                 onClick={() => setSelectedPrice(selectedPrice === i ? null : i)}
               >
@@ -190,7 +190,7 @@ const Listing = () => {
             <label key={star} className="flex items-center cursor-pointer group" onClick={() => toggleStar(star)}>
               <div
                 className={`w-4 h-4 rounded border-2 mr-3 flex items-center justify-center transition-colors ${
-                  selectedStars.includes(star) ? 'bg-brand-700 border-brand-700' : 'border-gray-300 group-hover:border-brand-400'
+                  selectedStars.includes(star) ? 'bg-brand-600 border-brand-600' : 'border-gray-300 group-hover:border-brand-400'
                 }`}
               >
                 {selectedStars.includes(star) && <div className="w-2 h-2 bg-white rounded-sm" />}
@@ -244,7 +244,7 @@ const Listing = () => {
                 <Filter size={14} />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="bg-brand-700 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold ml-0.5">
+                  <span className="bg-brand-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold ml-0.5">
                     {activeFilterCount}
                   </span>
                 )}
@@ -308,7 +308,7 @@ const Listing = () => {
               <h3 className="text-xl font-bold text-gray-900 mb-2">No hotels found</h3>
               <p className="text-gray-500 mb-4">Try adjusting your destination or clearing some filters.</p>
               {activeFilterCount > 0 && (
-                <button onClick={clearFilters} className="text-brand-700 font-medium hover:text-brand-800 underline">
+                <button onClick={clearFilters} className="text-brand-600 font-medium hover:text-brand-700 underline">
                   Clear all filters
                 </button>
               )}
@@ -331,7 +331,7 @@ const Listing = () => {
             <FilterPanel />
             <button
               onClick={() => setMobileFiltersOpen(false)}
-              className="mt-8 w-full bg-brand-700 text-white py-3 rounded-xl font-bold hover:bg-brand-800 transition-colors"
+              className="mt-8 w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition-colors"
             >
               Show {hotels.length} Results
             </button>

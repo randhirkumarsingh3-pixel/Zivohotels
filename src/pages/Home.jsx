@@ -51,30 +51,30 @@ const Home = () => {
     <>
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-visible flex items-center justify-center min-h-[600px]">
-        <div className="absolute inset-0 z-0 bg-brand-900">
+        <div className="absolute inset-0 z-0 bg-gray-900">
           <img 
             src="https://images.unsplash.com/photo-1542314831-c6a4d14d8c53?auto=format&fit=crop&w=1920&q=70" 
             alt="Luxury Hotel Hero Background" 
-            className="w-full h-full object-cover opacity-40 mix-blend-overlay"
+            className="w-full h-full object-cover opacity-80"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-900/90 via-brand-900/70 to-brand-900/90"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/90 via-gray-900/50 to-gray-900/90"></div>
         </div>
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-center text-center mt-[-40px]">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight mb-4 animate-fade-in-up drop-shadow-lg">
-            Find your perfect <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-yellow-300">stay.</span>
+            Find your perfect <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-yellow-300">stay.</span>
           </h1>
-          <p className="mt-2 text-xl text-brand-100 max-w-2xl mb-10 animate-fade-in-up drop-shadow-md font-medium" style={{ animationDelay: '0.2s' }}>
+          <p className="mt-2 text-xl text-gray-200 max-w-2xl mb-10 animate-fade-in-up drop-shadow-md font-medium" style={{ animationDelay: '0.2s' }}>
             Book premium hotels at the best prices. Experience comfort, elegance, and world-class hospitality.
           </p>
           
           <SmartSearchBar isMobile={isMobile} />
           
           <div className="mt-12 flex flex-wrap justify-center gap-4 md:gap-8 text-sm md:text-base font-medium text-white/95 animate-fade-in drop-shadow-md" style={{ animationDelay: '0.4s' }}>
-            <div className="flex items-center bg-brand-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Free Cancellation</div>
-            <div className="flex items-center bg-brand-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Trusted Partners</div>
-            <div className="flex items-center bg-brand-900/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> 24/7 Support</div>
+            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Book in 30 seconds</div>
+            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> No hidden charges</div>
+            <div className="flex items-center"><CheckCircle2 className="text-green-400 h-5 w-5 mr-2" /> Pay at hotel available</div>
           </div>
         </div>
       </section>
@@ -87,7 +87,7 @@ const Home = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Popular Destinations</h2>
               <p className="text-gray-500 text-lg">Explore our most booked cities across the country.</p>
             </div>
-            <Link to="/hotels" className="hidden md:flex items-center text-brand-700 font-semibold hover:text-brand-800 transition-colors">
+            <Link to="/hotels" className="hidden md:flex items-center text-brand-600 font-semibold hover:text-brand-700 transition-colors">
               View All Destinations <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </div>
@@ -110,7 +110,7 @@ const Home = () => {
           
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-700"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
             </div>
           ) : (
             <div className="space-y-16">
@@ -119,7 +119,7 @@ const Home = () => {
               {recommendations?.recentlyViewed?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-6">
-                    <History className="text-brand-700" size={24} />
+                    <History className="text-brand-600" size={24} />
                     <h2 className="text-2xl font-bold text-gray-900">Recently Viewed</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

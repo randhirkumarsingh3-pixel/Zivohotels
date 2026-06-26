@@ -20,24 +20,24 @@ const Header = () => {
   }, []);
 
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-md py-2' : 'bg-white/90 backdrop-blur-md shadow-sm py-4'}`}>
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-md py-2' : 'bg-white/80 backdrop-blur-md shadow-sm py-4'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
           <Link to="/" className="flex-shrink-0 flex items-center cursor-pointer group">
-            <div className="bg-brand-700 p-2 rounded-lg mr-2 group-hover:bg-brand-800 transition-colors shadow-lg shadow-brand-700/30">
+            <div className="bg-brand-600 p-2 rounded-lg mr-2 group-hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/30">
               <Building2 className="h-6 w-6 text-white" />
             </div>
             <span className={`text-2xl font-bold tracking-tight text-gray-900`}>
-              Zivo<span className="text-brand-700">Hotels</span>
+              Zivo<span className="text-brand-600">Hotels</span>
             </span>
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="/hotels" className="font-medium transition-colors hover:text-brand-700 text-gray-600">All Hotels</Link>
+            <Link to="/hotels" className="font-medium transition-colors hover:text-brand-600 text-gray-600">All Hotels</Link>
             
             {/* Role-Based Links */}
             {isAuthenticated && (
-              <Link to="/my-bookings" className="font-medium transition-colors hover:text-brand-700 text-gray-600">
+              <Link to="/my-bookings" className="font-medium transition-colors hover:text-brand-600 text-gray-600">
                 My Bookings
               </Link>
             )}
@@ -45,7 +45,7 @@ const Header = () => {
             {isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'OWNER') && (
               <Link 
                 to={user.role === 'ADMIN' ? '/admin' : '/extranet'} 
-                className="font-bold transition-colors text-brand-700 hover:text-brand-800"
+                className="font-bold transition-colors text-brand-600 hover:text-brand-800"
               >
                 {user.role === 'ADMIN' ? 'Admin Panel' : 'Owner Dashboard'}
               </Link>
@@ -68,10 +68,10 @@ const Header = () => {
                 </div>
               ) : (
                 <>
-                  <Link to="/login" className="font-medium px-4 py-2 rounded-full transition-colors text-gray-700 hover:text-brand-700 hover:bg-gray-50">
+                  <Link to="/login" className="font-medium px-4 py-2 rounded-full transition-colors text-gray-700 hover:text-brand-600 hover:bg-gray-50">
                     Log in
                   </Link>
-                  <Link to="/signup" className="font-medium px-6 py-2 rounded-full transition-all shadow-md transform hover:-translate-y-0.5 bg-brand-700 hover:bg-brand-800 text-white shadow-brand-700/25">
+                  <Link to="/signup" className="font-medium px-6 py-2 rounded-full transition-all shadow-md transform hover:-translate-y-0.5 bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25">
                     Sign up
                   </Link>
                 </>

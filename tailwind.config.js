@@ -8,26 +8,15 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#f0f5fa',
-          100: '#e1ebf5',
-          200: '#c3d7eb',
-          300: '#a5c3e1',
-          400: '#699cd1',
-          500: '#2d75c1',
-          600: '#2869ad',
-          700: '#003580', // Deep Blue - Primary Brand
-          800: '#002a66',
-          900: '#001a3d',
-        },
-        surface: '#f9f9ff',
-        borderLight: '#d3daef'
+          50: '#fff1f2',
+          100: '#ffe4e6',
+          500: '#f43f5e',
+          600: '#e11d48',
+          700: '#be123c',
+        }
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-      },
-      borderRadius: {
-        'ROUND_FOUR': '4px',
-        DEFAULT: '4px',
       }
     },
   },
