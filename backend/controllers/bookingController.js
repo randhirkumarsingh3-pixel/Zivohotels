@@ -586,7 +586,7 @@ export const getMyBookings = async (req, res, next) => {
             city: true,
             checkInTime: true,
             checkOutTime: true,
-            media: {
+            images: {
               where: { isPrimary: true },
               take: 1,
               select: { url: true }

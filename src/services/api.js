@@ -60,7 +60,7 @@ const getCacheConfig = (url) => {
   }
 
   // Memory Cache (Level 1)
-  if (url.includes('/search/autocomplete') || url.includes('/search/popular')) return { type: 'memory', ttl: 24 * 60 * 60 * 1000 };
+  if (url.includes('/public/search/autocomplete') || url.includes('/public/search/popular')) return { type: 'memory', ttl: 24 * 60 * 60 * 1000 };
   if (url.includes('/amenities')) return { type: 'memory', ttl: 24 * 60 * 60 * 1000 };
   if (url.includes('/system/config') || url.includes('/public/config')) return { type: 'memory', ttl: 30 * 60 * 1000 };
   if (url.includes('/countries')) return { type: 'memory', ttl: 7 * 24 * 60 * 60 * 1000 };
@@ -255,9 +255,9 @@ export const verifyOtpApi = (email, otp) => apiFetch(`${PUBLIC_BASE}/auth/verify
 export const acceptInvite = (token, password) => apiFetch(`${PUBLIC_BASE}/users/accept-invite`, { method: 'POST', body: JSON.stringify({ token, password }) });
 
 // ─── HOTELS & DESTINATIONS ───────────────────────────────────────────────────
-export const getPopularDestinations = (options = {}) => apiFetch(`${PUBLIC_BASE}/search/popular`, options).then(res => res?.data);
-export const searchDestinations = (query, options = {}) => apiFetch(`${PUBLIC_BASE}/search?q=${encodeURIComponent(query)}`, options).then(res => res?.data);
-export const nearbyDestinations = (lat, lng, options = {}) => apiFetch(`${PUBLIC_BASE}/search/nearby?lat=${lat}&lng=${lng}`, options).then(res => res?.data);
+export const getPopularDestinations = (options = {}) => apiFetch(`${PUBLIC_BASE}/public/search/popular`, options).then(res => res?.data);
+export const searchDestinations = (query, options = {}) => apiFetch(`${PUBLIC_BASE}/public/search?q=${encodeURIComponent(query)}`, options).then(res => res?.data);
+export const nearbyDestinations = (lat, lng, options = {}) => apiFetch(`${PUBLIC_BASE}/public/search/nearby?lat=${lat}&lng=${lng}`, options).then(res => res?.data);
 
 export const getHotels = async (searchParams = {}, filters = {}) => {
   const params = new URLSearchParams();
