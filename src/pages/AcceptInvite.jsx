@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, Eye, EyeOff, AlertTriangle, KeyRound } from 'lucide-react';
+import { acceptInvite } from '../services/api';
 
 const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
@@ -33,15 +34,8 @@ const AcceptInvite = () => {
     }
 
     setLoading(true);
-    const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
     try {
-      const res = await fetch(`${BASE_URL}/users/accept-invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password: form.password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to activate account');
+      await acceptInvite(token, form.password);
       setSuccess(true);
     } catch (err) {
       setError(err.message);

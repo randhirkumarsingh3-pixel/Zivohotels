@@ -8,9 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
-const API_URL = `${BASE_URL}/bookings`;
+import { getUserBookings, cancelBooking, downloadInvoice, submitReview } from '../services/api';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 const today = () => {
@@ -144,16 +142,11 @@ const MyBookings = () => {
   const fetchMyBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('jwt_token');
-      const res = await fetch(`${API_URL}/my-bookings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch bookings');
-      setBookings(data.data || []);
+      const data = await getUserBookings();
+      setBookings(data || []);
       setActiveBooking(prevActive => {
         if (!prevActive) return null;
-        const updated = (data.data || []).find(b => b.id === prevActive.id);
+        const updated = (data || []).find(b => b.id === prevActive.id);
         return updated || prevActive;
       });
     } catch (err) {
@@ -174,18 +167,12 @@ const MyBookings = () => {
   const handleCancelBooking = async (id) => {
     setCancelling(true);
     try {
-      const token = localStorage.getItem('jwt_token');
-      const res = await fetch(`${API_URL}/${id}/cancel`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Cancellation failed');
-      setBookings(prev => prev.map(b => b.id === id ? data.data.booking : b));
+      const res = await cancelBooking(id);
+      setBookings(prev => prev.map(b => b.id === id ? res.data.booking : b));
       setCancelTarget(null);
       fetchMyBookings();
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setCancelling(false);
     }
@@ -193,12 +180,7 @@ const MyBookings = () => {
 
   const handleDownloadInvoice = async (invoiceId, refName) => {
     try {
-      const token = localStorage.getItem('jwt_token');
-      const res = await fetch(`${BASE_URL}/invoices/${invoiceId}/download`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error('Invoice PDF is not generated yet or missing on server.');
-      const blob = await res.blob();
+      const blob = await downloadInvoice(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -207,7 +189,7 @@ const MyBookings = () => {
       a.click();
       a.remove();
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     }
   };
 
@@ -221,25 +203,17 @@ const MyBookings = () => {
   };
 
   const handleSubmitReview = async () => {
-    if (reviewRating === 0) { alert('Please select a rating before submitting.'); return; }
+    if (reviewRating === 0) { setError('Please select a rating before submitting.'); return; }
     setReviewSubmitting(true);
     try {
-      const token = localStorage.getItem('jwt_token');
-      const res = await fetch(`${BASE_URL}/reviews`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId:  activeBooking.id,
-          hotelId:    activeBooking.hotelId,
-          rating:     reviewRating,
-          comment:    reviewComment
-        })
+      await submitReview(activeBooking.hotelId, {
+        bookingId: activeBooking.id,
+        rating: reviewRating,
+        comment: reviewComment
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Review submission failed');
       setReviewSuccess(true);
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setReviewSubmitting(false);
     }

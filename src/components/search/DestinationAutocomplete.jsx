@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Navigation, History, Map as MapIcon, Building, AlertCircle } from 'lucide-react';
-import { track } from '../../utils/analytics';
-
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
-
-// Global memory cache for autocomplete
-const searchCache = new Map();
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+import { trackEvent } from '../../services/api';
+import { getPopularDestinations, searchDestinations, nearbyDestinations } from '../../services/api';
 
 const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNext, _isMobile }) => {
   const [query, setQuery] = useState(destination?.label || '');
@@ -33,11 +27,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
 
     const fetchPopular = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/public/search/popular`);
-        if (res.ok) {
-          const data = await res.json();
-          setPopularCities(data);
-        }
+        const data = await getPopularDestinations();
+        if (data) setPopularCities(data);
       } catch (error) {
         console.error('Failed to fetch popular cities', error);
       }
@@ -63,35 +54,16 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
       return;
     }
 
-    // Check Cache
-    if (searchCache.has(query)) {
-      const { data, timestamp } = searchCache.get(query);
-      if (Date.now() - timestamp < CACHE_TTL) {
-        setSuggestions(data);
-        setFetchError(false);
-        return;
-      } else {
-        searchCache.delete(query);
-      }
-    }
-
     const controller = new AbortController();
     setIsLoading(true);
     setFetchError(false);
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`${BASE_URL}/public/search?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal
-        });
-        
-        if (!res.ok) throw new Error('Network error');
-        
-        const data = await res.json();
-        searchCache.set(query, { data, timestamp: Date.now() });
-        setSuggestions(data);
+        const data = await searchDestinations(query, { signal: controller.signal });
+        setSuggestions(data || []);
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err.name !== 'AbortError' && err.code !== 'TIMEOUT') {
           console.error('Search API Error:', err);
           setFetchError(true);
         }
@@ -110,7 +82,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     setQuery(item.label);
     setDestination(item);
     setIsOpen(false);
-    track("DESTINATION_SELECTED", { type: item.type, label: item.label });
+    trackEvent("DESTINATION_SELECTED", { type: item.type, label: item.label });
 
     // Update Recent Searches
     const getUniqueKey = (x) => x.id || x.value || x.label;
@@ -129,12 +101,9 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const res = await fetch(`${BASE_URL}/public/search/nearby?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.length > 0) {
-              handleSelect(data[0]); // Select first nearby result
-            }
+          const data = await nearbyDestinations(pos.coords.latitude, pos.coords.longitude);
+          if (data && data.length > 0) {
+            handleSelect(data[0]); // Select first nearby result
           }
         } catch (error) {
           console.error("Geolocation search failed", error);
@@ -181,7 +150,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
           }}
           onFocus={() => {
             setIsOpen(true);
-            track("SEARCH_STARTED");
+            trackEvent("SEARCH_STARTED");
           }}
         />
       </div>

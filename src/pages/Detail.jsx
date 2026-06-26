@@ -142,6 +142,7 @@ const Detail = () => {
   // Selection state
   const [selectedRoomType, setSelectedRoomType] = useState(null);
   const [selectedRatePlan, setSelectedRatePlan] = useState(null);
+  const [error, setError] = useState(null);
 
   // A/B Experiments
   const badgeVariant = useExperiment('badge_urgency');
@@ -179,8 +180,9 @@ const Detail = () => {
   };
 
   const handleBookNow = () => {
+    setError(null);
     if (!selectedRoomType || !selectedRatePlan) {
-      alert('Please select a room type and rate plan to continue.');
+      setError('Please select a room type and rate plan to continue.');
       return;
     }
     // Pass full booking context including ratePlanId
@@ -244,6 +246,12 @@ const Detail = () => {
           <div className="flex-1 space-y-6">
             {/* Hotel Info */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-start gap-2">
+                  <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
