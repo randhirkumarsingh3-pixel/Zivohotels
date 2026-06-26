@@ -24,11 +24,20 @@ export const responseFormatter = (req, res, next) => {
       newBody.success = body.success !== undefined ? body.success : !isError;
       newBody.message = body.message || newBody.message;
       newBody.code = body.code || newBody.code;
+      if (body.meta !== undefined) newBody.meta = body.meta;
 
-      const extraKeys = Object.keys(body).filter(k => !['success', 'message', 'code', 'data'].includes(k));
+      const extraKeys = Object.keys(body).filter(k => !['success', 'message', 'code', 'data', 'meta'].includes(k));
 
       if (body.data !== undefined) {
-        if (typeof body.data === 'object' && body.data !== null && extraKeys.length > 0) {
+        if (Array.isArray(body.data)) {
+          newBody.data = body.data;
+          if (extraKeys.length > 0) {
+            newBody.meta = newBody.meta || {};
+            for (const key of extraKeys) {
+              newBody.meta[key] = body[key];
+            }
+          }
+        } else if (typeof body.data === 'object' && body.data !== null && extraKeys.length > 0) {
           // Merge extra root keys into data so they aren't lost
           newBody.data = { ...body.data };
           for (const key of extraKeys) {

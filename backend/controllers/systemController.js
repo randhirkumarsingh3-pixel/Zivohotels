@@ -203,3 +203,16 @@ export const updateTaxRules = asyncHandler(async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Tax rules updated successfully.' });
 });
+
+// --- WORKER HEALTH ---
+export const getWorkerHealth = asyncHandler(async (req, res) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      status: 'healthy',
+      activeWorkers: 0,
+      queues: {}
+    }
+  });
+});
+
