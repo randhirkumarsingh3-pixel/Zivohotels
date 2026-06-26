@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
       const response = await loginUser({ email, password });
       
       const loggedInUser = response.data.user;
-      const jwtToken = response.token;
+      const jwtToken = response.data.token || response.token; // Fallback just in case
 
       // Save to state
       setUser(loggedInUser);

@@ -5,6 +5,6 @@ import { extractUser } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // extractUser is a soft-auth middleware that extracts userId if token exists, but doesn't block if missing
-router.post('/', extractUser, trackEvent);
+router.post('/track', extractUser, trackEvent);
 
 export default router;
