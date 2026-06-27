@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { CheckCircle2, Loader2, Info } from 'lucide-react';
 import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
-const BasicInfoStep = ({ formData, updateForm }) => {
+const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
+  const isProtected = !isAdmin;
   // Generate array of years from 1950 to current year + 2
   const currentYear = new Date().getFullYear();
   const years = Array.from(new Array(currentYear - 1950 + 3), (val, index) => currentYear + 2 - index);
@@ -560,7 +561,7 @@ const BasicInfoStep = ({ formData, updateForm }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col gap-2">
             <label className="font-bold text-slate-800 text-base">Owner Name</label>
             <input 
@@ -579,6 +580,16 @@ const BasicInfoStep = ({ formData, updateForm }) => {
               onChange={e => updateForm('ownerEmail', e.target.value)} 
               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
               placeholder="e.g. owner@property.com"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="font-bold text-slate-800 text-base">Owner Phone</label>
+            <input 
+              type="tel" 
+              value={formData.ownerPhone || ''} 
+              onChange={e => updateForm('ownerPhone', e.target.value.replace(/\D/g, ''))} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+              placeholder="e.g. 9876543210"
             />
           </div>
         </div>

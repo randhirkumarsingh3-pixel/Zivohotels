@@ -4,6 +4,10 @@ export const getImageUrl = (url) => {
     return url;
   }
   const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api/v1';
-  const domain = apiBase.replace('/api/v1', '');
-  return `${domain}${url}`;
+  let domain = apiBase.replace(/\/api\/v1\/?$/, '');
+  
+  // ensure url starts with a slash
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  
+  return `${domain}${cleanUrl}`;
 };

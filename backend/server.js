@@ -48,7 +48,9 @@ dotenv.config();
 const app = express();
 
 // 0. Security Headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // 1. Rate Limiter Definitions
 const globalLimiter = rateLimit({

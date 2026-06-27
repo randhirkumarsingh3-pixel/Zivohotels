@@ -39,6 +39,9 @@ const hotelSchema = z.object({
   managerPhone: z.string().optional(),
   managerEmail: z.string().optional(),
   guestLandline: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerEmail: z.string().optional(),
+  ownerPhone: z.string().optional(),
   // Step 4: Commercials & Legal
   bankDetail: z.object({
     accountName: z.string(),
@@ -52,24 +55,92 @@ const hotelSchema = z.object({
   legalName: z.string().optional(),
   pan: z.string().optional(),
   gstin: z.string().optional(),
+  incorporationType: z.string().optional(),
+  payoutCycle: z.string().optional(),
+  msme: z.string().optional(),
+  builtYear: z.preprocess((val) => (val === '' || val === null ? undefined : Number(val)), z.number().optional()),
+  bookingSince: z.preprocess((val) => (val === '' || val === null ? undefined : Number(val)), z.number().optional()),
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'INACTIVE', 'REJECTED']).optional(),
+  lastUpdatedAt: z.string().optional(),
 });
 
 const hotelUpdateSchema = hotelSchema.partial();
 
 // --- HELPERS ---
 
+const calculatePropertyCompleteness = (hotel, normalizedData) => {
+  const breakdown = {
+    businessProfile: false,
+    contactInfo: false,
+    photos: false,
+    rooms: false,
+    amenities: false,
+    policies: false,
+    finance: false,
+  };
+
+  const { prismaData, _bankDetail, _media, _contactInfo, _commercials } = normalizedData;
+  const mergedSettings = hotel.integrationSettings || {};
+  const currentContact = _contactInfo || mergedSettings.contactInfo || {};
+  const currentCommercials = _commercials || mergedSettings.commercials || {};
+
+  // Check Business Profile
+  breakdown.businessProfile = Boolean(
+    prismaData.legalName || hotel.legalName
+  ) && Boolean(
+    currentCommercials.builtYear || hotel.builtYear
+  );
+
+  // Contact Info
+  breakdown.contactInfo = Boolean(
+    currentContact.ownerName && currentContact.ownerPhone
+  ) && Boolean(
+    currentContact.receptionPhone
+  );
+
+  // Photos
+  const mediaCount = _media ? _media.length : (hotel.media ? hotel.media.length : 0);
+  breakdown.photos = mediaCount >= 3;
+
+  // Rooms (not in this payload, rely on hotel object)
+  breakdown.rooms = hotel.roomTypes && hotel.roomTypes.length > 0;
+
+  // Amenities
+  const amenities = prismaData.amenities || hotel.amenities || [];
+  breakdown.amenities = amenities.length > 0;
+
+  // Policies
+  const policies = prismaData.policies || hotel.policies || [];
+  breakdown.policies = policies.length > 0;
+
+  // Finance
+  breakdown.finance = Boolean(
+    (_bankDetail && _bankDetail.accountNumber) || 
+    (hotel.bankDetail && hotel.bankDetail.accountNumber)
+  ) && Boolean(
+    prismaData.pan || hotel.pan
+  );
+
+  const total = Object.keys(breakdown).length;
+  const completed = Object.values(breakdown).filter(Boolean).length;
+  const score = Math.round((completed / total) * 100);
+
+  return { score, breakdown };
+};
+
 /**
  * Normalizes hotel payload to ensure consistent data structure
  */
-const normalizeHotelPayload = (data) => {
+export const normalizeHotelPayload = (data) => {
   const {
     name, address, location, city, description, latitude, longitude,
     amenities, policies, checkInTime, checkOutTime,
     media, _images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
+    ownerName, ownerEmail, ownerPhone,
     bankDetail, commissionRate, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
+    incorporationType, payoutCycle, msme, builtYear, bookingSince,
     state, country, area, pincode
   } = data;
   
@@ -91,6 +162,8 @@ const normalizeHotelPayload = (data) => {
     legalName,
     pan,
     gstin,
+    incorporationType,
+    payoutCycle,
   };
 
   // Map propertyType to Prisma's 'type' field
@@ -106,7 +179,8 @@ const normalizeHotelPayload = (data) => {
   Object.keys(prismaData).forEach(key => prismaData[key] === undefined && delete prismaData[key]);
   
   const _contactInfo = {
-    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline
+    receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
+    ownerName, ownerEmail, ownerPhone
   };
   Object.keys(_contactInfo).forEach(key => _contactInfo[key] === undefined && delete _contactInfo[key]);
 
@@ -118,13 +192,20 @@ const normalizeHotelPayload = (data) => {
   if (pincode) _addressDetails.pincode = pincode;
   if (country) _addressDetails.country = country;
 
+  // Commercial metadata
+  const _commercials = {};
+  if (msme !== undefined) _commercials.msme = msme;
+  if (builtYear !== undefined) _commercials.builtYear = builtYear;
+  if (bookingSince !== undefined) _commercials.bookingSince = bookingSince;
+
   return {
     prismaData,
     _bankDetail: bankDetail,
     _commissionRate: commissionRate,
     _media: media,
     _contactInfo,
-    _addressDetails
+    _addressDetails,
+    _commercials
   };
 };
 
@@ -236,6 +317,14 @@ export const updateHotel = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Property not found', requestId: req.id });
   }
   
+  if (req.body.lastUpdatedAt) {
+    const incomingDate = new Date(req.body.lastUpdatedAt).getTime();
+    const existingDate = existingHotel.updatedAt.getTime();
+    if (incomingDate < existingDate) {
+      return res.status(409).json({ success: false, message: 'Concurrency conflict: Property modified by another user.', requestId: req.id });
+    }
+  }
+  
   if (req.user.role === 'OWNER' && existingHotel.ownerId !== req.user.id) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
@@ -253,6 +342,20 @@ export const updateHotel = asyncHandler(async (req, res) => {
   const normalized = normalizeHotelPayload(validation.data);
   const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails } = normalized;
 
+  const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+
+  // Role-Based Access Control (RBAC)
+  if (!isAdmin) {
+    // Protected fields dropped for non-admins
+    delete prismaData.status;
+    delete prismaData.channelProvider;
+    delete prismaData.legalName;
+    delete prismaData.pan;
+    delete prismaData.gstin;
+    normalized._bankDetail = undefined;
+    normalized._commissionRate = undefined;
+  }
+
   if (prismaData.status === 'ACTIVE' && existingHotel.status !== 'ACTIVE') {
     const agreement = await prisma.agreement.findUnique({ where: { hotelId: id } });
     if (!agreement || agreement.status !== 'SIGNED') {
@@ -264,7 +367,9 @@ export const updateHotel = asyncHandler(async (req, res) => {
   let newSettings = undefined;
   const hasContact = _contactInfo && Object.keys(_contactInfo).length > 0;
   const hasAddress = _addressDetails && Object.keys(_addressDetails).length > 0;
-  if (hasContact || hasAddress) {
+  const hasCommercials = _commercials && Object.keys(_commercials).length > 0;
+  
+  if (hasContact || hasAddress || hasCommercials) {
     const existingSettings = existingHotel.integrationSettings && typeof existingHotel.integrationSettings === 'object' ? existingHotel.integrationSettings : {};
     newSettings = { ...existingSettings };
     if (hasContact) {
@@ -273,16 +378,62 @@ export const updateHotel = asyncHandler(async (req, res) => {
     if (hasAddress) {
       newSettings.addressDetails = { ...(existingSettings.addressDetails || {}), ..._addressDetails };
     }
+    if (hasCommercials) {
+      newSettings.commercials = { ...(existingSettings.commercials || {}), ..._commercials };
+    }
   }
+
+  // Field-Level Audit Logging
+  const auditDetails = { fields: {} };
+  Object.keys(prismaData).forEach(key => {
+    if (prismaData[key] !== undefined && JSON.stringify(prismaData[key]) !== JSON.stringify(existingHotel[key])) {
+      auditDetails.fields[key] = { old: existingHotel[key], new: prismaData[key] };
+    }
+  });
+  if (normalized._commissionRate !== undefined && normalized._commissionRate !== existingHotel.dynamicCommissionRate) {
+    auditDetails.fields.commissionRate = { old: existingHotel.dynamicCommissionRate, new: normalized._commissionRate };
+  }
+  // Deep diff JSON settings
+  if (newSettings) {
+    ['contactInfo', 'addressDetails', 'commercials'].forEach(section => {
+      if (newSettings[section]) {
+        Object.keys(newSettings[section]).forEach(key => {
+          const oldVal = existingHotel.integrationSettings?.[section]?.[key];
+          const newVal = newSettings[section][key];
+          if (newVal !== undefined && oldVal !== newVal) {
+            auditDetails.fields[`${section}.${key}`] = { old: oldVal, new: newVal };
+          }
+        });
+      }
+    });
+  }
+
+  // Property Completeness Engine
+  const completeness = calculatePropertyCompleteness(existingHotel, normalized);
 
   const hotel = await prisma.hotel.update({
     where: { id },
     data: {
       ...prismaData,
       status: prismaData.status || existingHotel.status,
+      complianceScore: completeness.score,
+      readinessBreakdown: completeness.breakdown,
       ...(newSettings ? { integrationSettings: newSettings } : {})
     }
   });
+
+  if (Object.keys(auditDetails.fields).length > 0) {
+    await prisma.auditLog.create({
+      data: {
+        action: 'UPDATE',
+        entityType: 'HOTEL',
+        entityId: hotel.id,
+        userId: req.user.id,
+        requestId: req.id,
+        details: auditDetails
+      }
+    });
+  }
 
   // Manual upsert of agreement and bank detail to avoid client-sync issues
   if (_commissionRate !== undefined) {
@@ -503,6 +654,14 @@ export const getHotelById = asyncHandler(async (req, res) => {
     managerPhone: contactInfo.managerPhone || null,
     managerEmail: contactInfo.managerEmail || null,
     guestLandline: contactInfo.guestLandline || null,
+    ownerName: contactInfo.ownerName || null,
+    ownerEmail: contactInfo.ownerEmail || null,
+    ownerPhone: contactInfo.ownerPhone || null,
+    
+    // Flatten commercials
+    msme: integSettings.commercials?.msme || null,
+    builtYear: integSettings.commercials?.builtYear || null,
+    bookingSince: integSettings.commercials?.bookingSince || null,
     // Flatten address details to top-level for frontend consumption
     addressLine: addressDetails.address || null,
     area: addressDetails.area || null,

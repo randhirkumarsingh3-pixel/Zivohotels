@@ -27,7 +27,8 @@ const INCORPORATION_TYPES = [
   { value: "PUBLIC_LTD", label: "Public Limited Company" }
 ];
 
-const FinanceStep = ({ formData, updateForm }) => {
+const FinanceStep = ({ formData, updateForm, isAdmin = true }) => {
+  const isProtected = !isAdmin;
   const [activeStep, setActiveStep] = useState(1);
   const [reAccountNumber, setReAccountNumber] = useState(formData.accountNumber || '');
   const [ifscVerifying, setIfscVerifying] = useState(false);
@@ -183,6 +184,12 @@ const FinanceStep = ({ formData, updateForm }) => {
         <p className="text-lg text-slate-500 mt-2">Set up your payouts, tax registrations, and statutory compliance documentation.</p>
       </div>
 
+      {isProtected && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+          <AlertCircle size={20} className="text-red-500" />
+          <p className="text-sm font-medium">Certain financial and compliance fields are locked. Please contact support to modify them.</p>
+        </div>
+      )}
       {/* Commission & Fee Summary Card */}
       <div className="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
         {/* Abstract background shapes */}
@@ -261,7 +268,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <input
+                        <input disabled={isProtected}
                           type="text"
                           value={formData.accountNumber || ''}
                           onChange={e => updateForm('accountNumber', e.target.value.replace(/\D/g, ''))}
@@ -277,7 +284,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Re-Enter Bank Account Number <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <input
+                        <input disabled={isProtected}
                           type="text"
                           value={reAccountNumber}
                           onChange={e => setReAccountNumber(e.target.value.replace(/\D/g, ''))}
@@ -308,7 +315,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                       </div>
                       <div className="md:col-span-2 space-y-2">
                         <div className="flex gap-2">
-                          <input
+                          <input disabled={isProtected}
                             type="text"
                             value={formData.ifscCode || ''}
                             onChange={e => {
@@ -321,7 +328,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                           />
                           <button
                             type="button"
-                            onClick={handleVerifyIFSC}
+                            disabled={isProtected} onClick={handleVerifyIFSC}
                             disabled={ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
@@ -343,7 +350,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Bank Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <select
+                        <select disabled={isProtected}
                           value={formData.bankName || ''}
                           onChange={e => updateForm('bankName', e.target.value)}
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
@@ -363,7 +370,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Branch Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <input
+                        <input disabled={isProtected}
                           type="text"
                           value={formData.branchName || ''}
                           onChange={e => updateForm('branchName', e.target.value)}
@@ -376,7 +383,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     {/* Account Holder Verification Consent */}
                     <div className="pt-3 border-t border-slate-100">
                       <label className="flex items-start gap-3 cursor-pointer group">
-                        <input
+                        <input disabled={isProtected}
                           type="checkbox"
                           checked={formData.verificationConsent === true}
                           onChange={e => updateForm('verificationConsent', e.target.checked)}
@@ -441,7 +448,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                       </label>
                       <div className="md:col-span-2">
                         <div className="flex gap-2">
-                          <input
+                          <input disabled={isProtected}
                             type="text"
                             value={formData.pan || ''}
                             onChange={e => handlePanChange(e.target.value)}
@@ -453,7 +460,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                           />
                           <button
                             type="button"
-                            onClick={handleVerifyPAN}
+                            disabled={isProtected} onClick={handleVerifyPAN}
                             disabled={panVerifying || !formData.pan || formData.pan.length < 10}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
@@ -480,7 +487,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                       </label>
                       <div className="md:col-span-2">
                         <div className="flex gap-2">
-                          <input
+                          <input disabled={isProtected}
                             type="text"
                             value={formData.gstin || ''}
                             onChange={e => {
@@ -493,7 +500,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                           />
                           <button
                             type="button"
-                            onClick={handleVerifyGST}
+                            disabled={isProtected} onClick={handleVerifyGST}
                             disabled={gstVerifying || !formData.gstin || formData.gstin.length < 15}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
@@ -514,7 +521,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Legal Entity Name <span className="text-red-550 text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <input
+                        <input disabled={isProtected}
                           type="text"
                           value={formData.legalName || ''}
                           onChange={e => updateForm('legalName', e.target.value)}
@@ -531,7 +538,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         MSME Number (Optional)
                       </label>
                       <div className="md:col-span-2">
-                        <input
+                        <input disabled={isProtected}
                           type="text"
                           value={formData.msme || ''}
                           onChange={e => updateForm('msme', e.target.value.toUpperCase())}
@@ -547,7 +554,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                         Incorporation Type
                       </label>
                       <div className="md:col-span-2">
-                        <select
+                        <select disabled={isProtected}
                           value={formData.incorporationType || 'INDIVIDUAL'}
                           onChange={e => updateForm('incorporationType', e.target.value)}
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
@@ -711,7 +718,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                       Platform Commission (%) <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <input
+                      <input disabled={isProtected}
                         type="number"
                         min="0"
                         max="100"
@@ -730,7 +737,7 @@ const FinanceStep = ({ formData, updateForm }) => {
                     <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2">
                       Payout Cycle <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <select disabled={isProtected}
                       value={formData.payoutCycle || 'Weekly'}
                       onChange={e => updateForm('payoutCycle', e.target.value)}
                       className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
@@ -765,7 +772,7 @@ const FinanceStep = ({ formData, updateForm }) => {
       {/* Terms & Conditions Checkbox at the bottom of the page */}
       <div className="mt-8 pt-6 border-t border-slate-200 animate-fade-in">
         <label className="flex items-start gap-3 cursor-pointer group">
-          <input
+          <input disabled={isProtected}
             type="checkbox"
             checked={formData.acceptTerms === true}
             onChange={e => updateForm('acceptTerms', e.target.checked)}
@@ -823,7 +830,7 @@ const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, requir
         </div>
       ) : (
         <label className="mt-4 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/10 rounded-xl py-3 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm">
-          <input
+          <input disabled={isProtected}
             type="file"
             accept="image/*,application/pdf"
             className="hidden"

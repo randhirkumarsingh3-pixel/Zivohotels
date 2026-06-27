@@ -11,6 +11,7 @@ import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
 import { getImageUrl } from '../../utils/image';
+import { useAuth } from '../../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -104,9 +105,13 @@ const parseBackendRoomTypes = (roomTypes) => {
 };
 
 const PropertyWizard = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams();
+  const { user } = useAuth();
+  
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   const isEditing = Boolean(id);
 
   const [hasDraftLoaded, setHasDraftLoaded] = useState(false);
@@ -245,29 +250,44 @@ const PropertyWizard = () => {
           managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
           managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
           managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.owner?.name || '',
-          ownerEmail: hotel.owner?.email || '',
-          ownerPhone: hotel.owner?.phone || '',
+          ownerName: hotel.ownerName || hotel.owner?.name || '',
+          ownerEmail: hotel.ownerEmail || hotel.owner?.email || '',
+          ownerPhone: hotel.ownerPhone || hotel.owner?.phone || '',
+          builtYear: hotel.builtYear || new Date().getFullYear(),
+          bookingSince: hotel.bookingSince || new Date().getFullYear(),
           hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
           channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
           
-          amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
-          rooms: parsedRooms,
-          images: Array.isArray(hotel.media) ? hotel.media : [],
-          policies: Array.isArray(hotel.policies) ? hotel.policies : [],
-          
-          checkInTime: hotel.checkInTime || '14:00',
-          checkOutTime: hotel.checkOutTime || '11:00',
-          
+          // Media (ensure formatting for UI)
+          images: Array.isArray(hotel.media) 
+            ? hotel.media.map(m => ({
+                url: m.url || m,
+                isCover: m.tags?.includes('Cover') || false,
+                tags: m.tags || []
+              })) 
+            : [],
+            
+          // Commercial & Legal
           legalName: hotel.legalName || '',
           pan: hotel.pan || '',
           gstin: hotel.gstin || '',
+          msme: hotel.msme || '',
+          incorporationType: hotel.incorporationType || 'INDIVIDUAL',
+          payoutCycle: hotel.payoutCycle || 'T+2',
           accountName: hotel.bankDetail?.accountName || '',
           bankName: hotel.bankDetail?.bankName || '',
           accountNumber: hotel.bankDetail?.accountNumber || '',
           ifscCode: hotel.bankDetail?.ifscCode || '',
           branchName: hotel.bankDetail?.branchName || '',
+          amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
+          rooms: parsedRooms,
+          policies: Array.isArray(hotel.policies) ? hotel.policies : [],
+          
+          checkInTime: hotel.checkInTime || '14:00',
+          checkOutTime: hotel.checkOutTime || '11:00',
+          
           commission: hotel.agreement?.commissionRate || '',
+          lastUpdatedAt: hotel.updatedAt || null,
         }));
       }
     } catch (err) {
@@ -452,17 +472,26 @@ const PropertyWizard = () => {
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
         
-        receptionPhone: formData.guestMobile || formData.receptionPhone,
-        receptionEmail: formData.guestEmail || formData.receptionEmail,
-        managerName: formData.managerName,
-        managerPhone: formData.managerPhone,
-        managerEmail: formData.managerEmail,
-        guestLandline: formData.guestLandline,
-        channelProvider: formData.hasChannelManager ? formData.channelManagerName : 'NONE',
+        receptionPhone: formData.guestMobile || formData.receptionPhone || '',
+        receptionEmail: formData.guestEmail || formData.receptionEmail || '',
+        managerName: formData.managerName || '',
+        managerPhone: formData.managerPhone || '',
+        managerEmail: formData.managerEmail || '',
+        guestLandline: formData.guestLandline || '',
+        channelProvider: formData.hasChannelManager ? (formData.channelManagerName || 'Axisrooms') : 'NONE',
+        
+        ownerName: formData.ownerName || '',
+        ownerEmail: formData.ownerEmail || '',
+        ownerPhone: formData.ownerPhone || '',
         
         legalName: formData.legalName,
         pan: formData.pan,
         gstin: formData.gstin,
+        msme: formData.msme,
+        incorporationType: formData.incorporationType,
+        payoutCycle: formData.payoutCycle,
+        builtYear: formData.builtYear,
+        bookingSince: formData.bookingSince,
         
         bankDetail: formData.accountNumber ? {
           accountName: formData.accountName,
@@ -473,6 +502,7 @@ const PropertyWizard = () => {
         } : undefined,
         
         commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
+        lastUpdatedAt: formData.lastUpdatedAt,
       };
 
       const draftId = localStorage.getItem('currentHotelId');
@@ -509,6 +539,12 @@ const PropertyWizard = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 409) {
+          alert('This property has been modified by another user. Please refresh the page before saving to prevent overwriting their changes.');
+          setIsSubmitting(false);
+          return;
+        }
+
         if (data.errors && data.errors.fieldErrors) {
           const fieldErrors = data.errors.fieldErrors;
           const firstField = Object.keys(fieldErrors)[0];
@@ -651,9 +687,9 @@ const PropertyWizard = () => {
       case 6:
         return <PoliciesStep formData={formData} updateForm={updateForm} />;
       case 7:
-        return <FinanceStep formData={formData} updateForm={updateForm} />;
+        return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
       default:
-        return <BasicInfoStep formData={formData} updateForm={updateForm} />;
+        return <BasicInfoStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
     }
   };
 
