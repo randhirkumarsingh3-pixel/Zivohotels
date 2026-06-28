@@ -17,9 +17,15 @@ class SocketService {
         origin: process.env.NODE_ENV === 'production' 
           ? ['https://zivohotels.com', 'https://admin.zivohotels.com'] 
           : ['http://localhost:5173', 'http://127.0.0.1:5173'],
-        credentials: true
+        credentials: true,
+        methods: ['GET', 'POST']
       },
+      // Allow both transports — polling as a fallback for CDN proxies (Render, Cloudflare)
+      transports: ['polling', 'websocket'],
       pingTimeout: 60000,
+      pingInterval: 25000,
+      upgradeTimeout: 30000,
+      allowUpgrades: true,
     });
 
     // Authentication Middleware

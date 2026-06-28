@@ -23,9 +23,12 @@ export const SocketProvider = ({ children }) => {
 
     const newSocket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      // Allow polling first so Socket.IO can do the standard HTTP upgrade.
+      // Forcing websocket-only breaks on Render's CDN proxy.
+      transports: ['polling', 'websocket'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
     });
 
     newSocket.on('connect', () => {
