@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { 
   Landmark, CheckCircle2, AlertCircle, UploadCloud, 
   Trash2, FileCheck, HelpCircle, ChevronDown, Check, Loader2
@@ -27,7 +28,13 @@ const INCORPORATION_TYPES = [
   { value: "PUBLIC_LTD", label: "Public Limited Company" }
 ];
 
-const FinanceStep = ({ formData, updateForm, isAdmin = true }) => {
+const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
+  // Read from auth context directly so this works even in old cached bundles
+  // that may not pass the isAdmin prop
+  const { user } = useAuth();
+  const isAdmin = isAdminProp !== undefined
+    ? isAdminProp
+    : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN');
   const isProtected = !isAdmin;
   const [activeStep, setActiveStep] = useState(1);
   const [reAccountNumber, setReAccountNumber] = useState(formData.accountNumber || '');

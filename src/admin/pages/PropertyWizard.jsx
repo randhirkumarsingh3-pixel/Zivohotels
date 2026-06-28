@@ -227,11 +227,12 @@ const PropertyWizard = () => {
           ...prev,
           id: hotel.id,
           name: hotel.name || '',
-          type: hotel.propertyType || 'Hotel',
+          // hotel.type is the DB field; hotel.propertyType is not returned
+          type: hotel.type || 'Hotel',
           description: hotel.description || '',
           rating: String(hotel.rating || '3'),
           
-          country: hotel.country || 'India',
+          country: hotel.country || hotel.integrationSettings?.addressDetails?.country || 'India',
           state: hotel.state || hotel.integrationSettings?.addressDetails?.state || '',
           city: hotel.city || '',
           area: hotel.area || hotel.integrationSettings?.addressDetails?.area || '',
@@ -250,20 +251,24 @@ const PropertyWizard = () => {
           managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
           managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
           managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.ownerName || hotel.owner?.name || '',
-          ownerEmail: hotel.ownerEmail || hotel.owner?.email || '',
-          ownerPhone: hotel.ownerPhone || hotel.owner?.phone || '',
-          builtYear: hotel.builtYear || new Date().getFullYear(),
-          bookingSince: hotel.bookingSince || new Date().getFullYear(),
+          ownerName: hotel.ownerName || hotel.integrationSettings?.contactInfo?.ownerName || hotel.owner?.name || '',
+          ownerEmail: hotel.ownerEmail || hotel.integrationSettings?.contactInfo?.ownerEmail || hotel.owner?.email || '',
+          ownerPhone: hotel.ownerPhone || hotel.integrationSettings?.contactInfo?.ownerPhone || hotel.owner?.phone || '',
+          // Only set builtYear/bookingSince if they actually exist in backend
+          builtYear: hotel.builtYear || hotel.integrationSettings?.commercials?.builtYear || '',
+          bookingSince: hotel.bookingSince || hotel.integrationSettings?.commercials?.bookingSince || '',
+          msme: hotel.msme || hotel.integrationSettings?.commercials?.msme || '',
           hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
           channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
           
-          // Media (ensure formatting for UI)
+          // Media — keep raw urls from DB; getImageUrl() called at display time
           images: Array.isArray(hotel.media) 
             ? hotel.media.map(m => ({
+                id: m.id,
                 url: m.url || m,
-                isCover: m.tags?.includes('Cover') || false,
-                tags: m.tags || []
+                isCover: m.isPrimary || m.tags?.includes('Cover') || false,
+                tags: m.tags || [],
+                roomLinks: m.roomLinks || []
               })) 
             : [],
             
@@ -271,7 +276,6 @@ const PropertyWizard = () => {
           legalName: hotel.legalName || '',
           pan: hotel.pan || '',
           gstin: hotel.gstin || '',
-          msme: hotel.msme || '',
           incorporationType: hotel.incorporationType || 'INDIVIDUAL',
           payoutCycle: hotel.payoutCycle || 'T+2',
           accountName: hotel.bankDetail?.accountName || '',
@@ -286,7 +290,10 @@ const PropertyWizard = () => {
           checkInTime: hotel.checkInTime || '14:00',
           checkOutTime: hotel.checkOutTime || '11:00',
           
-          commission: hotel.agreement?.commissionRate || '',
+          // Commission from agreement, or from integrationSettings commercials
+          commission: hotel.agreement?.commissionRate
+            || hotel.integrationSettings?.commercials?.commissionRate
+            || '',
           lastUpdatedAt: hotel.updatedAt || null,
         }));
       }
@@ -463,10 +470,15 @@ const PropertyWizard = () => {
         longitude: formData.longitude,
         rating: formData.rating,
         
-        media: formData.images.map(img => ({
-          url: getImageUrl(img.url),
-          tags: img.tags || []
-        })),
+        // Media — send the raw url from DB (relative /uploads/...) or full http URL
+        // DO NOT call getImageUrl() here as that produces full URLs which
+        // pass backend validation; but for images already in DB we skip re-sending them
+        media: formData.images
+          .filter(img => img.url && !img.url.startsWith('blob:'))
+          .map(img => ({
+            url: img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, '') || ''}${img.url.startsWith('/') ? img.url : '/' + img.url}`,
+            tags: img.tags || []
+          })),
         amenities: formData.amenities,
         policies: formData.policies,
         checkInTime: formData.checkInTime,
