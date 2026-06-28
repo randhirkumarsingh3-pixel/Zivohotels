@@ -510,7 +510,7 @@ const PropertyWizard = () => {
       const usePatch = isEditing || Boolean(targetHotelId);
 
       const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
-      const method = usePatch ? 'PATCH' : 'POST';
+      const method = usePatch ? 'PUT' : 'POST';
 
       let response = await fetch(url, {
         method,
