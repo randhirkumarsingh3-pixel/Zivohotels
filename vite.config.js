@@ -18,12 +18,5 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    define: {
-      // Dynamic fallback for VITE_API_URL in production when not explicitly configured
-      'import.meta.env.VITE_API_URL': JSON.stringify(
-        process.env.VITE_API_URL || 
-        (isProduction ? 'https://zivohotels-api.onrender.com/api/v1' : '')
-      )
-    }
   };
 })

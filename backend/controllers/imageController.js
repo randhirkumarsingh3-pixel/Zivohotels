@@ -1,12 +1,7 @@
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { mediaService } from '../services/MediaService.js';
 
 const _IMAGE_TAGS = [
   "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
@@ -38,17 +33,17 @@ export const uploadHotelImage = asyncHandler(async (req, res) => {
     if (matches && matches.length === 3) {
       const mimeType = matches[1];
       const buffer = Buffer.from(matches[2], 'base64');
-      const extension = mimeType.split('/')[1] || 'jpg';
-      const filename = `img-${Date.now()}-${Math.floor(Math.random() * 10000)}.${extension}`;
       
-      const uploadDir = path.join(__dirname, '../public/uploads');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      try {
+        url = await mediaService.uploadHotelImage(
+          buffer, 
+          mimeType, 
+          req.body.hotelId, 
+          req.body.isPrimary
+        );
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
       }
-      
-      const filePath = path.join(uploadDir, filename);
-      fs.writeFileSync(filePath, buffer);
-      url = `/uploads/${filename}`;
     } else {
       return res.status(400).json({ success: false, message: 'Invalid base64 image data format' });
     }
@@ -143,16 +138,12 @@ export const deleteHotelImage = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Image not found' });
   }
 
-  // Delete the physical file if it's a local upload
-  if (existing.url.startsWith('/uploads')) {
-    const filename = existing.url.replace('/uploads/', '');
-    const filePath = path.join(__dirname, '../public/uploads', filename);
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (err) {
-        console.error('Failed to delete physical file:', err);
-      }
+  // Delete from MediaService (handles both local and GCS automatically)
+  if (existing.url) {
+    try {
+      await mediaService.deleteMedia(existing.url);
+    } catch (err) {
+      console.error('Failed to delete physical file:', err);
     }
   }
 

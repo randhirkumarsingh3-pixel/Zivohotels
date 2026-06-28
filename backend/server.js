@@ -40,6 +40,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
 import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
+import prisma from './config/db.js';
 
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
@@ -111,6 +112,23 @@ if (!fs.existsSync(uploadDir)) {
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(uploadDir));
+
+// ─── HEALTH & LIVENESS PROBES ────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Process is running' });
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    // Check DB connectivity
+    await prisma.$queryRaw`SELECT 1`;
+    // If we had external queues/redis we would ping them here too
+    res.status(200).json({ status: 'READY', message: 'All dependencies reachable' });
+  } catch (error) {
+    console.error('Readiness probe failed:', error);
+    res.status(503).json({ status: 'UNAVAILABLE', message: 'Dependencies unreachable' });
+  }
+});
 
 // Static File Serving for Invoices removed for security, use /api/v1/invoices/:id/download
 

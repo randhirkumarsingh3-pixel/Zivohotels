@@ -1,0 +1,26 @@
+{
+  "migrationId": "ea99f7d0-9d50-4fcf-a1b8-9468924df42c",
+  "startedAt": "2026-06-28T14:54:39.594Z",
+  "completedAt": "2026-06-28T14:54:41.717Z",
+  "bucket": "zivohotels-media-staging",
+  "files": [
+    {
+      "oldPath": "/uploads/img-1782627813062-283.jpeg",
+      "newPath": "https://storage.googleapis.com/zivohotels-media-staging/properties/8e672094-63f4-442d-ad62-e2c3b9394d0a/primary-1782658479750-76b645e2.jpeg",
+      "checksum": "76b645e28b0b53122b4428f4ab9eb4b9",
+      "status": "SUCCESS"
+    },
+    {
+      "oldPath": "/uploads/img-1782627832582-7279.jpeg",
+      "newPath": "https://storage.googleapis.com/zivohotels-media-staging/properties/8e672094-63f4-442d-ad62-e2c3b9394d0a/img-1782658481051-ca76c8ad.jpeg",
+      "checksum": "ca76c8ad7040a806ab11adaeca8ec7e0",
+      "status": "SUCCESS"
+    },
+    {
+      "oldPath": "/uploads/img-1782627875338-8645.jpeg",
+      "newPath": "https://storage.googleapis.com/zivohotels-media-staging/properties/8e672094-63f4-442d-ad62-e2c3b9394d0a/img-1782658481404-3aa011ba.jpeg",
+      "checksum": "3aa011ba1be270375c45875c2ed7426f",
+      "status": "SUCCESS"
+    }
+  ]
+}

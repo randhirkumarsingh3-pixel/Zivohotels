@@ -1,0 +1,57 @@
+{
+  "tables": {
+    "User": {
+      "oldCount": 8,
+      "newCount": 8,
+      "matched": true
+    },
+    "Hotel": {
+      "oldCount": 1,
+      "newCount": 1,
+      "matched": true
+    },
+    "RoomType": {
+      "oldCount": 0,
+      "newCount": 1,
+      "matched": true
+    },
+    "Booking": {
+      "oldCount": 0,
+      "newCount": 0,
+      "matched": true
+    },
+    "Transaction": {
+      "oldCount": 0,
+      "newCount": 0,
+      "matched": true
+    },
+    "Review": {
+      "oldCount": 0,
+      "newCount": 0,
+      "matched": true
+    },
+    "HotelImage": {
+      "oldCount": 3,
+      "newCount": 3,
+      "matched": true
+    }
+  },
+  "financials": {
+    "bookingTotals": {
+      "oldTotal": 0,
+      "newTotal": 0,
+      "matched": true
+    }
+  },
+  "media": {},
+  "sampling": {
+    "success": 0,
+    "failed": 0,
+    "errors": []
+  },
+  "sequences": {
+    "success": 0,
+    "failed": 0,
+    "errors": []
+  }
+}

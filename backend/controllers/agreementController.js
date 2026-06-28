@@ -159,9 +159,9 @@ export const cancelAgreement = asyncHandler(async (req, res) => {
     const agreement = await prisma.agreement.findUnique({ where: { id } });
     if (!agreement) return res.status(404).json({ success: false, message: 'Agreement not found' });
 
-    // If agreement was SIGNED, revert hotel to PENDING
+    // If agreement was SIGNED, revert hotel to PENDING (use updateMany to avoid P2025 if hotel is missing)
     if (agreement.status === 'SIGNED') {
-      await prisma.hotel.update({
+      await prisma.hotel.updateMany({
         where: { id: agreement.hotelId },
         data:  { status: 'PENDING' },
       });

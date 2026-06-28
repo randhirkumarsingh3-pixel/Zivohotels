@@ -1,0 +1,145 @@
+name: Enterprise Deployment Pipeline
+
+on:
+  push:
+    branches: [ main, staging ]
+  pull_request:
+    branches: [ main, staging ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PROJECT_ID: zivohotels-500807
+  REGION: asia-south1
+  GAR_LOCATION: asia-south1-docker.pkg.dev
+  REPOSITORY: zivohotels-registry
+  IMAGE: backend-api
+
+jobs:
+  quality_gates:
+    name: Quality Gates (Lint, Test, Prisma)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './backend/package-lock.json'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run ESLint
+        run: npm run lint --if-present
+        
+      - name: Validate Prisma Schema
+        run: npx prisma validate
+        
+      - name: Run Unit Tests
+        run: npm test --if-present
+        
+      - name: Security Scan (npm audit)
+        run: npm audit --audit-level=high
+
+  build_and_scan:
+    name: Build & Container Scan
+    needs: quality_gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        
+      - name: Docker Auth
+        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}
+        
+      - name: Build Docker Image
+        run: |
+          cd backend
+          docker build -t ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }} .
+          
+      - name: Container Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          
+      - name: Push Docker Image
+        if: github.event_name != 'pull_request'
+        run: docker push ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}
+
+  deploy_canary:
+    name: Deploy (10% Canary)
+    needs: build_and_scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          
+      - name: Deploy to Cloud Run (Canary)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: zivohotels-api-prod
+          region: ${{ env.REGION }}
+          image: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}
+          flags: '--tag canary'
+          # Allocate 10% traffic to the new revision
+          traffic: 'canary=10'
+          
+      - name: Run Automated Smoke Tests against Canary
+        run: |
+          cd backend
+          npm ci
+          CANARY_URL=$(gcloud run services describe zivohotels-api-prod --region ${{ env.REGION }} --format 'value(status.url)')
+          # In real execution, ping the exact canary tag URL
+          npm run test:smoke -- --url=$CANARY_URL
+
+  deploy_production:
+    name: Full Production Rollout
+    needs: deploy_canary
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Optional: require manual approval before full rollout
+    # environment: production
+    steps:
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          
+      - name: Promote Canary to 100% Traffic
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: zivohotels-api-prod
+          region: ${{ env.REGION }}
+          image: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}

@@ -21,7 +21,7 @@ async function runMigration() {
     console.log(`Rollback backup created at: ${backupPath}`);
   }
   
-  const uploadDir = path.join(__dirname, '../../public/uploads');
+  const uploadDir = path.join(__dirname, '../public/uploads');
   if (!fs.existsSync(uploadDir)) {
     console.log('No local uploads directory found. Migration complete.');
     return;
