@@ -34,6 +34,7 @@ import masterAdminRoutes from './routes/masterAdminRoutes.js';
 import extranetRoutes from './routes/extranetRoutes.js';
 import socketService from './services/socketService.js';
 import orchestrationService from './services/orchestrationService.js';
+import { startEmailWorker } from './workers/emailWorker.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
@@ -180,5 +181,10 @@ server.listen(PORT, () => {
   // Initialize Autonomous Governance
   orchestrationService.init();
   
-  // Workers are now run in standalone node processes via npm scripts
+  // Start email worker in-process (required on Render free tier which only runs one process)
+  // This polls the BackgroundJob queue and sends emails via Resend
+  startEmailWorker().catch(err => {
+    console.error('❌ Email worker failed to start:', err.message);
+  });
+  console.log('✉️  Email worker started in-process');
 });
