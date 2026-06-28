@@ -340,7 +340,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails, _commercials } = normalized;
 
   const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
 
