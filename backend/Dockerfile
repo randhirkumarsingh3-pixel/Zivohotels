@@ -1,56 +1,21 @@
-# 1. Dependencies Stage
-FROM node:18-alpine AS deps
+FROM node:18-alpine
 WORKDIR /app
+
+# Install dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
-# Install all dependencies including devDependencies for Prisma generation
-RUN npm ci
+RUN npm ci --only=production && npx prisma generate
 
-# 2. Build Stage
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy ALL source files (avoids missing-folder crashes)
 COPY . .
-# Generate Prisma Client
-RUN npx prisma generate
-# Optional: if you had a build step (e.g., TS compile), it would go here
 
-# 3. Production Runtime Stage
-FROM node:18-alpine AS runner
-WORKDIR /app
+# Remove files that should not be in the image
+RUN rm -rf .env .env.local tests/ docs/ *.log
 
-# Set Node environment to production
+# Create uploads dir for fallback
+RUN mkdir -p public/uploads
+
 ENV NODE_ENV=production
+EXPOSE 8080
 
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Copy built assets and dependencies
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/controllers ./controllers
-COPY --from=builder /app/middleware ./middleware
-COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/services ./services
-COPY --from=builder /app/workers ./workers
-COPY --from=builder /app/utils ./utils
-COPY --from=builder /app/schemas ./schemas
-COPY --from=builder /app/repositories ./repositories
-COPY --from=builder /app/events ./events
-COPY --from=builder /app/domains ./domains
-COPY --from=builder /app/ai ./ai
-COPY --from=builder /app/data ./data
-COPY --from=builder /app/server.js ./server.js
-
-# Ensure local uploads dir exists for fallback, though we use GCS in prod
-RUN mkdir -p public/uploads && chown -R appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
-
-EXPOSE 5000
-
-# Start command can be overridden when running workers
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
