@@ -35,6 +35,13 @@ COPY --from=builder /app/middleware ./middleware
 COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/workers ./workers
+COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/schemas ./schemas
+COPY --from=builder /app/repositories ./repositories
+COPY --from=builder /app/events ./events
+COPY --from=builder /app/domains ./domains
+COPY --from=builder /app/ai ./ai
+COPY --from=builder /app/data ./data
 COPY --from=builder /app/server.js ./server.js
 
 # Ensure local uploads dir exists for fallback, though we use GCS in prod
