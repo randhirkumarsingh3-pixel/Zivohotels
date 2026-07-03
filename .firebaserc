@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "zivohotels-500807"
+  },
+  "targets": {
+    "zivohotels-500807": {
+      "hosting": {
+        "main": ["zivohotels-500807"]
+      }
+    }
+  }
+}
