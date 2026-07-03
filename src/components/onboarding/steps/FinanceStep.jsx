@@ -335,8 +335,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected} onClick={handleVerifyIFSC}
-                            disabled={ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
+                            disabled={isProtected || ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
+                            onClick={handleVerifyIFSC}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {ifscVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify'}
@@ -467,8 +467,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected} onClick={handleVerifyPAN}
-                            disabled={panVerifying || !formData.pan || formData.pan.length < 10}
+                            disabled={isProtected || panVerifying || !formData.pan || formData.pan.length < 10}
+                            onClick={handleVerifyPAN}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {panVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify PAN'}
@@ -507,8 +507,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected} onClick={handleVerifyGST}
-                            disabled={gstVerifying || !formData.gstin || formData.gstin.length < 15}
+                            disabled={isProtected || gstVerifying || !formData.gstin || formData.gstin.length < 15}
+                            onClick={handleVerifyGST}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             {gstVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify GST'}
