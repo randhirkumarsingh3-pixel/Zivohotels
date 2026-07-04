@@ -15,7 +15,7 @@ class SocketService {
     this.io = new Server(server, {
       cors: {
         origin: process.env.NODE_ENV === 'production' 
-          ? ['https://zivohotels.com', 'https://admin.zivohotels.com'] 
+          ? ['https://zivohotels.com', 'https://www.zivohotels.com', 'https://admin.zivohotels.com', 'https://partner.zivohotels.com'] 
           : ['http://localhost:5173', 'http://127.0.0.1:5173'],
         credentials: true,
         methods: ['GET', 'POST']
