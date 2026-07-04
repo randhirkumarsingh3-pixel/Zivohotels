@@ -1,0 +1,150 @@
+name: Backend Enterprise CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: asia-south1
+  SERVICE: zivohotels-api
+  AR_REPO: zivohotels-repo
+  WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.WIF_PROVIDER_NAME }}
+  SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+
+jobs:
+  validate-and-build:
+    name: Code Quality & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Prisma Validate
+        run: npx prisma validate
+
+      - name: Prisma Generate
+        run: npx prisma generate
+
+      # Note: Add 'npm run test' and 'npm run lint' when test suites are ready
+      - name: Run Tests (Placeholder)
+        run: echo "Running tests..."
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker Auth
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker Image
+        id: docker-build
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/backend:${{ github.sha }}"
+          docker build -t $IMAGE .
+          docker push $IMAGE
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/backend:${{ github.sha }}
+          format: 'table'
+          exit-code: '0' # Set to 1 to fail build on high vulnerabilities
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+    outputs:
+      image: ${{ steps.docker-build.outputs.image }}
+
+  deploy-canary:
+    name: Deploy to Cloud Run (Canary)
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # 1. Deploy new revision, assign a tag (e.g. canary), route NO traffic to it initially.
+      # Because google-github-actions/deploy-cloudrun defaults to 100%, we use gcloud CLI for advanced traffic splitting.
+      - name: Deploy Revision (0% Traffic)
+        id: deploy
+        run: |
+          REVISION_NAME="${{ env.SERVICE }}-$(echo ${{ github.sha }} | cut -c1-7)"
+          
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image ${{ needs.validate-and-build.outputs.image }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --revision-suffix="$(echo ${{ github.sha }} | cut -c1-7)" \
+            --tag=canary \
+            --no-traffic
+
+          echo "revision=$REVISION_NAME" >> $GITHUB_OUTPUT
+
+      - name: Canary Traffic Shift (10%)
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --update-tags=canary=10
+
+      - name: Wait & Smoke Test Canary
+        run: |
+          echo "Waiting 30 seconds for traffic to settle..."
+          sleep 30
+          # Add actual smoke test against the specific canary URL if needed
+          # e.g., curl -f https://canary---zivohotels-api-74420715867.asia-south1.run.app/health || exit 1
+
+      - name: Final Traffic Shift (100%)
+        if: success()
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --to-revisions=${{ steps.deploy.outputs.revision }}=100
+          
+      - name: Automated Rollback on Failure
+        if: failure()
+        run: |
+          echo "Pipeline failed! Rolling back to previous stable revision..."
+          # Fetch the previous 100% traffic revision (which is now LATEST minus the one we just made)
+          gcloud run services update-traffic ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --to-latest

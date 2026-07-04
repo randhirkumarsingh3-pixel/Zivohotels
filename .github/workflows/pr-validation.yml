@@ -1,0 +1,43 @@
+name: Backend PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  validate:
+    name: PR Quality Gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+        
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Linting
+        run: npm run lint --if-present
+
+      - name: Prisma Validate
+        run: npx prisma validate
+
+      - name: Run Tests (Placeholder)
+        run: echo "Running tests..."
+        # run: npm run test
+
+      - name: Docker Build Test
+        run: docker build -t test-backend-image .
