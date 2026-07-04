@@ -113,6 +113,7 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --revision-suffix="$(echo ${{ github.sha }} | cut -c1-7)" \
             --tag=canary \
+            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:zivohotels-db \
             --no-traffic
 
           echo "revision=$REVISION_NAME" >> $GITHUB_OUTPUT
