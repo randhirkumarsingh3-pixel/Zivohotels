@@ -16,7 +16,7 @@ const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
   const [filter, setFilter] = useState({ category: '', tag: '' });
 
   const fetchLibrary = async () => {
-    if (!hotelId || hotelId === 'undefined') return;
+    if (!hotelId || hotelId === 'undefined' || hotelId === 'null') return;
     setLoading(true);
     try {
       const token = localStorage.getItem('jwt_token');

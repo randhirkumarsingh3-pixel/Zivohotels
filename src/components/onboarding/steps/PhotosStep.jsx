@@ -101,7 +101,7 @@ const PhotosStep = ({ formData, updateForm }) => {
   const processFiles = async (filesArray) => {
     if (filesArray.length === 0) return;
     const currentHotelId = formData.id || localStorage.getItem(namespace);
-    if (!currentHotelId || currentHotelId === 'undefined') {
+    if (!currentHotelId || currentHotelId === 'undefined' || currentHotelId === 'null') {
       alert('Please save the property name on Step 1 first, then come back to upload photos.');
       return;
     }
@@ -740,7 +740,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                       if (files.length === 0) return;
                       
                       const uploadHotelId = formData.id || localStorage.getItem(namespace);
-                      if (!uploadHotelId || uploadHotelId === 'undefined') {
+                      if (!uploadHotelId || uploadHotelId === 'undefined' || uploadHotelId === 'null') {
                         alert('Please save the property name on Step 1 first, then come back to upload photos.');
                         return;
                       }

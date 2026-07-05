@@ -49,13 +49,20 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
 
     setUploading(true);
     try {
+      const currentHotelId = hotelId || formData.hotelId || localStorage.getItem('currentHotelId_admin');
+      if (!currentHotelId || currentHotelId === 'undefined' || currentHotelId === 'null') {
+        alert('Please save the property name on Step 1 first, then come back to upload room photos.');
+        setUploading(false);
+        return;
+      }
+
       const token = localStorage.getItem('jwt_token');
       // 1. In a real app, you'd upload to S3/Cloudinary here. 
       // For this demo, we'll simulate a URL or use a placeholder if no actual uploader middleware is set.
       // But we must create the HotelImage record.
       const payload = {
         url: URL.createObjectURL(file), // Placeholder for real URL
-        hotelId: hotelId || formData.hotelId || localStorage.getItem('currentHotelId_admin'),
+        hotelId: currentHotelId,
         category: uploadCategory,
         tags: uploadTags,
         isPrimary: false
