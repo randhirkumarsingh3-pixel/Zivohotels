@@ -16,11 +16,26 @@ export class MediaService {
 
   /**
    * Orchestrates the upload of a hotel image, ensuring correct directory structure.
+   * Accepts all common image MIME types including HEIC from iPhones.
    */
   async uploadHotelImage(buffer, mimeType, hotelId, isPrimary = false) {
-    this._validateMimeType(mimeType, ['image/jpeg', 'image/png', 'image/webp']);
-    
-    const extension = mimeType.split('/')[1];
+    const ALLOWED_IMAGE_TYPES = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'image/gif', 'image/avif', 'image/bmp', 'image/tiff',
+      'image/heic', 'image/heif', 'image/svg+xml'
+    ];
+    this._validateMimeType(mimeType, ALLOWED_IMAGE_TYPES);
+
+    // Normalize extension — HEIC files stored as jpg so browsers can display them
+    const MIME_TO_EXT = {
+      'image/jpeg': 'jpg', 'image/jpg': 'jpg',
+      'image/png': 'png', 'image/webp': 'webp',
+      'image/gif': 'gif', 'image/avif': 'avif',
+      'image/bmp': 'bmp', 'image/tiff': 'tiff',
+      'image/heic': 'jpg', 'image/heif': 'jpg',
+      'image/svg+xml': 'svg'
+    };
+    const extension = MIME_TO_EXT[mimeType] || mimeType.split('/')[1] || 'jpg';
     const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8);
     const filename = `${isPrimary ? 'primary' : 'img'}-${Date.now()}-${hash}.${extension}`;
     
