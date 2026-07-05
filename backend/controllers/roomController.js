@@ -35,7 +35,6 @@ const normalizeRoomPayload = (data) => {
   return {
     prismaData: {
       ...rest,
-      capacity: maxOccupancy,
       totalInventory: totalRooms,
     },
     basePrice,

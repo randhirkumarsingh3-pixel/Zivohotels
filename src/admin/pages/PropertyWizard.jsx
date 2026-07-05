@@ -12,6 +12,9 @@ import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
 import { getImageUrl } from '../../utils/image';
 import { useAuth } from '../../context/AuthContext';
+import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
+import { buildHotelPayload } from '../../components/onboarding/services/onboardingMapper';
+import { buildRoomPayload, normalizeRatePlans } from '../../components/onboarding/utils/roomMapper';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -23,87 +26,6 @@ const getAuthHeaders = () => {
   };
 };
 
-const mapMealPlanToBackend = (mp) => {
-  switch (mp) {
-    case 'FREE Breakfast': return 'CP';
-    case 'Room Only': return 'EP';
-    case 'Breakfast & Dinner': return 'MAP';
-    case 'All Meals': return 'AP';
-    default: return 'NONE';
-  }
-};
-
-const mapMealPlanToFrontend = (mp) => {
-  switch (mp) {
-    case 'CP': return 'FREE Breakfast';
-    case 'EP': return 'Room Only';
-    case 'MAP': return 'Breakfast & Dinner';
-    case 'AP': return 'All Meals';
-    default: return 'Room Only';
-  }
-};
-
-const parseBackendRoomTypes = (roomTypes) => {
-  if (!Array.isArray(roomTypes)) return [];
-  return roomTypes.map(rt => {
-    let beds = [{ type: 'Queen Bed', count: 1 }];
-    if (rt.bedType) {
-      const parts = rt.bedType.split(',').map(p => p.trim());
-      const parsed = parts.map(part => {
-        const match = part.match(/^(\d+)x\s+(.+)$/);
-        if (match) {
-          return { type: match[2], count: parseInt(match[1]) };
-        }
-        return { type: part, count: 1 };
-      });
-      if (parsed.length > 0) beds = parsed;
-    }
-
-    let size = '';
-    let sizeUnit = 'Square Feet';
-    if (rt.roomSize) {
-      const match = rt.roomSize.match(/^([\d.]+)\s+(.+)$/);
-      if (match) {
-        size = match[1];
-        sizeUnit = match[2];
-      } else {
-        size = rt.roomSize;
-      }
-    }
-
-    const standardRatePlan = rt.ratePlans?.find(rp => rp.isActive) || rt.ratePlans?.[0] || {};
-
-    return {
-      id: rt.id,
-      code: rt.code || '',
-      type: rt.name.includes('Deluxe') ? 'Deluxe' : rt.name.includes('Suite') ? 'Suite' : rt.name.includes('Standard') ? 'Standard' : 'Deluxe',
-      view: rt.viewType || 'Airport View',
-      size: size,
-      sizeUnit: sizeUnit,
-      name: rt.name,
-      count: rt.totalInventory || 1,
-      description: rt.description || '',
-      beds: beds,
-      allowExtraBed: rt.extraBedAllowed ? 'Yes' : 'No',
-      allowAlternateSleeping: 'No',
-      baseAdults: rt.baseOccupancy || 2,
-      maxAdults: rt.maxOccupancy || 2,
-      baseChildren: 1,
-      maxChildren: 1,
-      maxOccupancy: rt.capacity || 3,
-      bathrooms: 1,
-      mealPlan: mapMealPlanToFrontend(standardRatePlan.mealPlan),
-      basePrice: standardRatePlan.basePrice || '',
-      extraAdultPrice: standardRatePlan.extraAdultPrice || '',
-      childPrice: standardRatePlan.extraChildPrice || '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
-      ratePlanId: standardRatePlan.id
-    };
-  });
-};
-
 const PropertyWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -112,318 +34,47 @@ const PropertyWizard = () => {
   
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
-  const isEditing = Boolean(id);
+  const {
+    formData,
+    setFormData,
+    updateForm,
+    currentStep,
+    setCurrentStep,
+    handleStepChange,
+    isSubmitting,
+    setIsSubmitting,
+    apiError,
+    setApiError,
+    initialRoomIds,
+    hasDraftLoaded,
+    handleResetDraft,
+    saveDraftIfNeeded: hookSaveDraftIfNeeded
+  } = usePropertyWizard({
+    isEditing,
+    effectiveId: id,
+    storageKeyPrefix: 'zivo_onboarding',
+    onFetchError: () => {
+      localStorage.removeItem('currentHotelId_admin');
+      alert('Saved property draft was not found. Redirecting to start a new property...');
+      setTimeout(() => {
+        navigate('/admin/properties/new');
+      }, 1500);
+    },
+    clearCurrentHotelId: () => localStorage.removeItem('currentHotelId_admin')
+  });
 
-  const [hasDraftLoaded, setHasDraftLoaded] = useState(false);
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [_apiError, setApiError] = useState('');
-  const [initialRoomIds, setInitialRoomIds] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
 
-  const [formData, setFormData] = useState({
-    // Basic Info
-    name: '', type: 'Hotel', description: '', rating: '3',
-    receptionPhone: '', receptionEmail: '',
-    managerName: '', managerPhone: '', managerEmail: '',
-    ownerName: '', ownerEmail: '', ownerPhone: '',
-    
-    // Location
-    country: 'India', state: '', city: '', area: '', address: '',
-    latitude: '', longitude: '',
-    
-    // Amenities
-    amenities: [],
-    
-    // Rooms
-    rooms: [],
-
-    // Photos
-    images: [],
-    
-    // Policies
-    policies: [], checkInTime: '14:00', checkOutTime: '11:00',
-    
-    // Finance & Legal
-    legalName: '', pan: '', gstin: '',
-    accountName: '', bankName: '', accountNumber: '', ifscCode: '', branchName: '',
-    commission: '',
-  });
-
-  useEffect(() => {
-    if (isEditing) {
-      fetchProperty();
-    } else {
-      if (location.state?.resetDraft) {
-        localStorage.removeItem('zivo_onboarding_draft_admin');
-        localStorage.removeItem('zivo_onboarding_step_admin');
-        localStorage.removeItem('currentHotelId');
-        // Clear state to prevent loop on reload
-        navigate(location.pathname, { replace: true, state: {} });
-      } else {
-        const saved = localStorage.getItem('zivo_onboarding_draft_admin');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            setFormData(prev => ({ ...prev, ...parsed }));
-            setHasDraftLoaded(true);
-            
-            const savedStep = localStorage.getItem('zivo_onboarding_step_admin');
-            if (savedStep) {
-              setCurrentStep(parseInt(savedStep));
-            }
-          } catch (e) {
-            console.error("Failed to restore onboarding draft:", e);
-          }
-        }
-      }
-    }
-  }, [id, location.state]);
-
-  const handleResetDraft = () => {
-    if (window.confirm("Are you sure you want to clear your current draft and start fresh? All unsaved progress will be lost.")) {
-      localStorage.removeItem('zivo_onboarding_draft_admin');
-      localStorage.removeItem('zivo_onboarding_step_admin');
-      localStorage.removeItem('currentHotelId');
-      window.location.reload();
-    }
-  };
-
-  // Auto-save form progress to localStorage in real time (except when editing active property)
-  useEffect(() => {
-    if (!isEditing && formData.name) {
-      localStorage.setItem('zivo_onboarding_draft_admin', JSON.stringify(formData));
-    }
-  }, [formData, isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      localStorage.setItem('zivo_onboarding_step_admin', String(currentStep));
-    }
-  }, [currentStep, isEditing]);
-
-  const fetchProperty = async () => {
-    try {
-      const res = await fetch(`${API_URL}/hotels/${id}`, { headers: getAuthHeaders() });
-      
-      if (res.status === 404) {
-        localStorage.removeItem('currentHotelId');
-        alert('Saved property draft was not found. Redirecting to start a new property...');
-        setTimeout(() => {
-          navigate('/admin/properties/new');
-        }, 1500);
-        return;
-      }
-
-      const json = await res.json();
-      if (json.success) {
-        const hotel = json.data;
-        const parsedRooms = parseBackendRoomTypes(hotel.roomTypes);
-        setInitialRoomIds(parsedRooms.map(r => r.id));
-
-        setFormData(prev => ({
-          ...prev,
-          id: hotel.id,
-          name: hotel.name || '',
-          // hotel.type is the DB field; hotel.propertyType is not returned
-          type: hotel.type || 'Hotel',
-          description: hotel.description || '',
-          rating: String(hotel.rating || '3'),
-          
-          country: hotel.country || hotel.integrationSettings?.addressDetails?.country || 'India',
-          state: hotel.state || hotel.integrationSettings?.addressDetails?.state || '',
-          city: hotel.city || '',
-          area: hotel.area || hotel.integrationSettings?.addressDetails?.area || '',
-          address: hotel.addressLine || hotel.integrationSettings?.addressDetails?.address || hotel.location || '',
-          pincode: hotel.pincode || hotel.integrationSettings?.addressDetails?.pincode || '',
-          latitude: hotel.latitude || '',
-          longitude: hotel.longitude || '',
-          
-          receptionPhone: hotel.receptionPhone || hotel.integrationSettings?.contactInfo?.receptionPhone || '',
-          receptionEmail: hotel.receptionEmail || hotel.integrationSettings?.contactInfo?.receptionEmail || '',
-          guestEmail: hotel.receptionEmail || hotel.integrationSettings?.contactInfo?.receptionEmail || '',
-          guestMobile: hotel.receptionPhone || hotel.integrationSettings?.contactInfo?.receptionPhone || '',
-          guestLandline: hotel.guestLandline || hotel.integrationSettings?.contactInfo?.guestLandline || '',
-          isEmailVerified: Boolean(hotel.receptionEmail || hotel.integrationSettings?.contactInfo?.receptionEmail),
-          isMobileVerified: Boolean(hotel.receptionPhone || hotel.integrationSettings?.contactInfo?.receptionPhone),
-          managerName: hotel.managerName || hotel.integrationSettings?.contactInfo?.managerName || '',
-          managerPhone: hotel.managerPhone || hotel.integrationSettings?.contactInfo?.managerPhone || '',
-          managerEmail: hotel.managerEmail || hotel.integrationSettings?.contactInfo?.managerEmail || '',
-          ownerName: hotel.ownerName || hotel.integrationSettings?.contactInfo?.ownerName || hotel.owner?.name || '',
-          ownerEmail: hotel.ownerEmail || hotel.integrationSettings?.contactInfo?.ownerEmail || hotel.owner?.email || '',
-          ownerPhone: hotel.ownerPhone || hotel.integrationSettings?.contactInfo?.ownerPhone || hotel.owner?.phone || '',
-          // Only set builtYear/bookingSince if they actually exist in backend
-          builtYear: hotel.builtYear || hotel.integrationSettings?.commercials?.builtYear || '',
-          bookingSince: hotel.bookingSince || hotel.integrationSettings?.commercials?.bookingSince || '',
-          msme: hotel.msme || hotel.integrationSettings?.commercials?.msme || '',
-          hasChannelManager: Boolean(hotel.channelProvider && hotel.channelProvider !== 'NONE'),
-          channelManagerName: hotel.channelProvider && hotel.channelProvider !== 'NONE' ? hotel.channelProvider : 'Axisrooms',
-          
-          // Media — keep raw urls from DB; getImageUrl() called at display time
-          images: Array.isArray(hotel.media) 
-            ? hotel.media.map(m => ({
-                id: m.id,
-                url: m.url || m,
-                isCover: m.isPrimary || m.tags?.includes('Cover') || false,
-                tags: m.tags || [],
-                roomLinks: m.roomLinks || []
-              })) 
-            : [],
-            
-          // Commercial & Legal
-          legalName: hotel.legalName || '',
-          pan: hotel.pan || '',
-          gstin: hotel.gstin || '',
-          incorporationType: hotel.incorporationType || 'INDIVIDUAL',
-          payoutCycle: hotel.payoutCycle || 'T+2',
-          accountName: hotel.bankDetail?.accountName || '',
-          bankName: hotel.bankDetail?.bankName || '',
-          accountNumber: hotel.bankDetail?.accountNumber || '',
-          ifscCode: hotel.bankDetail?.ifscCode || '',
-          branchName: hotel.bankDetail?.branchName || '',
-          amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
-          rooms: parsedRooms,
-          policies: Array.isArray(hotel.policies) ? hotel.policies : [],
-          
-          checkInTime: hotel.checkInTime || '14:00',
-          checkOutTime: hotel.checkOutTime || '11:00',
-          
-          // Commission from agreement, or from integrationSettings commercials
-          commission: hotel.agreement?.commissionRate
-            || hotel.integrationSettings?.commercials?.commissionRate
-            || '',
-          lastUpdatedAt: hotel.updatedAt || null,
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching property:', err);
-      setApiError('Failed to load property data.');
-    }
-  };
-
-  const updateForm = (field, value) => {
-    if (typeof field === 'object' && field !== null) {
-      setFormData(prev => ({ ...prev, ...field }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
-  };
-
-  const validateStep = (stepIndex) => {
-    switch (stepIndex) {
-      case 1:
-        if (!formData.name?.trim()) return "Property Name is required.";
-        if (!formData.type?.trim()) return "Property Type is required.";
-        if (!formData.rating?.trim()) return "Star Rating is required.";
-        if (!(formData.guestEmail || formData.receptionEmail)?.trim()) return "Email ID is required.";
-        if (!(formData.guestMobile || formData.receptionPhone)?.trim()) return "Mobile number is required.";
-        break;
-      case 2:
-        if (!formData.houseNo?.trim()) return "House/Building/Apartment No. is required.";
-        if (!formData.area?.trim()) return "Locality/Area/Street/Sector is required.";
-        if (!formData.pincode?.trim()) return "Pincode is required.";
-        if (!formData.country?.trim()) return "Country is required.";
-        if (!formData.state?.trim()) return "State is required.";
-        if (!formData.city?.trim()) return "City is required.";
-        if (!formData.latitude || isNaN(parseFloat(formData.latitude))) return "Latitude is required and must be a valid number.";
-        if (!formData.longitude || isNaN(parseFloat(formData.longitude))) return "Longitude is required and must be a valid number.";
-        if (formData.agreeAddress !== true) return "You must agree to the terms and confirm the address.";
-        break;
-      case 4:
-        if (!formData.rooms || formData.rooms.length === 0) {
-          return "At least one room type configuration must be added.";
-        }
-        break;
-      case 5:
-        if (!formData.images || formData.images.length === 0) {
-          return "Please upload at least one photo of your property.";
-        }
-        break;
-      case 6:
-        if (!formData.checkInTime) return "Check-in time is required.";
-        if (!formData.checkOutTime) return "Check-out time is required.";
-        break;
-      case 7:
-        if (!formData.legalName?.trim()) return "Legal Entity Name is required.";
-        if (!formData.pan?.trim()) return "PAN Number is required.";
-        if (!formData.accountName?.trim()) return "Account Holder Name is required.";
-        if (!formData.bankName?.trim()) return "Bank Name is required.";
-        if (!formData.accountNumber?.trim()) return "Account Number is required.";
-        if (!formData.ifscCode?.trim()) return "IFSC Code is required.";
-        if (!formData.commission) return "Platform Commission is required.";
-        if (formData.acceptTerms !== true) return "You must accept the terms and conditions to proceed.";
-        break;
-      default:
-        break;
-    }
-    return null;
-  };
-
-  const handleStepChange = async (targetStepOrFn) => {
-    let targetStep = typeof targetStepOrFn === 'function' ? targetStepOrFn(currentStep) : targetStepOrFn;
-    if (targetStep < currentStep) {
-      setCurrentStep(targetStep);
-      window.scrollTo(0, 0);
-      return;
-    }
-
-    for (let step = currentStep; step < targetStep; step++) {
-      const errorMsg = validateStep(step);
-      if (errorMsg) {
-        alert(errorMsg);
-        setCurrentStep(step);
-        window.scrollTo(0, 0);
-        return;
-      }
-      if (step === 2) {
-        const success = await saveDraftIfNeeded();
-        if (!success) {
-          setCurrentStep(2);
-          window.scrollTo(0, 0);
-          return;
-        }
-      }
-    }
-
-    setCurrentStep(targetStep);
-    window.scrollTo(0, 0);
-  };
-
   const saveDraftIfNeeded = async () => {
-    // If not editing and hotel ID is not yet defined, auto-create a draft
-    const currentId = id || localStorage.getItem('currentHotelId');
-    if (!currentId) {
-      if (!formData.name) {
-        alert("Please specify a property name on Step 1 before proceeding.");
-        return false;
-      }
-      try {
-        const payload = {
-          name: formData.name,
-          propertyType: formData.type || 'Hotel',
-          city: formData.city || 'Default City',
-          address: formData.address || 'Default Address',
-          description: formData.description || '',
-          status: 'DRAFT'
-        };
-        const res = await fetch(`${API_URL}/hotels`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload)
-        });
-        const resJson = await res.json();
-        if (res.ok && resJson.data && resJson.data.id) {
-          localStorage.setItem('currentHotelId', resJson.data.id);
-          // Set in form data directly using setFormData since we are inside validation context
-          setFormData(prev => ({ ...prev, id: resJson.data.id }));
-        }
-      } catch (err) {
-        console.error('Failed to auto-save property draft:', err);
-      }
+    const draftId = localStorage.getItem('currentHotelId_admin');
+    const { success, id: newId, error } = await hookSaveDraftIfNeeded(draftId, (id) => {
+      localStorage.setItem('currentHotelId_admin', id);
+    });
+    if (!success) {
+      if (error) alert(error);
     }
-    return true;
+    return success;
   };
 
   const handleSubmit = async () => {
@@ -431,93 +82,29 @@ const PropertyWizard = () => {
 
     // Advance to next step if not on last step
     if (currentStep < 7) {
-      const errorMsg = validateStep(currentStep);
-      if (errorMsg) {
-        alert(errorMsg);
-        return;
-      }
-      if (currentStep === 2) {
-        const success = await saveDraftIfNeeded();
-        if (!success) return;
-      }
-      setCurrentStep(prev => prev + 1);
-      window.scrollTo(0, 0);
-      return;
+      return handleStepChange(
+        currentStep + 1,
+        (error) => alert(error),
+        async (step) => {
+          if (step === 2) {
+            return await saveDraftIfNeeded();
+          }
+          return true;
+        }
+      );
     }
 
     // Final Validation before submit
-    const errorMsg = validateStep(7);
-    if (errorMsg) {
-      alert(errorMsg);
-      return;
-    }
-    
-    setIsSubmitting(true);
+    return handleStepChange(
+      7,
+      (error) => alert(error),
+      async () => {
+        setIsSubmitting(true);
 
     try {
-      const payload = {
-        name: formData.name,
-        propertyType: formData.type,
-        address: formData.address,
-        location: formData.address,
-        city: formData.city,
-        state: formData.state,
-        country: formData.country,
-        area: formData.area,
-        pincode: formData.pincode,
-        description: formData.description || '',
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        rating: formData.rating,
-        
-        // Media — send the raw url from DB (relative /uploads/...) or full http URL
-        // DO NOT call getImageUrl() here as that produces full URLs which
-        // pass backend validation; but for images already in DB we skip re-sending them
-        media: formData.images
-          .filter(img => img.url && !img.url.startsWith('blob:'))
-          .map(img => ({
-            url: img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, '') || ''}${img.url.startsWith('/') ? img.url : '/' + img.url}`,
-            tags: img.tags || []
-          })),
-        amenities: formData.amenities,
-        policies: formData.policies,
-        checkInTime: formData.checkInTime,
-        checkOutTime: formData.checkOutTime,
-        
-        receptionPhone: formData.guestMobile || formData.receptionPhone || '',
-        receptionEmail: formData.guestEmail || formData.receptionEmail || '',
-        managerName: formData.managerName || '',
-        managerPhone: formData.managerPhone || '',
-        managerEmail: formData.managerEmail || '',
-        guestLandline: formData.guestLandline || '',
-        channelProvider: formData.hasChannelManager ? (formData.channelManagerName || 'Axisrooms') : 'NONE',
-        
-        ownerName: formData.ownerName || '',
-        ownerEmail: formData.ownerEmail || '',
-        ownerPhone: formData.ownerPhone || '',
-        
-        legalName: formData.legalName,
-        pan: formData.pan,
-        gstin: formData.gstin,
-        msme: formData.msme,
-        incorporationType: formData.incorporationType,
-        payoutCycle: formData.payoutCycle,
-        builtYear: formData.builtYear,
-        bookingSince: formData.bookingSince,
-        
-        bankDetail: formData.accountNumber ? {
-          accountName: formData.accountName,
-          bankName: formData.bankName,
-          accountNumber: formData.accountNumber,
-          ifscCode: formData.ifscCode,
-          branchName: formData.branchName,
-        } : undefined,
-        
-        commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
-        lastUpdatedAt: formData.lastUpdatedAt,
-      };
+      const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
 
-      const draftId = localStorage.getItem('currentHotelId');
+      const draftId = localStorage.getItem('currentHotelId_admin');
       const targetHotelId = id || formData.id || draftId;
       const usePatch = isEditing || Boolean(targetHotelId);
 
@@ -538,7 +125,7 @@ const PropertyWizard = () => {
           return;
         } else {
           // The drafted hotel was deleted on the backend. Let's create a new one instead of failing.
-          localStorage.removeItem('currentHotelId');
+          localStorage.removeItem('currentHotelId_admin');
           wasDraftDeleted = true;
           response = await fetch(`${API_URL}/hotels`, {
             method: 'POST',
@@ -566,8 +153,8 @@ const PropertyWizard = () => {
         throw new Error(data.message || 'Failed to save property');
       }
 
-      const targetHotelIdForRoom = id || localStorage.getItem('currentHotelId');
-      const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId'));
+      const targetHotelIdForRoom = id || localStorage.getItem('currentHotelId_admin');
+      const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId_admin'));
       const hotelId = usePatchForRoom && !wasDraftDeleted ? targetHotelIdForRoom : data.data.id;
 
       // 1. Delete removed rooms
@@ -587,21 +174,7 @@ const PropertyWizard = () => {
         const isUUID = typeof room.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room.id);
         const isNewRoom = !isUUID || wasDraftDeleted;
 
-        const roomPayload = {
-          name: room.name,
-          code: room.code || (room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6)),
-          description: room.description || '',
-          maxOccupancy: parseInt(room.maxOccupancy) || 2,
-          baseOccupancy: parseInt(room.baseAdults) || 2,
-          totalRooms: parseInt(room.count) || 1,
-          hotelId: hotelId,
-          amenities: room.amenities || [],
-          bedType: room.beds?.map(b => `${b.count}x ${b.type}`).join(', ') || 'King Bed',
-          roomSize: room.size ? `${room.size} ${room.sizeUnit}` : 'Standard',
-          viewType: room.view || 'Airport View',
-          extraBedAllowed: room.allowExtraBed === 'Yes',
-          maxExtraBeds: room.allowExtraBed === 'Yes' ? 1 : 0
-        };
+        const roomPayload = buildRoomPayload(room, hotelId, isNewRoom);
 
         let roomTypeId;
         let ratePlanId;
@@ -633,14 +206,7 @@ const PropertyWizard = () => {
         }
 
         if (ratePlanId) {
-          const ratePlanPayload = {
-            basePrice: parseFloat(room.basePrice) || 0,
-            mealPlan: mapMealPlanToBackend(room.mealPlan),
-            extraAdultPrice: parseFloat(room.extraAdultPrice) || 0,
-            extraChildPrice: parseFloat(room.childPrice) || 0,
-            mealPriceAdult: 0,
-            mealPriceChild: 0
-          };
+          const ratePlanPayload = normalizeRatePlans(room);
 
           const res = await fetch(`${API_URL}/admin/rate-plans/${ratePlanId}`, {
             method: 'PATCH',
@@ -676,12 +242,14 @@ const PropertyWizard = () => {
       
       localStorage.removeItem('zivo_onboarding_draft_admin');
       localStorage.removeItem('zivo_onboarding_step_admin');
-      localStorage.removeItem('currentHotelId');
+      localStorage.removeItem('currentHotelId_admin');
     } catch (err) {
       alert(err.message || 'An error occurred during submission.');
     } finally {
       setIsSubmitting(false);
     }
+      }
+    );
   };
 
   const renderStepContent = () => {

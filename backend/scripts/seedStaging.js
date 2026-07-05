@@ -27,7 +27,8 @@ async function seed() {
         hotelId: hotel.id,
         name: 'Deluxe Suite (Staging Test)',
         description: 'A luxurious suite created specifically for Business Acceptance Testing.',
-        capacity: 2,
+        maxOccupancy: 2,
+        baseOccupancy: 2,
         totalInventory: 5,
         amenities: ['WiFi', 'AC', 'Breakfast', 'Pool Access'],
         isActive: true

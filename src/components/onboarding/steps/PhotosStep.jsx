@@ -17,7 +17,9 @@ const formatTag = (tag) => {
 };
 
 const PhotosStep = ({ formData, updateForm }) => {
-  const hotelId = formData.id || localStorage.getItem('currentHotelId');
+  const isAdmin = window.location.pathname.includes('/admin');
+  const namespace = isAdmin ? 'currentHotelId_admin' : 'currentHotelId_extranet';
+  const hotelId = formData.id || localStorage.getItem(namespace);
   const rooms = formData.rooms || [];
   
   // Local Media State
@@ -278,6 +280,20 @@ const PhotosStep = ({ formData, updateForm }) => {
   // Helper getters
   const coverImage = library.find(img => img.isPrimary) || library[0] || null;
   const untaggedCount = library.filter(img => !img.tags || img.tags.length === 0).length;
+
+  if (!hotelId) {
+    return (
+      <div className="bg-orange-50 border border-orange-100 p-8 rounded-xl flex flex-col items-center justify-center text-center my-12">
+        <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+          <Info size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Save Property First</h3>
+        <p className="text-gray-600 max-w-md mx-auto">
+          Please save your progress in the previous steps (like Basic Info) to generate a Property ID before uploading photos.
+        </p>
+      </div>
+    );
+  }
 
   if (currentView === 'tagging' && selectedImageForTagging) {
     const currentImg = selectedImageForTagging;

@@ -43,12 +43,12 @@ export const createRatePlan = async (req, res, next) => {
         }
       }
 
-      // Validation: Occupancy capacity
-      if (occupancyPricing) {
-        const maxCapacity = roomType.capacity;
+      // Validation: Occupancy cannot exceed room maxOccupancy
+      if (occupancyPricing && occupancyPricing.length > 0) {
+        const maxCapacity = roomType.maxOccupancy || 2;
         for (const op of occupancyPricing) {
           if (parseInt(op.occupancy) > maxCapacity) {
-            const error = new Error(`Occupancy ${op.occupancy} exceeds room capacity of ${maxCapacity}`);
+            const error = new Error(`Occupancy ${op.occupancy} exceeds room maxOccupancy of ${maxCapacity}`);
             error.statusCode = 400;
             throw error;
           }
@@ -151,11 +151,11 @@ export const updateRatePlan = async (req, res, next) => {
       });
 
       if (occupancyPricing) {
-        // 1. Validation: occupancy cannot exceed room capacity
-        const maxCapacity = updated.roomType.capacity;
+        // 1. Validation: occupancy cannot exceed room maxOccupancy
+        const maxCapacity = updated.roomType.maxOccupancy || 2;
         for (const op of occupancyPricing) {
           if (parseInt(op.occupancy) > maxCapacity) {
-            const error = new Error(`Occupancy ${op.occupancy} exceeds room capacity of ${maxCapacity}`);
+            const error = new Error(`Occupancy ${op.occupancy} exceeds room maxOccupancy of ${maxCapacity}`);
             error.statusCode = 400;
             throw error;
           }

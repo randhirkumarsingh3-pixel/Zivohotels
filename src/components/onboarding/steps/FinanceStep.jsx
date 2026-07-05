@@ -140,7 +140,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
       updateForm({
         pan: pan,
         legalName: mockName,
-        accountName: mockName // Sync payout holder name
+        ...(formData.accountName ? {} : { accountName: mockName })
       });
     }, 1000);
   };

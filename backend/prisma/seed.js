@@ -97,16 +97,18 @@ async function main() {
             {
               code: "STD",
               name: "Standard Room",
-              description: "A comfortable standard room with essential amenities.",
-              capacity: 2,
+              description: "A comfortable deluxe room with premium bedding.",
+              maxOccupancy: 2,
+              baseOccupancy: 2,
               totalInventory: Math.floor(hotel.roomsAvailable * 0.6) || 10,
               amenities: hotel.amenities.slice(0, 3)
             },
             {
               code: "PRM",
               name: "Premium Suite",
-              description: "A luxurious suite with premium views and extra space.",
-              capacity: 3,
+              description: "Spacious suite with city views and separate living area.",
+              maxOccupancy: 3,
+              baseOccupancy: 2,
               totalInventory: Math.floor(hotel.roomsAvailable * 0.4) || 5,
               amenities: hotel.amenities
             }

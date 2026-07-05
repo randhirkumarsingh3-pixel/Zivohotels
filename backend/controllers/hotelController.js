@@ -16,6 +16,7 @@ const hotelSchema = z.object({
   country: z.string().optional(),
   area: z.string().optional(),
   pincode: z.string().optional(),
+  landmark: z.string().optional(),
   propertyType: z.string().optional(),
   rating: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().min(0).max(5).optional()),
   description: z.string().optional().default(''),
@@ -47,14 +48,15 @@ const hotelSchema = z.object({
     accountName: z.string(),
     bankName: z.string(),
     accountNumber: z.string(),
-    ifscCode: z.string(),
+    ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
     branchName: z.string().optional(),
+    upiId: z.string().optional(),
   }).optional(),
   commissionRate: z.number().optional(),
   channelProvider: z.string().optional(),
   legalName: z.string().optional(),
-  pan: z.string().optional(),
-  gstin: z.string().optional(),
+  pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional(),
+  gstin: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, "Invalid GSTIN format").optional(),
   incorporationType: z.string().optional(),
   payoutCycle: z.string().optional(),
   msme: z.string().optional(),
@@ -141,7 +143,7 @@ export const normalizeHotelPayload = (data) => {
     bankDetail, commissionRate, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
     incorporationType, payoutCycle, msme, builtYear, bookingSince,
-    state, country, area, pincode
+    state, country, area, pincode, landmark
   } = data;
   
   // 1. Consistent location derived from address and city
@@ -164,6 +166,10 @@ export const normalizeHotelPayload = (data) => {
     gstin,
     incorporationType,
     payoutCycle,
+    state,
+    country,
+    pincode,
+    landmark
   };
 
   // Map propertyType to Prisma's 'type' field
@@ -460,33 +466,6 @@ export const updateHotel = asyncHandler(async (req, res) => {
     });
   }
 
-  await prisma.auditLog.create({
-    data: {
-      action: 'UPDATE_HOTEL',
-      entityType: 'HOTEL',
-      entityId: id,
-      userId: req.user.id,
-      requestId: req.id,
-      details: { changedFields: Object.keys(req.body) }
-    }
-  });
-
-  // Update media links if provided
-  if (_media) {
-    // For simplicity, we'll append new ones or the UI will handle it via imageController
-    // But for this direct update:
-    if (_media.length > 0) {
-      await prisma.hotelImage.createMany({
-        data: _media.map(img => ({
-          url: img.url,
-          tags: img.tags,
-          category: 'EXTERIOR',
-          hotelId: id
-        }))
-      });
-    }
-  }
-
   res.status(200).json({ success: true, data: hotel, requestId: req.id });
 });
 
@@ -500,9 +479,7 @@ export const deleteHotel = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
-  // Permanent hard delete using raw SQL CASCADE
-  // PostgreSQL will cascade-delete all FK-dependent child rows automatically
-  await prisma.$executeRaw`DELETE FROM "Hotel" WHERE "id" = ${id}`;
+  await prisma.hotel.delete({ where: { id } });
 
   await prisma.auditLog.create({
     data: { action: 'HARD_DELETE_HOTEL', entityType: 'HOTEL', entityId: id, userId: req.user.id, requestId: req.id }
@@ -510,6 +487,34 @@ export const deleteHotel = asyncHandler(async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Property permanently deleted', requestId: req.id });
 });
+
+export const formatHotelResponse = (hotel) => {
+  const integSettings = (hotel.integrationSettings && typeof hotel.integrationSettings === 'object')
+    ? hotel.integrationSettings : {};
+  const contactInfo = integSettings.contactInfo || {};
+  const addressDetails = integSettings.addressDetails || {};
+
+  return {
+    ...hotel,
+    receptionPhone: contactInfo.receptionPhone || null,
+    receptionEmail: contactInfo.receptionEmail || null,
+    managerName: contactInfo.managerName || null,
+    managerPhone: contactInfo.managerPhone || null,
+    managerEmail: contactInfo.managerEmail || null,
+    guestLandline: contactInfo.guestLandline || null,
+    ownerName: contactInfo.ownerName || null,
+    ownerEmail: contactInfo.ownerEmail || null,
+    ownerPhone: contactInfo.ownerPhone || null,
+    msme: integSettings.commercials?.msme || null,
+    builtYear: integSettings.commercials?.builtYear || null,
+    bookingSince: integSettings.commercials?.bookingSince || null,
+    addressLine: addressDetails.address || null,
+    area: addressDetails.area || null,
+    state: addressDetails.state || null,
+    pincode: addressDetails.pincode || null,
+    country: addressDetails.country || null,
+  };
+};
 
 export const getAllHotels = asyncHandler(async (req, res) => {
   const { destination, _stars, page = 1, limit = 10 } = req.query;
@@ -580,8 +585,10 @@ export const getAllHotels = asyncHandler(async (req, res) => {
       if (!hasPrice || !hasMedia) return null;
     }
 
+    const flattenedHotel = formatHotelResponse(hotel);
+
     return {
-      ...hotel,
+      ...flattenedHotel,
       image: hasMedia ? hotel.media[0].url : '',
       startingPrice: startingPrice || 0,
       price: startingPrice || 0
@@ -638,36 +645,8 @@ export const getHotelById = asyncHandler(async (req, res) => {
     prisma.booking.count({ where: { hotelId: id, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: today } } })
   ]);
 
-  // Flatten contactInfo from integrationSettings into top-level response
-  // so the frontend can always read receptionPhone, managerName, etc. directly
-  const integSettings = (hotel.integrationSettings && typeof hotel.integrationSettings === 'object')
-    ? hotel.integrationSettings : {};
-  const contactInfo = integSettings.contactInfo || {};
-  const addressDetails = integSettings.addressDetails || {};
-
   const data = {
-    ...hotel,
-    // Flatten contact fields to top-level for frontend consumption
-    receptionPhone: contactInfo.receptionPhone || null,
-    receptionEmail: contactInfo.receptionEmail || null,
-    managerName: contactInfo.managerName || null,
-    managerPhone: contactInfo.managerPhone || null,
-    managerEmail: contactInfo.managerEmail || null,
-    guestLandline: contactInfo.guestLandline || null,
-    ownerName: contactInfo.ownerName || null,
-    ownerEmail: contactInfo.ownerEmail || null,
-    ownerPhone: contactInfo.ownerPhone || null,
-    
-    // Flatten commercials
-    msme: integSettings.commercials?.msme || null,
-    builtYear: integSettings.commercials?.builtYear || null,
-    bookingSince: integSettings.commercials?.bookingSince || null,
-    // Flatten address details to top-level for frontend consumption
-    addressLine: addressDetails.address || null,
-    area: addressDetails.area || null,
-    state: addressDetails.state || null,
-    pincode: addressDetails.pincode || null,
-    country: addressDetails.country || null,
+    ...formatHotelResponse(hotel),
     agreement,
     bankDetail,
     viewsToday,

@@ -55,7 +55,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
       // But we must create the HotelImage record.
       const payload = {
         url: URL.createObjectURL(file), // Placeholder for real URL
-        hotelId: hotelId || formData.hotelId || localStorage.getItem('currentHotelId'),
+        hotelId: hotelId || formData.hotelId || localStorage.getItem('currentHotelId_admin'),
         category: uploadCategory,
         tags: uploadTags,
         isPrimary: false
@@ -218,7 +218,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                 </div>
               ) : (
                 <PropertyMediaLibrary 
-                  hotelId={formData.hotelId || localStorage.getItem('currentHotelId')} 
+                  hotelId={formData.hotelId || localStorage.getItem('currentHotelId_admin')} 
                   onSelect={attachFromLibrary}
                   attachedImageIds={formData.roomImages.map(img => img.id)}
                 />

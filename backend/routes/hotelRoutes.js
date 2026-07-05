@@ -14,6 +14,7 @@ router.get('/search', searchHotels);
 router.route('/:id')
   .get(getHotelById)
   .put(protect, authorizeRoles('ADMIN', 'OWNER'), updateHotel)
+  .patch(protect, authorizeRoles('ADMIN', 'OWNER'), updateHotel)
   .delete(protect, authorizeRoles('ADMIN'), deleteHotel);
 
 router.get('/:hotelId/reviews', getHotelReviews);

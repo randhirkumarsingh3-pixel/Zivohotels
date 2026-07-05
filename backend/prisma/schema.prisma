@@ -40,13 +40,16 @@ model Hotel {
   rating          Float           @default(0)
   reviews         Int             @default(0)
   amenities       Json            @default("[]")
-  description     String
+  description     String?         @default("")
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   ownerId         String
   latitude        Float?
   longitude       Float?
   landmark        String?
+  state           String?
+  country         String?         @default("India")
+  pincode         String?
   type            String?         @default("hotel")
   status          PropertyStatus? @default(DRAFT)
   statusReason    String?
@@ -104,13 +107,15 @@ model Hotel {
   @@index([ownerId])
   @@index([city])
   @@index([status])
+  @@index([state])
+  @@index([country])
+  @@index([pincode])
 }
 
 model RoomType {
   id              String          @id @default(uuid())
   name            String
   description     String
-  capacity        Int
   totalInventory  Int
   amenities       Json            @default("[]")
   hotelId         String
@@ -193,8 +198,8 @@ model OccupancyPricing {
 }
 
 model Booking {
-  id                String         @id @default(uuid())
-  bookingRef        String         @unique
+  id                String                 @id @default(uuid())
+  bookingRef        String                 @unique
   guestName         String
   guestEmail        String
   guestPhone        String
@@ -203,42 +208,42 @@ model Booking {
   guests            Int
   rooms             Int
   totalAmount       Float
-  status            BookingStatus  @default(PENDING)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  status            BookingStatus          @default(PENDING)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   hotelId           String
   roomTypeId        String
   userId            String?
   razorpayOrderId   String?
   razorpayPaymentId String?
   razorpaySignature String?
-  paidAmount        Float?         @default(0)
-  remainingAmount   Float?         @default(0)
+  paidAmount        Float?                 @default(0)
+  remainingAmount   Float?                 @default(0)
   expiresAt         DateTime?
-  paymentType       PaymentType?   @default(PREPAID)
-  paymentStatus     PaymentStatus? @default(PENDING)
-  taxAmount         Float?         @default(0)
-  baseAmount        Float?         @default(0)
+  paymentType       PaymentType?           @default(PREPAID)
+  paymentStatus     PaymentStatus?         @default(PENDING)
+  taxAmount         Float?                 @default(0)
+  baseAmount        Float?                 @default(0)
   ratePlanId        String?
   cancelledAt       DateTime?
-  refundAmount      Float?         @default(0)
-  adults            Int            @default(2)
-  children          Int            @default(0)
-  extraBedCharges   Float?         @default(0)
-  extraBeds         Int            @default(0)
-  extraGuestCharges Float?         @default(0)
-  mealCharges       Float?         @default(0)
-  pricingType       String?        @default("STANDARD")
-  roomPrice         Float?         @default(0)
-  metadata          Json?          @default("{}")
-  requestId         String?        @unique
+  refundAmount      Float?                 @default(0)
+  adults            Int                    @default(2)
+  children          Int                    @default(0)
+  extraBedCharges   Float?                 @default(0)
+  extraBeds         Int                    @default(0)
+  extraGuestCharges Float?                 @default(0)
+  mealCharges       Float?                 @default(0)
+  pricingType       String?                @default("STANDARD")
+  roomPrice         Float?                 @default(0)
+  metadata          Json?                  @default("{}")
+  requestId         String?                @unique
   couponCode        String?
   sessionId         String?
-  hotel             Hotel          @relation(fields: [hotelId], references: [id])
-  ratePlan          RatePlan?      @relation(fields: [ratePlanId], references: [id])
-  roomType          RoomType       @relation(fields: [roomTypeId], references: [id])
-  session           SessionLog?    @relation(fields: [sessionId], references: [sessionId])
-  user              User?          @relation(fields: [userId], references: [id])
+  hotel             Hotel                  @relation(fields: [hotelId], references: [id])
+  ratePlan          RatePlan?              @relation(fields: [ratePlanId], references: [id])
+  roomType          RoomType               @relation(fields: [roomTypeId], references: [id])
+  session           SessionLog?            @relation(fields: [sessionId], references: [sessionId])
+  user              User?                  @relation(fields: [userId], references: [id])
   invoice           Invoice?
   refund            Refund?
   review            Review?
@@ -285,6 +290,7 @@ model BankDetail {
   accountNumber String
   ifscCode      String
   branchName    String?
+  upiId         String?
   createdAt     DateTime? @default(now())
   updatedAt     DateTime? @updatedAt
 }
@@ -825,7 +831,6 @@ model EmailOTP {
   @@index([email])
 }
 
-
 model LoyaltyPoint {
   id        String   @id @default(uuid())
   userId    String
@@ -1265,22 +1270,22 @@ enum JobStatus {
 }
 
 model BackgroundJob {
-  id           String     @id @default(uuid())
-  queue        String     
-  jobType      String     
-  payload      Json       
-  priority     Int        @default(5)
-  status       JobStatus  @default(PENDING)
-  attempts     Int        @default(0)
-  maxAttempts  Int        @default(5)
-  lockedBy     String?    
-  lockedAt     DateTime?
-  runAt        DateTime   @default(now())
-  completedAt  DateTime?
-  failedAt     DateTime?
-  lastError    String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id          String    @id @default(uuid())
+  queue       String
+  jobType     String
+  payload     Json
+  priority    Int       @default(5)
+  status      JobStatus @default(PENDING)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  lockedBy    String?
+  lockedAt    DateTime?
+  runAt       DateTime  @default(now())
+  completedAt DateTime?
+  failedAt    DateTime?
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status, queue, runAt])
   @@index([priority])
