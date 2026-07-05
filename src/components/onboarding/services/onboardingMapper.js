@@ -1,21 +1,26 @@
 import { parseBackendRoomTypes } from '../utils/roomMapper';
 
+// Helper: returns value only if it's a non-empty string, otherwise undefined
+const str = (val) => (val && String(val).trim() !== '' ? String(val).trim() : undefined);
+// Helper: returns value only if it's a non-empty string (used for required fields with fallback)
+const strReq = (val, fallback) => (val && String(val).trim() !== '' ? String(val).trim() : fallback);
+
 export const buildHotelPayload = (formData, VITE_API_URL) => {
   return {
-    name: formData.name,
-    propertyType: formData.type,
-    address: formData.address,
-    location: formData.address,
-    city: formData.city,
-    state: formData.state,
-    country: formData.country,
-    area: formData.area,
-    pincode: formData.pincode,
+    name: strReq(formData.name, 'Untitled Property'),
+    propertyType: str(formData.type),
+    address: str(formData.address),
+    location: str(formData.address),
+    city: strReq(formData.city, 'Default City'),
+    state: str(formData.state),
+    country: str(formData.country),
+    area: str(formData.area),
+    pincode: str(formData.pincode),
     description: formData.description || '',
-    latitude: formData.latitude,
-    longitude: formData.longitude,
-    rating: formData.rating,
-    
+    latitude: formData.latitude || undefined,
+    longitude: formData.longitude || undefined,
+    rating: formData.rating !== undefined && formData.rating !== '' ? formData.rating : undefined,
+
     // Media — send the raw url from DB (relative /uploads/...) or fully qualified
     media: (formData.images || [])
       .filter(img => img.url && !img.url.startsWith('blob:'))
@@ -25,42 +30,45 @@ export const buildHotelPayload = (formData, VITE_API_URL) => {
       })),
     amenities: formData.amenities || [],
     policies: formData.policies || [],
-    checkInTime: formData.checkInTime,
-    checkOutTime: formData.checkOutTime,
-    
-    receptionPhone: formData.guestMobile || formData.receptionPhone || '',
-    receptionEmail: formData.guestEmail || formData.receptionEmail || '',
-    managerName: formData.managerName || '',
-    managerPhone: formData.managerPhone || '',
-    managerEmail: formData.managerEmail || '',
-    guestLandline: formData.guestLandline || '',
-    channelProvider: formData.hasChannelManager ? (formData.channelManagerName || 'Axisrooms') : 'NONE',
-    
-    ownerName: formData.ownerName || '',
-    ownerEmail: formData.ownerEmail || '',
-    ownerPhone: formData.ownerPhone || '',
-    
-    legalName: formData.legalName,
-    pan: formData.pan,
-    gstin: formData.gstin,
-    msme: formData.msme,
-    incorporationType: formData.incorporationType,
-    payoutCycle: formData.payoutCycle,
-    builtYear: formData.builtYear,
-    bookingSince: formData.bookingSince,
-    
+    checkInTime: str(formData.checkInTime),
+    checkOutTime: str(formData.checkOutTime),
+
+    // Contact — send undefined (not '') for empty optional strings
+    receptionPhone: str(formData.guestMobile || formData.receptionPhone),
+    receptionEmail: str(formData.guestEmail || formData.receptionEmail),
+    managerName: str(formData.managerName),
+    managerPhone: str(formData.managerPhone),
+    managerEmail: str(formData.managerEmail),
+    guestLandline: str(formData.guestLandline),
+    channelProvider: formData.hasChannelManager ? (str(formData.channelManagerName) || 'Axisrooms') : 'NONE',
+
+    ownerName: str(formData.ownerName),
+    ownerEmail: str(formData.ownerEmail),
+    ownerPhone: str(formData.ownerPhone),
+
+    // Legal — these have strict regex on backend; only send if non-empty
+    legalName: str(formData.legalName),
+    pan: str(formData.pan),
+    gstin: str(formData.gstin),
+    msme: str(formData.msme),
+    incorporationType: str(formData.incorporationType),
+    payoutCycle: str(formData.payoutCycle),
+    builtYear: formData.builtYear ? Number(formData.builtYear) : undefined,
+    bookingSince: formData.bookingSince ? Number(formData.bookingSince) : undefined,
+
     bankDetail: formData.accountNumber ? {
       accountName: formData.accountName,
       bankName: formData.bankName,
       accountNumber: formData.accountNumber,
       ifscCode: formData.ifscCode,
-      branchName: formData.branchName,
+      branchName: str(formData.branchName),
     } : undefined,
-    
+
     commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
     lastUpdatedAt: formData.lastUpdatedAt,
   };
 };
+
 
 export const mapBackendToFormData = (hotel) => {
   const parsedRooms = parseBackendRoomTypes(hotel.roomTypes);
