@@ -33,6 +33,8 @@ const PropertyWizard = () => {
   const { user } = useAuth();
   
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  
+  const isEditing = Boolean(id);
 
   const {
     formData,
