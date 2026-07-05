@@ -100,8 +100,9 @@ const PhotosStep = ({ formData, updateForm }) => {
   // Handle uploading files and converting to base64
   const processFiles = async (filesArray) => {
     if (filesArray.length === 0) return;
-    if (!hotelId) {
-      alert("Please ensure the property details are saved first.");
+    const currentHotelId = formData.id || localStorage.getItem(namespace);
+    if (!currentHotelId || currentHotelId === 'undefined') {
+      alert('Please save the property name on Step 1 first, then come back to upload photos.');
       return;
     }
 
@@ -118,7 +119,7 @@ const PhotosStep = ({ formData, updateForm }) => {
 
         const payload = {
           image: base64Data,
-          hotelId: hotelId,
+          hotelId: currentHotelId,
           category: 'ROOM',
           tags: [],
           isPrimary: library.length === 0 // Auto-cover for first photo
@@ -738,6 +739,11 @@ const PhotosStep = ({ formData, updateForm }) => {
                       const files = Array.from(e.target.files);
                       if (files.length === 0) return;
                       
+                      const uploadHotelId = formData.id || localStorage.getItem(namespace);
+                      if (!uploadHotelId || uploadHotelId === 'undefined') {
+                        alert('Please save the property name on Step 1 first, then come back to upload photos.');
+                        return;
+                      }
                       setUploading(true);
                       try {
                         const newLocalLinks = [];
@@ -755,7 +761,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                             headers: getAuthHeaders(),
                             body: JSON.stringify({
                               image: base64Data,
-                              hotelId: hotelId,
+                              hotelId: uploadHotelId,
                               category: 'ROOM',
                               tags: [],
                               isPrimary: false
