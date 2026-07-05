@@ -84,6 +84,78 @@ const PropertyOnboarding = () => {
     return success;
   };
 
+  const handleSaveDraft = async () => {
+    setIsSubmitting(true);
+    try {
+      const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
+
+      const draftId = localStorage.getItem('currentHotelId_extranet');
+      const targetHotelId = effectiveId || draftId;
+      
+      if (!targetHotelId) {
+        if (!formData.name) {
+          addToast('Please specify a property name before saving a draft.', 'warning');
+          setIsSubmitting(false);
+          return;
+        }
+        payload.status = 'DRAFT';
+        const res = await fetch(`${API_URL}/hotels`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (res.ok && resJson.data?.id) {
+          localStorage.setItem('currentHotelId_extranet', resJson.data.id);
+          setFormData(prev => ({ ...prev, id: resJson.data.id }));
+          addToast('Draft saved successfully!', 'success');
+        } else {
+          addToast(resJson.message || 'Failed to auto-save property draft', 'error');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      const usePatch = isEditing || Boolean(targetHotelId);
+      const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
+      const method = usePatch ? 'PATCH' : 'POST';
+
+      let response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      let wasDraftDeleted = false;
+      if (response.status === 404 && usePatch) {
+        if (isEditing) {
+          addToast('Property was not found. It may have been deleted.', 'error');
+          navigate('/extranet');
+          return;
+        } else {
+          localStorage.removeItem('currentHotelId_extranet');
+          wasDraftDeleted = true;
+          response = await fetch(`${API_URL}/hotels`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+          });
+        }
+      }
+
+      const data = await response.json();
+      if (response.ok) {
+        addToast('Draft saved successfully!', 'success');
+      } else {
+        addToast(data.message || 'Failed to save draft', 'error');
+      }
+    } catch (err) {
+      addToast(err.message || 'An error occurred while saving draft.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     // Advance to next step if not on last step
     if (currentStep < 7) {
@@ -289,6 +361,7 @@ const PropertyOnboarding = () => {
         subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
         currentStep={currentStep}
         setCurrentStep={handleStepChange}
+        onSaveDraft={handleSaveDraft}
         onSave={handleSubmit}
         isSubmitting={isSubmitting}
         isEditing={isEditing}

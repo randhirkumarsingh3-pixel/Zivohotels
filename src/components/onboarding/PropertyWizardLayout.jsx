@@ -16,7 +16,8 @@ const PropertyWizardLayout = ({
   subtitle, 
   currentStep, 
   setCurrentStep, 
-  onSave, 
+  onSave,
+  onSaveDraft,
   isSubmitting, 
   children,
   isEditing = false
@@ -62,7 +63,7 @@ const PropertyWizardLayout = ({
               Step {currentStep} of {STEPS.length}: <span className="text-slate-900">{currentStepData.title}</span>
             </div>
             <button 
-              onClick={onSave}
+              onClick={onSaveDraft || onSave}
               disabled={isSubmitting}
               className="text-slate-600 hover:text-blue-600 px-3 py-2 font-semibold text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
             >

@@ -79,6 +79,83 @@ const PropertyWizard = () => {
     return success;
   };
 
+  const handleSaveDraft = async () => {
+    setIsSubmitting(true);
+    setApiError('');
+    try {
+      const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
+
+      const draftId = localStorage.getItem('currentHotelId_admin');
+      const targetHotelId = id || formData.id || draftId;
+      
+      // If we don't have a target ID, create it as DRAFT
+      if (!targetHotelId) {
+        if (!formData.name) {
+          alert('Please specify a property name before saving a draft.');
+          setIsSubmitting(false);
+          return;
+        }
+        payload.status = 'DRAFT';
+        const res = await fetch(`${API_URL}/hotels`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (res.ok && resJson.data?.id) {
+          localStorage.setItem('currentHotelId_admin', resJson.data.id);
+          setFormData(prev => ({ ...prev, id: resJson.data.id }));
+          alert('Draft saved successfully!');
+        } else {
+          alert(resJson.message || 'Failed to auto-save property draft');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      // If we do have an ID (we are editing), just patch the current fields
+      const usePatch = isEditing || Boolean(targetHotelId);
+      const url = usePatch ? `${API_URL}/hotels/${targetHotelId}` : `${API_URL}/hotels`;
+      const method = usePatch ? 'PUT' : 'POST';
+
+      let response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      let wasDraftDeleted = false;
+      if (response.status === 404 && usePatch) {
+        if (isEditing) {
+          alert('Property was not found. It may have been deleted.');
+          navigate('/admin/properties');
+          return;
+        } else {
+          // The drafted hotel was deleted on the backend. Let's create a new one instead of failing.
+          localStorage.removeItem('currentHotelId_admin');
+          wasDraftDeleted = true;
+          payload.status = 'DRAFT';
+          response = await fetch(`${API_URL}/hotels`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+          });
+        }
+      }
+
+      const data = await response.json();
+      if (response.ok) {
+        alert('Draft saved successfully!');
+      } else {
+        alert(data.message || 'Failed to save draft');
+      }
+    } catch (err) {
+      alert(err.message || 'An error occurred while saving draft.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setApiError('');
 
@@ -282,6 +359,7 @@ const PropertyWizard = () => {
         subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
         currentStep={currentStep}
         setCurrentStep={handleStepChange}
+        onSaveDraft={handleSaveDraft}
         onSave={handleSubmit}
         isSubmitting={isSubmitting}
         isEditing={isEditing}
