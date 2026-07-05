@@ -89,6 +89,10 @@ const PropertyWizard = () => {
     try {
       const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
 
+      // The backend strictly requires city for creation
+      if (!payload.city) payload.city = 'Default City';
+      if (!payload.address) payload.address = 'Default Address';
+
       const draftId = localStorage.getItem('currentHotelId_admin');
       const targetHotelId = id || formData.id || draftId;
       
