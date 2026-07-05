@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -36,6 +36,16 @@ const PropertyWizard = () => {
   
   const isEditing = Boolean(id);
 
+  const handleFetchError = useCallback(() => {
+    localStorage.removeItem('currentHotelId_admin');
+    alert('Saved property draft was not found. Redirecting to start a new property...');
+    navigate('/admin/properties');
+  }, [navigate]);
+
+  const handleClearHotelId = useCallback(() => {
+    localStorage.removeItem('currentHotelId_admin');
+  }, []);
+
   const {
     formData,
     setFormData,
@@ -55,14 +65,8 @@ const PropertyWizard = () => {
     isEditing,
     effectiveId: id,
     storageKeyPrefix: 'zivo_onboarding',
-    onFetchError: () => {
-      localStorage.removeItem('currentHotelId_admin');
-      alert('Saved property draft was not found. Redirecting to start a new property...');
-      setTimeout(() => {
-        navigate('/admin/properties/new');
-      }, 1500);
-    },
-    clearCurrentHotelId: () => localStorage.removeItem('currentHotelId_admin')
+    onFetchError: handleFetchError,
+    clearCurrentHotelId: handleClearHotelId
   });
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useExtranet } from '../context/ExtranetContext';
 import { Check, Sparkles } from 'lucide-react';
@@ -37,6 +37,16 @@ const PropertyOnboarding = () => {
   const effectiveId = urlHotelId || contextHotelId;
   const isEditing = Boolean(effectiveId);
 
+  const handleFetchError = useCallback(() => {
+    localStorage.removeItem('currentHotelId_extranet');
+    addToast('Saved property draft was not found. Redirecting to start a new property...', 'error');
+    navigate('/extranet');
+  }, [navigate, addToast]);
+
+  const handleClearHotelId = useCallback(() => {
+    localStorage.removeItem('currentHotelId_extranet');
+  }, []);
+
   const {
     formData,
     setFormData,
@@ -56,18 +66,8 @@ const PropertyOnboarding = () => {
     isEditing,
     effectiveId,
     storageKeyPrefix: 'zivo_onboarding',
-    onFetchError: () => {
-      localStorage.removeItem('currentHotelId_extranet');
-      addToast('Saved property draft was not found. Redirecting to start a new property...', 'warning');
-      setTimeout(() => {
-        if (urlHotelId) {
-          navigate('/extranet/onboarding');
-        } else {
-          window.location.reload();
-        }
-      }, 1500);
-    },
-    clearCurrentHotelId: () => localStorage.removeItem('currentHotelId_extranet')
+    onFetchError: handleFetchError,
+    clearCurrentHotelId: handleClearHotelId
   });
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
