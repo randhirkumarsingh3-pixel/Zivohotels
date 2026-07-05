@@ -9,8 +9,8 @@ export const buildHotelPayload = (formData, VITE_API_URL) => {
   return {
     name: strReq(formData.name, 'Untitled Property'),
     propertyType: str(formData.type),
-    address: str(formData.address),
-    location: str(formData.address),
+    address: str(formData.address) || [str(formData.houseNo), str(formData.area)].filter(Boolean).join(', ') || undefined,
+    location: str(formData.address) || [str(formData.houseNo), str(formData.area)].filter(Boolean).join(', ') || undefined,
     city: strReq(formData.city, 'Default City'),
     state: str(formData.state),
     country: str(formData.country),

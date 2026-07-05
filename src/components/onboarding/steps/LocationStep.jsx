@@ -179,9 +179,7 @@ const LocationStep = ({ formData, updateForm }) => {
 
       // Initialize Places Autocomplete if input is ready
       if (inputElement) {
-        const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
-          types: ['geocode', 'establishment']
-        });
+        const autocomplete = new window.google.maps.places.Autocomplete(inputElement);
 
         window.google.maps.event.addDomListener(inputElement, 'keydown', (e) => {
           if (e.keyCode === 13) e.preventDefault();
@@ -326,11 +324,13 @@ const LocationStep = ({ formData, updateForm }) => {
     }
   }, [useGoogle, googleLoaded, leafletLoaded]);
 
-  // Sync coords from manual inputs to map pin
+  // Sync coords from manual inputs to map pin and reverse geocode
   useEffect(() => {
     const lat = parseFloat(formData.latitude);
     const lng = parseFloat(formData.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
+
+    let didMove = false;
 
     if (useGoogle && googleLoaded && googleMarkerRef.current && googleMapRef.current) {
       const currentPos = googleMarkerRef.current.getPosition();
@@ -340,6 +340,7 @@ const LocationStep = ({ formData, updateForm }) => {
         if (Math.abs(currLat - lat) > 0.0001 || Math.abs(currLng - lng) > 0.0001) {
           googleMarkerRef.current.setPosition({ lat, lng });
           googleMapRef.current.setCenter({ lat, lng });
+          didMove = true;
         }
       }
     } else if (!useGoogle && leafletLoaded && leafletMarkerRef.current && leafletMapRef.current) {
@@ -347,7 +348,16 @@ const LocationStep = ({ formData, updateForm }) => {
       if (Math.abs(currentPos.lat - lat) > 0.0001 || Math.abs(currentPos.lng - lng) > 0.0001) {
         leafletMarkerRef.current.setLatLng([lat, lng]);
         leafletMapRef.current.setView([lat, lng], leafletMapRef.current.getZoom());
+        didMove = true;
       }
+    }
+
+    if (didMove) {
+      const debounceTimer = setTimeout(() => {
+        if (useGoogle) googleReverseGeocode(lat, lng);
+        else osmReverseGeocode(lat, lng);
+      }, 1000);
+      return () => clearTimeout(debounceTimer);
     }
   }, [formData.latitude, formData.longitude, useGoogle, googleLoaded, leafletLoaded]);
 
