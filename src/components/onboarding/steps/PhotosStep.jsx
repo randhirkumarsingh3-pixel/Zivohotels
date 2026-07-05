@@ -49,7 +49,7 @@ const PhotosStep = ({ formData, updateForm }) => {
   };
 
   const fetchLibrary = async (extraLocalLinks = []) => {
-    if (!hotelId) return;
+    if (!hotelId || hotelId === 'undefined') return;
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/admin/images?hotelId=${hotelId}`, {
