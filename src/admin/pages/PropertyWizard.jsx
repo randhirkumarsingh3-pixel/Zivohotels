@@ -240,9 +240,10 @@ const PropertyWizard = () => {
         throw new Error(data.message || 'Failed to save property');
       }
 
-      const targetHotelIdForRoom = id || localStorage.getItem('currentHotelId_admin');
-      const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId_admin'));
-      const hotelId = usePatchForRoom && !wasDraftDeleted ? targetHotelIdForRoom : data.data.id;
+      // Always prefer the ID returned from the server response; fall back to known IDs
+      const savedHotelId = data.data?.id || id || localStorage.getItem('currentHotelId_admin');
+      if (data.data?.id) localStorage.setItem('currentHotelId_admin', data.data.id);
+      const hotelId = savedHotelId;
 
       // 1. Delete removed rooms
       if (!wasDraftDeleted) {

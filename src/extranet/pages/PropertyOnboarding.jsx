@@ -225,9 +225,10 @@ const PropertyOnboarding = () => {
         throw new Error(data.message || 'Failed to save property');
       }
 
-      const targetHotelIdForRoom = effectiveId || localStorage.getItem('currentHotelId_extranet');
-      const usePatchForRoom = isEditing || Boolean(localStorage.getItem('currentHotelId_extranet'));
-      const hotelId = usePatchForRoom && !wasDraftDeleted ? targetHotelIdForRoom : data.data.id;
+      // Always prefer the ID returned from the server response; fall back to known IDs
+      const savedHotelId = data.data?.id || effectiveId || localStorage.getItem('currentHotelId_extranet');
+      if (data.data?.id) localStorage.setItem('currentHotelId_extranet', data.data.id);
+      const hotelId = savedHotelId;
 
       // 1. Delete removed rooms
       if (!wasDraftDeleted) {
