@@ -28,7 +28,7 @@ export const uploadHotelImage = asyncHandler(async (req, res) => {
   // Support base64 upload if 'image' field is present
   if (req.body.image && typeof req.body.image === 'string') {
     const base64Data = req.body.image;
-    const matches = base64Data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+    const matches = base64Data.match(/^data:(.+);base64,(.+)$/);
     
     if (matches && matches.length === 3) {
       const mimeType = matches[1];
