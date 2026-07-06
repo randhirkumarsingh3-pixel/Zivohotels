@@ -163,6 +163,13 @@ const PropertyWizard = () => {
     }
   };
 
+  const handleSaveDraft = async () => {
+    const success = await syncDraftToBackend();
+    if (success) {
+      alert('Draft saved successfully!');
+    }
+  };
+
   const handleSubmit = async () => {
     setApiError('');
 
