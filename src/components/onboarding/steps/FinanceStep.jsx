@@ -630,6 +630,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                         onUpload={handleMockUpload}
                         onDelete={handleMockDelete}
                         required={true}
+                        isProtected={isProtected}
                       />
 
                       {/* GST Registration Document Card */}
@@ -639,6 +640,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                         fileName={formData.gstDocName}
                         onUpload={handleMockUpload}
                         onDelete={handleMockDelete}
+                        isProtected={isProtected}
                       />
 
                       {/* Cancelled Cheque / Bank proof Document Card */}
@@ -649,6 +651,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                         onUpload={handleMockUpload}
                         onDelete={handleMockDelete}
                         required={true}
+                        isProtected={isProtected}
                       />
 
                       {/* Trade License Card */}
@@ -658,6 +661,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                         fileName={formData.tradeLicenseDocName}
                         onUpload={handleMockUpload}
                         onDelete={handleMockDelete}
+                        isProtected={isProtected}
                       />
 
                     </div>
@@ -796,7 +800,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
 };
 
 // Document Upload Box Sub-Component
-const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, required = false }) => {
+const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, required = false, isProtected }) => {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
