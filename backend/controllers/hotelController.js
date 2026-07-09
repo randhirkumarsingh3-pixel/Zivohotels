@@ -4,6 +4,7 @@ import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
 import cacheUtils from '../utils/cacheUtils.js';
 import crypto from 'crypto';
+import { mediaService } from '../services/MediaService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -563,7 +564,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
   ]);
 
   // Flatten and Filter for Data Integrity
-  const formattedHotels = hotels.map(hotel => {
+  const formattedHotelsPromises = hotels.map(async (hotel) => {
     let startingPrice = null;
     
     // Find the absolute lowest price across all room types
@@ -585,15 +586,21 @@ export const getAllHotels = asyncHandler(async (req, res) => {
       if (!hasPrice || !hasMedia) return null;
     }
 
-    const flattenedHotel = formatHotelResponse(hotel);
+    const signedHotel = await mediaService.signHotelUrls(hotel);
+    const flattenedHotel = formatHotelResponse(signedHotel);
+    const rawImage = hasMedia ? signedHotel.media[0].url : '';
+    const signedImage = rawImage.startsWith('gs://') ? await mediaService.getSignedUrl(rawImage) : rawImage;
 
     return {
       ...flattenedHotel,
-      image: hasMedia ? hotel.media[0].url : '',
+      image: signedImage,
       startingPrice: startingPrice || 0,
       price: startingPrice || 0
     };
-  }).filter(h => h !== null); // Remove blocked properties
+  });
+
+  const formattedHotelsWithNulls = await Promise.all(formattedHotelsPromises);
+  const formattedHotels = formattedHotelsWithNulls.filter(h => h !== null); // Remove blocked properties
 
   res.status(200).json({
     success: true,
@@ -645,8 +652,9 @@ export const getHotelById = asyncHandler(async (req, res) => {
     prisma.booking.count({ where: { hotelId: id, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: today } } })
   ]);
 
+  const signedHotel = await mediaService.signHotelUrls(hotel);
   const data = {
-    ...formatHotelResponse(hotel),
+    ...formatHotelResponse(signedHotel),
     agreement,
     bankDetail,
     viewsToday,

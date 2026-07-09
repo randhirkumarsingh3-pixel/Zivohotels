@@ -13,8 +13,8 @@ const _IMAGE_CATEGORIES = ["ROOM", "EXTERIOR", "AMENITIES", "FOOD"];
 
 // Loosened schema to allow string tags
 const imageSchema = z.object({
-  url: z.string().refine(val => val.startsWith('http') || val.startsWith('blob:') || val.startsWith('/uploads'), {
-    message: "URL must be a valid http/https, blob, or local upload URL"
+  url: z.string().refine(val => val.startsWith('http') || val.startsWith('blob:') || val.startsWith('/uploads') || val.startsWith('gs://'), {
+    message: "URL must be a valid http/https, blob, local upload, or gs:// URL"
   }),
   hotelId: z.string().uuid(),
   category: z.string().optional().default('EXTERIOR'),
@@ -75,7 +75,8 @@ export const uploadHotelImage = asyncHandler(async (req, res) => {
     });
   });
 
-  res.status(201).json({ success: true, data: image });
+  const clientUrl = image.url.startsWith('gs://') ? await mediaService.getSignedUrl(image.url) : image.url;
+  res.status(201).json({ success: true, data: { ...image, url: clientUrl } });
 });
 
 export const getHotelImages = asyncHandler(async (req, res) => {
@@ -97,7 +98,15 @@ export const getHotelImages = asyncHandler(async (req, res) => {
     orderBy: { createdAt: 'desc' }
   });
 
-  res.status(200).json({ success: true, data: images });
+  const mappedImages = await Promise.all(images.map(async (img) => {
+    if (img.url && img.url.startsWith('gs://')) {
+      const signedUrl = await mediaService.getSignedUrl(img.url);
+      return { ...img, url: signedUrl };
+    }
+    return img;
+  }));
+
+  res.status(200).json({ success: true, data: mappedImages });
 });
 
 export const updateHotelImage = asyncHandler(async (req, res) => {
@@ -127,7 +136,8 @@ export const updateHotelImage = asyncHandler(async (req, res) => {
     });
   });
 
-  res.status(200).json({ success: true, data: updated });
+  const clientUrl = updated.url.startsWith('gs://') ? await mediaService.getSignedUrl(updated.url) : updated.url;
+  res.status(200).json({ success: true, data: { ...updated, url: clientUrl } });
 });
 
 export const deleteHotelImage = asyncHandler(async (req, res) => {
