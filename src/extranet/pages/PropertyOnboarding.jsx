@@ -14,6 +14,7 @@ import FinanceStep from '../../components/onboarding/steps/FinanceStep';
 import { getImageUrl } from '../../utils/image';
 
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
+import { validateStep } from '../../components/onboarding/utils/validationHelpers';
 import { buildHotelPayload } from '../../components/onboarding/services/onboardingMapper';
 import { buildRoomPayload, normalizeRatePlans } from '../../components/onboarding/utils/roomMapper';
 
@@ -183,13 +184,14 @@ const PropertyOnboarding = () => {
     }
 
     // Final Validation before submit
-    return handleStepChange(
-      7,
-      (error) => addToast(error, 'warning'),
-      async () => {
-        setIsSubmitting(true);
+    const { valid, firstError } = validateStep(7, formData);
+    if (!valid) {
+      addToast(firstError, 'warning');
+      return;
+    }
 
-        try {
+    setIsSubmitting(true);
+    try {
           const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
           payload.status = 'PENDING';
 
@@ -344,8 +346,6 @@ const PropertyOnboarding = () => {
     } finally {
       setIsSubmitting(false);
     }
-      }
-    );
   };
 
   const renderStepContent = () => {

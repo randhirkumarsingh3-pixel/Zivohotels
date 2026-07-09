@@ -13,6 +13,7 @@ import FinanceStep from '../../components/onboarding/steps/FinanceStep';
 import { getImageUrl } from '../../utils/image';
 import { useAuth } from '../../context/AuthContext';
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
+import { validateStep } from '../../components/onboarding/utils/validationHelpers';
 import { buildHotelPayload } from '../../components/onboarding/services/onboardingMapper';
 import { buildRoomPayload, normalizeRatePlans } from '../../components/onboarding/utils/roomMapper';
 
@@ -192,12 +193,13 @@ const PropertyWizard = () => {
     }
 
     // Final Validation before submit
-    return handleStepChange(
-      7,
-      (error) => alert(error),
-      async () => {
-        setIsSubmitting(true);
+    const { valid, firstError } = validateStep(7, formData);
+    if (!valid) {
+      alert(firstError);
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
       const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
 
@@ -346,8 +348,6 @@ const PropertyWizard = () => {
     } finally {
       setIsSubmitting(false);
     }
-      }
-    );
   };
 
   const renderStepContent = () => {
