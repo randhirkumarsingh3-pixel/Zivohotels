@@ -63,7 +63,7 @@ const PropertyWizard = () => {
     saveDraftIfNeeded: hookSaveDraftIfNeeded
   } = usePropertyWizard({
     isEditing,
-    effectiveId: id,
+    effectiveId: id || localStorage.getItem('currentHotelId_admin'),
     storageKeyPrefix: 'zivo_onboarding',
     onFetchError: handleFetchError,
     clearCurrentHotelId: handleClearHotelId

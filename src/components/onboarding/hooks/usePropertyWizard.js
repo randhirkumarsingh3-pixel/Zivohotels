@@ -33,7 +33,7 @@ export const usePropertyWizard = (options) => {
   
   const [formData, setFormData] = useState(getDefaultFormData());
 
-  const fetchProperty = useCallback(async () => {
+  const fetchProperty = useCallback(async (draftLoaded = false) => {
     if (!effectiveId) return;
     try {
       const res = await fetch(`${API_URL}/hotels/${effectiveId}`, { headers: getAuthHeaders() });
@@ -45,7 +45,15 @@ export const usePropertyWizard = (options) => {
       if (json.success) {
         const mappedData = mapBackendToFormData(json.data);
         setInitialRoomIds(mappedData.rooms.map(r => r.id));
-        setFormData(prev => ({ ...prev, ...mappedData }));
+        if (draftLoaded) {
+          setFormData(prev => ({
+            ...mappedData,
+            ...prev,
+            lastUpdatedAt: mappedData.lastUpdatedAt
+          }));
+        } else {
+          setFormData(mappedData);
+        }
       }
     } catch (err) {
       console.error('Error fetching property:', err);
@@ -54,42 +62,35 @@ export const usePropertyWizard = (options) => {
   }, [effectiveId, onFetchError]);
 
   useEffect(() => {
-    if (isEditing) {
+    let draftLoaded = false;
+    
+    if (location.state?.resetDraft) {
+      localStorage.removeItem(draftKey);
+      localStorage.removeItem(stepKey);
+      if (options.clearCurrentHotelId) {
+        options.clearCurrentHotelId();
+      }
+      navigate(location.pathname, { replace: true, state: {} });
+    } else {
       const saved = localStorage.getItem(draftKey);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
           setFormData(prev => ({ ...prev, ...parsed }));
-        } catch (e) {
-          fetchProperty();
-        }
-      } else {
-        fetchProperty();
-      }
-    } else {
-      if (location.state?.resetDraft) {
-        localStorage.removeItem(draftKey);
-        localStorage.removeItem(stepKey);
-        if (options.clearCurrentHotelId) {
-          options.clearCurrentHotelId();
-        }
-        navigate(location.pathname, { replace: true, state: {} });
-      } else {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            setFormData(prev => ({ ...prev, ...parsed }));
-            setHasDraftLoaded(true);
-            const savedStep = localStorage.getItem(stepKey);
-            if (savedStep) {
-              setCurrentStep(parseInt(savedStep, 10));
-            }
-          } catch (e) {
-            console.error("Failed to restore onboarding draft:", e);
+          setHasDraftLoaded(true);
+          draftLoaded = true;
+          const savedStep = localStorage.getItem(stepKey);
+          if (savedStep) {
+            setCurrentStep(parseInt(savedStep, 10));
           }
+        } catch (e) {
+          console.error("Failed to restore draft:", e);
         }
       }
+    }
+
+    if (effectiveId && !location.state?.resetDraft) {
+      fetchProperty(draftLoaded);
     }
   }, [isEditing, effectiveId, draftKey, stepKey, location.state, fetchProperty, navigate, options.clearCurrentHotelId, location.pathname]);
 
