@@ -112,7 +112,11 @@ const PropertyWizard = () => {
         const resJson = await res.json();
         if (res.ok && resJson.data?.id) {
           localStorage.setItem('currentHotelId_admin', resJson.data.id);
-          setFormData(prev => ({ ...prev, id: resJson.data.id }));
+          setFormData(prev => ({ 
+            ...prev, 
+            id: resJson.data.id,
+            lastUpdatedAt: resJson.data.updatedAt
+          }));
           // Silently succeed on step transition auto-save
         } else {
           console.error(resJson.message || 'Failed to auto-save property draft');
@@ -153,6 +157,9 @@ const PropertyWizard = () => {
       if (!response.ok) {
         console.error(data.message || 'Failed to save draft');
         return false;
+      }
+      if (data.data?.updatedAt) {
+        setFormData(prev => ({ ...prev, lastUpdatedAt: data.data.updatedAt }));
       }
       return true;
     } catch (err) {

@@ -111,13 +111,17 @@ const PropertyOnboarding = () => {
         const resJson = await res.json();
         if (res.ok && resJson.data?.id) {
           localStorage.setItem('currentHotelId_extranet', resJson.data.id);
-          setFormData(prev => ({ ...prev, id: resJson.data.id }));
+          setFormData(prev => ({ 
+            ...prev, 
+            id: resJson.data.id,
+            lastUpdatedAt: resJson.data.updatedAt
+          }));
           addToast('Draft saved successfully!', 'success');
         } else {
           addToast(resJson.message || 'Failed to auto-save property draft', 'error');
         }
         setIsSubmitting(false);
-        return;
+        return res.ok;
       }
 
       const usePatch = isEditing || Boolean(targetHotelId);
@@ -150,11 +154,17 @@ const PropertyOnboarding = () => {
       const data = await response.json();
       if (response.ok) {
         addToast('Draft saved successfully!', 'success');
+        if (data.data?.updatedAt) {
+          setFormData(prev => ({ ...prev, lastUpdatedAt: data.data.updatedAt }));
+        }
+        return true;
       } else {
         addToast(data.message || 'Failed to save draft', 'error');
+        return false;
       }
     } catch (err) {
       addToast(err.message || 'An error occurred while saving draft.', 'error');
+      return false;
     } finally {
       setIsSubmitting(false);
     }

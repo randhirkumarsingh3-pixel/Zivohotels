@@ -145,7 +145,11 @@ export const usePropertyWizard = (options) => {
         const resJson = await res.json();
         if (res.ok && resJson.data && resJson.data.id) {
           if (setCurrentHotelId) setCurrentHotelId(resJson.data.id);
-          setFormData(prev => ({ ...prev, id: resJson.data.id }));
+          setFormData(prev => ({ 
+            ...prev, 
+            id: resJson.data.id,
+            lastUpdatedAt: resJson.data.updatedAt
+          }));
           return { success: true, id: resJson.data.id };
         }
       } catch (err) {
