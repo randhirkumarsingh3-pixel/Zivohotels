@@ -221,6 +221,44 @@ const PhotosStep = ({ formData, updateForm }) => {
     setSelectedImageForTagging(prev => prev.id === image.id ? { ...prev, tags: newTags } : prev);
 
     await handleUpdateImage(image.id, { tags: newTags });
+
+    // Check if the tag matches a room type name and toggle its roomType assignment
+    const matchingRoomType = rooms.find(r => r.name.toUpperCase().trim().replace(/[^A-Z0-9_]+/g, '_') === tag);
+    if (matchingRoomType) {
+      const isLinked = image.roomLinks?.some(link => link.roomTypeId === matchingRoomType.id);
+      const shouldLink = !isSelected;
+      
+      if (shouldLink !== isLinked) {
+        const isUUID = typeof matchingRoomType.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchingRoomType.id);
+        if (!isUUID) {
+          // Local-only toggle
+          const updatedLinks = shouldLink
+            ? [...(image.roomLinks || []), { roomTypeId: matchingRoomType.id, imageId: image.id }]
+            : (image.roomLinks || []).filter(link => link.roomTypeId !== matchingRoomType.id);
+          setLibrary(prev => prev.map(img => img.id === image.id ? { ...img, roomLinks: updatedLinks } : img));
+          updateForm('images', library.map(img => img.id === image.id ? { ...img, roomLinks: updatedLinks } : img));
+        } else {
+          // Database toggle
+          try {
+            if (shouldLink) {
+              await fetch(`${API_URL}/admin/images/room-types/${matchingRoomType.id}`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ imageId: image.id, isPrimary: false })
+              });
+            } else {
+              await fetch(`${API_URL}/admin/images/room-types/${matchingRoomType.id}/images/${image.id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+              });
+            }
+            await fetchLibrary(); // Reload from DB to sync roomLinks relation
+          } catch (err) {
+            console.error('Failed to toggle room type assignment for tag:', err);
+          }
+        }
+      }
+    }
   };
 
   const toggleCoverPhoto = async (image, checked) => {
@@ -244,6 +282,20 @@ const PhotosStep = ({ formData, updateForm }) => {
     const isLinked = image.roomLinks?.some(link => link.roomTypeId === roomType.id);
     const isUUID = typeof roomType.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomType.id);
     
+    const roomTag = roomType.name.toUpperCase().trim().replace(/[^A-Z0-9_]+/g, '_');
+    const hasTag = image.tags?.includes(roomTag);
+    let newTags = image.tags || [];
+    
+    if (isLinked) {
+      if (hasTag) {
+        newTags = newTags.filter(t => t !== roomTag);
+      }
+    } else {
+      if (!hasTag) {
+        newTags = [...newTags, roomTag];
+      }
+    }
+    
     if (!isUUID) {
       // Local-only toggle since room type is not saved in backend yet
       const updatedLinks = isLinked
@@ -251,7 +303,7 @@ const PhotosStep = ({ formData, updateForm }) => {
         : [...(image.roomLinks || []), { roomTypeId: roomType.id, imageId: image.id }];
       
       const updatedLibrary = library.map(img => 
-        img.id === image.id ? { ...img, roomLinks: updatedLinks } : img
+        img.id === image.id ? { ...img, roomLinks: updatedLinks, tags: newTags } : img
       );
       setLibrary(updatedLibrary);
       updateForm('images', updatedLibrary);
@@ -260,19 +312,26 @@ const PhotosStep = ({ formData, updateForm }) => {
 
     try {
       if (isLinked) {
-        const res = await fetch(`${API_URL}/admin/images/room-types/${roomType.id}/images/${image.id}`, {
+        await fetch(`${API_URL}/admin/images/room-types/${roomType.id}/images/${image.id}`, {
           method: 'DELETE',
           headers: getAuthHeaders()
         });
-        if (res.ok) await fetchLibrary();
       } else {
-        const res = await fetch(`${API_URL}/admin/images/room-types/${roomType.id}`, {
+        await fetch(`${API_URL}/admin/images/room-types/${roomType.id}`, {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({ imageId: image.id, isPrimary: false })
         });
-        if (res.ok) await fetchLibrary();
       }
+      
+      // Also update the tags in the DB
+      await fetch(`${API_URL}/admin/images/${image.id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ tags: newTags })
+      });
+      
+      await fetchLibrary();
     } catch (err) {
       console.error('Failed to toggle room assignment:', err);
     }
@@ -546,9 +605,15 @@ const PhotosStep = ({ formData, updateForm }) => {
             <UploadCloud size={48} className="text-slate-300 mb-3" />
             <span className="text-sm text-slate-400 font-bold">No files uploaded yet</span>
           </div>
+        ) : untaggedCount === 0 ? (
+          <div className="py-12 border border-emerald-100 rounded-xl flex flex-col items-center justify-center text-center bg-emerald-50/20">
+            <Check size={32} className="text-emerald-500 mb-2" />
+            <span className="text-sm text-emerald-800 font-bold">All photos & videos are tagged!</span>
+            <span className="text-xs text-slate-500 mt-0.5">Use the section below to assign them to specific rooms.</span>
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {library.map(img => {
+            {library.filter(img => !img.tags || img.tags.length === 0).map(img => {
               const hasTags = img.tags && img.tags.length > 0;
               return (
                 <div
