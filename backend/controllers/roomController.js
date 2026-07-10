@@ -30,11 +30,12 @@ const roomTypeUpdateSchema = roomTypeSchema.partial();
 // --- HELPERS ---
 
 const normalizeRoomPayload = (data) => {
-  const { maxOccupancy, totalRooms, _imageIds, _primaryImageId, basePrice, mealPlan, ...rest } = data;
+  const { maxOccupancy, totalRooms, imageIds, primaryImageId, basePrice, mealPlan, ...rest } = data;
   
   return {
     prismaData: {
       ...rest,
+      maxOccupancy,
       totalInventory: totalRooms,
     },
     basePrice,

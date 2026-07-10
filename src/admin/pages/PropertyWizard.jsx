@@ -275,6 +275,9 @@ const PropertyWizard = () => {
         const isNewRoom = !isUUID || wasDraftDeleted;
 
         const roomPayload = buildRoomPayload(room, hotelId, isNewRoom);
+        roomPayload.imageIds = (formData.images || [])
+          .filter(img => img.roomLinks?.some(link => link.roomTypeId === room.id))
+          .map(img => img.id);
 
         let roomTypeId;
         let ratePlanId;
