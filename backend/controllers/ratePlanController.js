@@ -9,8 +9,8 @@ export const createRatePlan = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    if (parseFloat(basePrice) <= 0) {
-      return res.status(400).json({ success: false, message: 'Base price must be greater than 0' });
+    if (parseFloat(basePrice) < 0) {
+      return res.status(400).json({ success: false, message: 'Base price cannot be negative' });
     }
 
     // Check scope: Does the user own the hotel this roomType belongs to?
@@ -118,8 +118,8 @@ export const updateRatePlan = async (req, res, next) => {
     
     if (dataToUpdate.basePrice !== undefined) {
       const bp = parseFloat(dataToUpdate.basePrice);
-      if (isNaN(bp) || bp <= 0) {
-        return res.status(400).json({ success: false, message: 'Base price must be greater than 0' });
+      if (isNaN(bp) || bp < 0) {
+        return res.status(400).json({ success: false, message: 'Base price cannot be negative' });
       }
       dataToUpdate.basePrice = bp;
       dataToUpdate.isConfigured = true;
