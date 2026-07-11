@@ -12,6 +12,7 @@ import {
   LogOut,
   FileSignature,
   ShieldCheck,
+  ClipboardCheck,
   TrendingUp,
   Wallet,
   Zap,
@@ -87,6 +88,7 @@ const MasterSidebar = () => {
 
         <NavGroup title="Supply & Content">
           <NavItem name="Properties" path="/admin/properties" icon={<Building2 size={18} />} />
+          <NavItem name="Property Review" path="/admin/properties/review" icon={<ClipboardCheck size={18} />} badge="New" />
           <NavItem name="Agreements" path="/admin/agreements" icon={<FileSignature size={18} />} />
         </NavGroup>
 
