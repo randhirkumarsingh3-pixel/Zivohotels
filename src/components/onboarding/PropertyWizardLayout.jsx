@@ -9,6 +9,7 @@ const STEPS = [
   { num: 5, title: 'Photos And Videos' },
   { num: 6, title: 'Policies' },
   { num: 7, title: 'Finance & Legal' },
+  { num: 8, title: 'Documents' },
 ];
 
 const PropertyWizardLayout = ({ 

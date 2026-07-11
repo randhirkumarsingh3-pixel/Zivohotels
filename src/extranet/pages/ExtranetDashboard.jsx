@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp,
   Clock, AlertTriangle, ArrowRight, ChevronRight, Activity,
-  Bell, Info, LayoutDashboard, Loader2
+  Bell, Info, LayoutDashboard, Loader2, FileSignature
 } from 'lucide-react';
 import StickyKPIStrip from '../../components/shared/StickyKPIStrip';
 import { fetchProperty, fetchActivityTimeline, fetchNotifications } from '../../services/extranetApi';
@@ -63,6 +63,27 @@ const ExtranetDashboard = () => {
     }
   }, [addToast]);
 
+  const handleSignAgreement = async () => {
+    if (!confirm('By clicking OK, you are digitally signing the ZivoHotels property agreement.')) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/hotels/${property.id}/sign-agreement`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to sign agreement');
+      addToast('Agreement signed successfully!', 'success');
+      loadDashboardData();
+    } catch (error) {
+      addToast(error.message, 'error');
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
@@ -102,6 +123,30 @@ const ExtranetDashboard = () => {
 
   return (
     <div className="-m-8 bg-[#F8FAFC]">
+      {property?.status === 'PENDING_AGREEMENT' && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileSignature size={32} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Digital Agreement Pending</h2>
+            <p className="text-gray-600 mb-8">
+              Congratulations! Your property <strong>{property.name}</strong> has been approved. 
+              Please review and sign the digital listing agreement to go live and start receiving bookings.
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={handleSignAgreement}
+                className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-brand-500/30"
+              >
+                Digitally Sign Agreement
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-4">By signing, you agree to our standard terms of service and commission rates.</p>
+          </div>
+        </div>
+      )}
+
       <StickyKPIStrip metrics={hotelMetrics} />
 
       <div className="p-10 space-y-8">

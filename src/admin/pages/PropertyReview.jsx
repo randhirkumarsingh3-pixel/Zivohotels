@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, CheckCircle, XCircle, AlertCircle, Eye, Power, FileSignature } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Eye, Power, FileSignature, Clock, FileText } from 'lucide-react';
+import ReviewDocuments from '../components/ReviewDocuments';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -99,6 +100,31 @@ export default function PropertyReview() {
         </div>
       )}
 
+      {/* SLA KPI Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 text-gray-500 mb-1">
+            <FileText size={18} />
+            <h3 className="text-sm font-medium">Properties in Queue</h3>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{queue.filter(q => ['SUBMITTED', 'IN_REVIEW', 'INFORMATION_REQUESTED'].includes(q.status)).length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 text-gray-500 mb-1">
+            <Clock size={18} />
+            <h3 className="text-sm font-medium">Pending Agreements</h3>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{queue.filter(q => q.status === 'PENDING_AGREEMENT').length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 text-gray-500 mb-1">
+            <CheckCircle size={18} />
+            <h3 className="text-sm font-medium">Ready for Go Live</h3>
+          </div>
+          <p className="text-2xl font-bold text-green-600">{queue.filter(q => q.status === 'READY_FOR_GO_LIVE').length}</p>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -196,6 +222,9 @@ export default function PropertyReview() {
                   )}
                 </div>
               )}
+
+              {/* Document Review */}
+              {selectedProperty && <ReviewDocuments hotelId={selectedProperty.id} />}
 
               {/* Agreement Actions */}
               {selectedProperty.status === 'PENDING_AGREEMENT' && (

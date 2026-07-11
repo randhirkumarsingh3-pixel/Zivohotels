@@ -65,6 +65,30 @@ export const approveProperty = asyncHandler(async (req, res) => {
   if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
   if (hotel.status !== 'IN_REVIEW') return res.status(400).json({ success: false, message: 'Property must be in review' });
 
+  // Tier 2: Validation Engine
+  if (hotel.complianceScore < 80) {
+    return res.status(400).json({ success: false, message: 'Property compliance score must be at least 80% to be approved.' });
+  }
+
+  if (hotel.gstin) {
+    const duplicate = await prisma.hotel.findFirst({
+      where: { gstin: hotel.gstin, id: { not: id }, status: { in: ['LIVE', 'APPROVED', 'READY_FOR_GO_LIVE'] } }
+    });
+    if (duplicate) return res.status(400).json({ success: false, message: 'Another approved property already uses this GSTIN.' });
+  }
+
+  if (hotel.pan) {
+    const duplicate = await prisma.hotel.findFirst({
+      where: { pan: hotel.pan, id: { not: id }, status: { in: ['LIVE', 'APPROVED', 'READY_FOR_GO_LIVE'] } }
+    });
+    if (duplicate) return res.status(400).json({ success: false, message: 'Another approved property already uses this PAN.' });
+  }
+
+  const bank = await prisma.bankDetail.findUnique({ where: { hotelId: id } });
+  if (!bank) {
+    return res.status(400).json({ success: false, message: 'Property must have bank details configured before approval.' });
+  }
+
   const updated = await prisma.hotel.update({
     where: { id },
     data: { 
@@ -76,6 +100,19 @@ export const approveProperty = asyncHandler(async (req, res) => {
   
   await logTimeline(id, req.user.id, 'STATUS_APPROVED');
   await logTimeline(id, req.user.id, 'STATUS_PENDING_AGREEMENT');
+
+  // Create Agreement Record
+  await prisma.agreement.upsert({
+    where: { hotelId: id },
+    update: { status: 'DRAFT', sentAt: new Date() },
+    create: {
+      hotelId: id,
+      ownerId: hotel.ownerId,
+      status: 'DRAFT',
+      commissionRate: 15.0,
+      sentAt: new Date()
+    }
+  });
 
   // Trigger Approval Email
   if (hotel.owner?.email) {
@@ -147,6 +184,11 @@ export const markAgreementSigned = asyncHandler(async (req, res) => {
   const updated = await prisma.hotel.update({
     where: { id },
     data: { status: 'READY_FOR_GO_LIVE' }
+  });
+  
+  await prisma.agreement.update({
+    where: { hotelId: id },
+    data: { status: 'SIGNED', signedAt: new Date() }
   });
   
   await logTimeline(id, req.user.id, 'STATUS_AGREEMENT_SIGNED');

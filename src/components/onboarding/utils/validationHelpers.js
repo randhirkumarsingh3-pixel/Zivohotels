@@ -67,6 +67,7 @@ export const validateStep = (stepIndex, formData) => {
     case 5: errors = validatePhotos(formData); break;
     case 6: errors = validatePolicies(formData); break;
     case 7: errors = validateFinance(formData); break;
+    case 8: /* Documents are validated via backend complianceScore */ break;
     default: break;
   }
   return {

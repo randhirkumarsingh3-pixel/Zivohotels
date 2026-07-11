@@ -283,6 +283,8 @@ model Agreement {
   ownerId        String
   status         AgreementStatus? @default(DRAFT)
   commissionRate Float?           @default(15.0)
+  documentUrl    String?
+  ipAddress      String?
   sentAt         DateTime?
   signedAt       DateTime?
   expiryAt       DateTime?

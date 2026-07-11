@@ -34,6 +34,7 @@ import financeRoutes from './routes/financeRoutes.js';
 // Worker initialization has been moved to dedicated standalone processes.
 import masterAdminRoutes from './routes/masterAdminRoutes.js';
 import extranetRoutes from './routes/extranetRoutes.js';
+import kycRoutes from './routes/kycRoutes.js';
 import socketService from './services/socketService.js';
 import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
@@ -168,6 +169,8 @@ const searchLimiter = rateLimit({
 
 app.use('/api/v1/auth', loginLimiter, authRoutes);
 app.use('/api/v1/hotels', hotelRoutes);
+app.use('/api/v1/rooms', roomRoutes);
+app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);

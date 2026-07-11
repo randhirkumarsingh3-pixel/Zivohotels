@@ -17,6 +17,10 @@ router.route('/:id')
   .patch(protect, authorizeRoles('ADMIN', 'OWNER'), updateHotel)
   .delete(protect, authorizeRoles('ADMIN'), deleteHotel);
 
+router.post('/:id/sign-agreement', protect, authorizeRoles('ADMIN', 'OWNER'), async (req, res, next) => {
+  import('../controllers/hotelController.js').then(m => m.signAgreement(req, res, next)).catch(next);
+});
+
 router.get('/:hotelId/reviews', getHotelReviews);
 
 export default router;

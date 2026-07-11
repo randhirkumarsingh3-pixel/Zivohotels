@@ -10,6 +10,7 @@ import RoomsStep from '../../components/onboarding/steps/RoomsStep';
 import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
+import DocumentsStep from '../components/wizard-steps/DocumentsStep';
 import { getImageUrl } from '../../utils/image';
 import { useAuth } from '../../context/AuthContext';
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
@@ -182,7 +183,7 @@ const PropertyWizard = () => {
     setApiError('');
 
     // Advance to next step if not on last step
-    if (currentStep < 7) {
+    if (currentStep < 8) {
       return handleStepChange(
         currentStep + 1,
         (error) => alert(error),
@@ -193,7 +194,7 @@ const PropertyWizard = () => {
     }
 
     // Final Validation before submit
-    const { valid, firstError } = validateStep(7, formData);
+    const { valid, firstError } = validateStep(8, formData);
     if (!valid) {
       alert(firstError);
       return;
@@ -379,6 +380,8 @@ const PropertyWizard = () => {
         return <PoliciesStep formData={formData} updateForm={updateForm} />;
       case 7:
         return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
+      case 8:
+        return <DocumentsStep formData={formData} updateForm={updateForm} />;
       default:
         return <BasicInfoStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
     }

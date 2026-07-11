@@ -872,3 +872,44 @@ export const searchHotels = asyncHandler(async (req, res) => {
     data: responseData
   });
 });
+
+export const signAgreement = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+
+  if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+  
+  if (req.user.role === 'OWNER' && hotel.ownerId !== req.user.id) {
+    return res.status(403).json({ success: false, message: 'Not authorized to sign for this property' });
+  }
+
+  if (hotel.status !== 'PENDING_AGREEMENT') {
+    return res.status(400).json({ success: false, message: 'Property is not pending an agreement' });
+  }
+
+  await prisma.agreement.update({
+    where: { hotelId: id },
+    data: { 
+      status: 'SIGNED', 
+      signedAt: new Date(),
+      ipAddress: req.ip || req.connection.remoteAddress
+    }
+  });
+
+  const updated = await prisma.hotel.update({
+    where: { id },
+    data: { status: 'READY_FOR_GO_LIVE' }
+  });
+
+  await prisma.adminActionLog.create({
+    data: {
+      action: 'STATUS_AGREEMENT_SIGNED',
+      entityId: id,
+      entityType: 'HOTEL',
+      adminId: req.user.id,
+      details: 'Agreement signed digitally'
+    }
+  });
+
+  res.json({ success: true, data: updated });
+});
