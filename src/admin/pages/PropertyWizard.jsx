@@ -339,6 +339,16 @@ const PropertyWizard = () => {
         }
       }
 
+      // Submit the property for review
+      try {
+        await fetch(`${API_URL}/admin/properties/${hotelId}/submit`, {
+          method: 'PATCH',
+          headers: getAuthHeaders()
+        });
+      } catch (err) {
+        console.error('Failed to submit property to review queue', err);
+      }
+
       const refNo = 'ZIVO-PROP-' + (hotelId ? hotelId.substring(0, 8).toUpperCase() : Math.random().toString(36).substring(2, 10).toUpperCase());
       setReferenceNumber(refNo);
       setShowSuccessModal(true);

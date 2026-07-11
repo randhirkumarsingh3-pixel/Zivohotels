@@ -4,7 +4,9 @@ import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
 import cacheUtils from '../utils/cacheUtils.js';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { mediaService } from '../services/MediaService.js';
+import { queueService } from '../services/queueService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -249,12 +251,51 @@ export const createHotel = asyncHandler(async (req, res) => {
     return settings;
   };
 
+  let targetOwnerId = req.user.id;
+  let isNewOwner = false;
+  let inviteToken = null;
+  let tempPassword = null;
+  const ownerEmail = _contactInfo.ownerEmail;
+
+  if (ownerEmail) {
+    const existingOwner = await prisma.user.findUnique({
+      where: { email: ownerEmail }
+    });
+    
+    if (existingOwner) {
+      targetOwnerId = existingOwner.id;
+    } else {
+      // Auto-create OWNER
+      inviteToken = crypto.randomBytes(32).toString('hex');
+      tempPassword = crypto.randomBytes(6).toString('hex');
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      
+      const newOwner = await prisma.user.create({
+        data: {
+          name: _contactInfo.ownerName || 'Property Owner',
+          email: ownerEmail,
+          password: hashedPassword,
+          phone: _contactInfo.ownerPhone || null,
+          role: 'OWNER',
+          status: 'PENDING',
+          inviteToken,
+          inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          mustChangePassword: true
+        }
+      });
+      targetOwnerId = newOwner.id;
+      isNewOwner = true;
+    }
+  }
+
   let hotel;
   if (existing) {
     hotel = await prisma.hotel.update({
       where: { id: existing.id },
       data: {
         ...prismaData,
+        ownerId: targetOwnerId, // Update to resolved owner
+        updatedBy: req.user.id,
         integrationSettings: buildSettings(existing.integrationSettings)
       }
     });
@@ -262,11 +303,33 @@ export const createHotel = asyncHandler(async (req, res) => {
     hotel = await prisma.hotel.create({
       data: { 
         ...prismaData,
-        ownerId: req.user.id,
-        status: prismaData.status || 'PENDING',
+        ownerId: targetOwnerId,
+        createdBy: req.user.id, // Logged in Admin is the creator
+        updatedBy: req.user.id,
+        status: prismaData.status || 'DRAFT',
         integrationSettings: buildSettings()
       }
     });
+  }
+
+  if (isNewOwner) {
+    // Queue owner invite email
+    await queueService.enqueue('email', 'SEND_OWNER_INVITE', {
+      to: ownerEmail,
+      subject: 'Welcome to ZivoHotels - Claim Your Property',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Welcome to ZivoHotels!</h2>
+          <p>An admin has started onboarding your property: <strong>${hotel.name}</strong>.</p>
+          <p>An owner account has been created for you. Please log in using the temporary credentials below to review and submit your property.</p>
+          <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Email:</strong> ${ownerEmail}</p>
+            <p><strong>Temporary Password:</strong> ${tempPassword}</p>
+          </div>
+          <p>Please change your password immediately after logging in.</p>
+        </div>
+      `
+    }, { priority: 1 });
   }
 
   // Handle manual creation of agreement and bank detail to avoid client-sync issues

@@ -55,6 +55,14 @@ model Hotel {
   statusReason    String?
   statusUpdatedBy String?
   statusUpdatedAt DateTime?
+  
+  // Enterprise PLMS Tracking
+  createdBy       String?
+  updatedBy       String?
+  reviewedBy      String?
+  approvedBy      String?
+  reviewNote      String?
+
   mode            PropertyMode    @default(INTERNAL)
   onboardingStep  Int             @default(1)
 
@@ -1082,7 +1090,13 @@ enum UserStatus {
 
 enum PropertyStatus {
   DRAFT
+  SUBMITTED
   IN_REVIEW
+  INFORMATION_REQUESTED
+  APPROVED
+  PENDING_AGREEMENT
+  AGREEMENT_SIGNED
+  READY_FOR_GO_LIVE
   LIVE
   ACTIVE
   PAUSED
@@ -1091,6 +1105,8 @@ enum PropertyStatus {
   BLOCKED
   PENDING
   INACTIVE
+  ARCHIVED
+  DELETED
 }
 
 enum PropertyMode {

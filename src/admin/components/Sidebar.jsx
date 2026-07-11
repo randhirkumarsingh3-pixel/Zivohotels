@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut,
   FileSignature,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +21,7 @@ const Sidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} />, exact: true },
     { name: 'Properties', path: '/admin/properties', icon: <Building2 size={20} /> },
+    { name: 'Property Review', path: '/admin/properties/review', icon: <ClipboardCheck size={20} />, adminOnly: true },
     { name: 'Room Type & Rate Configuration', path: '/admin/configuration', icon: <Settings size={20} /> },
     { name: 'Inventory & Pricing', path: '/admin/inventory-pricing', icon: <CalendarDays size={20} /> },
     { name: 'Agreements', path: '/admin/agreements', icon: <FileSignature size={20} /> },

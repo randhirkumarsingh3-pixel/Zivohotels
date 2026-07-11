@@ -21,6 +21,7 @@ const ExtranetLayout = lazy(() => import('./layouts/ExtranetLayout'));
 // Zivo Master Admin Pages (LAZY)
 const ExecutiveDashboard = lazy(() => import('./admin/pages/ExecutiveDashboard'));
 const Properties = lazy(() => import('./admin/pages/Properties'));
+const PropertyReview = lazy(() => import('./admin/pages/PropertyReview'));
 const PropertyWizard = lazy(() => import('./admin/pages/PropertyWizard'));
 const Configuration = lazy(() => import('./admin/pages/Configuration'));
 const InventoryPricing = lazy(() => import('./admin/pages/InventoryPricing'));
@@ -113,6 +114,8 @@ function App() {
               
               {/* Supply */}
               <Route path="properties" element={<Properties />} />
+              <Route path="properties/review" element={<PropertyReview />} />
+              <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
 
               {/* Inventory & Distro */}
