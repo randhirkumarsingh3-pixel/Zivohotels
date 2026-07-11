@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { queueService } from '../services/queueService.js';
+import { mediaService } from '../services/MediaService.js';
 
 // Helper to log timeline
 const logTimeline = async (hotelId, userId, action, reason = null) => {
@@ -27,7 +28,9 @@ export const getReviewQueue = asyncHandler(async (req, res) => {
     },
     orderBy: { updatedAt: 'desc' }
   });
-  res.json({ success: true, data: properties });
+  
+  const signedProperties = await mediaService.signHotelsUrls(properties);
+  res.json({ success: true, data: signedProperties });
 });
 
 export const submitForReview = asyncHandler(async (req, res) => {
@@ -122,15 +125,15 @@ export const approveProperty = asyncHandler(async (req, res) => {
   if (hotel.status !== 'IN_REVIEW') return res.status(400).json({ success: false, message: 'Property must be in review' });
 
   // Tier 2: Validation Engine
-  if (hotel.complianceScore < 80) {
-    return res.status(400).json({ success: false, message: 'Property compliance score must be at least 80% to be approved.' });
-  }
-
   if (hotel.gstin) {
     const duplicate = await prisma.hotel.findFirst({
       where: { gstin: hotel.gstin, id: { not: id }, status: { in: ['LIVE', 'APPROVED', 'READY_FOR_GO_LIVE'] } }
     });
     if (duplicate) return res.status(400).json({ success: false, message: 'Another approved property already uses this GSTIN.' });
+  }
+
+  if (hotel.complianceScore == null || hotel.complianceScore < 0) {
+    return res.status(400).json({ success: false, message: 'Property must have a compliance score calculated to be approved.' });
   }
 
   if (hotel.pan) {
@@ -140,10 +143,11 @@ export const approveProperty = asyncHandler(async (req, res) => {
     if (duplicate) return res.status(400).json({ success: false, message: 'Another approved property already uses this PAN.' });
   }
 
-  const bank = await prisma.bankDetail.findUnique({ where: { hotelId: id } });
-  if (!bank) {
-    return res.status(400).json({ success: false, message: 'Property must have bank details configured before approval.' });
-  }
+  const intSettings = typeof hotel.integrationSettings === 'string' 
+    ? JSON.parse(hotel.integrationSettings) 
+    : (hotel.integrationSettings || {});
+    
+  const hasBank = intSettings.commercials && intSettings.commercials.bankAccount;
 
   const updated = await prisma.hotel.update({
     where: { id },
