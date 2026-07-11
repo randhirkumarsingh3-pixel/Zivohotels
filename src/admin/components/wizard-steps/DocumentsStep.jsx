@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { getAuthHeaders } from '../../../utils/auth';
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('jwt_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
 
 const DocumentsStep = ({ formData, updateForm }) => {
   const [documents, setDocuments] = useState([]);
