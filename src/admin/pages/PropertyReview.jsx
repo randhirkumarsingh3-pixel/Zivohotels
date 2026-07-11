@@ -62,6 +62,7 @@ export default function PropertyReview() {
 
   const StatusBadge = ({ status }) => {
     const colors = {
+      DRAFT: 'bg-gray-100 text-gray-800',
       SUBMITTED: 'bg-blue-100 text-blue-800',
       IN_REVIEW: 'bg-yellow-100 text-yellow-800',
       PENDING_AGREEMENT: 'bg-orange-100 text-orange-800',
@@ -72,7 +73,7 @@ export default function PropertyReview() {
     };
     return (
       <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status.replace(/_/g, ' ')}
+        {status === 'DRAFT' ? 'DRAFT' : status.replace(/_/g, ' ')}
       </span>
     );
   };
@@ -105,9 +106,10 @@ export default function PropertyReview() {
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 text-gray-500 mb-1">
             <FileText size={18} />
-            <h3 className="text-sm font-medium">Properties in Queue</h3>
+            <h3 className="text-sm font-medium">Total Properties</h3>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{queue.filter(q => ['SUBMITTED', 'IN_REVIEW', 'INFORMATION_REQUESTED'].includes(q.status)).length}</p>
+          <p className="text-2xl font-bold text-gray-900">{queue.length}</p>
+          <p className="text-xs text-gray-400 mt-1">{queue.filter(q => q.status === 'DRAFT').length} drafts • {queue.filter(q => ['SUBMITTED', 'IN_REVIEW', 'INFORMATION_REQUESTED'].includes(q.status)).length} in review</p>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 text-gray-500 mb-1">
@@ -185,6 +187,22 @@ export default function PropertyReview() {
             {/* Workflow Actions */}
             <div className="space-y-4">
               
+              {/* Draft Submit Action */}
+              {selectedProperty.status === 'DRAFT' && (
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-2">Draft Property</h3>
+                  <p className="text-sm text-gray-600 mb-4">This property is still in draft. Submit it for review to begin the approval process.</p>
+                  <button
+                    disabled={actionLoading}
+                    onClick={() => handleAction(selectedProperty.id, 'submit')}
+                    className="btn bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors"
+                  >
+                    {actionLoading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    <Eye size={16} /> Submit for Review
+                  </button>
+                </div>
+              )}
+
               {/* Review Actions */}
               {['SUBMITTED', 'IN_REVIEW', 'INFORMATION_REQUESTED'].includes(selectedProperty.status) && (
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">

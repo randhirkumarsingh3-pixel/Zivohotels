@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Edit2, Trash2, MapPin, Building, X,
-  AlertCircle, RefreshCw, Star, ChevronDown
+  AlertCircle, RefreshCw, Star, ChevronDown, Send
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -368,6 +368,22 @@ const Properties = () => {
     setDeletingHotel(null);
   };
 
+  const handleSubmitForReview = async (hotel) => {
+    if (!confirm(`Submit "${hotel.name}" for review? An email notification will be sent to the property owner.`)) return;
+    try {
+      const res = await fetch(`${API_URL}/properties/${hotel.id}/submit`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to submit');
+      setProperties((prev) => prev.map((h) => (h.id === hotel.id ? { ...h, status: 'SUBMITTED' } : h)));
+      alert('Property submitted for review successfully! Owner has been notified via email.');
+    } catch (err) {
+      alert(`Failed: ${err.message}`);
+    }
+  };
+
   const filtered = properties.filter((p) =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
     p.city?.toLowerCase().includes(search.toLowerCase()) ||
@@ -480,6 +496,15 @@ const Properties = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
+                            {(hotel.status === 'DRAFT' || hotel.status === 'INFORMATION_REQUESTED') && (
+                              <button
+                                onClick={() => handleSubmitForReview(hotel)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                                title="Submit for Review"
+                              >
+                                <Send size={15} />
+                              </button>
+                            )}
                             <button
                               onClick={() => navigate(`/admin/properties/edit/${hotel.id}`)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
