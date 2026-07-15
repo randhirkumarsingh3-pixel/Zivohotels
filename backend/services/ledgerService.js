@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js';
 import crypto from 'crypto';
 import { eventBus, EVENTS } from './eventBus.js';
 
-const prisma = new PrismaClient();
+
 
 /**
  * Service to manage immutable double-entry bookkeeping.

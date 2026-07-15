@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js';
 import { EventEmitter } from 'events';
 
-const prisma = new PrismaClient();
+
 
 /**
  * ZivoHotels Event Bus

@@ -1,8 +1,8 @@
 import { eventBus, EVENTS } from './eventBus.js';
 import policyEngine from './policyEngine.js';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js';
 
-const prisma = new PrismaClient();
+
 
 class OrchestrationService {
   constructor() {

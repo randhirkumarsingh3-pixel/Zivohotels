@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js';
 import ledgerService from './ledgerService.js';
 import { eventBus, EVENTS } from './eventBus.js';
 
-const prisma = new PrismaClient();
+
 
 const VALID_TRANSITIONS = {
   PENDING: ['REVIEW', 'QUEUED', 'ON_HOLD'],

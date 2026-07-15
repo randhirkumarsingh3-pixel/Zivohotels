@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../config/db.js';
+
 
 // Exponential backoff strategy (in milliseconds)
 // Attempt 1 fails -> retry after 30s

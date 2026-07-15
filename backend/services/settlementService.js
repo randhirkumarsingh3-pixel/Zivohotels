@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js';
 import ledgerService from './ledgerService.js';
 import notificationService from './notificationService.js';
 import { eventBus, EVENTS } from './eventBus.js';
 
-const prisma = new PrismaClient();
+
 
 class SettlementService {
   /**
