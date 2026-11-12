@@ -17,6 +17,11 @@ module.exports = {
       files: ['backend/tests/**/*.js'],
       env: { mocha: true },
     },
+    {
+      // Context modules intentionally export a Provider component together with its hook
+      files: ['src/context/**/*.jsx', 'src/extranet/context/**/*.jsx'],
+      rules: { 'react-refresh/only-export-components': 'off' },
+    },
   ],
   rules: {
     'react-refresh/only-export-components': [

@@ -3,7 +3,7 @@ import { CheckCircle2, Loader2, Info } from 'lucide-react';
 import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
 const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
-  const isProtected = !isAdmin;
+  const _isProtected = !isAdmin;
   // Generate array of years from 1950 to current year + 2
   const currentYear = new Date().getFullYear();
   const years = Array.from(new Array(currentYear - 1950 + 3), (val, index) => currentYear + 2 - index);

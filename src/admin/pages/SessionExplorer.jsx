@@ -3,7 +3,7 @@ import {
   ArrowRight, User
 } from 'lucide-react';
 
-const SessionRow = ({ id, user, path, revenue, status, duration }) => (
+const SessionRow = ({ id, user, path, revenue, status: _status, duration }) => (
   <tr className="hover:bg-gray-50/50 transition-all cursor-pointer group">
     <td className="px-8 py-5">
       <div className="flex items-center gap-3">

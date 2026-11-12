@@ -61,7 +61,7 @@ const statusUpdateSchema = z.object({
 
 import bookingService from '../services/bookingService.js';
 
-export const previewBooking = async (req, res, next) => {
+export const previewBooking = async (req, res, _next) => {
   try {
     const validation = previewSchema.safeParse(req.body);
     if (!validation.success) {

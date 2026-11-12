@@ -1,6 +1,5 @@
 import { queueService } from '../services/queueService.js';
 import prisma from '../config/db.js';
-import { eventBus } from '../services/eventBus.js';
 import os from 'os';
 
 const workerId = `cleanup-worker-${os.hostname()}-${process.pid}`;

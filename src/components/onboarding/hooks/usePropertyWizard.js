@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { validateStep } from '../utils/validationHelpers';
-import { mapBackendToFormData, buildHotelPayload } from '../services/onboardingMapper';
+import { mapBackendToFormData } from '../services/onboardingMapper';
 import { getDefaultFormData } from '../utils/wizardHelpers';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';

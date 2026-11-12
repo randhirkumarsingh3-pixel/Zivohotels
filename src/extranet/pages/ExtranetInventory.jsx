@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Lock,
 } from 'lucide-react';
 
 const ExtranetInventory = () => {
-  const [isChannelManagerActive, setIsChannelManagerActive] = useState(true); // Simulation
+  const [isChannelManagerActive] = useState(true); // Simulation
   const [selectedRoom, setSelectedRoom] = useState('Deluxe Room');
 
   const days = Array.from({ length: 14 }).map((_, i) => {

@@ -147,7 +147,7 @@ export const approveProperty = asyncHandler(async (req, res) => {
     ? JSON.parse(hotel.integrationSettings) 
     : (hotel.integrationSettings || {});
     
-  const hasBank = intSettings.commercials && intSettings.commercials.bankAccount;
+  const _hasBank = intSettings.commercials && intSettings.commercials.bankAccount;
 
   const updated = await prisma.hotel.update({
     where: { id },

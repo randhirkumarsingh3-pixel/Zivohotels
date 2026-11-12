@@ -14,7 +14,7 @@ const STEPS = [
 
 const PropertyWizardLayout = ({ 
   title, 
-  subtitle, 
+  subtitle: _subtitle, 
   currentStep, 
   setCurrentStep, 
   onSave,

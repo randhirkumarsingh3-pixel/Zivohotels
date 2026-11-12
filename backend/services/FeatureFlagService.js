@@ -1,4 +1,3 @@
-import prisma from '../config/db.js';
 
 class FeatureFlagService {
   constructor() {

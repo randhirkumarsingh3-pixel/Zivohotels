@@ -18,7 +18,7 @@ const processJob = async (job) => {
   console.log(`[${workerId}] Processing job: ${job.id} | Type: ${job.jobType}`);
   
   try {
-    const { hotelId, action, data } = job.payload;
+    const { hotelId, action, data: _data } = job.payload;
     
     console.log(`[${workerId}] Syncing inventory for Hotel ${hotelId} (Action: ${action})`);
     

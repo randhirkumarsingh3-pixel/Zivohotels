@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useExtranet } from '../context/ExtranetContext';
 import { Check, Sparkles } from 'lucide-react';
@@ -11,7 +11,6 @@ import RoomsStep from '../../components/onboarding/steps/RoomsStep';
 import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
-import { getImageUrl } from '../../utils/image';
 
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
 import { validateStep } from '../../components/onboarding/utils/validationHelpers';
@@ -30,7 +29,7 @@ const getAuthHeaders = () => {
 
 const PropertyOnboarding = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const _location = useLocation();
   const { hotelId: urlHotelId } = useParams();
   const { addToast, hotelId: contextHotelId } = useExtranet();
   
@@ -53,12 +52,12 @@ const PropertyOnboarding = () => {
     setFormData,
     updateForm,
     currentStep,
-    setCurrentStep,
+    setCurrentStep: _setCurrentStep,
     handleStepChange,
     isSubmitting,
     setIsSubmitting,
-    apiError,
-    setApiError,
+    apiError: _apiError,
+    setApiError: _setApiError,
     initialRoomIds,
     hasDraftLoaded,
     handleResetDraft,
@@ -76,7 +75,7 @@ const PropertyOnboarding = () => {
 
   const syncDraftToBackend = async () => {
     const currentId = effectiveId || localStorage.getItem('currentHotelId_extranet');
-    const { success, id: newId, error } = await saveDraftIfNeeded(currentId, (id) => {
+    const { success, id: _newId, error } = await saveDraftIfNeeded(currentId, (id) => {
       localStorage.setItem('currentHotelId_extranet', id);
     });
     if (!success) {
@@ -135,7 +134,7 @@ const PropertyOnboarding = () => {
         body: JSON.stringify(payload)
       });
 
-      let wasDraftDeleted = false;
+      let _wasDraftDeleted = false;
       if (response.status === 404 && usePatch) {
         if (isEditing) {
           addToast('Property was not found. It may have been deleted.', 'error');
@@ -143,7 +142,7 @@ const PropertyOnboarding = () => {
           return;
         } else {
           localStorage.removeItem('currentHotelId_extranet');
-          wasDraftDeleted = true;
+          _wasDraftDeleted = true;
           response = await fetch(`${API_URL}/hotels`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -177,7 +176,7 @@ const PropertyOnboarding = () => {
       return handleStepChange(
         currentStep + 1,
         (error) => addToast(error, 'warning'),
-        async (step) => {
+        async (_step) => {
           return await syncDraftToBackend();
         }
       );

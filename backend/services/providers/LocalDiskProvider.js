@@ -15,7 +15,7 @@ export class LocalDiskProvider extends StorageService {
     }
   }
 
-  async uploadFile(buffer, destinationPath, mimeType, isPrivate = false) {
+  async uploadFile(buffer, destinationPath, mimeType, _isPrivate = false) {
     // Flatten path to avoid creating subdirectories locally for simplicity
     const filename = destinationPath.replace(/\//g, '_');
     const filePath = path.join(this.uploadDir, filename);
@@ -33,7 +33,7 @@ export class LocalDiskProvider extends StorageService {
     }
   }
 
-  async generateSignedUrl(filePath, expiresInMinutes = 60) {
+  async generateSignedUrl(filePath, _expiresInMinutes = 60) {
     // Local disk doesn't support signed URLs natively, just return the path
     return filePath;
   }

@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import prisma from './config/db.js';
-import { normalizeHotelPayload, formatHotelResponse } from './controllers/hotelController.js';
+import { formatHotelResponse } from './controllers/hotelController.js';
 import dotenv from 'dotenv';
 dotenv.config();
 

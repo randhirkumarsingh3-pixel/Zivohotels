@@ -2,7 +2,7 @@ const API_BASE = process.env.API_URL || 'http://localhost:5000/api/v1';
 
 let authToken = '';
 let hotelId = '';
-let roomId = '';
+let _roomId = '';
 
 const log = (phase, status, message) => {
   const icon = status === 'PASS' ? '✅' : status === 'FAIL' ? '❌' : '⏳';
