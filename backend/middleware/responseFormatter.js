@@ -3,6 +3,35 @@
  * Enforces a strict { success, message, code, data } API response structure globally.
  */
 
+// Text that only appears in internal errors (Prisma/DB/stack traces): never shown to users in production.
+const INTERNAL_ERROR_PATTERN = /prisma|invalid `|raw query failed|\bP\d{4}\b|ECONNREFUSED|ETIMEDOUT|can't reach database|SQLSTATE|relation "|column "| {4}at [\w$.<>]+ \(/i;
+
+const looksInternal = (value) => {
+  if (typeof value === 'string') return INTERNAL_ERROR_PATTERN.test(value);
+  if (value && typeof value === 'object') {
+    try { return INTERNAL_ERROR_PATTERN.test(JSON.stringify(value)); } catch { return true; }
+  }
+  return false;
+};
+
+/**
+ * In production, error responses must not reveal internals. Many controllers send
+ * `error.message` directly, so this is enforced here, where every JSON response passes:
+ *  - 5xx: generic message, no data
+ *  - any error whose message or data contains DB/Prisma internals: generic message, no data
+ * The requestId is kept so a user's report can be matched to the full error in the logs.
+ */
+const sanitizeErrorBody = (body, statusCode, req) => {
+  const requestId = body.data?.requestId ?? body.meta?.requestId ?? req.id;
+  if (statusCode >= 500) {
+    return { success: false, message: 'An internal server error occurred. Please try again later.', code: 'INTERNAL_ERROR', data: null, requestId };
+  }
+  if (looksInternal(body.message) || looksInternal(body.data)) {
+    return { success: false, message: 'The request could not be completed.', code: 'REQUEST_FAILED', data: null, requestId };
+  }
+  return body;
+};
+
 export const responseFormatter = (req, res, next) => {
   const originalJson = res.json;
 
@@ -66,6 +95,10 @@ export const responseFormatter = (req, res, next) => {
       }
     } else if (body !== undefined) {
       newBody.data = body;
+    }
+
+    if (isError && process.env.NODE_ENV === 'production') {
+      newBody = sanitizeErrorBody(newBody, res.statusCode, req);
     }
 
     return originalJson.call(this, newBody);

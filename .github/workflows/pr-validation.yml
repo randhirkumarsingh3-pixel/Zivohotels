@@ -56,6 +56,9 @@ jobs:
       - name: Prisma Validate
         run: npx prisma validate
 
+      - name: Unit tests
+        run: npm run test:unit
+
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
 

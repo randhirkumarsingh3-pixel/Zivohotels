@@ -123,7 +123,6 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
 - [ ] Promotions: creating one says "success" but nothing is saved.
 - [ ] Money is stored as floating-point numbers in bookings/payments; move to exact decimals.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
-- [ ] Error responses can include internal database messages; hide them in production.
 - [ ] react-router 6 → 7 (moderate security advisory).
 - [ ] `backend/seed_automation_user.js` is broken (uses `require` in an ES-module project); use
       `scripts/createAdmin.js` instead.
