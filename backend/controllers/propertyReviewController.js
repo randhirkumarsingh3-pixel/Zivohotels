@@ -2,6 +2,7 @@ import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { queueService } from '../services/queueService.js';
 import { mediaService } from '../services/MediaService.js';
+import { checkPropertyReadiness } from '../services/propertyReadiness.js';
 
 // Helper to log timeline
 const logTimeline = async (hotelId, userId, action, reason = null) => {
@@ -37,9 +38,21 @@ export const submitForReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const hotel = await prisma.hotel.findUnique({ where: { id }, include: { owner: true } });
   
-  if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
+  // Owners may only submit their own properties
+  if (!hotel || (req.user.role !== 'ADMIN' && hotel.ownerId !== req.user.id)) {
+    return res.status(404).json({ success: false, message: 'Hotel not found' });
+  }
   if (!['DRAFT', 'INFORMATION_REQUESTED'].includes(hotel.status)) {
     return res.status(400).json({ success: false, message: 'Invalid status transition' });
+  }
+
+  const problems = await checkPropertyReadiness(hotel, 'submit');
+  if (problems.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Property not ready for review: ${problems.join('; ')}`,
+      errors: problems
+    });
   }
 
   const updated = await prisma.hotel.update({
@@ -143,11 +156,14 @@ export const approveProperty = asyncHandler(async (req, res) => {
     if (duplicate) return res.status(400).json({ success: false, message: 'Another approved property already uses this PAN.' });
   }
 
-  const intSettings = typeof hotel.integrationSettings === 'string' 
-    ? JSON.parse(hotel.integrationSettings) 
-    : (hotel.integrationSettings || {});
-    
-  const _hasBank = intSettings.commercials && intSettings.commercials.bankAccount;
+  const problems = await checkPropertyReadiness(hotel, 'approve');
+  if (problems.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot approve yet: ${problems.join('; ')}`,
+      errors: problems
+    });
+  }
 
   const updated = await prisma.hotel.update({
     where: { id },

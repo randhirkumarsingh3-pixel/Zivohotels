@@ -118,8 +118,9 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
 - [ ] Cloud Run logs show no `⚠️ ... is not set` warnings and no 5xx errors.
 
 ## Known items to decide or finish before a public launch
-- [ ] KYC documents required before an owner can submit a property? (optional today)
-- [ ] Property approval doesn't require bank details (`propertyReviewController.approveProperty`).
+- [x] Bank details and KYC documents (PAN, cancelled cheque, GST certificate if there's a GSTIN) are
+      required to submit a property, and the documents must be verified before approval
+      (`backend/services/propertyReadiness.js`).
 - [ ] Promotions: creating one says "success" but nothing is saved.
 - [ ] Money is stored as floating-point numbers in bookings/payments; move to exact decimals.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
