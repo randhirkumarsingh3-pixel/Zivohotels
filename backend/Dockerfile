@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:20-slim
 WORKDIR /app
 
 # Install OpenSSL (required by Prisma on Debian slim)
@@ -7,7 +7,9 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 # Install dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --only=production && npx prisma generate
+# `prisma` (CLI) is installed automatically as a peer dependency of @prisma/client, so
+# generate uses the project's pinned version, not the latest from the internet.
+RUN npm ci --omit=dev && npx prisma generate
 
 # Copy ALL source files
 COPY . .
