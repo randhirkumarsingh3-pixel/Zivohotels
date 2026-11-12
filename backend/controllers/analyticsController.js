@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 
@@ -58,7 +59,7 @@ export const getKpis = asyncHandler(async (req, res) => {
     // 3. Live properties
     const [propertiesTotal, propertiesLive] = await Promise.all([
       prisma.hotel.count({ where: hotelScope }),
-      prisma.hotel.count({ where: { ...hotelScope, status: 'ACTIVE' } }),
+      prisma.hotel.count({ where: { ...hotelScope, status: { in: PUBLIC_HOTEL_STATUSES } } }),
     ]);
 
     // 4. Cancellation rate this month

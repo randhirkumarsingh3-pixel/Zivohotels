@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
@@ -588,6 +589,10 @@ export const getAllHotels = asyncHandler(async (req, res) => {
   const where = { ...activeFilter };
   if (req.user && req.user.role === 'OWNER') {
     where.ownerId = req.user.id;
+  } else if (!req.user || req.user.role !== 'ADMIN') {
+    // Public & customer listings must only show approved, live hotels — never drafts,
+    // properties under review, or suspended ones. Admins/owners still see everything they manage.
+    where.status = { in: PUBLIC_HOTEL_STATUSES };
   }
 
   if (destination) {

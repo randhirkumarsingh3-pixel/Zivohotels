@@ -48,7 +48,9 @@ export const protect = async (req, res, next) => {
     }
 
     // Grant access
-    req.user = { ...currentUser, hotelId: decoded.hotelId };
+    // Never expose credential fields downstream (e.g. GET /auth/me returns req.user).
+    const { password: _password, ...safeUser } = currentUser;
+    req.user = { ...safeUser, hotelId: decoded.hotelId };
     next();
   } catch (error) {
     console.error('Auth Error:', error.message);
@@ -84,7 +86,7 @@ export const authorizeRoles = (...roles) => {
           userId: req.user.id,
           details: { requiredRoles: roles, userRole: req.user.role, ip: req.ip }
         }
-      });
+      }).catch(err => console.error('Failed to create audit log:', err));
 
       return res.status(403).json({ 
         success: false, 

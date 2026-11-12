@@ -13,6 +13,18 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// Constant-time comparison of two hex signatures (avoids timing attacks).
+const signaturesMatch = (expected, received) => {
+  if (typeof expected !== 'string' || typeof received !== 'string') return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(received);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+};
+
+// A customer may only pay for their own booking; admins may act on any booking.
+const canPayForBooking = (booking, user) =>
+  booking && (user?.role === 'ADMIN' || booking.userId === user?.id);
+
 // --- ZOD SCHEMAS ---
 
 const createOrderSchema = z.object({
@@ -63,7 +75,9 @@ export const createOrder = asyncHandler(async (req, res) => {
   const { bookingId } = validation.data;
     
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    if (!canPayForBooking(booking, req.user)) {
+      return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
     
     if (booking.paymentStatus === 'PAID') {
       return res.status(400).json({ success: false, message: 'Booking already paid', requestId: req.id });
@@ -109,11 +123,20 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    if (!signaturesMatch(expectedSignature, razorpay_signature)) {
       return res.status(400).json({ success: false, message: 'Invalid payment signature', requestId: req.id });
     }
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!canPayForBooking(booking, req.user)) {
+      return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
+
+    // The signed order must be the order created for THIS booking. Without this check a valid
+    // signature from a cheap booking could be replayed to mark a different booking as paid.
+    if (!booking.razorpayOrderId || booking.razorpayOrderId !== razorpay_order_id) {
+      return res.status(400).json({ success: false, message: 'Payment does not match this booking', requestId: req.id });
+    }
     
     if (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'PARTIAL_PAID') {
       return res.status(200).json({ success: true, message: 'Payment already processed', requestId: req.id });
@@ -190,12 +213,17 @@ export const webhook = asyncHandler(async (req, res) => {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
 
+    if (!webhookSecret || !req.rawBody) {
+      console.error('Webhook rejected: RAZORPAY_WEBHOOK_SECRET or raw body missing');
+      return res.status(500).json({ success: false, message: 'Webhook not configured', requestId: req.id });
+    }
+
     // Verify webhook signature using RAW body
     const shasum = crypto.createHmac('sha256', webhookSecret);
     shasum.update(req.rawBody);
     const expectedSignature = shasum.digest('hex');
     
-    if (expectedSignature !== signature) {
+    if (!signaturesMatch(expectedSignature, signature)) {
       console.warn('⚠️ Webhook signature mismatch');
       return res.status(400).json({ success: false, message: 'Invalid signature', requestId: req.id });
     }
@@ -234,7 +262,7 @@ export const webhook = asyncHandler(async (req, res) => {
         });
 
         await prisma.auditLog.create({
-          data: { action: 'WEBHOOK_PAYMENT_CONFIRMED', entityType: 'BOOKING', entityId: booking.id, details: { event } }
+          data: { action: 'WEBHOOK_PAYMENT_CONFIRMED', entityType: 'BOOKING', entityId: booking.id, details: { event }, userId: 'SYSTEM' }
         });
 
         sendBookingConfirmationEmail(booking.id).catch(err => console.error("[EmailService] Webhook confirmation email dispatch failed:", err));
@@ -269,8 +297,11 @@ export const webhook = asyncHandler(async (req, res) => {
             }
           });
 
-          // Restore Inventory
-          const dates = getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
+          // Restore Inventory — but only if the booking wasn't already cancelled through
+          // cancelBooking/failBooking, which restore inventory themselves (avoids double restore).
+          const dates = booking.status === 'CANCELLED'
+            ? []
+            : getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
           for (const date of dates) {
             await tx.inventory.updateMany({
               where: { roomTypeId: booking.roomTypeId, date },
@@ -283,7 +314,7 @@ export const webhook = asyncHandler(async (req, res) => {
         });
 
         await prisma.auditLog.create({
-          data: { action: 'WEBHOOK_REFUND_SUCCESS', entityType: 'BOOKING', entityId: booking.id, details: { refundId: refund.id } }
+          data: { action: 'WEBHOOK_REFUND_SUCCESS', entityType: 'BOOKING', entityId: booking.id, details: { refundId: refund.id }, userId: 'SYSTEM' }
         });
       }
     } 
@@ -298,7 +329,7 @@ export const webhook = asyncHandler(async (req, res) => {
         });
 
         await prisma.auditLog.create({
-          data: { action: 'WEBHOOK_PAYMENT_FAILED', entityType: 'BOOKING', entityId: booking.id, details: { error: payment.error_description } }
+          data: { action: 'WEBHOOK_PAYMENT_FAILED', entityType: 'BOOKING', entityId: booking.id, details: { error: payment.error_description }, userId: 'SYSTEM' }
         });
       }
     }

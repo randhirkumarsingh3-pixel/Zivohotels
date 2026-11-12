@@ -95,6 +95,8 @@ export const criticalLogger = (action, details = {}, reqId = 'SYSTEM') => {
     data: {
       action: `CRITICAL_${action}`,
       entityType: 'SYSTEM',
+      entityId: action,
+      userId: 'SYSTEM',
       details: logData,
       requestId: reqId
     }

@@ -367,7 +367,11 @@ export const cancelBooking = async (req, res, next) => {
           status: 'CANCELLED',
           refundAmount,
           cancelledAt: new Date(),
-          paymentStatus: refundAmount > 0 ? 'REFUNDED' : (booking.paidAmount > 0 ? 'PARTIAL_REFUNDED' : 'CANCELLED')
+          // Only valid PaymentStatus enum values may be written. 'PARTIAL_REFUNDED' / 'CANCELLED'
+          // don't exist in the enum and made every zero-refund cancellation fail with a 500.
+          // With no refund, the payment status is unchanged (e.g. PENDING stays PENDING,
+          // a non-refundable PAID booking stays PAID); refundAmount records what was returned.
+          paymentStatus: refundAmount > 0 ? 'REFUNDED' : booking.paymentStatus
         }
       });
 
@@ -465,6 +469,21 @@ export const failBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
     const context = { userId: req.user?.id };
+
+    // Authorization: customers may only fail their own bookings, owners only their hotels' bookings.
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      select: { userId: true, hotel: { select: { ownerId: true } } }
+    });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
+    const isAdmin = req.user.role === 'ADMIN';
+    const isOwnerOfHotel = req.user.role === 'OWNER' && booking.hotel?.ownerId === req.user.id;
+    const isBookingCustomer = booking.userId === req.user.id;
+    if (!isAdmin && !isOwnerOfHotel && !isBookingCustomer) {
+      return res.status(403).json({ success: false, message: 'Unauthorized', requestId: req.id });
+    }
 
     await bookingService.failBooking(id, context);
 

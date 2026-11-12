@@ -67,12 +67,17 @@ const globalLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10, // 10 login attempts per 15 mins
+  // Only throttle credential endpoints (login/signup/OTP), not reads like GET /auth/me
+  skip: (req) => req.method !== 'POST',
   message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' }
 });
 
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5, // 5 booking requests per minute
+  // Only throttle writes (create/preview/pay/cancel). Never throttle the Razorpay webhook:
+  // a 429 there means a paid booking is never confirmed.
+  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook'),
   message: { success: false, message: 'Booking system is busy. Please wait a minute.' }
 });
 

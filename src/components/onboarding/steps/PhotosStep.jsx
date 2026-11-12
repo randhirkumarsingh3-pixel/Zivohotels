@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UploadCloud, Trash2, Tag, X, Check, Search, ChevronLeft, Sparkles, Plus } from 'lucide-react';
+import { UploadCloud, Trash2, Tag, X, Check, Search, ChevronLeft, Sparkles, Plus, Info } from 'lucide-react';
 import { getImageUrl } from '../../../utils/image';
 
 const TAG_OPTIONS = [

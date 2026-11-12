@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 
 export const searchAll = async (req, res, next) => {
   try {
@@ -32,7 +33,7 @@ export const searchAll = async (req, res, next) => {
         OR location ILIKE ${'%' + searchQuery + '%'}
       )
       AND ("isDeleted" = false OR "isDeleted" IS NULL)
-      AND "status" = 'ACTIVE'
+      AND "status"::text IN (${PUBLIC_HOTEL_STATUSES[0]}, ${PUBLIC_HOTEL_STATUSES[1]})
       ORDER BY max_score DESC
       LIMIT 10;
     `;
@@ -105,7 +106,7 @@ export const searchNearby = async (req, res, next) => {
     // For now, we return a mock close match based on common OTAs fallback logic.
     const results = await prisma.hotel.findMany({
       where: { 
-        status: 'ACTIVE',
+        status: { in: PUBLIC_HOTEL_STATUSES },
         isDeleted: false
       },
       take: 5

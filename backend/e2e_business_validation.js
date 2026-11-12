@@ -20,7 +20,7 @@ const req = async (method, endpoint, body = null, useAuth = false) => {
     const res = await fetch(`${API_BASE}${endpoint}`, options);
     const data = await res.text();
     let json = null;
-    try { json = JSON.parse(data); } catch(e) {}
+    try { json = JSON.parse(data); } catch { /* non-JSON response body; keep raw text */ }
     return { status: res.status, ok: res.ok, json, text: data };
   } catch (err) {
     return { status: 500, ok: false, error: err.message };

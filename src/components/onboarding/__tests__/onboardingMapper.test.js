@@ -98,8 +98,9 @@ describe('onboardingMapper - buildHotelPayload', () => {
     expect(payload.msme).toBe('MSME123');
     expect(payload.incorporationType).toBe('Private Limited');
     expect(payload.payoutCycle).toBe('WEEKLY');
-    expect(payload.builtYear).toBe('2020');
-    expect(payload.bookingSince).toBe('2021');
+    // Years are sent as numbers (backend zod schema coerces/expects numbers)
+    expect(payload.builtYear).toBe(2020);
+    expect(payload.bookingSince).toBe(2021);
 
     expect(payload.bankDetail).toBeDefined();
     expect(payload.bankDetail.accountName).toBe('Test Account');
@@ -115,9 +116,10 @@ describe('onboardingMapper - buildHotelPayload', () => {
     const emptyPayload = buildHotelPayload({}, 'http://test');
     expect(emptyPayload.description).toBe('');
     expect(emptyPayload.media).toEqual([]);
-    expect(emptyPayload.receptionPhone).toBe('');
-    expect(emptyPayload.receptionEmail).toBe('');
-    expect(emptyPayload.managerName).toBe('');
+    // Empty optional strings are omitted (undefined), not sent as '' — avoids backend 422s
+    expect(emptyPayload.receptionPhone).toBeUndefined();
+    expect(emptyPayload.receptionEmail).toBeUndefined();
+    expect(emptyPayload.managerName).toBeUndefined();
     expect(emptyPayload.channelProvider).toBe('NONE');
     expect(emptyPayload.bankDetail).toBeUndefined();
     expect(emptyPayload.commissionRate).toBeUndefined();
