@@ -12,7 +12,7 @@ export class StorageService {
    * @param {boolean} isPrivate - Whether the file should be private (requires signed URL to view).
    * @returns {Promise<string>} The URL or relative path to access the file.
    */
-  async uploadFile(buffer, destinationPath, mimeType, isPrivate = false) {
+  async uploadFile(buffer, destinationPath, mimeType, _isPrivate = false) {
     throw new Error('Method not implemented.');
   }
 
@@ -21,7 +21,7 @@ export class StorageService {
    * @param {string} filePath - The path/key to delete.
    * @returns {Promise<void>}
    */
-  async deleteFile(filePath) {
+  async deleteFile(_filePath) {
     throw new Error('Method not implemented.');
   }
 
@@ -31,7 +31,7 @@ export class StorageService {
    * @param {number} expiresInMinutes - Expiry time in minutes.
    * @returns {Promise<string>} The signed URL.
    */
-  async generateSignedUrl(filePath, expiresInMinutes = 60) {
+  async generateSignedUrl(filePath, _expiresInMinutes = 60) {
     throw new Error('Method not implemented.');
   }
 }

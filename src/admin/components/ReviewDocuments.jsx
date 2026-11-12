@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, FileText, AlertCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';

@@ -4,7 +4,7 @@ export const rankingService = {
    * Calculates Expected Revenue Score (ERS) for a list of hotels
    * ERS = Conversion Probability * Final Price * Commission Rate
    */
-  rankHotels: async (hotels, context) => {
+  rankHotels: async (hotels, _context) => {
     // 1. Fetch historical conversion rates per hotel
     const rankedHotels = hotels.map(hotel => {
       // Mocked conversion probability for now (will be learned from SessionLog)

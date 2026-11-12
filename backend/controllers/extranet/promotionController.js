@@ -3,7 +3,7 @@ import { checkFeatureGate } from '../../services/featureGateService.js';
 
 export const getPromotions = async (req, res) => {
   try {
-    const hotelId = req.scopedHotelId;
+    const _hotelId = req.scopedHotelId; // TODO: promotions are not persisted yet
     res.json({ success: true, data: [] });
   } catch (error) {
     console.error('Error fetching extranet promotions:', error);

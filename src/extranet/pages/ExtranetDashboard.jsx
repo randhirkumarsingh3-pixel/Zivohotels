@@ -8,7 +8,7 @@ import { fetchProperty, fetchActivityTimeline, fetchNotifications } from '../../
 import { useExtranet } from '../context/ExtranetContext';
 import { useSocketEvent } from '../../context/SocketContext';
 
-const DeltaIndicator = ({ value, type }) => (
+const _DeltaIndicator = ({ value, type }) => (
   <div className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
     type === 'green' ? 'bg-green-50 text-green-600' :
     type === 'red' ? 'bg-red-50 text-red-600' :

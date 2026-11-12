@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -11,7 +11,6 @@ import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
 import DocumentsStep from '../components/wizard-steps/DocumentsStep';
-import { getImageUrl } from '../../utils/image';
 import { useAuth } from '../../context/AuthContext';
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
 import { validateStep } from '../../components/onboarding/utils/validationHelpers';
@@ -31,7 +30,7 @@ const getAuthHeaders = () => {
 const PropertyWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const _location = useLocation();
   const { user } = useAuth();
   
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -53,11 +52,11 @@ const PropertyWizard = () => {
     setFormData,
     updateForm,
     currentStep,
-    setCurrentStep,
+    setCurrentStep: _setCurrentStep,
     handleStepChange,
     isSubmitting,
     setIsSubmitting,
-    apiError,
+    apiError: _apiError,
     setApiError,
     initialRoomIds,
     hasDraftLoaded,
@@ -74,9 +73,9 @@ const PropertyWizard = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
 
-  const saveDraftIfNeeded = async () => {
+  const _saveDraftIfNeeded = async () => {
     const draftId = localStorage.getItem('currentHotelId_admin');
-    const { success, id: newId, error } = await hookSaveDraftIfNeeded(draftId, (id) => {
+    const { success, id: _newId, error } = await hookSaveDraftIfNeeded(draftId, (id) => {
       localStorage.setItem('currentHotelId_admin', id);
     });
     if (!success) {
@@ -187,7 +186,7 @@ const PropertyWizard = () => {
       return handleStepChange(
         currentStep + 1,
         (error) => alert(error),
-        async (step) => {
+        async (_step) => {
           return await syncDraftToBackend();
         }
       );

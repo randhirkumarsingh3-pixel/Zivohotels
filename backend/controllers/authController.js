@@ -24,6 +24,7 @@ const loginSchema = z.object({
 
 const signToken = (id, role, hotelId, tokenVersion) => {
   return jwt.sign({ id, role, hotelId, tokenVersion }, process.env.JWT_SECRET, {
+    algorithm: 'HS256',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 };

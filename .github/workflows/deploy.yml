@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
           
@@ -42,12 +42,17 @@ jobs:
         
       - name: Validate Prisma Schema
         run: npx prisma validate
+        env:
+          # Placeholder values: validate/generate only parse the schema, they don't connect.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
         
       - name: Run Unit Tests
         run: npm test --if-present
         
       - name: Security Scan (npm audit)
-        run: npm audit --audit-level=high
+        # Production dependencies only: dev tools (mocha, etc.) never ship in the image
+        run: npm audit --omit=dev --audit-level=high
 
   build_and_scan:
     name: Build & Container Scan

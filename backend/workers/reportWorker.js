@@ -18,7 +18,7 @@ const processJob = async (job) => {
   console.log(`[${workerId}] Processing job: ${job.id} | Type: ${job.jobType}`);
   
   try {
-    const { reportType, hotelId, dateRange } = job.payload;
+    const { reportType, hotelId, dateRange: _dateRange } = job.payload;
     
     // Placeholder for heavy report generation using Puppeteer (PDF) or Excel
     console.log(`[${workerId}] Generating ${reportType} report for Hotel ${hotelId}...`);

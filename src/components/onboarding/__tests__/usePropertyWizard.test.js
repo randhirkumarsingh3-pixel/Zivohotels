@@ -55,7 +55,7 @@ describe('usePropertyWizard', () => {
     expect(result.current.currentStep).toBe(1);
 
     // Mock validation logic to block progression if empty
-    const mockValidateStep = vi.fn((step) => {
+    const _mockValidateStep = vi.fn((step) => {
       if (step === 1 && !result.current.formData.name) return "Name required";
       return null;
     });
@@ -122,7 +122,7 @@ describe('usePropertyWizard', () => {
       json: async () => mockHotelResponse
     });
 
-    const { result } = renderHook(() => usePropertyWizard({
+    const { result: _result } = renderHook(() => usePropertyWizard({
       isEditing: true,
       effectiveId: 'test-123',
       storageKeyPrefix: 'test_onboarding'

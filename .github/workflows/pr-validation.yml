@@ -1,20 +1,44 @@
-name: Backend PR Validation
+name: PR Validation
 
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'backend/**'
 
 jobs:
-  validate:
-    name: PR Quality Gates
+  backend:
+    name: Backend (schema, migrations, smoke tests, Docker build)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
-        
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: zivo
+          POSTGRES_PASSWORD: zivo
+          POSTGRES_DB: zivohotels_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zivo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://zivo:zivo@localhost:5432/zivohotels_ci
+      DIRECT_URL: postgresql://zivo:zivo@localhost:5432/zivohotels_ci
+      # Test-only values: the server refuses to start without them
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else
+      RAZORPAY_KEY_ID: rzp_test_ci
+      RAZORPAY_KEY_SECRET: ci_secret
+      RAZORPAY_WEBHOOK_SECRET: ci_webhook_secret
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      PORT: 5000
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -22,22 +46,64 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Linting
-        run: npm run lint --if-present
-
       - name: Prisma Validate
         run: npx prisma validate
 
-      - name: Run Tests (Placeholder)
-        run: echo "Running tests..."
-        # run: npm run test
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Migrations match schema.prisma (no drift)
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+      - name: Search indexes and test data
+        run: |
+          node scripts/setup_trgm.js
+          npm run db:seed
+
+      - name: Start API and run smoke tests
+        run: |
+          node server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:5000/ready && break; sleep 1; done
+          npm run test:smoke -- --url=http://localhost:5000 || { cat server.log; exit 1; }
+
+      - name: Security audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Docker Build Test
         run: docker build -t test-backend-image .
+
+  frontend:
+    name: Frontend (lint, tests, build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint (errors fail the build)
+        run: npx eslint . --ext js,jsx
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Security audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high

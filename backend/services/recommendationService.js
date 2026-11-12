@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import recommendationDomain from '../domains/recommendationDomain.js';
 import cacheUtils from '../utils/cacheUtils.js';
 
@@ -18,7 +19,7 @@ export const recommendationService = {
 
       if (userBehavior && userBehavior.lastViewedHotels && userBehavior.lastViewedHotels.length > 0) {
         const rvHotels = await prisma.hotel.findMany({
-          where: { id: { in: userBehavior.lastViewedHotels }, status: 'ACTIVE', isDeleted: false },
+          where: { id: { in: userBehavior.lastViewedHotels }, status: { in: PUBLIC_HOTEL_STATUSES }, isDeleted: false },
           include: { roomTypes: { include: { ratePlans: true } } }
         });
         
@@ -44,7 +45,7 @@ export const recommendationService = {
     // We approximate popularity by fetching active hotels and getting their view counts
     const activeHotels = await prisma.hotel.findMany({
       where: { 
-        status: 'ACTIVE', 
+        status: { in: PUBLIC_HOTEL_STATUSES }, 
         isDeleted: false,
         ...(popularTargetCity && { city: { equals: popularTargetCity, mode: 'insensitive' } })
       },

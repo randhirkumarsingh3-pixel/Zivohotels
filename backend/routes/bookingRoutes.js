@@ -21,7 +21,7 @@ router.route('/:id/status')
 
 // Internal cron route
 router.route('/cleanup')
-  .delete(cleanupExpiredBookings);
+  .delete(protect, authorizeRoles('ADMIN'), cleanupExpiredBookings);
 
 // Cancel booking endpoint
 router.route('/:id/cancel')

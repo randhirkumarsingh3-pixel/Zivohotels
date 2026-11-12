@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { UploadCloud, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react';
 const getAuthHeaders = () => {
   const token = localStorage.getItem('jwt_token');
@@ -8,7 +8,7 @@ const getAuthHeaders = () => {
   };
 };
 
-const DocumentsStep = ({ formData, updateForm }) => {
+const DocumentsStep = ({ formData, updateForm: _updateForm }) => {
   const [documents, setDocuments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');

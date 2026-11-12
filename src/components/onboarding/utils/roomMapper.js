@@ -61,7 +61,7 @@ export const parseBackendRoomTypes = (roomTypes) => {
   });
 };
 
-export const buildRoomPayload = (room, hotelId, isNew = false) => {
+export const buildRoomPayload = (room, hotelId, _isNew = false) => {
   return {
     name: room.name,
     code: room.code || room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6),

@@ -76,7 +76,7 @@ const mockRazorpay = {
 };
 
 // --- CONTROLLER LOGIC (Extracted for test) ---
-async function cancelBookingLogic(id, requestId, user) {
+async function cancelBookingLogic(id, requestId, _user) {
   // 1. Lock
   const [booking] = await mockPrisma.$queryRaw`SELECT * FROM "Booking" WHERE id = ${id} FOR UPDATE`;
   if (!booking || booking.status === 'CANCELLED') throw new Error('Already cancelled');
@@ -89,7 +89,7 @@ async function cancelBookingLogic(id, requestId, user) {
   const { refundAmount } = calculateRefund(booking, getDefaultPolicy());
 
   // 4. Initiate
-  const refundRecord = await mockPrisma.refund.create({
+  const _refundRecord = await mockPrisma.refund.create({
     data: { bookingId: id, amount: refundAmount, status: 'INITIATED', requestId }
   });
 

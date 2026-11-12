@@ -1,5 +1,4 @@
 import { queueService } from '../services/queueService.js';
-import prisma from '../config/db.js';
 import os from 'os';
 
 const workerId = `analytics-worker-${os.hostname()}-${process.pid}`;

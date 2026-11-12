@@ -1,10 +1,35 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import hotelsData from '../data/hotels.js';
 
 const prisma = new PrismaClient();
 
+// SAFETY: this script DELETES all users, hotels and bookings before inserting test data.
+// Refuse to run against anything except a database on this machine, and never in production.
+const assertSafeToSeed = () => {
+  const url = process.env.DATABASE_URL || '';
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* unparsable URL -> treated as unsafe */ }
+  const isLocal = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+  if (process.env.NODE_ENV === 'production' || (!isLocal && process.env.ALLOW_REMOTE_SEED !== 'true')) {
+    console.error(
+      `\n❌ Refusing to seed: it deletes ALL users, hotels and bookings.\n` +
+      `   DATABASE_URL host is "${host || 'unknown'}"${process.env.NODE_ENV === 'production' ? ' and NODE_ENV=production' : ''}.\n` +
+      `   Seeding only runs against localhost. For a disposable remote database (never production),\n` +
+      `   set ALLOW_REMOTE_SEED=true.\n`
+    );
+    process.exit(1);
+  }
+};
+
+// Test-account passwords: override via env, defaults are for local development only.
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+const SEED_OWNER_PASSWORD = process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026';
+const SEED_CUSTOMER_PASSWORD = process.env.SEED_CUSTOMER_PASSWORD || 'customer123';
+
 async function main() {
+  assertSafeToSeed();
   console.log('Start seeding...');
   
   // Clean up existing data to prevent duplicates
@@ -21,7 +46,7 @@ async function main() {
 
   // Create Default Admin
   const salt = await bcrypt.genSalt(10);
-  const hashedAdminPassword = await bcrypt.hash("admin123", salt);
+  const hashedAdminPassword = await bcrypt.hash(SEED_ADMIN_PASSWORD, salt);
   const admin = await prisma.user.create({
     data: {
       name: "Super Admin",
@@ -33,7 +58,7 @@ async function main() {
   console.log(`Created Admin user: ${admin.email}`);
 
   // Create Default Owner (Extranet)
-  const hashedOwnerPassword = await bcrypt.hash("ZivoExtranet@2026", salt);
+  const hashedOwnerPassword = await bcrypt.hash(SEED_OWNER_PASSWORD, salt);
   const owner = await prisma.user.create({
     data: {
       name: "Property Owner",
@@ -45,7 +70,7 @@ async function main() {
   console.log(`Created Owner user: ${owner.email}`);
 
   // Create Default Customer
-  const hashedCustomerPassword = await bcrypt.hash("customer123", salt);
+  const hashedCustomerPassword = await bcrypt.hash(SEED_CUSTOMER_PASSWORD, salt);
   const customer = await prisma.user.create({
     data: {
       name: "Regular Guest",

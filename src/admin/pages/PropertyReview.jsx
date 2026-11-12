@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { RefreshCw, CheckCircle, XCircle, AlertCircle, Eye, Power, FileSignature, Clock, FileText, MapPin, Phone, Mail, Building, Star, Shield, CreditCard, Image } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Eye, Power, FileSignature, Clock, FileText, MapPin, Phone, Building, Star, Shield, Image } from 'lucide-react';
 import ReviewDocuments from '../components/ReviewDocuments';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';

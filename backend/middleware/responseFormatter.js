@@ -20,7 +20,11 @@ export const responseFormatter = (req, res, next) => {
       data: null
     };
 
-    if (body && typeof body === 'object') {
+    if (Array.isArray(body)) {
+      // Bare arrays (e.g. res.json([...])) are the payload itself. Without this branch the
+      // generic object handling below turned them into {"0": ..., "1": ...} and [] into null.
+      newBody.data = body;
+    } else if (body && typeof body === 'object') {
       newBody.success = body.success !== undefined ? body.success : !isError;
       newBody.message = body.message || newBody.message;
       newBody.code = body.code || newBody.code;

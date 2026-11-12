@@ -8,7 +8,7 @@ import { fetchPromotions, createPromotion } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
 import { useForm } from 'react-hook-form';
 
-const statusStyles = {
+const _statusStyles = {
   ACTIVE: 'bg-green-50 text-green-600 border-green-100',
   SCHEDULED: 'bg-blue-50 text-blue-600 border-blue-100',
   EXPIRED: 'bg-gray-100 text-gray-500 border-gray-200',

@@ -1,5 +1,6 @@
+// Must stay the first import: loads .env and validates required settings before anything else runs.
+import './config/env.js';
 import express from 'express';
-// Trigger CI/CD pipeline
 import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -67,12 +68,17 @@ const globalLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10, // 10 login attempts per 15 mins
+  // Only throttle credential endpoints (login/signup/OTP), not reads like GET /auth/me
+  skip: (req) => req.method !== 'POST',
   message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' }
 });
 
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5, // 5 booking requests per minute
+  // Only throttle writes (create/preview/pay/cancel). Never throttle the Razorpay webhook:
+  // a 429 there means a paid booking is never confirmed.
+  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook'),
   message: { success: false, message: 'Booking system is busy. Please wait a minute.' }
 });
 
@@ -119,13 +125,18 @@ app.use(maintenanceMiddleware);
 app.use('/api', globalLimiter);
 
 // Body Parsing
-app.use(express.json({
-  limit: '50mb',
-  verify: (req, res, buf) => {
-    if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
-  }
-}));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Small default limit to protect memory; only the hotel image upload (base64 inside JSON)
+// gets a large one. 15mb of base64 ≈ an 11MB image.
+const keepRawBody = (req, res, buf) => {
+  if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
+};
+const jsonDefault = express.json({ limit: '1mb', verify: keepRawBody });
+const jsonImageUpload = express.json({ limit: '15mb', verify: keepRawBody });
+app.use((req, res, next) => {
+  const isImageUpload = req.method === 'POST' && /^\/api\/v1\/admin\/images\/?$/.test(req.path);
+  return (isImageUpload ? jsonImageUpload : jsonDefault)(req, res, next);
+});
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // Ensure public/uploads directory exists
 const uploadDir = path.join(__dirname, 'public/uploads');

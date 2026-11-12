@@ -2,7 +2,7 @@ const API_BASE = process.env.API_URL || 'http://localhost:5000/api/v1';
 
 let authToken = '';
 let hotelId = '';
-let roomId = '';
+let _roomId = '';
 
 const log = (phase, status, message) => {
   const icon = status === 'PASS' ? '✅' : status === 'FAIL' ? '❌' : '⏳';
@@ -20,7 +20,7 @@ const req = async (method, endpoint, body = null, useAuth = false) => {
     const res = await fetch(`${API_BASE}${endpoint}`, options);
     const data = await res.text();
     let json = null;
-    try { json = JSON.parse(data); } catch(e) {}
+    try { json = JSON.parse(data); } catch { /* non-JSON response body; keep raw text */ }
     return { status: res.status, ok: res.ok, json, text: data };
   } catch (err) {
     return { status: 500, ok: false, error: err.message };

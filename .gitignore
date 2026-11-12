@@ -11,3 +11,15 @@ build/
 dist/
 google-creds.json
 cloud-sql-proxy
+
+# Logs, caches and generated reports
+*.log
+.npm/
+backend/Library/
+eslint_report.json
+backend/.env.*
+!backend/.env.example
+
+# Uploaded files (local storage provider)
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep

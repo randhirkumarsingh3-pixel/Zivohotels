@@ -12,7 +12,7 @@ let browserInstance = null;
 const getBrowser = async () => {
   if (!browserInstance || !browserInstance.isConnected()) {
     browserInstance = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
   }

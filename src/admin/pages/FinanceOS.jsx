@@ -22,7 +22,7 @@ const StatusBadge = ({ status }) => {
 
 const FinanceOS = () => {
   const [activeTab, setActiveTab] = useState('LEDGER');
-  const [isPeriodLocked, setIsPeriodLocked] = useState(true);
+  const [isPeriodLocked] = useState(true);
 
   return (
     <div className="space-y-8 pb-12">

@@ -8,7 +8,7 @@ import {
 import { fetchProperty, updateProperty } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
 
-const amenities = [
+const _amenities = [
   { icon: Wifi, name: 'Free Wi-Fi', key: 'wifi' },
   { icon: Car, name: 'Parking', key: 'parking' },
   { icon: Coffee, name: 'Breakfast', key: 'breakfast' },

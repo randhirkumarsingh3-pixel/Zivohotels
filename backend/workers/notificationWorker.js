@@ -18,7 +18,7 @@ const processJob = async (job) => {
   console.log(`[${workerId}] Processing job: ${job.id} | Type: ${job.jobType}`);
   
   try {
-    const { userId, title, message, type } = job.payload;
+    const { userId, title, message: _message, type: _type } = job.payload;
     
     // In a real implementation, you would emit this to Socket.IO using an external adapter/emitter 
     // or send an SMS using Twilio.
