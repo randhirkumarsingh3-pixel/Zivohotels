@@ -21,7 +21,7 @@ export const protect = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
     // Check if user still exists & check token version
     const currentUser = await prisma.user.findUnique({ where: { id: decoded.id } });
@@ -31,7 +31,10 @@ export const protect = async (req, res, next) => {
     }
 
     // JWT Hardening: Check if token version matches (Revocation support)
-    if (decoded.tokenVersion !== undefined && currentUser.tokenVersion !== decoded.tokenVersion) {
+    // Tokens issued before versioning carry no tokenVersion: treat them as version 1 (the
+    // schema default) so they stop working once the user's tokenVersion is bumped
+    // (logout-everywhere / password change), instead of skipping the check entirely.
+    if ((decoded.tokenVersion ?? 1) !== currentUser.tokenVersion) {
       // Security Log for token abuse
       await prisma.securityLog.create({
         data: {
@@ -107,7 +110,7 @@ export const extractUser = async (req, res, next) => {
     }
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
       // We don't fetch full user to save DB calls, just attach ID and role
       req.user = { id: decoded.id, role: decoded.role };
     }

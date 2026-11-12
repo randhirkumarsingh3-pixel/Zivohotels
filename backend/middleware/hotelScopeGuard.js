@@ -11,6 +11,21 @@ export const hotelScopeGuard = async (req, res, next) => {
     const requestedHotelId = req.params.hotelId || req.query.hotelId || req.body.hotelId || req.user.hotelId;
     const userId = req.user.id;
 
+    // Admins (allowed on these routes by authorizeRoles) usually own no hotels, so the
+    // ownership lookup below always rejected them. Let them act on any existing hotel,
+    // but require them to say which one.
+    if (req.user.role === 'ADMIN') {
+      if (!requestedHotelId) {
+        return res.status(400).json({ success: false, message: 'Bad Request: hotelId is required for admin access.' });
+      }
+      const hotel = await prisma.hotel.findUnique({ where: { id: requestedHotelId }, select: { id: true, isDeleted: true } });
+      if (!hotel || hotel.isDeleted) {
+        return res.status(404).json({ success: false, message: 'Hotel not found.' });
+      }
+      req.scopedHotelId = hotel.id;
+      return next();
+    }
+
     // Fetch the user's allowed hotels
     // For OWNER role, it's properties they own. For MANAGER, it might be assigned.
     // Assuming simple mapping where user owns the hotel for now.

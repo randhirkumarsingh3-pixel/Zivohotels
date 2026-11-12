@@ -1,5 +1,6 @@
+// Must stay the first import: loads .env and validates required settings before anything else runs.
+import './config/env.js';
 import express from 'express';
-// Trigger CI/CD pipeline
 import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -124,13 +125,18 @@ app.use(maintenanceMiddleware);
 app.use('/api', globalLimiter);
 
 // Body Parsing
-app.use(express.json({
-  limit: '50mb',
-  verify: (req, res, buf) => {
-    if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
-  }
-}));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Small default limit to protect memory; only the hotel image upload (base64 inside JSON)
+// gets a large one. 15mb of base64 ≈ an 11MB image.
+const keepRawBody = (req, res, buf) => {
+  if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
+};
+const jsonDefault = express.json({ limit: '1mb', verify: keepRawBody });
+const jsonImageUpload = express.json({ limit: '15mb', verify: keepRawBody });
+app.use((req, res, next) => {
+  const isImageUpload = req.method === 'POST' && /^\/api\/v1\/admin\/images\/?$/.test(req.path);
+  return (isImageUpload ? jsonImageUpload : jsonDefault)(req, res, next);
+});
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // Ensure public/uploads directory exists
 const uploadDir = path.join(__dirname, 'public/uploads');

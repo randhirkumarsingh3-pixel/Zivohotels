@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import prisma from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { sendOTPEmail } from './emailService.js';
@@ -8,7 +9,8 @@ const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
  * Generate a 6-digit numeric OTP
  */
 export const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Cryptographically secure (Math.random() is predictable)
+  return crypto.randomInt(100000, 1000000).toString();
 };
 
 /**

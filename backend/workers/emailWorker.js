@@ -51,9 +51,14 @@ const processJob = async (job) => {
 export const startEmailWorker = async () => {
   console.log(`[${workerId}] Started polling for 'email' queue...`);
   
+  let consecutiveErrors = 0;
   while (isRunning) {
     try {
       const job = await queueService.fetchAndLock('email', workerId);
+      if (consecutiveErrors > 0) {
+        console.log(`[${workerId}] Polling recovered after ${consecutiveErrors} failed attempt(s).`);
+        consecutiveErrors = 0;
+      }
       
       if (job) {
         await processJob(job);
@@ -62,8 +67,14 @@ export const startEmailWorker = async () => {
         await new Promise(res => setTimeout(res, 2000));
       }
     } catch (err) {
-      console.error(`[${workerId}] Polling error:`, err.message);
-      await new Promise(res => setTimeout(res, 5000));
+      // Exponential backoff (5s, 10s, 20s ... capped at 60s) and quieter logs, so a database
+      // outage doesn't flood the logs every few seconds.
+      consecutiveErrors += 1;
+      const delayMs = Math.min(5000 * 2 ** (consecutiveErrors - 1), 60000);
+      if (consecutiveErrors === 1 || consecutiveErrors % 10 === 0) {
+        console.error(`[${workerId}] Polling error (attempt ${consecutiveErrors}, retrying in ${delayMs / 1000}s):`, err.message.trim().split('\n').pop());
+      }
+      await new Promise(res => setTimeout(res, delayMs));
     }
   }
 };

@@ -16,6 +16,22 @@ const logger = winston.createLogger({
   ],
 });
 
+// Keys whose values must never reach logs (matched case-insensitively, at any depth).
+const SENSITIVE_KEY = /pass(word)?|token|secret|otp|cvv|card|account(number)?|ifsc|pan$|^pan|aadhaar|gstin|signature|authorization|image|base64/i;
+
+const maskSensitive = (value, depth = 0) => {
+  if (depth > 5 || value === null || typeof value !== 'object') {
+    // Very long strings (e.g. base64 payloads) are truncated rather than logged in full
+    return typeof value === 'string' && value.length > 200 ? `${value.slice(0, 50)}…[${value.length} chars]` : value;
+  }
+  if (Array.isArray(value)) return value.slice(0, 20).map((v) => maskSensitive(v, depth + 1));
+  const out = {};
+  for (const [key, val] of Object.entries(value)) {
+    out[key] = SENSITIVE_KEY.test(key) ? '***' : maskSensitive(val, depth + 1);
+  }
+  return out;
+};
+
 /**
  * logger.js
  * Production-grade request logging with Masking, Tracing, and System Monitoring
@@ -52,13 +68,7 @@ export const requestLogger = (req, res, next) => {
     }
     
     // 3. Mask sensitive body data
-    let safeBody = null;
-    if (req.body && Object.keys(req.body).length > 0) {
-      safeBody = { ...req.body };
-      ['password', 'token', 'creditCard', 'cvv'].forEach(key => {
-        if (safeBody[key]) safeBody[key] = '***';
-      });
-    }
+    const safeBody = req.body && Object.keys(req.body).length > 0 ? maskSensitive(req.body) : null;
     
     const logLine = `[${req.id}] ${method} ${url} ${status} - ${duration}ms | User: ${user}`;
     
