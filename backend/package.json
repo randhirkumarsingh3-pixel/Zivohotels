@@ -20,6 +20,7 @@
     "worker:notification": "node workers/runWorker.js notification",
     "worker:analytics": "node workers/runWorker.js analytics",
     "worker:report": "node workers/runWorker.js report",
+    "test:unit": "mocha 'tests/unit/**/*.test.js'",
     "test:smoke": "mocha tests/smoke/smoke.test.js --exit"
   },
   "dependencies": {
