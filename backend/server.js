@@ -125,16 +125,19 @@ app.use(maintenanceMiddleware);
 app.use('/api', globalLimiter);
 
 // Body Parsing
-// Small default limit to protect memory; only the hotel image upload (base64 inside JSON)
-// gets a large one. 15mb of base64 ≈ an 11MB image.
+// Small default limit to protect memory; only uploads that carry a base64 file inside JSON
+// (hotel images, KYC documents) get a large one. 15mb of base64 ≈ an 11MB file.
 const keepRawBody = (req, res, buf) => {
   if (req.originalUrl.includes('/webhook')) req.rawBody = buf;
 };
 const jsonDefault = express.json({ limit: '1mb', verify: keepRawBody });
 const jsonImageUpload = express.json({ limit: '15mb', verify: keepRawBody });
 app.use((req, res, next) => {
-  const isImageUpload = req.method === 'POST' && /^\/api\/v1\/admin\/images\/?$/.test(req.path);
-  return (isImageUpload ? jsonImageUpload : jsonDefault)(req, res, next);
+  const isFileUpload = req.method === 'POST' && (
+    /^\/api\/v1\/admin\/images\/?$/.test(req.path) ||
+    /^\/api\/v1\/kyc\/[^/]+\/upload\/?$/.test(req.path)
+  );
+  return (isFileUpload ? jsonImageUpload : jsonDefault)(req, res, next);
 });
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 

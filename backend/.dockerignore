@@ -10,3 +10,6 @@ tests/
 logs/
 public/uploads/*
 !public/uploads/.gitkeep
+
+# Local private KYC documents must never be baked into an image
+private_uploads

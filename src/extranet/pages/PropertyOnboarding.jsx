@@ -11,6 +11,7 @@ import RoomsStep from '../../components/onboarding/steps/RoomsStep';
 import PhotosStep from '../../components/onboarding/steps/PhotosStep';
 import PoliciesStep from '../../components/onboarding/steps/PoliciesStep';
 import FinanceStep from '../../components/onboarding/steps/FinanceStep';
+import DocumentsStep from '../../admin/components/wizard-steps/DocumentsStep';
 
 import { usePropertyWizard } from '../../components/onboarding/hooks/usePropertyWizard';
 import { validateStep } from '../../components/onboarding/utils/validationHelpers';
@@ -171,8 +172,8 @@ const PropertyOnboarding = () => {
   };
 
   const handleSubmit = async () => {
-    // Advance to next step if not on last step
-    if (currentStep < 7) {
+    // Advance to next step if not on last step (8 = Documents, shared with the admin wizard)
+    if (currentStep < 8) {
       return handleStepChange(
         currentStep + 1,
         (error) => addToast(error, 'warning'),
@@ -366,6 +367,8 @@ const PropertyOnboarding = () => {
         return <PoliciesStep formData={formData} updateForm={updateForm} />;
       case 7:
         return <FinanceStep formData={formData} updateForm={updateForm} />;
+      case 8:
+        return <DocumentsStep hotelId={effectiveId || formData.id || localStorage.getItem('currentHotelId_extranet')} />;
       default:
         return <BasicInfoStep formData={formData} updateForm={updateForm} />;
     }
