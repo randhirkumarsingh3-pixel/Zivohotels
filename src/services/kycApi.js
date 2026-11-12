@@ -13,9 +13,10 @@ const authHeader = () => {
 };
 
 export const KYC_DOCUMENT_TYPES = [
-  { type: 'PAN', label: 'PAN Card' },
-  { type: 'GST', label: 'GST Certificate' },
-  { type: 'BANK_PROOF', label: 'Cancelled Cheque / Bank Proof' },
+  // `required` mirrors backend/services/propertyReadiness.js (needed before submitting for review).
+  { type: 'PAN', label: 'PAN Card', required: 'Required' },
+  { type: 'GST', label: 'GST Certificate', required: 'Required if the property has a GSTIN' },
+  { type: 'BANK_PROOF', label: 'Cancelled Cheque / Bank Proof', required: 'Required' },
   { type: 'OWNERSHIP_PROOF', label: 'Ownership / Lease Proof' },
   { type: 'TRADE_LICENSE', label: 'Trade License' },
   { type: 'FIRE_SAFETY', label: 'Fire NOC / Safety Certificate' },

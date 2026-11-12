@@ -96,9 +96,10 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
 - **The owner decided to finish everything locally first,** then follow `docs/GO_LIVE_CHECKLIST.md`.
 
 ## Next tasks (agreed order; ask the owner where a decision is marked)
-1. **Approval rules (decision needed):** should property approval require bank details? Today `_hasBank`
-   is computed in `propertyReviewController.approveProperty` and ignored. Should KYC documents be
-   required before an owner can submit for review?
+1. ~~Approval rules~~ **Done:** the owner decided bank details and KYC are both required.
+   `backend/services/propertyReadiness.js` is used by all three submit/approve endpoints. Submitting
+   needs complete bank details plus PAN, cancelled cheque and (if there's a GSTIN) GST certificate
+   uploaded and not rejected; approving needs those documents VERIFIED.
 2. **Money as exact decimals:** booking/payment amounts are `Float` in `schema.prisma` (the newer finance
    tables already use `Decimal(12,2)`). Needs a migration plus careful changes to pricing, refunds and
    the frontend.

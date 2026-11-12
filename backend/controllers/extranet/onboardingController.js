@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import { checkPropertyReadiness } from '../../services/propertyReadiness.js';
 
 /**
  * Initializes a new property onboarding session (DRAFT state)
@@ -211,14 +212,14 @@ export const submitForReview = async (req, res, next) => {
     // Validation Check before submission
     const errors = [];
     if (!hotel.gstin) errors.push('Missing GSTIN');
-    if (hotel.kycRecords.length < 2) errors.push('At least 2 KYC documents required');
     if (hotel.media.length < 5) errors.push('At least 5 property images required');
     if (hotel.roomTypes.length === 0) errors.push('At least one room type must be configured');
+    errors.push(...await checkPropertyReadiness(hotel, 'submit'));
 
     if (errors.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Property not ready for review', 
+        message: `Property not ready for review: ${errors.join('; ')}`, 
         errors 
       });
     }

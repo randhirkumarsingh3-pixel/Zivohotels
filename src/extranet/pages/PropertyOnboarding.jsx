@@ -325,14 +325,16 @@ const PropertyOnboarding = () => {
       }
 
       // Final Submission (KYC Trigger)
+      // Your details are saved above; if the server says the property isn't ready (e.g. bank
+      // details or KYC documents missing), stop here and show why instead of the success screen.
       if (hotelId) {
-        try {
-          await fetch(`${API_URL}/extranet/onboarding/${hotelId}/submit`, {
-            method: 'POST',
-            headers: getAuthHeaders()
-          });
-        } catch (err) {
-          console.error('Failed to trigger KYC submission:', err);
+        const submitRes = await fetch(`${API_URL}/extranet/onboarding/${hotelId}/submit`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (!submitRes.ok) {
+          const submitJson = await submitRes.json().catch(() => ({}));
+          throw new Error(submitJson.message || 'Your property could not be submitted for review.');
         }
       }
 

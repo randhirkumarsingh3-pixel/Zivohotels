@@ -340,13 +340,20 @@ const PropertyWizard = () => {
       }
 
       // Submit the property for review
-      try {
-        await fetch(`${API_URL}/admin/properties/${hotelId}/submit`, {
-          method: 'PATCH',
-          headers: getAuthHeaders()
-        });
-      } catch (err) {
-        console.error('Failed to submit property to review queue', err);
+      // Details are saved above; if the property isn't ready (e.g. bank details or KYC
+      // documents missing), stop here and show why instead of the success screen.
+      // Edits to a property that's already in review, approved or live are just saved.
+      const savedStatus = data.data?.status;
+      const needsSubmit = !savedStatus || ['DRAFT', 'INFORMATION_REQUESTED'].includes(savedStatus);
+      const submitRes = needsSubmit
+        ? await fetch(`${API_URL}/admin/properties/${hotelId}/submit`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+          })
+        : { ok: true };
+      if (!submitRes.ok) {
+        const submitJson = await submitRes.json().catch(() => ({}));
+        throw new Error(submitJson.message || 'The property could not be submitted for review.');
       }
 
       const refNo = 'ZIVO-PROP-' + (hotelId ? hotelId.substring(0, 8).toUpperCase() : Math.random().toString(36).substring(2, 10).toUpperCase());

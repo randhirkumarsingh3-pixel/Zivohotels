@@ -77,6 +77,8 @@ const DocumentsStep = ({ hotelId }) => {
         <h3 className="text-xl font-bold text-gray-900">Property Documents (KYC)</h3>
         <p className="text-sm text-gray-500 mt-1">
           Upload the compliance and verification documents for this property. PDF, JPG or PNG, up to 10 MB each.
+          The PAN card and a cancelled cheque (plus the GST certificate if the property has a GSTIN) are
+          required before the property can be submitted for review, along with bank details.
         </p>
         <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
           <ShieldCheck size={14} className="text-green-600" /> Documents are stored privately and are only visible to you and the ZivoHotels verification team.
@@ -91,7 +93,7 @@ const DocumentsStep = ({ hotelId }) => {
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <ul className="divide-y divide-gray-100">
-          {KYC_DOCUMENT_TYPES.map(({ type, label }) => {
+          {KYC_DOCUMENT_TYPES.map(({ type, label, required }) => {
             const doc = documents.find((d) => d.documentType === type);
             const isUploading = uploadingType === type;
             return (
@@ -101,7 +103,10 @@ const DocumentsStep = ({ hotelId }) => {
                     <FileText size={24} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-semibold text-gray-900">{label}</h4>
+                    <h4 className="font-semibold text-gray-900">
+                      {label}
+                      {required && <span className="ml-2 text-xs font-medium text-amber-700">{required}</span>}
+                    </h4>
                     {doc ? (
                       <div className="mt-1 space-y-1">
                         <StatusBadge status={doc.documentStatus} />
