@@ -380,7 +380,7 @@ const PropertyWizard = () => {
       case 7:
         return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
       case 8:
-        return <DocumentsStep formData={formData} updateForm={updateForm} />;
+        return <DocumentsStep hotelId={id || formData.id || localStorage.getItem('currentHotelId_admin')} />;
       default:
         return <BasicInfoStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
     }

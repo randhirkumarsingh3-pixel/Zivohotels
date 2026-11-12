@@ -23,3 +23,6 @@ backend/.env.*
 # Uploaded files (local storage provider)
 backend/public/uploads/*
 !backend/public/uploads/.gitkeep
+
+# Private KYC documents stored locally in development (never commit)
+backend/private_uploads/
