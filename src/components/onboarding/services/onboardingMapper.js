@@ -65,6 +65,7 @@ export const buildHotelPayload = (formData, VITE_API_URL) => {
     } : undefined,
 
     commissionRate: formData.commission ? parseFloat(formData.commission) : undefined,
+    cancellationPolicy: str(formData.cancellationPolicy),
     lastUpdatedAt: formData.lastUpdatedAt,
   };
 };
@@ -112,7 +113,8 @@ export const mapBackendToFormData = (hotel) => {
     
     checkInTime: hotel.checkInTime || '14:00',
     checkOutTime: hotel.checkOutTime || '11:00',
-    cancellationPolicy: hotel.cancellationPolicy || 'FREE_CANCEL_24H',
+    cancellationPolicy: (typeof hotel.cancellationPolicy === 'string' && hotel.cancellationPolicy) || hotel.cancellationPolicy?.policyCode || 'FREE_CANCEL_24H',
+    status: hotel.status,
     policyRules: hotel.policyRules || {},
     mealPrices: hotel.mealPrices || {},
     

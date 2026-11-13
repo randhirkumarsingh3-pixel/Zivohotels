@@ -1,17 +1,8 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
-import { moneyFieldsToNumbers } from '../utils/money.js';
 import { z } from 'zod';
-import Razorpay from 'razorpay';
-import { calculateRefund, getDefaultPolicy } from '../utils/refundCalculator.js';
-import { withTimeout } from '../utils/promiseUtils.js';
-import { criticalLogger } from '../middleware/logger.js';
+import { cancelBookingWithRefund, initiatorForRole, CancellationError } from '../services/cancellationService.js';
 import inventoryRepository from '../repositories/inventoryRepository.js';
-
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
 // --- ZOD SCHEMAS ---
 
@@ -254,37 +245,26 @@ export const updateBookingStatus = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: result, requestId: req.id });
   } catch (error) {
+    if (error instanceof CancellationError || error.name === 'TransitionError') {
+      return res.status(error.status || 400).json({ success: false, message: error.message, requestId: req.id });
+    }
     next(error);
   }
 };
 
 /**
- * cancelBooking (Hardened)
- * 1. Lock Booking
- * 2. Initiate Refund Record
- * 3. Call Razorpay (Decoupled)
- * 4. Finalize state
+ * cancelBooking: checks who may cancel, then services/cancellationService does the refund
+ * (Razorpay, idempotent, retryable), inventory release, settlement of any fee kept, and notifications.
  */
 export const cancelBooking = async (req, res, next) => {
   const { id } = req.params;
   const requestId = req.id;
 
   try {
-    // 1. HARD LOCK & STATE CHECK
-    const [lockedRow] = await prisma.$queryRaw`SELECT * FROM "Booking" WHERE id = ${id} FOR UPDATE`;
-    // Raw queries return Prisma.Decimal for money columns; convert like the Prisma client does
-    const booking = moneyFieldsToNumbers('booking', lockedRow);
-    
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { id: true, hotelId: true, userId: true } });
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found', requestId });
-    if (booking.status === 'CANCELLED') {
-      return res.status(400).json({ success: false, message: 'Booking is already cancelled', requestId });
-    }
-    // A stay that has started or ended can't be cancelled (the hotel may already be settled)
-    if (['CHECKED_IN', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
-      return res.status(400).json({ success: false, message: `A booking that is ${booking.status.replace('_', ' ').toLowerCase()} can't be cancelled`, requestId });
-    }
 
-    // Authorization Check
+    // Authorization: guests cancel their own bookings, owners their hotels' bookings
     if (req.user.role === 'OWNER') {
       const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId } });
       if (hotel.ownerId !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized', requestId });
@@ -292,133 +272,31 @@ export const cancelBooking = async (req, res, next) => {
       if (booking.userId !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized', requestId });
     }
 
-    // 2. IDEMPOTENCY & RETRY CHECK
-    const existingRefund = await prisma.refund.findUnique({ where: { bookingId: id } });
-    
-    if (existingRefund) {
-      if (existingRefund.status === 'SUCCESS') {
-        return res.status(400).json({ success: false, message: 'Refund already completed', requestId });
-      }
-      if (existingRefund.retryCount >= 3) {
-        return res.status(429).json({ success: false, message: 'Max refund retries reached. Manual intervention required.', requestId });
-      }
-    }
-
-    // 3. CALCULATION
-    const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
-    const { refundAmount, policyApplied } = calculateRefund(booking, policy);
-
-    // 4. INITIATE/UPDATE REFUND RECORD (Stage 1)
-    const refundRecord = await prisma.refund.upsert({
-      where: { bookingId: id },
-      update: { 
-        status: 'INITIATED', 
-        retryCount: { increment: 1 },
-        lastAttemptAt: new Date(),
-        requestId 
-      },
-      create: {
-        bookingId: id,
-        amount: refundAmount,
-        status: 'INITIATED',
-        lastAttemptAt: new Date(),
-        requestId
-      }
+    // Guest: refund per the property's policy. Hotel/admin: full refund + owner notified.
+    const result = await cancelBookingWithRefund({
+      bookingId: id,
+      initiatedBy: initiatorForRole(req.user.role),
+      userId: req.user.id,
+      requestId
     });
 
-    // 5. CALL RAZORPAY (Outside Transaction with Idempotency Key)
-    let razorpayRefundId = null;
-    if (refundAmount > 0 && booking.razorpayPaymentId) {
-      try {
-        // Razorpay idempotency key used in headers
-        const razorResponse = await withTimeout(
-          razorpay.payments.refund(booking.razorpayPaymentId, {
-            amount: Math.round(refundAmount * 100),
-            notes: { requestId, bookingId: id, retry: refundRecord.retryCount }
-          }, {
-            "X-Razorpay-Idempotency-Key": `${id}-${refundRecord.retryCount}`
-          }),
-          10000,
-          'Razorpay Refund Timed Out'
-        );
-        razorpayRefundId = razorResponse.id;
-      } catch (apiError) {
-        criticalLogger('REFUND_FAILURE', { 
-          bookingId: id, 
-          error: apiError.message, 
-          amount: refundAmount,
-          paymentId: booking.razorpayPaymentId 
-        }, requestId);
-
-        await prisma.refund.update({
-          where: { id: refundRecord.id },
-          data: { status: 'FAILED' }
-        });
-
-        return res.status(502).json({ success: false, message: `Payment refund failed: ${apiError.message}`, requestId });
-      }
-    }
-
-    // 6. FINALIZE (Strict Transaction Order)
-    const finalizedBooking = await prisma.$transaction(async (tx) => {
-      // A. Update Refund status FIRST
-      await tx.refund.update({
-        where: { id: refundRecord.id },
-        data: { status: 'SUCCESS', razorpayRefundId }
-      });
-
-      // B. Update Booking status SECOND
-      const updated = await tx.booking.update({
-        where: { id },
-        data: {
-          status: 'CANCELLED',
-          refundAmount,
-          cancelledAt: new Date(),
-          // Only valid PaymentStatus enum values may be written. 'PARTIAL_REFUNDED' / 'CANCELLED'
-          // don't exist in the enum and made every zero-refund cancellation fail with a 500.
-          // With no refund, the payment status is unchanged (e.g. PENDING stays PENDING,
-          // a non-refundable PAID booking stays PAID); refundAmount records what was returned.
-          paymentStatus: refundAmount > 0 ? 'REFUNDED' : booking.paymentStatus
-        }
-      });
-
-      // C. Restore Inventory LAST
-      await inventoryRepository.restoreInventory(tx, booking);
-
-      // D. Structured Audit Log
-      await tx.auditLog.create({
-        data: {
-          action: 'CANCEL_BOOKING',
-          entityType: 'BOOKING',
-          entityId: id,
-          userId: req.user.id,
-          requestId,
-          details: { 
-            refundAmount, 
-            status: 'SUCCESS', 
-            policy: policyApplied,
-            razorpayRefundId,
-            paymentId: booking.razorpayPaymentId
-          }
-        }
-      });
-
-      return updated;
-    });
-
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: 'Booking cancelled and refund processed',
       data: {
-        bookingStatus: finalizedBooking.status,
+        bookingStatus: result.booking.status,
         refundStatus: 'SUCCESS',
-        refundAmount: finalizedBooking.refundAmount,
-        booking: finalizedBooking
+        refundAmount: result.refundAmount,
+        retainedAmount: result.retainedAmount,
+        policyApplied: result.policyApplied,
+        booking: result.booking
       },
-      requestId 
+      requestId
     });
-
   } catch (error) {
+    if (error instanceof CancellationError) {
+      return res.status(error.status).json({ success: false, message: error.message, requestId });
+    }
     next(error);
   }
 };

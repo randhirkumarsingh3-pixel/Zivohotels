@@ -68,6 +68,7 @@ The backend refuses to start if a required one is missing.
 | `EMAIL_FROM` | yes | e.g. `ZivoHotels <noreply@zivohotels.com>` |
 | `GCS_KYC_BUCKET` | yes | `zivohotels-kyc-prod` |
 | `FRONTEND_URL` | yes | `https://www.zivohotels.com` |
+| `ZIVO_GSTIN` | yes | ZivoHotels' GSTIN (decides CGST+SGST vs IGST on commission) |
 
 Do **not** set `GOOGLE_APPLICATION_CREDENTIALS` on Cloud Run; it uses the service account automatically.
 
@@ -128,8 +129,12 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
 - [x] Bookings store the real tax and price breakdown; customers pay the price shown at checkout.
 - [x] Commission is the hotel's agreed rate on the pre-GST amount; settlements are created at check-out and
       paid on the hotel's payout cycle.
-- [ ] Decide no-show / cancellation-fee share for hotels, and refunds when an owner cancels.
-- [ ] Ask an accountant about GST on commission and TCS before the first payout.
+- [x] Hotels get their share of cancellation fees / no-show charges kept under their policy; owner
+      cancellations refund the guest in full.
+- [x] GST 18% on commission, TCS 0.5%, TDS 0.1% deducted on settlements.
+- [ ] Set `ZIVO_GSTIN` on the backend so GST on commission is split CGST+SGST for same-state hotels.
+- [ ] Before the first payout: have the accountant check one settlement and confirm GST on kept
+      cancellation fees.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
 - [ ] react-router 6 → 7 (moderate security advisory).
 - [ ] `backend/seed_automation_user.js` is broken (uses `require` in an ES-module project); use

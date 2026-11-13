@@ -2,7 +2,8 @@ import prisma from '../config/db.js';
 import { logActivity } from './activityService.js';
 import { createNotification } from './notificationService.js';
 import settlementService from './finance/settlementService.js';
-import inventoryRepository from '../repositories/inventoryRepository.js';
+import { cancelBookingWithRefund, initiatorForRole } from './cancellationService.js';
+import { roundMoney, toMoney } from '../utils/money.js';
 
 /**
  * Valid state transitions for OTA bookings.
@@ -51,7 +52,23 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     throw new TransitionError(`Invalid transition from ${currentStatus} to ${newStatus}`);
   }
 
-  // 3. Side effects, status change and timeline run in one transaction (below)
+  // 3. Cancelling goes through the refund flow: a hotel/admin cancellation refunds the guest in
+  // full and notifies the owner (the hotel hasn't been paid yet; payouts follow check-out)
+  if (newStatus === 'CANCELLED') {
+    const actor = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { role: true } }) : null;
+    const { booking: cancelled } = await cancelBookingWithRefund({
+      bookingId,
+      initiatedBy: initiatorForRole(actor?.role || 'OWNER'),
+      userId
+    });
+    await logActivity({
+      hotelId: booking.hotelId, userId, action: 'BOOKING_STATUS_CHANGED', entityType: 'Booking',
+      entityId: booking.id, before: { status: currentStatus }, after: { status: 'CANCELLED' }
+    });
+    return cancelled;
+  }
+
+  // Other side effects, status change and timeline run in one transaction (below)
 
   // Append timeline event based on status change
   let eventTitle = 'Booking Status Updated';
@@ -71,16 +88,10 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     eventMessage = 'You have checked out. Safe travels!';
   } else if (newStatus === 'NO_SHOW') {
     eventTitle = 'No Show';
-    eventMessage = 'The booking was marked as No Show.';
+    eventMessage = 'The booking was marked as No Show. Amounts paid online are not refunded.';
   }
 
   const updatedBooking = await prisma.$transaction(async (tx) => {
-    // If cancelling, give the rooms back (booked -1 and available +1 for each night), the same
-    // way customer cancellations do
-    if (newStatus === 'CANCELLED') {
-      await inventoryRepository.restoreInventory(tx, booking);
-    }
-
     const updated = await tx.booking.update({
       where: { id: bookingId },
       data: { status: newStatus }
@@ -93,6 +104,12 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     // Check-out: the hotel's settlement (agreed commission, next payout-cycle date) is created now
     if (newStatus === 'COMPLETED') {
       await settlementService.createForCheckout(tx, updated);
+    }
+
+    // No-show: whatever the guest paid online is kept, and the hotel's share is settled
+    if (newStatus === 'NO_SHOW') {
+      const kept = roundMoney((toMoney(updated.paidAmount) || 0) - (toMoney(updated.refundAmount) || 0));
+      await settlementService.createForRetained(tx, updated, 'NO_SHOW', kept);
     }
 
     return updated;
@@ -110,12 +127,12 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     after: { status: newStatus }
   });
 
-  if (['CANCELLED', 'NO_SHOW'].includes(newStatus)) {
+  if (newStatus === 'NO_SHOW') {
     await createNotification({
       hotelId: booking.hotelId,
       type: newStatus,
       title: `Booking ${booking.bookingRef} ${newStatus}`,
-      message: `Booking for ${booking.guestName} was marked as ${newStatus}. Inventory updated.`,
+      message: `Booking for ${booking.guestName} was marked as a no-show. Any amount paid online is kept and settled in your payout cycle.`,
       metadata: { bookingId: booking.id }
     });
   }

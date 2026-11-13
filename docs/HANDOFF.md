@@ -140,13 +140,30 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
   (the extranet's "Check out" sends `CHECKED_OUT`, an alias). Revenue/booking counts use
   `constants/bookingStatus.js`.
 
-## Open questions (need the owner)
-- **No-shows and cancellation fees:** no settlement is created for a NO_SHOW or a cancelled booking,
-  so if a cancellation fee or no-show charge is kept, the hotel gets none of it.
-- **Owner cancellations don't refund:** cancelling from the extranet (or admin status change) frees
-  the rooms but doesn't refund a prepaid guest; only the customer's own cancel refunds.
-- **GST on commission / TCS:** ZivoHotels' invoice to the hotel for commission (and any TCS under
-  GST section 52) isn't modelled; check with an accountant before the first payout.
+## Cancellations, no-shows and deductions (owner decisions, implemented)
+- **Cancellation policy:** each property's choice at onboarding (free until check-in / 24h / 48h /
+  72h before, or non-refundable) is now saved in `CancellationPolicy.policyCode` and used for guest
+  refunds (`utils/refundCalculator.js`). No saved policy = free until 24h before.
+- **One cancel path** (`services/cancellationService.js`) for the customer endpoint, the extranet and
+  admin status changes:
+  - guest cancels -> refund per the property's policy; any amount kept becomes a `CANCELLATION`
+    settlement for the hotel;
+  - hotel or admin cancels -> the guest gets everything paid back (the hotel hasn't been paid; payouts
+    follow check-out) and the owner is notified in-app and by email that the refund is being made.
+- **No-show:** what was paid online is kept and becomes a `NO_SHOW` settlement.
+- **Deductions on every settlement** (`constants/finance.js`): GST 18% on commission (CGST 9% +
+  SGST 9% when ZivoHotels and the hotel are in the same state, else IGST 18%; set `ZIVO_GSTIN`),
+  TCS 0.5% of the pre-GST value collected online (GST-registered hotels only), TDS 0.1% (194-O) of
+  the pre-GST value. netPayable = collected online - commission - GST on it - TCS - TDS.
+- **Commission is admin-only:** owners could previously set their own rate through the API.
+- **Owners can enter legal and bank details while onboarding** (draft / information requested); they
+  lock once submitted. Before, the form locked them for owners, so owners could never submit.
+
+## Open questions
+- GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
+  the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.
+- Changing a hotel's payout bank account after submission goes through support/admin; there is no
+  verification flow for it.
 - `paymentController` falls back to a hard-coded 30% for partial payments instead of the configured
   percentage.
 - The hotel page estimates tax with hard-coded slabs (5% up to Rs 7,500, else 18%), not the admin's

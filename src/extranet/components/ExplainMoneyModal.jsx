@@ -38,7 +38,7 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
               {/* Gross Amount */}
               <div className="flex justify-between items-end pb-6 border-b border-dashed border-slate-200">
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Gross Booking Value</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{data.kind && data.kind !== 'STAY' ? data.kindLabel : 'Gross Booking Value'}</p>
                     <p className="text-3xl font-black text-slate-900">₹ {data.grossBooking.toLocaleString()}</p>
                  </div>
                  <div className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest">
