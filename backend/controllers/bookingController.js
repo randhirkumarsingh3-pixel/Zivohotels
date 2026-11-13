@@ -1,5 +1,6 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
+import { moneyFieldsToNumbers } from '../utils/money.js';
 import { z } from 'zod';
 import Razorpay from 'razorpay';
 import { calculateRefund, getDefaultPolicy } from '../utils/refundCalculator.js';
@@ -270,7 +271,9 @@ export const cancelBooking = async (req, res, next) => {
 
   try {
     // 1. HARD LOCK & STATE CHECK
-    const [booking] = await prisma.$queryRaw`SELECT * FROM "Booking" WHERE id = ${id} FOR UPDATE`;
+    const [lockedRow] = await prisma.$queryRaw`SELECT * FROM "Booking" WHERE id = ${id} FOR UPDATE`;
+    // Raw queries return Prisma.Decimal for money columns; convert like the Prisma client does
+    const booking = moneyFieldsToNumbers('booking', lockedRow);
     
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found', requestId });
     if (booking.status === 'CANCELLED') {

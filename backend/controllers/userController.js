@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { toMoney } from '../utils/money.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -81,7 +82,7 @@ export const getUsers = asyncHandler(async (req, res) => {
         where: { userId: user.id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
         _sum: { totalAmount: true }
       });
-      user.totalSpend = agg._sum.totalAmount || 0;
+      user.totalSpend = toMoney(agg._sum.totalAmount) || 0;
     }
   }
 
