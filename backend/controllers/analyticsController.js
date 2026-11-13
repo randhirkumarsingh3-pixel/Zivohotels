@@ -3,6 +3,7 @@ import { toMoney } from '../utils/money.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
+import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -44,16 +45,16 @@ export const getKpis = asyncHandler(async (req, res) => {
 
     // 1. Total revenue (all time) - ONLY for CONFIRMED/COMPLETED bookings
     const [revAll, revThis, revLast] = await Promise.all([
-      prisma.booking.aggregate({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] } }, _sum: { totalAmount: true } }),
-      prisma.booking.aggregate({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: thisMonth } }, _sum: { totalAmount: true } }),
-      prisma.booking.aggregate({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: lastMonth, lte: lastMonthEnd } }, _sum: { totalAmount: true } }),
+      prisma.booking.aggregate({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES } }, _sum: { totalAmount: true } }),
+      prisma.booking.aggregate({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: thisMonth } }, _sum: { totalAmount: true } }),
+      prisma.booking.aggregate({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: lastMonth, lte: lastMonthEnd } }, _sum: { totalAmount: true } }),
     ]);
 
     // 2. Booking counts
     const [bookingsAll, bookingsThis, bookingsLast, bookingsCancelled] = await Promise.all([
-      prisma.booking.count({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] } } }),
-      prisma.booking.count({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: thisMonth } } }),
-      prisma.booking.count({ where: { ...scope, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: lastMonth, lte: lastMonthEnd } } }),
+      prisma.booking.count({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES } } }),
+      prisma.booking.count({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: thisMonth } } }),
+      prisma.booking.count({ where: { ...scope, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: lastMonth, lte: lastMonthEnd } } }),
       prisma.booking.count({ where: { ...scope, status: 'CANCELLED', createdAt: { gte: thisMonth } } }),
     ]);
 
@@ -119,7 +120,7 @@ export const getRevenueTrend = asyncHandler(async (req, res) => {
 
     const where = {
       ...scope,
-      status: { in: ['CONFIRMED', 'COMPLETED'] },
+      status: { in: STAY_BOOKING_STATUSES },
       createdAt: { gte: from },
       ...(hotelId ? { hotelId } : {}),
     };
@@ -183,7 +184,7 @@ export const getTopProperties = asyncHandler(async (req, res) => {
       by:      ['hotelId'],
       where:   { 
         ...scope, 
-        status: { in: ['CONFIRMED', 'COMPLETED'] },
+        status: { in: STAY_BOOKING_STATUSES },
         createdAt: { gte: from }
       },
       _sum:    { totalAmount: true },
@@ -232,7 +233,7 @@ export const getFunnelAnalytics = asyncHandler(async (req, res) => {
 
     // 3. Total Bookings
     const bookings = await prisma.booking.count({
-      where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: from } }
+      where: { status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: from } }
     });
 
     // Assuming a 30% sampling rate for searches, we adjust the reported search volume back up

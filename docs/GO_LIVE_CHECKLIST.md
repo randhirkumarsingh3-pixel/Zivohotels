@@ -126,7 +126,10 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
 - [ ] Tax rules: add the GST slabs in admin System settings before taking bookings; with none, every
       booking fails with "No applicable tax rule found".
 - [x] Bookings store the real tax and price breakdown; customers pay the price shown at checkout.
-- [ ] Decide commission: flat 15% of the GST-inclusive total today, ignoring the hotel's agreed rate.
+- [x] Commission is the hotel's agreed rate on the pre-GST amount; settlements are created at check-out and
+      paid on the hotel's payout cycle.
+- [ ] Decide no-show / cancellation-fee share for hotels, and refunds when an owner cancels.
+- [ ] Ask an accountant about GST on commission and TCS before the first payout.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
 - [ ] react-router 6 → 7 (moderate security advisory).
 - [ ] `backend/seed_automation_user.js` is broken (uses `require` in an ES-module project); use

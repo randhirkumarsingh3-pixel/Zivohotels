@@ -1180,8 +1180,10 @@ enum MealPlan {
 enum BookingStatus {
   PENDING
   CONFIRMED
+  CHECKED_IN
   CANCELLED
-  COMPLETED
+  COMPLETED // checked out
+  NO_SHOW
 }
 
 enum PaymentType {

@@ -124,19 +124,39 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
 - Bookings now save `baseAmount`, `taxAmount` and the charge breakdown (discounts in `metadata`), so
   invoices show the real GST. Settlements record that GST instead of a flat 12%.
 
-## Open money questions (need the owner)
-- Commission is a flat 15% of the GST-inclusive total (`bookingService`, step F). It ignores the
-  hotel's agreed `commissionRate`, and most OTAs charge commission on the pre-tax amount.
-- Settlements and ledger entries are created when the booking is made, before it's paid (and for
-  pay-at-hotel bookings too).
+## Hotel settlements and payouts (owner decisions, implemented)
+- **Created at check-out**, not at booking (`settlementService.createForCheckout`, called from
+  `bookingStateMachine` when a booking becomes COMPLETED). Cancelled or unpaid bookings never become
+  money owed to a hotel.
+- **Commission = the hotel's agreed rate** (`Agreement.commissionRate`, else
+  `Hotel.dynamicCommissionRate`, else 15%) **x the pre-GST amount** (`booking.baseAmount`).
+- **netPayable = collected online (paid - refunded) - commission.** Pay-at-hotel stays are negative:
+  the hotel owes the commission, and it's netted against later payouts (`processPayout` refuses to pay
+  out a zero or negative total).
+- **Paid on the hotel's payout cycle after check-out** (`nextPayoutDate`): Weekly = next Wednesday,
+  "15 days" = next 1st/16th, Monthly = 1st of next month, `T+N` = N days later. Stored in
+  `Settlement.holdUntil`; the finance worker marks due settlements READY hourly.
+- **Booking statuses:** `CHECKED_IN` and `NO_SHOW` were added; `COMPLETED` is the checked-out state
+  (the extranet's "Check out" sends `CHECKED_OUT`, an alias). Revenue/booking counts use
+  `constants/bookingStatus.js`.
+
+## Open questions (need the owner)
+- **No-shows and cancellation fees:** no settlement is created for a NO_SHOW or a cancelled booking,
+  so if a cancellation fee or no-show charge is kept, the hotel gets none of it.
+- **Owner cancellations don't refund:** cancelling from the extranet (or admin status change) frees
+  the rooms but doesn't refund a prepaid guest; only the customer's own cancel refunds.
+- **GST on commission / TCS:** ZivoHotels' invoice to the hotel for commission (and any TCS under
+  GST section 52) isn't modelled; check with an accountant before the first payout.
 - `paymentController` falls back to a hard-coded 30% for partial payments instead of the configured
   percentage.
-- The hotel page estimates tax with hard-coded slabs (5% up to ₹7,500, else 18%), not the admin's
+- The hotel page estimates tax with hard-coded slabs (5% up to Rs 7,500, else 18%), not the admin's
   tax rules.
 - The local database has no tax rules, so no booking can be priced locally until an admin adds them
-  (System settings → tax rules).
+  (System settings -> tax rules).
 
 ## Gotchas seen on this Mac
+- Local Postgres runs in IST. Raw SQL comparing `DateTime` columns with JS dates shifts by 5h30; prefer
+  Prisma queries (they behave the same locally and in UTC production).
 - `EADDRINUSE :5000` means the backend is already running in another tab (`lsof -i :5000`). macOS 12's
   AirPlay Receiver can also hold port 5000.
 - Signing in to the extranet as the admin redirects to onboarding. Use the owner account.

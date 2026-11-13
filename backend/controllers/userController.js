@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
+import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 
 // --- HELPERS ---
 
@@ -79,7 +80,7 @@ export const getUsers = asyncHandler(async (req, res) => {
   if (role === 'CUSTOMER') {
     for (const user of users) {
       const agg = await prisma.booking.aggregate({
-        where: { userId: user.id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
+        where: { userId: user.id, status: { in: STAY_BOOKING_STATUSES } },
         _sum: { totalAmount: true }
       });
       user.totalSpend = toMoney(agg._sum.totalAmount) || 0;

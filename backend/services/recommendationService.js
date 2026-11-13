@@ -2,6 +2,7 @@ import prisma from '../config/db.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import recommendationDomain from '../domains/recommendationDomain.js';
 import cacheUtils from '../utils/cacheUtils.js';
+import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 
 export const recommendationService = {
   
@@ -84,7 +85,7 @@ export const recommendationService = {
       where: {
         hotelId: { in: activeHotels.map(h => h.id) },
         createdAt: { gte: twentyFourHoursAgo },
-        status: { in: ['CONFIRMED', 'COMPLETED'] }
+        status: { in: STAY_BOOKING_STATUSES }
       }
     });
 
