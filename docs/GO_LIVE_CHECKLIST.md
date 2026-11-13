@@ -122,7 +122,10 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
       required to submit a property, and the documents must be verified before approval
       (`backend/services/propertyReadiness.js`).
 - [ ] Promotions: creating one says "success" but nothing is saved.
-- [ ] Money is stored as floating-point numbers in bookings/payments; move to exact decimals.
+- [x] Money is stored as exact decimals (`Decimal(12,2)`).
+- [ ] Tax rules: add the GST slabs in admin System settings before taking bookings; with none, every
+      booking fails with "No applicable tax rule found".
+- [ ] Bookings store `baseAmount`/`taxAmount` as 0, so settlements are wrong; fix before payouts.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
 - [ ] react-router 6 → 7 (moderate security advisory).
 - [ ] `backend/seed_automation_user.js` is broken (uses `require` in an ES-module project); use

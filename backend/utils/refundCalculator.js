@@ -1,3 +1,5 @@
+import { roundMoney, toMoney } from './money.js';
+
 /**
  * refundCalculator.js
  * Source of truth for all refund logic.
@@ -21,7 +23,7 @@ export const calculateRefund = (booking, policy) => {
   const hoursLeft = diffMs / (1000 * 60 * 60);
 
   let refundAmount = 0;
-  const paidAmount = booking.paidAmount || 0;
+  const paidAmount = toMoney(booking.paidAmount) || 0;
 
   if (hoursLeft >= freeHours) {
     // Phase 1: Full Refund
@@ -43,7 +45,7 @@ export const calculateRefund = (booking, policy) => {
   if (isNaN(refundAmount)) refundAmount = 0;
 
   return {
-    refundAmount: Math.round(refundAmount * 100) / 100, // Round to 2 decimal places
+    refundAmount: roundMoney(refundAmount), // to the paisa
     policyApplied: hoursLeft >= freeHours ? 'FREE' : (hoursLeft >= noRefundHours ? 'PARTIAL' : 'NONE'),
     hoursLeft: Math.floor(hoursLeft)
   };

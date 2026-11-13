@@ -100,9 +100,11 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
    `backend/services/propertyReadiness.js` is used by all three submit/approve endpoints. Submitting
    needs complete bank details plus PAN, cancelled cheque and (if there's a GSTIN) GST certificate
    uploaded and not rejected; approving needs those documents VERIFIED.
-2. **Money as exact decimals:** booking/payment amounts are `Float` in `schema.prisma` (the newer finance
-   tables already use `Decimal(12,2)`). Needs a migration plus careful changes to pricing, refunds and
-   the frontend.
+2. ~~Money as exact decimals~~ **Done:** 24 money columns (bookings, refunds, rate plans, occupancy
+   pricing, coupons, tax thresholds, loyalty wallet) are `Decimal(12,2)`. `config/db.js` hands them to
+   the app as plain numbers (list in `constants/moneyFields.js`), so the API and frontend are unchanged.
+   `_sum` aggregates and `$queryRaw` still return `Prisma.Decimal`: wrap them with `toMoney()` /
+   `moneyFieldsToNumbers()` from `utils/money.js`, and round computed amounts with `roundMoney()`.
 3. **Login token:** currently in `localStorage` (`src/context/AuthContext.jsx`, `src/services/api.js`);
    move to an httpOnly cookie with CSRF protection.
 4. **Promotions (decision needed):** `createPromotion` says "success" but saves nothing. Should
@@ -112,6 +114,16 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
    - review the 14 hook-dependency warnings one by one (the ESLint config warns that mechanical fixes
      can cause infinite loops)
    - `backend/seed_automation_user.js` is broken (it uses `require` in an ES module); delete or fix it
+
+## Found while testing money (not fixed yet)
+- Bookings save only `totalAmount`; `baseAmount` and `taxAmount` are stored as 0, so settlements
+  (which subtract `taxAmount`) overstate what the hotel is owed.
+- The booking preview price can differ from the price actually charged (seen: ₹20,060 previewed,
+  ₹22,066 booked for the same stay).
+- `paymentController` falls back to a hard-coded 30% for partial payments instead of the configured
+  percentage.
+- The local database has no tax rules, so no booking can be priced locally until an admin adds them
+  (System settings → tax rules).
 
 ## Gotchas seen on this Mac
 - `EADDRINUSE :5000` means the backend is already running in another tab (`lsof -i :5000`). macOS 12's

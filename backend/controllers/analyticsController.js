@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { toMoney } from '../utils/money.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
@@ -69,8 +70,8 @@ export const getKpis = asyncHandler(async (req, res) => {
       : 0;
 
     // 5. Compute MoM deltas
-    const revThisVal  = revThis._sum.totalAmount  || 0;
-    const revLastVal  = revLast._sum.totalAmount  || 0;
+    const revThisVal  = toMoney(revThis._sum.totalAmount)  || 0;
+    const revLastVal  = toMoney(revLast._sum.totalAmount)  || 0;
     const revDelta    = revLastVal > 0 ? ((revThisVal - revLastVal) / revLastVal * 100).toFixed(1) : null;
     
     const bkDelta     = bookingsLast > 0 ? ((bookingsThis - bookingsLast) / bookingsLast * 100).toFixed(1) : null;
@@ -79,7 +80,7 @@ export const getKpis = asyncHandler(async (req, res) => {
       success: true,
       data: {
         revenue: {
-          total:    revAll._sum.totalAmount || 0,
+          total:    toMoney(revAll._sum.totalAmount) || 0,
           thisMonth: revThisVal,
           delta:    revDelta,
           trend:    revDelta !== null ? (parseFloat(revDelta) >= 0 ? 'up' : 'down') : 'neutral',
@@ -203,7 +204,7 @@ export const getTopProperties = asyncHandler(async (req, res) => {
         id:      r.hotelId,
         name:    h?.name || 'Unknown',
         city:    h?.city || 'N/A',
-        revenue: r._sum.totalAmount,
+        revenue: toMoney(r._sum.totalAmount) || 0,
         bookings: r._count.id,
       };
     });

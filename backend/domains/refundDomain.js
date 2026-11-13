@@ -1,3 +1,4 @@
+import { roundMoney, toMoney } from '../utils/money.js';
 /**
  * Refund Domain (Pure Business Logic)
  * 
@@ -36,7 +37,7 @@ export const refundDomain = {
     const hoursLeft = diffMs / (1000 * 60 * 60);
 
     let refundAmount = 0;
-    const paidAmount = booking.paidAmount || 0;
+    const paidAmount = toMoney(booking.paidAmount) || 0;
 
     if (hoursLeft >= freeHours) {
       // Phase 1: Full Refund
@@ -54,7 +55,7 @@ export const refundDomain = {
     if (isNaN(refundAmount)) refundAmount = 0;
 
     return {
-      refundAmount: Math.round(refundAmount * 100) / 100,
+      refundAmount: roundMoney(refundAmount),
       policyApplied: hoursLeft >= freeHours ? 'FREE' : (hoursLeft >= noRefundHours ? 'PARTIAL' : 'NONE'),
       hoursLeft: Math.floor(hoursLeft)
     };

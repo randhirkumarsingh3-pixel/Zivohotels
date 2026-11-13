@@ -6,6 +6,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { z } from 'zod';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
+import { roundMoney } from '../utils/money.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
 const razorpay = new Razorpay({
@@ -87,7 +88,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     const config = await getSystemConfig();
     let amountToCharge = booking.totalAmount;
     if (booking.paymentType === 'PARTIAL') {
-      amountToCharge = booking.totalAmount * (config.partialPaymentPercent / 100); // Dynamic upfront
+      amountToCharge = roundMoney(booking.totalAmount * (config.partialPaymentPercent / 100)); // Dynamic upfront, to the paisa
     }
 
     const options = {
@@ -177,7 +178,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     
     const config = await getSystemConfig();
     const paymentStatus = booking.paymentType === 'PARTIAL' ? 'PARTIAL_PAID' : 'PAID';
-    const amountPaid = booking.paymentType === 'PARTIAL' ? booking.totalAmount * (config.partialPaymentPercent / 100) : booking.totalAmount;
+    // Same rounding as the order amount in createOrder, so paid + remaining = total exactly
+    const amountPaid = booking.paymentType === 'PARTIAL' ? roundMoney(booking.totalAmount * (config.partialPaymentPercent / 100)) : booking.totalAmount;
 
     await prisma.booking.update({
       where: { id: bookingId },
@@ -187,7 +189,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
         paidAmount: amountPaid,
-        remainingAmount: booking.totalAmount - amountPaid
+        remainingAmount: roundMoney(booking.totalAmount - amountPaid)
       }
     });
 
@@ -257,7 +259,7 @@ export const webhook = asyncHandler(async (req, res) => {
             status: 'CONFIRMED',
             razorpayPaymentId: payment.id,
             paidAmount: payment.amount / 100,
-            remainingAmount: booking.totalAmount - (payment.amount / 100)
+            remainingAmount: roundMoney(booking.totalAmount - (payment.amount / 100))
           }
         });
 
