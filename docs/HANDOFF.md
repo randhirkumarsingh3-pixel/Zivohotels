@@ -115,13 +115,24 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
      can cause infinite loops)
    - `backend/seed_automation_user.js` is broken (it uses `require` in an ES module); delete or fix it
 
-## Found while testing money (not fixed yet)
-- Bookings save only `totalAmount`; `baseAmount` and `taxAmount` are stored as 0, so settlements
-  (which subtract `taxAmount`) overstate what the hotel is owed.
-- The booking preview price can differ from the price actually charged (seen: ₹20,060 previewed,
-  ₹22,066 booked for the same stay).
+## Booking pricing (decided and fixed)
+- **Customers pay the price they were shown.** The owner chose this: booking uses the same pricing as
+  the checkout preview and the hotel page (rate plan price, no dynamic surcharges). Dynamic pricing
+  (`domains/dynamicPricingDomain.js`) is off at booking. If it's brought back, apply it to search,
+  hotel page and preview at the same time. Its low-inventory rule uses the hotel's total rooms, not
+  the rooms actually free, so fix that first.
+- Bookings now save `baseAmount`, `taxAmount` and the charge breakdown (discounts in `metadata`), so
+  invoices show the real GST. Settlements record that GST instead of a flat 12%.
+
+## Open money questions (need the owner)
+- Commission is a flat 15% of the GST-inclusive total (`bookingService`, step F). It ignores the
+  hotel's agreed `commissionRate`, and most OTAs charge commission on the pre-tax amount.
+- Settlements and ledger entries are created when the booking is made, before it's paid (and for
+  pay-at-hotel bookings too).
 - `paymentController` falls back to a hard-coded 30% for partial payments instead of the configured
   percentage.
+- The hotel page estimates tax with hard-coded slabs (5% up to ₹7,500, else 18%), not the admin's
+  tax rules.
 - The local database has no tax rules, so no booking can be priced locally until an admin adds them
   (System settings → tax rules).
 

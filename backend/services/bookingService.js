@@ -133,8 +133,11 @@ export const bookingService = {
     }
 
     // 2. Pricing Validation (Double Check)
+    // Customers pay exactly the price shown on the hotel page and in the checkout preview, so
+    // booking uses the same safe-mode (no dynamic surcharges) pricing as previewBooking. If dynamic
+    // pricing is brought back, it must be applied to search, detail and preview at the same time.
     const dynamicContext = {
-      safeMode: false,
+      safeMode: true,
       availableRooms: roomType.totalInventory,
       userSegment: 'STANDARD',
       device: 'WEB'
@@ -188,6 +191,13 @@ export const bookingService = {
         guests: adults + children,
         adults, children, rooms, extraBeds,
         totalAmount: pricing.finalAmount,
+        // Price breakdown, so invoices and settlements show the real tax (not 0)
+        baseAmount: pricing.baseAmount,
+        taxAmount: pricing.taxAmount,
+        roomPrice: pricing.roomPrice,
+        extraGuestCharges: pricing.extraGuestCharges,
+        extraBedCharges: pricing.extraBedCharges,
+        mealCharges: pricing.mealCharges,
         hotelId,
         roomTypeId,
         ratePlanId,
@@ -200,7 +210,10 @@ export const bookingService = {
         sessionId: sessionId || null,
         metadata: {
            pricingVersion: 'DDD-V1',
-           ratePlanName: ratePlan.name
+           ratePlanName: ratePlan.name,
+           discountAmount: pricing.discountAmount,
+           couponDiscountAmount: pricing.couponDiscountAmount,
+           taxPercentage: pricing.taxPercentage
         }
       };
 
@@ -288,14 +301,13 @@ export const bookingService = {
 
       // F. Financial Logic (Phase 8.5)
       const commissionPercent = 15; // Default 15% Zivo commission
-      const taxPercent = 12; // Default 12% GST
 
       const settlement = await settlementService.createSettlement({
         bookingId: booking.id,
         hotelId,
         grossAmount: pricing.finalAmount,
         commissionPercent,
-        taxPercent
+        taxAmount: pricing.taxAmount // GST actually charged on this booking
       }, tx);
 
       await ledgerService.record([
