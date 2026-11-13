@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import payoutQueueService from '../services/finance/payoutQueueService.js';
 import ledgerService from '../services/finance/ledgerService.js';
 import autoThrottleService from '../services/finance/autoThrottleService.js';
+import settlementService from '../services/finance/settlementService.js';
 
 /**
  * Finance Worker
@@ -18,6 +19,12 @@ export const startFinanceWorker = () => {
   cron.schedule('*/5 * * * *', async () => {
     console.log('[FinanceWorker] Processing Payout Queue...');
     await payoutQueueService.processBatch();
+  });
+
+  // 1.2. Mark settlements whose payout-cycle date has arrived as READY (hourly)
+  cron.schedule('5 * * * *', async () => {
+    const { count } = await settlementService.releaseDue();
+    if (count) console.log(`[FinanceWorker] ${count} settlement(s) now ready for payout`);
   });
 
   // 1.5. Monitor Anomalies every 15 minutes

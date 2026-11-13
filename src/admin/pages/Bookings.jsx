@@ -17,6 +17,7 @@ const getAuthHeaders = () => {
 const STATUS_STYLES = {
   CONFIRMED:  'bg-blue-50   text-blue-700   border-blue-200',
   PENDING:    'bg-yellow-50 text-yellow-700  border-yellow-200',
+  CHECKED_IN: 'bg-violet-50 text-violet-700  border-violet-200',
   COMPLETED:  'bg-green-50  text-green-700   border-green-200',
   CANCELLED:  'bg-red-50    text-red-700     border-red-200',
   NO_SHOW:    'bg-gray-100  text-gray-600    border-gray-300',
@@ -412,7 +413,7 @@ const Bookings = () => {
           <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-brand-500 bg-white">
             <option value="">All Statuses</option>
-            {['PENDING','CONFIRMED','COMPLETED','CANCELLED','NO_SHOW'].map(s =>
+            {['PENDING','CONFIRMED','CHECKED_IN','COMPLETED','CANCELLED','NO_SHOW'].map(s =>
               <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
           </select>
 

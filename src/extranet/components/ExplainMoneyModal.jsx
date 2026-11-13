@@ -58,12 +58,20 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
                       <span className="text-sm font-black text-red-500">- ₹ {d.amount.toLocaleString()}</span>
                    </div>
                  ))}
+                 {(data.info || []).map((d, i) => (
+                   <div key={`info-${i}`} className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-slate-400">{d.label}</span>
+                      <span className="text-xs font-bold text-slate-400">₹ {d.amount.toLocaleString()}</span>
+                   </div>
+                 ))}
               </div>
 
               {/* Net Payable */}
               <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Payout Amount</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {data.netPayable < 0 ? 'Commission you owe (deducted from your next payout)' : 'Net Payout Amount'}
+                    </p>
                     <ShieldCheck className="text-blue-400" size={18} />
                  </div>
                  <div className="flex items-baseline gap-2">
@@ -78,7 +86,7 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
                  <div>
                     <p className="text-xs font-black text-blue-900">Payout Eligibility</p>
                     <p className="text-[10px] text-blue-700 font-medium">
-                       Eligible for release on <strong>{new Date(data.payoutEligibility).toLocaleDateString()}</strong> after the {data.status === 'PENDING' ? 'T+2' : 'standard'} hold period.
+                       Paid out on <strong>{new Date(data.payoutEligibility).toLocaleDateString()}</strong>, your next payout-cycle date after check-out.
                     </p>
                  </div>
               </div>

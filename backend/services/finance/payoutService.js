@@ -8,9 +8,15 @@ export const payoutService = {
    */
   processPayout: async (hotelId) => {
     return await prisma.$transaction(async (tx) => {
-      // 1. Fetch all READY settlements
+      // 1. Settlements whose payout-cycle date has arrived (READY, or PENDING and now due)
       const settlements = await tx.settlement.findMany({
-        where: { hotelId, status: 'READY' }
+        where: {
+          hotelId,
+          OR: [
+            { status: 'READY' },
+            { status: 'PENDING', holdUntil: { lte: new Date() } }
+          ]
+        }
       });
 
       if (settlements.length === 0) {
@@ -23,7 +29,8 @@ export const payoutService = {
         new Prisma.Decimal(0)
       );
 
-      // Negative Balance Protection: Prevent payouts if the hotel owes us money (due to refunds)
+      // Negative Balance Protection: no payout while the hotel owes us money overall (commission on
+      // pay-at-hotel stays, refunds); those settlements stay open and net against later stays
       if (totalAmount.isNegative() || totalAmount.isZero()) {
         throw new Error(`Insufficient balance for payout: ${totalAmount.toString()}`);
       }

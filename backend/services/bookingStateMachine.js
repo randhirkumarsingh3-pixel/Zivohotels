@@ -1,18 +1,24 @@
 import prisma from '../config/db.js';
 import { logActivity } from './activityService.js';
 import { createNotification } from './notificationService.js';
+import settlementService from './finance/settlementService.js';
+import inventoryRepository from '../repositories/inventoryRepository.js';
 
 /**
  * Valid state transitions for OTA bookings.
  */
+// COMPLETED is the checked-out state (the extranet's "Check out" sends CHECKED_OUT, an alias).
+// A stay can be completed straight from CONFIRMED when nobody recorded the check-in.
 const VALID_TRANSITIONS = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['CHECKED_IN', 'NO_SHOW', 'CANCELLED'],
-  CHECKED_IN: ['CHECKED_OUT'],
-  CHECKED_OUT: [], // Terminal state
+  CONFIRMED: ['CHECKED_IN', 'COMPLETED', 'NO_SHOW', 'CANCELLED'],
+  CHECKED_IN: ['COMPLETED'],
+  COMPLETED: [], // Terminal state
   NO_SHOW: [], // Terminal state
   CANCELLED: [] // Terminal state
 };
+
+const STATUS_ALIASES = { CHECKED_OUT: 'COMPLETED' };
 
 /**
  * Custom error for invalid transitions.
@@ -27,7 +33,9 @@ export class TransitionError extends Error {
 /**
  * Transition a booking to a new state with strict validation and side effects.
  */
-export const transitionBookingStatus = async (bookingId, newStatus, userId) => {
+export const transitionBookingStatus = async (bookingId, requestedStatus, userId) => {
+  const newStatus = STATUS_ALIASES[requestedStatus] || requestedStatus;
+
   // 1. Fetch booking
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -43,33 +51,7 @@ export const transitionBookingStatus = async (bookingId, newStatus, userId) => {
     throw new TransitionError(`Invalid transition from ${currentStatus} to ${newStatus}`);
   }
 
-  // 3. Perform Side Effects based on newStatus
-  const transactionOps = [];
-
-  // If cancelling, we need to release inventory
-  if (newStatus === 'CANCELLED') {
-    // Release inventory logic: find inventory records for dates and decrement bookedRooms
-    const checkInDate = new Date(booking.checkIn);
-    const checkOutDate = new Date(booking.checkOut);
-    
-    // We update inventory inside a transaction
-    transactionOps.push(
-      prisma.$executeRaw`
-        UPDATE "Inventory" 
-        SET "bookedRooms" = GREATEST("bookedRooms" - ${booking.rooms}, 0) 
-        WHERE "roomTypeId" = ${booking.roomTypeId} 
-        AND "date" >= ${checkInDate} 
-        AND "date" < ${checkOutDate}
-      `
-    );
-  }
-
-  // Update booking status
-  const updateOp = prisma.booking.update({
-    where: { id: bookingId },
-    data: { status: newStatus }
-  });
-  transactionOps.push(updateOp);
+  // 3. Side effects, status change and timeline run in one transaction (below)
 
   // Append timeline event based on status change
   let eventTitle = 'Booking Status Updated';
@@ -84,7 +66,7 @@ export const transitionBookingStatus = async (bookingId, newStatus, userId) => {
   } else if (newStatus === 'CHECKED_IN') {
     eventTitle = 'Checked In';
     eventMessage = `Welcome! Your check-in at ${booking.hotel?.name || 'the hotel'} is complete.`;
-  } else if (newStatus === 'CHECKED_OUT') {
+  } else if (newStatus === 'COMPLETED') {
     eventTitle = 'Checked Out';
     eventMessage = 'You have checked out. Safe travels!';
   } else if (newStatus === 'NO_SHOW') {
@@ -92,20 +74,29 @@ export const transitionBookingStatus = async (bookingId, newStatus, userId) => {
     eventMessage = 'The booking was marked as No Show.';
   }
 
-  transactionOps.push(
-    prisma.bookingTimelineEvent.create({
-      data: {
-        bookingId,
-        status: newStatus,
-        title: eventTitle,
-        message: eventMessage
-      }
-    })
-  );
+  const updatedBooking = await prisma.$transaction(async (tx) => {
+    // If cancelling, give the rooms back (booked -1 and available +1 for each night), the same
+    // way customer cancellations do
+    if (newStatus === 'CANCELLED') {
+      await inventoryRepository.restoreInventory(tx, booking);
+    }
 
-  // Execute transaction safely and extract the updated booking object
-  const transactionResults = await prisma.$transaction(transactionOps);
-  const updatedBooking = transactionResults[transactionOps.indexOf(updateOp)];
+    const updated = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: newStatus }
+    });
+
+    await tx.bookingTimelineEvent.create({
+      data: { bookingId, status: newStatus, title: eventTitle, message: eventMessage }
+    });
+
+    // Check-out: the hotel's settlement (agreed commission, next payout-cycle date) is created now
+    if (newStatus === 'COMPLETED') {
+      await settlementService.createForCheckout(tx, updated);
+    }
+
+    return updated;
+  });
 
 
   // 4. Log Activity & Notifications

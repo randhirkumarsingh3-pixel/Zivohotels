@@ -4,8 +4,6 @@ import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import { bookingRepository } from '../repositories/bookingRepository.js';
 import { couponService } from './couponService.js';
 import channelManagerService from './channel/channelManagerService.js';
-import ledgerService from './finance/ledgerService.js';
-import settlementService from './finance/settlementService.js';
 import loyaltyService from './finance/loyaltyService.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
@@ -299,40 +297,9 @@ export const bookingService = {
         }
       }
 
-      // F. Financial Logic (Phase 8.5)
-      const commissionPercent = 15; // Default 15% Zivo commission
-
-      const settlement = await settlementService.createSettlement({
-        bookingId: booking.id,
-        hotelId,
-        grossAmount: pricing.finalAmount,
-        commissionPercent,
-        taxAmount: pricing.taxAmount // GST actually charged on this booking
-      }, tx);
-
-      await ledgerService.record([
-        { 
-          referenceId: booking.id, 
-          account: 'USER', 
-          type: 'DEBIT', 
-          amount: pricing.finalAmount, 
-          description: `Booking ${booking.id} payment` 
-        },
-        { 
-          referenceId: booking.id, 
-          account: 'HOTEL', 
-          type: 'CREDIT', 
-          amount: settlement.netPayable, 
-          description: `Net payable for booking ${booking.id}` 
-        },
-        { 
-          referenceId: booking.id, 
-          account: 'ZIVO', 
-          type: 'CREDIT', 
-          amount: settlement.commissionAmount, 
-          description: `Commission for booking ${booking.id}` 
-        }
-      ], tx);
+      // F. Hotel settlement and ledger entries are created at check-out
+      // (settlementService.createForCheckout), not here: an unpaid or cancelled booking must not
+      // become money owed to the hotel.
 
       // G. Update PricingState for rate-change cap memory
       const lastNight = pricing.dynamicPricing?.nightlyBreakdowns?.at(-1);

@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { mediaService } from '../services/MediaService.js';
 import { queueService } from '../services/queueService.js';
+import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -717,7 +718,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
 
   const [viewsToday, bookingsToday] = await Promise.all([
     prisma.hotelView.count({ where: { hotelId: id, createdAt: { gte: today } } }),
-    prisma.booking.count({ where: { hotelId: id, status: { in: ['CONFIRMED', 'COMPLETED'] }, createdAt: { gte: today } } })
+    prisma.booking.count({ where: { hotelId: id, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: today } } })
   ]);
 
   const signedHotel = await mediaService.signHotelUrls(hotel);

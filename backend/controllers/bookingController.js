@@ -46,7 +46,7 @@ const createBookingSchema = z.object({
 
 const getBookingsSchema = z.object({
   hotelId: z.string().uuid().optional(),
-  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
+  status: z.enum(['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']).optional(),
   paymentStatus: z.enum(['PENDING', 'PAID', 'PARTIAL', 'REFUNDED', 'FAILED']).optional(),
   search: z.string().optional(),
@@ -57,7 +57,7 @@ const getBookingsSchema = z.object({
 });
 
 const statusUpdateSchema = z.object({
-  status: z.enum(['CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'])
+  status: z.enum(['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'COMPLETED', 'NO_SHOW'])
 });
 
 import bookingService from '../services/bookingService.js';
@@ -278,6 +278,10 @@ export const cancelBooking = async (req, res, next) => {
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found', requestId });
     if (booking.status === 'CANCELLED') {
       return res.status(400).json({ success: false, message: 'Booking is already cancelled', requestId });
+    }
+    // A stay that has started or ended can't be cancelled (the hotel may already be settled)
+    if (['CHECKED_IN', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: `A booking that is ${booking.status.replace('_', ' ').toLowerCase()} can't be cancelled`, requestId });
     }
 
     // Authorization Check
@@ -568,7 +572,7 @@ export const syncInventoryDrift = async (req, res, next) => {
       const bookedCount = await prisma.booking.aggregate({
         where: {
           roomTypeId,
-          status: { in: ['CONFIRMED', 'PENDING'] },
+          status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] }, // rooms still held
           checkIn: { lte: inv.date },
           checkOut: { gt: inv.date }
         },
