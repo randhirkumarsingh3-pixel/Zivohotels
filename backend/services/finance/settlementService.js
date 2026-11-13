@@ -6,11 +6,14 @@ export const settlementService = {
    * Creates a pending settlement for a booking
    */
   createSettlement: async (data, tx = prisma) => {
-    const { bookingId, hotelId, grossAmount, commissionPercent, taxPercent } = data;
+    const { bookingId, hotelId, grossAmount, commissionPercent, taxAmount, taxPercent } = data;
 
     const gross = new Prisma.Decimal(grossAmount);
-    const commission = gross.times(commissionPercent).dividedBy(100);
-    const tax = gross.times(taxPercent).dividedBy(100);
+    const commission = gross.times(commissionPercent).dividedBy(100).toDecimalPlaces(2);
+    // Prefer the GST actually charged on the booking; taxPercent is the old flat-rate fallback
+    const tax = taxAmount !== undefined && taxAmount !== null
+      ? new Prisma.Decimal(taxAmount)
+      : gross.times(taxPercent || 0).dividedBy(100).toDecimalPlaces(2);
     const netPayable = gross.minus(commission);
 
     return await tx.settlement.create({
