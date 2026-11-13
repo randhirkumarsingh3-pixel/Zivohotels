@@ -411,6 +411,7 @@ model Refund {
 model CancellationPolicy {
   id                    String   @id @default(uuid())
   hotelId               String   @unique
+  policyCode            String   @default("FREE_CANCEL_24H") // as chosen at onboarding
   freeCancellationHours Int      @default(24)
   partialRefundPercent  Float    @default(50)
   noRefundHours         Int      @default(6)
@@ -708,22 +709,26 @@ model Transaction {
 }
 
 model Settlement {
-  id               String    @id @default(uuid())
-  bookingId        String    @unique
-  hotelId          String
-  grossAmount      Decimal   @db.Decimal(12, 2)
-  commissionAmount Decimal   @db.Decimal(12, 2)
-  taxAmount        Decimal   @db.Decimal(12, 2)
-  netPayable       Decimal   @db.Decimal(12, 2)
-  status           String
-  version          Int       @default(1)
-  holdUntil        DateTime? // Payout eligibility date
-  payoutDate       DateTime?
-  createdAt        DateTime  @default(now())
-  cgstAmount       Decimal   @default(0) @db.Decimal(12, 2)
-  igstAmount       Decimal   @default(0) @db.Decimal(12, 2)
-  placeOfSupply    String?
-  sgstAmount       Decimal   @default(0) @db.Decimal(12, 2)
+  id                  String    @id @default(uuid())
+  bookingId           String    @unique
+  hotelId             String
+  grossAmount         Decimal   @db.Decimal(12, 2)
+  commissionAmount    Decimal   @db.Decimal(12, 2)
+  taxAmount           Decimal   @db.Decimal(12, 2)
+  netPayable          Decimal   @db.Decimal(12, 2)
+  kind                String    @default("STAY") // STAY | CANCELLATION | NO_SHOW
+  commissionGstAmount Decimal   @default(0) @db.Decimal(12, 2) // GST on commission (cgst + sgst + igst)
+  tcsAmount           Decimal   @default(0) @db.Decimal(12, 2) // TCS (GST s.52)
+  tdsAmount           Decimal   @default(0) @db.Decimal(12, 2) // TDS (income tax s.194-O)
+  status              String
+  version             Int       @default(1)
+  holdUntil           DateTime? // Payout eligibility date
+  payoutDate          DateTime?
+  createdAt           DateTime  @default(now())
+  cgstAmount          Decimal   @default(0) @db.Decimal(12, 2)
+  igstAmount          Decimal   @default(0) @db.Decimal(12, 2)
+  placeOfSupply       String?
+  sgstAmount          Decimal   @default(0) @db.Decimal(12, 2)
 
   @@index([hotelId])
   @@index([status])

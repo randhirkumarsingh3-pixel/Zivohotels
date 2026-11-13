@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import { mediaService } from '../services/MediaService.js';
 import { queueService } from '../services/queueService.js';
 import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
+import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -58,6 +59,7 @@ const hotelSchema = z.object({
     upiId: z.string().optional(),
   }).optional(),
   commissionRate: z.number().optional(),
+  cancellationPolicy: z.enum(CANCELLATION_POLICY_CODES).optional(),
   channelProvider: z.string().optional(),
   legalName: z.string().optional(),
   pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional(),
@@ -135,6 +137,17 @@ const calculatePropertyCompleteness = (hotel, normalizedData) => {
   return { score, breakdown };
 };
 
+/** Stores the cancellation policy the property chose at onboarding (used for guest refunds). */
+const saveCancellationPolicy = async (hotelId, code) => {
+  if (!code) return;
+  const fields = policyFieldsForCode(code);
+  await prisma.cancellationPolicy.upsert({
+    where: { hotelId },
+    create: { hotelId, ...fields },
+    update: fields
+  });
+};
+
 /**
  * Normalizes hotel payload to ensure consistent data structure
  */
@@ -145,7 +158,7 @@ export const normalizeHotelPayload = (data) => {
     media, _images,
     receptionPhone, receptionEmail, managerName, managerPhone, managerEmail, guestLandline,
     ownerName, ownerEmail, ownerPhone,
-    bankDetail, commissionRate, status, channelProvider,
+    bankDetail, commissionRate, cancellationPolicy, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
     incorporationType, payoutCycle, msme, builtYear, bookingSince,
     state, country, area, pincode, landmark
@@ -213,6 +226,7 @@ export const normalizeHotelPayload = (data) => {
     prismaData,
     _bankDetail: bankDetail,
     _commissionRate: commissionRate,
+    _cancellationPolicy: cancellationPolicy,
     _media: media,
     _contactInfo,
     _addressDetails,
@@ -334,8 +348,10 @@ export const createHotel = asyncHandler(async (req, res) => {
     }, { priority: 1 });
   }
 
-  // Handle manual creation of agreement and bank detail to avoid client-sync issues
-  if (_commissionRate) {
+  // Handle manual creation of agreement and bank detail to avoid client-sync issues.
+  // Only an admin sets commission; an owner's property gets its agreement at approval.
+  const isAdminCreator = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+  if (_commissionRate && isAdminCreator) {
     await prisma.agreement.create({
       data: {
         hotelId: hotel.id,
@@ -354,6 +370,8 @@ export const createHotel = asyncHandler(async (req, res) => {
       }
     });
   }
+
+  await saveCancellationPolicy(hotel.id, normalized._cancellationPolicy);
 
   await prisma.auditLog.create({
     data: {
@@ -412,21 +430,27 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails, _commercials } = normalized;
+  const { prismaData, _media, _contactInfo, _addressDetails, _commercials } = normalized;
 
   const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
 
   // Role-Based Access Control (RBAC)
   if (!isAdmin) {
-    // Protected fields dropped for non-admins
     delete prismaData.status;
     delete prismaData.channelProvider;
-    delete prismaData.legalName;
-    delete prismaData.pan;
-    delete prismaData.gstin;
-    normalized._bankDetail = undefined;
+    // Commission is agreed with ZivoHotels: only an admin can set it
     normalized._commissionRate = undefined;
+    // Owners fill in legal and bank details while onboarding; once submitted they're locked
+    // (changing the payout account later goes through support)
+    if (!['DRAFT', 'INFORMATION_REQUESTED'].includes(existingHotel.status)) {
+      delete prismaData.legalName;
+      delete prismaData.pan;
+      delete prismaData.gstin;
+      normalized._bankDetail = undefined;
+    }
   }
+  // Read after the RBAC step so the restrictions above actually apply
+  const { _bankDetail, _commissionRate } = normalized;
 
   if (prismaData.status === 'ACTIVE' && existingHotel.status !== 'ACTIVE') {
     const agreement = await prisma.agreement.findUnique({ where: { hotelId: id } });
@@ -531,6 +555,8 @@ export const updateHotel = asyncHandler(async (req, res) => {
       update: _bankDetail
     });
   }
+
+  await saveCancellationPolicy(id, normalized._cancellationPolicy);
 
   res.status(200).json({ success: true, data: hotel, requestId: req.id });
 });
@@ -707,9 +733,10 @@ export const getHotelById = asyncHandler(async (req, res) => {
   }
 
   // Fetch agreement and bankDetail manually to avoid Prisma client out-of-sync issues
-  const [agreement, bankDetail] = await Promise.all([
+  const [agreement, bankDetail, cancellationPolicy] = await Promise.all([
     prisma.agreement.findUnique({ where: { hotelId: id } }),
-    prisma.bankDetail.findUnique({ where: { hotelId: id } })
+    prisma.bankDetail.findUnique({ where: { hotelId: id } }),
+    prisma.cancellationPolicy.findUnique({ where: { hotelId: id } })
   ]);
 
   // Fetch urgency metrics
@@ -726,6 +753,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
     ...formatHotelResponse(signedHotel),
     agreement,
     bankDetail,
+    cancellationPolicy: cancellationPolicy?.policyCode || null,
     viewsToday,
     bookingsToday
   };

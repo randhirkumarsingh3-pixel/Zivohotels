@@ -67,27 +67,38 @@ export const getSettlementDetails = async (req, res) => {
       select: { bookingRef: true, paymentType: true, paidAmount: true, refundAmount: true }
     });
 
-    const gross = Number(settlement.grossAmount);
-    const tax = Number(settlement.taxAmount);
-    const commission = Number(settlement.commissionAmount);
-    const netPayable = Number(settlement.netPayable);
-    // What ZivoHotels collected online; the rest of the booking value was paid at the hotel
-    const collectedOnline = netPayable + commission;
+    const n = (v) => Number(v || 0);
+    const gross = n(settlement.grossAmount);
+    const tax = n(settlement.taxAmount);
+    const commission = n(settlement.commissionAmount);
+    const commissionGst = n(settlement.commissionGstAmount);
+    const tcs = n(settlement.tcsAmount);
+    const tds = n(settlement.tdsAmount);
+    const netPayable = n(settlement.netPayable);
+    // What ZivoHotels collected online; the rest of the value was paid at the hotel
+    const collectedOnline = netPayable + commission + commissionGst + tcs + tds;
+    const collectedAtHotel = Math.max(0, gross - collectedOnline);
+    const gstSplit = n(settlement.igstAmount) > 0 ? 'IGST' : 'CGST + SGST';
+    const kindLabel = { STAY: 'Stay', CANCELLATION: 'Cancellation fee kept', NO_SHOW: 'No-show charge kept' }[settlement.kind] || 'Stay';
 
-    // "Explain Money" Breakdown
+    // "Explain Money" Breakdown: grossBooking - deductions = netPayable
     const breakdown = {
       bookingRef: booking?.bookingRef,
       paymentType: booking?.paymentType,
+      kind: settlement.kind,
+      kindLabel,
       grossBooking: gross,
       preTaxAmount: gross - tax,
       collectedOnline,
-      collectedAtHotel: Math.max(0, gross - collectedOnline),
-      // grossBooking - deductions = netPayable
+      collectedAtHotel,
       deductions: [
-        ...(gross - collectedOnline > 0
-          ? [{ label: 'Paid by the guest at the hotel (already with you)', amount: gross - collectedOnline, type: 'COLLECTED_AT_HOTEL' }]
+        ...(collectedAtHotel > 0
+          ? [{ label: 'Paid by the guest at the hotel (already with you)', amount: collectedAtHotel, type: 'COLLECTED_AT_HOTEL' }]
           : []),
-        { label: 'Zivo Commission (on amount before GST)', amount: commission, type: 'COMMISSION' }
+        { label: 'Zivo commission (on amount before GST)', amount: commission, type: 'COMMISSION' },
+        { label: `GST 18% on commission (${gstSplit})`, amount: commissionGst, type: 'COMMISSION_GST' },
+        ...(tcs > 0 ? [{ label: 'TCS 0.5% (GST section 52)', amount: tcs, type: 'TCS' }] : []),
+        { label: 'TDS 0.1% (Income Tax section 194-O)', amount: tds, type: 'TDS' }
       ],
       info: [
         { label: 'GST included in booking (remitted by the hotel)', amount: tax, type: 'TAX' }

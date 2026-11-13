@@ -1,5 +1,6 @@
 import prisma from '../../config/db.js';
 import { transitionBookingStatus, TransitionError } from '../../services/bookingStateMachine.js';
+import { CancellationError } from '../../services/cancellationService.js';
 import { eventBus, EVENTS } from '../../services/eventBus.js';
 
 export const getBookings = async (req, res) => {
@@ -57,6 +58,9 @@ export const updateBookingStatus = async (req, res) => {
   } catch (error) {
     if (error instanceof TransitionError) {
       return res.status(400).json({ success: false, message: error.message });
+    }
+    if (error instanceof CancellationError) {
+      return res.status(error.status).json({ success: false, message: error.message });
     }
     console.error('Error updating extranet booking:', error);
     res.status(500).json({ success: false, message: 'Server error updating booking status' });

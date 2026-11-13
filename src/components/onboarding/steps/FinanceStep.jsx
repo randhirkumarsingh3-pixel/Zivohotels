@@ -35,7 +35,12 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
   const isAdmin = isAdminProp !== undefined
     ? isAdminProp
     : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN');
-  const isProtected = !isAdmin;
+  // Owners enter legal and bank details while onboarding; once the property is submitted they're
+  // locked (changes go through support). The backend enforces the same rule.
+  const isDraft = !formData.status || ['DRAFT', 'INFORMATION_REQUESTED'].includes(formData.status);
+  const isProtected = !isAdmin && !isDraft;
+  // Commission is agreed with ZivoHotels and only an admin can change it
+  const commissionLocked = !isAdmin;
   const [activeStep, setActiveStep] = useState(1);
   const [reAccountNumber, setReAccountNumber] = useState(formData.accountNumber || '');
   const [ifscVerifying, setIfscVerifying] = useState(false);
@@ -729,7 +734,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                       Platform Commission (%) <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <input disabled={isProtected}
+                      <input disabled={commissionLocked}
                         type="number"
                         min="0"
                         max="100"
