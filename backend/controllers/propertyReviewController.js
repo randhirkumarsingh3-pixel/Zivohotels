@@ -25,9 +25,25 @@ export const getReviewQueue = asyncHandler(async (req, res) => {
     include: {
       owner: { select: { id: true, name: true, email: true, phone: true } },
       media: true,
-      roomTypes: true
+      roomTypes: { include: { ratePlans: { where: { isActive: true }, select: { basePrice: true, name: true } } } },
+      cancellationPolicy: { select: { policyCode: true } }
     },
     orderBy: { updatedAt: 'desc' }
+  });
+
+  // What the reviewer checks before approving: the payout account (against the cancelled cheque)
+  // and the commission in the agreement
+  const ids = properties.map(p => p.id);
+  const [banks, agreements] = await Promise.all([
+    prisma.bankDetail.findMany({ where: { hotelId: { in: ids } } }),
+    prisma.agreement.findMany({ where: { hotelId: { in: ids } }, select: { hotelId: true, commissionRate: true, status: true } })
+  ]);
+  const byHotel = (rows) => Object.fromEntries(rows.map(r => [r.hotelId, r]));
+  const bankMap = byHotel(banks);
+  const agreementMap = byHotel(agreements);
+  properties.forEach(p => {
+    p.bankDetail = bankMap[p.id] || null;
+    p.agreement = agreementMap[p.id] || null;
   });
   
   const signedProperties = await mediaService.signHotelsUrls(properties);

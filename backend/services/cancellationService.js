@@ -28,6 +28,33 @@ const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractio
 /** Who is cancelling, from the user's role. */
 export const initiatorForRole = (role) => (role === 'CUSTOMER' ? 'GUEST' : role === 'ADMIN' ? 'ADMIN' : 'HOTEL');
 
+const POLICY_LABELS = {
+  FREE_CANCEL_CHECKIN: 'Free cancellation until check-in',
+  FREE_CANCEL_24H: 'Free cancellation until 24 hours before check-in',
+  FREE_CANCEL_48H: 'Free cancellation until 48 hours before check-in',
+  FREE_CANCEL_72H: 'Free cancellation until 72 hours before check-in',
+  NON_REFUNDABLE: 'Non-refundable',
+};
+
+/**
+ * What a guest would get back if they cancelled now (same rules as cancelBookingWithRefund).
+ * Shown before they confirm; the old dialog always promised a full refund.
+ */
+export const previewGuestCancellation = async (booking) => {
+  const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
+  const paidAmount = toMoney(booking.paidAmount) || 0;
+  const { refundAmount, policyApplied } = calculateRefund(booking, policy);
+  return {
+    paidAmount,
+    refundAmount,
+    retainedAmount: roundMoney(paidAmount - refundAmount),
+    payAtHotel: booking.paymentType === 'PAY_AT_HOTEL',
+    policyCode: policy.policyCode,
+    policyLabel: POLICY_LABELS[policy.policyCode] || 'Standard cancellation policy',
+    policyApplied
+  };
+};
+
 /**
  * Cancels a booking and refunds the guest.
  *
@@ -156,6 +183,13 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
       (retainedAmount > 0 ? ` ${inr(retainedAmount)} was kept and will be settled in your payout cycle.` : '')
     : `Booking ${booking.bookingRef} was cancelled by ${byLabel}.` +
       (refundAmount > 0 ? ` A full refund of ${inr(refundAmount)} will be initiated to the guest.` : ' Nothing was paid online, so there is no refund.');
+
+  // An unpaid booking abandoned at checkout (payment cancelled / failed) was never confirmed, so
+  // the hotel doesn't need to hear about it
+  const abandonedAtCheckout = booking.status === 'PENDING' && paidAmount === 0;
+  if (abandonedAtCheckout) {
+    return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId };
+  }
 
   await createNotification({
     hotelId: booking.hotelId,

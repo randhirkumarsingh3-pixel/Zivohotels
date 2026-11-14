@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getHotelById, trackEvent } from '../services/api';
 import { getImageUrl } from '../utils/image';
 import { useBooking } from '../context/BookingContext';
 import {
-  MapPin, Star, Wifi, Coffee, Car, Dumbbell, Waves, CheckCircle2,
+  MapPin, Star, CheckCircle2,
   CalendarDays, Users, BedDouble, ShieldCheck, ChevronDown, ChevronUp, Flame, CreditCard
 } from 'lucide-react';
 import { useExperiment, useAllExperiments } from '../context/ExperimentContext';
@@ -29,8 +29,22 @@ const fmt = (v) => `₹${Number(v).toLocaleString('en-IN')}`;
 const MEAL_LABELS = {
   NONE: { label: 'Room Only (EP)', icon: '🏨', color: 'bg-gray-50 border-gray-200 text-gray-700' },
   BREAKFAST: { label: 'Breakfast Included (CP)', icon: '☕', color: 'bg-amber-50 border-amber-200 text-amber-800' },
+  // Plans are stored with these codes (MealPlan enum); without them every plan showed as "Room Only"
+  EP: { label: 'Room Only (EP)', icon: '🏨', color: 'bg-gray-50 border-gray-200 text-gray-700' },
+  CP: { label: 'Breakfast Included (CP)', icon: '☕', color: 'bg-amber-50 border-amber-200 text-amber-800' },
+  MAP: { label: 'Half Board (MAP)', icon: '🍽️', color: 'bg-orange-50 border-orange-200 text-orange-800' },
+  AP: { label: 'Full Board (AP)', icon: '🍴', color: 'bg-green-50 border-green-200 text-green-800' },
   HALF_BOARD: { label: 'Half Board (MAP)', icon: '🍽️', color: 'bg-orange-50 border-orange-200 text-orange-800' },
   FULL_BOARD: { label: 'Full Board (AP)', icon: '🍴', color: 'bg-green-50 border-green-200 text-green-800' },
+};
+
+// The property's cancellation policy (CancellationPolicy.policyCode)
+const CANCELLATION_TEXT = {
+  FREE_CANCEL_CHECKIN: 'Free cancellation until check-in',
+  FREE_CANCEL_24H: 'Free cancellation until 24 hours before check-in, then non-refundable',
+  FREE_CANCEL_48H: 'Free cancellation until 48 hours before check-in, then non-refundable',
+  FREE_CANCEL_72H: 'Free cancellation until 72 hours before check-in, then non-refundable',
+  NON_REFUNDABLE: 'Non-refundable',
 };
 
 // ─── Rate Plan Card ───────────────────────────────────────────────────────────
@@ -133,8 +147,24 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
 const Detail = () => {
   const { id }       = useParams();
   const navigate     = useNavigate();
-  const { searchParams, setSelectedHotel } = useBooking();
+  const location     = useLocation();
+  const { searchParams, setSelectedHotel, updateSearchParams } = useBooking();
   const { checkIn, checkOut, guests, rooms } = searchParams;
+
+  // Dates in the link (from search results, a reload or a shared link) take effect here
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const linked = {
+      checkIn: q.get('checkin') || '',
+      checkOut: q.get('checkout') || '',
+      guests: parseInt(q.get('guests')) || undefined,
+      rooms: parseInt(q.get('rooms')) || undefined,
+    };
+    if (linked.checkIn && linked.checkOut && (linked.checkIn !== checkIn || linked.checkOut !== checkOut)) {
+      updateSearchParams(Object.fromEntries(Object.entries(linked).filter(([, v]) => v !== undefined)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const [hotel,   setHotel]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -183,6 +213,11 @@ const Detail = () => {
     setError(null);
     if (!selectedRoomType || !selectedRatePlan) {
       setError('Please select a room type and rate plan to continue.');
+      return;
+    }
+    // Without dates the checkout showed "Invalid Date" and a ₹0 total
+    if (!checkIn || !checkOut) {
+      setError('Please choose your check-in and check-out dates first.');
       return;
     }
     // Pass full booking context including ratePlanId
@@ -291,11 +326,11 @@ const Detail = () => {
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Popular Amenities</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
-                  <div className="flex items-center text-gray-600"><Wifi className="h-5 w-5 mr-3 text-brand-500" /> Free WiFi</div>
-                  <div className="flex items-center text-gray-600"><Coffee className="h-5 w-5 mr-3 text-brand-500" /> Breakfast</div>
-                  <div className="flex items-center text-gray-600"><Waves className="h-5 w-5 mr-3 text-brand-500" /> Swimming Pool</div>
-                  <div className="flex items-center text-gray-600"><Dumbbell className="h-5 w-5 mr-3 text-brand-500" /> Fitness Center</div>
-                  <div className="flex items-center text-gray-600"><Car className="h-5 w-5 mr-3 text-brand-500" /> Free Parking</div>
+                  {/* Only what the property actually listed (a fixed list here claimed a pool,
+                      gym and breakfast for every hotel) */}
+                  {(hotel.amenities || []).length === 0 && (
+                    <p className="text-sm text-gray-400 col-span-full">The property hasn&apos;t listed its amenities yet.</p>
+                  )}
                   {(hotel.amenities || []).map((a, i) => (
                     <div key={i} className="flex items-center text-gray-600">
                       <CheckCircle2 className="h-5 w-5 mr-3 text-brand-500" /> {a}
@@ -417,6 +452,11 @@ const Detail = () => {
                   : 'Book Now'}
               </button>
               <p className="text-center text-sm text-gray-500 mt-4">You won&apos;t be charged yet</p>
+              {/* Guests should see the cancellation terms before booking */}
+              <p className="text-center text-xs text-gray-500 mt-2 flex items-center justify-center gap-1">
+                <ShieldCheck size={12} className="text-green-600" />
+                {CANCELLATION_TEXT[hotel.cancellationPolicy] || CANCELLATION_TEXT.FREE_CANCEL_24H}
+              </p>
             </div>
           </div>
         </div>

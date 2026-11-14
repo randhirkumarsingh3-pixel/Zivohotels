@@ -175,12 +175,18 @@ const PoliciesStep = ({ formData, updateForm }) => {
             { id: 'NON_REFUNDABLE',      label: 'Non-Refundable' },
           ].map(opt => (
             <div key={opt.id}>
-              <label className="flex items-center gap-3 cursor-pointer group select-none">
+              <label
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                // The whole row selects the option (before, only the small circle did, so clicking
+                // the text silently kept the previous policy)
+                onClick={() => {
+                  setCancellationPolicy(opt.id);
+                  updateForm('cancellationPolicy', opt.id);
+                }}
+              >
                 <div
-                  onClick={() => {
-                    setCancellationPolicy(opt.id);
-                    updateForm('cancellationPolicy', opt.id);
-                  }}
+                  role="radio"
+                  aria-checked={cancellationPolicy === opt.id}
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all ${
                     cancellationPolicy === opt.id ? 'border-blue-600 bg-blue-50' : 'border-slate-300 group-hover:border-blue-400'
                   }`}

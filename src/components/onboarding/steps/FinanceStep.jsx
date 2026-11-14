@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { 
-  Landmark, CheckCircle2, AlertCircle, UploadCloud, 
-  Trash2, FileCheck, HelpCircle, ChevronDown, Check, Loader2
+  Landmark, CheckCircle2, AlertCircle,
+  FileCheck, HelpCircle, ChevronDown, Check, Loader2
 } from 'lucide-react';
 
 const MAJOR_BANKS = [
@@ -171,17 +171,6 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
         accountName: mockName // Sync payout holder name
       });
     }, 1000);
-  };
-
-  // Mock Document Upload Handler
-  const handleMockUpload = (docType, fileName) => {
-    updateForm(`${docType}Name`, fileName);
-    updateForm(`${docType}Url`, `/uploads/docs/${docType}_mock_file.pdf`);
-  };
-
-  const handleMockDelete = (docType) => {
-    updateForm(`${docType}Name`, '');
-    updateForm(`${docType}Url`, '');
   };
 
   const toggleSection = (stepNum) => {
@@ -607,12 +596,10 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
               className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
                 activeStep === 3
                   ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
-                  : formData.panDocName && formData.bankProofDocName
-                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
+                  : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
               }`}
             >
-              {formData.panDocName && formData.bankProofDocName && activeStep !== 3 ? <Check size={16} /> : "3"}
+              3
             </button>
 
             <div className="w-full">
@@ -621,54 +608,20 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100/50 overflow-hidden transition-all duration-300">
                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                     <h3 className="text-lg font-black text-slate-900">Property Documents</h3>
-                    <p className="text-xs text-slate-500 mt-1">Provide necessary documents for verification and onboarding completion</p>
+                    <p className="text-xs text-slate-500 mt-1">Uploaded in the next step</p>
                   </div>
 
                   <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
-                      {/* PAN Document Card */}
-                      <DocumentUploadBox
-                        label="PAN Card Copy"
-                        docKey="panDoc"
-                        fileName={formData.panDocName}
-                        onUpload={handleMockUpload}
-                        onDelete={handleMockDelete}
-                        required={true}
-                        isProtected={isProtected}
-                      />
-
-                      {/* GST Registration Document Card */}
-                      <DocumentUploadBox
-                        label="GST Certificate"
-                        docKey="gstDoc"
-                        fileName={formData.gstDocName}
-                        onUpload={handleMockUpload}
-                        onDelete={handleMockDelete}
-                        isProtected={isProtected}
-                      />
-
-                      {/* Cancelled Cheque / Bank proof Document Card */}
-                      <DocumentUploadBox
-                        label="Bank Account Proof (Cheque/Passbook)"
-                        docKey="bankProofDoc"
-                        fileName={formData.bankProofDocName}
-                        onUpload={handleMockUpload}
-                        onDelete={handleMockDelete}
-                        required={true}
-                        isProtected={isProtected}
-                      />
-
-                      {/* Trade License Card */}
-                      <DocumentUploadBox
-                        label="Trade License / Fire Safety Proof"
-                        docKey="tradeLicenseDoc"
-                        fileName={formData.tradeLicenseDocName}
-                        onUpload={handleMockUpload}
-                        onDelete={handleMockDelete}
-                        isProtected={isProtected}
-                      />
-
+                    {/* Documents are uploaded for real in the next step (Documents). This section used
+                        to show upload boxes that only stored the file name in the browser, so owners
+                        thought they had uploaded their KYC when nothing had been sent. */}
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-start gap-2.5">
+                      <FileCheck size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-blue-900 leading-relaxed font-medium">
+                        You&apos;ll upload your documents in the next step: your <strong>PAN card</strong> and a{' '}
+                        <strong>cancelled cheque</strong> (plus your <strong>GST certificate</strong> if you have a GSTIN)
+                        are required. Ownership/lease proof, trade licence and fire NOC are optional.
+                      </p>
                     </div>
 
                     <div className="p-4 bg-amber-50/40 rounded-xl border border-amber-100/50 flex items-start gap-2.5 mt-4">
@@ -689,7 +642,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                 >
                   <div>
                     <h3 className="font-bold text-slate-800 group-hover:text-slate-900 transition-colors">Property Documents</h3>
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">Provide necessary documents for verification and onboarding completion</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">Uploaded in the next step</p>
                   </div>
                   <ChevronDown className="text-slate-400 group-hover:text-slate-600 transition-colors" size={18} />
                 </button>
@@ -800,63 +753,6 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
         </label>
       </div>
 
-    </div>
-  );
-};
-
-// Document Upload Box Sub-Component
-const DocumentUploadBox = ({ label, docKey, fileName, onUpload, onDelete, required = false, isProtected }) => {
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      onUpload(docKey, file.name);
-    }
-  };
-
-  return (
-    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col justify-between min-h-[140px] hover:border-slate-300 hover:bg-slate-50 transition-all">
-      <div className="flex justify-between items-start">
-        <div>
-          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">
-            {required ? 'Required *' : 'Optional'}
-          </span>
-          <h4 className="text-xs font-bold text-slate-850 mt-0.5 leading-snug">{label}</h4>
-        </div>
-        {fileName && (
-          <span className="bg-emerald-500/10 text-emerald-700 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
-            <Check size={10} /> Loaded
-          </span>
-        )}
-      </div>
-
-      {fileName ? (
-        <div className="mt-3 p-2.5 bg-white rounded-lg border border-slate-100 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2 overflow-hidden mr-2">
-            <FileCheck size={16} className="text-emerald-500 shrink-0" />
-            <span className="text-[11px] font-bold text-slate-700 truncate">{fileName}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onDelete(docKey)}
-            className="p-1 hover:bg-rose-50 rounded text-rose-500 transition-colors shrink-0"
-            title="Delete Document"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ) : (
-        <label className="mt-4 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/10 rounded-xl py-3 flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm">
-          <input disabled={isProtected}
-            type="file"
-            accept="image/*,application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <UploadCloud size={18} className="text-slate-400" />
-          <span className="text-[10px] font-bold text-slate-600 mt-1">Upload Document</span>
-          <span className="text-[8px] text-slate-400 mt-0.5">PDF, PNG, JPG · Max 5MB</span>
-        </label>
-      )}
     </div>
   );
 };

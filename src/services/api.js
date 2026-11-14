@@ -235,7 +235,11 @@ export const apiFetch = async (url, options = {}, retries = 3, backoff = 500) =>
     return inFlightRequests.get(dedupeKey);
   }
 
-  const promise = performNetworkRequest(url, { ...options, headers }, retries, backoff, dedupeKey, requestId, false);
+  // Only reads are retried automatically. Retrying a POST/PATCH (create booking, create payment
+  // order, cancel...) after a timeout or 5xx can repeat an action that already happened, and the
+  // extra calls used up the booking rate limit so the follow-up "release booking" call was refused.
+  const effectiveRetries = isGet ? retries : 0;
+  const promise = performNetworkRequest(url, { ...options, headers }, effectiveRetries, backoff, dedupeKey, requestId, false);
   inFlightRequests.set(dedupeKey, promise);
 
   try {
@@ -339,6 +343,7 @@ export const getExperiments = async () => {
 export const createBooking = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings`, { method: 'POST', body: JSON.stringify(bookingData) });
 export const previewBookingApi = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings/preview`, { method: 'POST', body: JSON.stringify(bookingData) });
 export const cancelBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel`, { method: 'POST' });
+export const getCancelPreview = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel-preview`, {}, 0);
 export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`, { method: 'PUT', body: JSON.stringify(data) });
 export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);

@@ -105,6 +105,20 @@ const ExtranetDashboard = () => {
 
   const activityGroups = groupActivities(activities);
 
+  // What the owner should know about where their property stands (was always "Property Live")
+  const STATUS_INFO = {
+    LIVE: { label: 'Property Live • Zivo Certified', short: 'Live', isLive: true },
+    ACTIVE: { label: 'Property Live • Zivo Certified', short: 'Live', isLive: true },
+    READY_FOR_GO_LIVE: { label: 'Agreement signed • ZivoHotels will take it live shortly', short: 'Going live' },
+    PENDING_AGREEMENT: { label: 'Approved • Sign the agreement to go live', short: 'Sign agreement' },
+    IN_REVIEW: { label: 'Under review by ZivoHotels', short: 'In review' },
+    SUBMITTED: { label: 'Submitted • Awaiting review', short: 'Submitted' },
+    INFORMATION_REQUESTED: { label: 'Action needed • ZivoHotels requested more information', short: 'Action needed' },
+    PAUSED: { label: 'Paused • Not taking bookings', short: 'Paused' },
+    DRAFT: { label: 'Draft • Finish and submit your listing', short: 'Draft' },
+  };
+  const statusInfo = STATUS_INFO[property?.status] || { label: property?.status || 'Status unknown', short: property?.status || '—' };
+
   const hotelMetrics = [
     { 
       label: 'Revenue Today', 
@@ -112,9 +126,9 @@ const ExtranetDashboard = () => {
       delta: revenueDelta || 'LIVE', 
       deltaType: revenueDelta ? 'green' : 'gray' 
     },
-    { label: 'Occupancy %', value: property?.healthScore ? `${property.healthScore}%` : '70%', delta: '+0%', deltaType: 'green' },
+    { label: 'Status', value: statusInfo.short, delta: statusInfo.isLive ? 'LIVE' : 'NOT LIVE', deltaType: statusInfo.isLive ? 'green' : 'gray' },
     { label: 'Quality Score', value: property?.rating?.toFixed(1) || '0.0', delta: property?.reviews > 0 ? 'ACTIVE' : 'NEW', deltaType: 'brand' },
-    { label: 'Health Score', value: property?.healthScore || '70', delta: 'LIVE', deltaType: 'green' }
+    { label: 'Health Score', value: property?.healthScore ?? '—', delta: property?.healthScore != null ? 'LIVE' : 'NEW', deltaType: property?.healthScore != null ? 'green' : 'gray' }
   ];
 
   if (loading && !property) {
@@ -142,7 +156,10 @@ const ExtranetDashboard = () => {
                 Digitally Sign Agreement
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-4">By signing, you agree to our standard terms of service and commission rates.</p>
+            <p className="text-xs text-gray-400 mt-4">
+              By signing, you agree to our standard terms of service and a commission of{' '}
+              <strong>{property.agreement?.commissionRate ?? 15}%</strong> on the room price before GST, plus GST on the commission.
+            </p>
           </div>
         </div>
       )}
@@ -158,8 +175,8 @@ const ExtranetDashboard = () => {
              </div>
              <div>
                 <div className="flex items-center gap-2 mb-1">
-                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                   <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Property Live • Zivo Certified</span>
+                   <span className={`w-2 h-2 rounded-full ${statusInfo.isLive ? 'bg-green-500 animate-pulse' : 'bg-amber-400'}`}></span>
+                   <span className={`text-[10px] font-black uppercase tracking-widest ${statusInfo.isLive ? 'text-blue-600' : 'text-amber-600'}`}>{statusInfo.label}</span>
                 </div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">{property?.name}</h1>
                 <p className="text-slate-500 font-medium mt-1 flex items-center gap-2">
@@ -176,7 +193,7 @@ const ExtranetDashboard = () => {
                    <p className="text-sm font-black text-blue-600">{property?.healthScore >= 80 ? 'Premium Partner' : 'Rising Partner'}</p>
                 </div>
                 <div className="w-14 h-14 rounded-full border-4 border-blue-600 border-t-slate-100 flex items-center justify-center text-[12px] font-black text-blue-600 bg-blue-50">
-                   {property?.healthScore || 70}%
+                   {property?.healthScore != null ? `${property.healthScore}%` : '—'}
                 </div>
              </div>
           </div>

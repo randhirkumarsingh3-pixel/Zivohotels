@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import { MapPin, Star, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useBooking } from '../context/BookingContext';
 import { getImageUrl } from '../utils/image';
 
 const HotelCard = ({ hotel }) => {
   const [imgError, setImgError] = useState(false);
+  const { searchParams } = useBooking();
+  // Carry the stay dates into the hotel page link so a reload or shared link keeps them
+  const detailQuery = searchParams?.checkIn && searchParams?.checkOut
+    ? `?${new URLSearchParams({ checkin: searchParams.checkIn, checkout: searchParams.checkOut, guests: String(searchParams.guests || 2), rooms: String(searchParams.rooms || 1) })}`
+    : '';
 
   // Use startingPrice or price from backend (lowest configured rate plan)
   const displayPrice = hotel.startingPrice || hotel.price || 0;
-  // If originalPrice exists, use it, else calculate a 20% markup for visual discount
-  const originalPrice = hotel.originalPrice || Math.round(displayPrice * 1.2);
+  // Only show a struck-through price when there really was a higher one. (It used to invent one at
+  // +20%, which advertises a discount that never existed.)
+  const originalPrice = hotel.originalPrice > displayPrice ? hotel.originalPrice : null;
   
   const fallbackImg = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80";
 
@@ -84,7 +91,9 @@ const HotelCard = ({ hotel }) => {
           <div>
             {displayPrice > 0 ? (
               <>
-                <p className="text-xs text-gray-400 line-through mb-0.5">₹{originalPrice.toLocaleString('en-IN')}</p>
+                {originalPrice && (
+                  <p className="text-xs text-gray-400 line-through mb-0.5">₹{originalPrice.toLocaleString('en-IN')}</p>
+                )}
                 <div className="flex items-baseline">
                   <span className="text-xl font-extrabold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span>
                   <span className="text-xs text-gray-500 ml-1">/ night</span>
@@ -95,7 +104,7 @@ const HotelCard = ({ hotel }) => {
               <p className="text-sm font-semibold text-orange-600">Price not available</p>
             )}
           </div>
-          <Link to={`/hotel/${hotel.id}`} className="bg-gray-900 hover:bg-brand-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors text-sm">
+          <Link to={`/hotel/${hotel.id}${detailQuery}`} className="bg-gray-900 hover:bg-brand-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors text-sm">
             View Details
           </Link>
         </div>

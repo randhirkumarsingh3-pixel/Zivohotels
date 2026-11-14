@@ -1,8 +1,8 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
 import { z } from 'zod';
-import { cancelBookingWithRefund, initiatorForRole, CancellationError } from '../services/cancellationService.js';
-import inventoryRepository from '../repositories/inventoryRepository.js';
+import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation } from '../services/cancellationService.js';
+import { expireStaleBookings } from '../services/bookingExpiryService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -302,49 +302,33 @@ export const cancelBooking = async (req, res, next) => {
 };
 
 
+/** GET /bookings/:id/cancel-preview: the refund a guest would get if they cancelled now. */
+export const cancelPreview = async (req, res, next) => {
+  try {
+    const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
+    if (!booking || (req.user.role === 'CUSTOMER' && booking.userId !== req.user.id)) {
+      return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
+    if (req.user.role === 'OWNER') {
+      const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId }, select: { ownerId: true } });
+      if (hotel?.ownerId !== req.user.id) return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
+    res.json({ success: true, data: await previewGuestCancellation(booking), requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // CRON TARGET: Cleans up expired Pay@Hotel bookings
 export const cleanupExpiredBookings = async (req, res, next) => {
   try {
-    const now = new Date();
-    
-    const expiredBookings = await prisma.booking.findMany({
-      where: {
-        status: 'PENDING',
-        expiresAt: { lt: now }
-      }
+    // Also runs automatically every 5 minutes (services/bookingExpiryService.js)
+    const count = await expireStaleBookings();
+    res.status(200).json({
+      success: true,
+      message: count ? `Successfully cancelled ${count} expired bookings.` : 'No expired bookings to clean up.',
+      requestId: req.id
     });
-
-    if (expiredBookings.length === 0) {
-      return res.status(200).json({ success: true, message: 'No expired bookings to clean up.' });
-    }
-
-    // Process cancellations and inventory restoration
-    let count = 0;
-    for (const b of expiredBookings) {
-      await prisma.$transaction(async (tx) => {
-        // Restore inventory (must happen BEFORE setting status to CANCELLED for the safety check in the helper)
-        await inventoryRepository.restoreInventory(tx, b);
-
-        // Cancel booking
-        await tx.booking.update({
-          where: { id: b.id },
-          data: { status: 'CANCELLED' }
-        });
-
-        await tx.auditLog.create({
-          data: {
-            action: 'BOOKING_EXPIRED',
-            entityType: 'BOOKING',
-            entityId: b.id,
-            userId: 'SYSTEM',
-            details: { ref: b.bookingRef, reason: 'Payment Timeout' }
-          }
-        });
-      });
-      count++;
-    }
-
-    res.status(200).json({ success: true, message: `Successfully cancelled ${count} expired bookings.`, requestId: req.id });
   } catch (error) {
     next(error);
   }

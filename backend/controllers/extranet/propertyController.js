@@ -18,7 +18,13 @@ export const getProperty = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
-    res.json({ success: true, data: property });
+    // The owner's dashboard shows the agreed commission when asking them to sign
+    const agreement = await prisma.agreement.findUnique({
+      where: { hotelId },
+      select: { status: true, commissionRate: true, signedAt: true }
+    });
+
+    res.json({ success: true, data: { ...property, agreement } });
   } catch (error) {
     console.error('Error fetching extranet property:', error);
     res.status(500).json({ success: false, message: 'Server error fetching property details' });
@@ -36,18 +42,23 @@ export const updateProperty = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Property is in Safe Mode. Updates are temporarily locked.' });
     }
 
-    // Prevent sensitive fields from being updated directly via extranet
-    delete updateData.id;
-    delete updateData.ownerId;
-    delete updateData.status; // status changes (like ACTIVE -> SUSPENDED) are master admin only
-    delete updateData.dynamicCommissionRate;
-    delete updateData.healthScore;
+    // Only the profile fields the Property Information page edits. (This was a block list: an
+    // owner could change PAN/GSTIN/legal name, payout cycle, compliance score or approval fields
+    // directly, and the page's own save failed because it sent back photos and related records.)
+    // Legal, bank and commercial details change through support / the admin.
+    const EDITABLE = ['name', 'description', 'checkInTime', 'checkOutTime', 'city', 'location', 'landmark'];
+    const data = Object.fromEntries(
+      EDITABLE.filter((k) => updateData[k] !== undefined).map((k) => [k, typeof updateData[k] === 'string' ? updateData[k].trim() : updateData[k]])
+    );
+    if (data.name === '') {
+      return res.status(400).json({ success: false, message: 'Property name cannot be empty.' });
+    }
 
     const before = await prisma.hotel.findUnique({ where: { id: hotelId } });
 
     const property = await prisma.hotel.update({
       where: { id: hotelId },
-      data: updateData
+      data
     });
 
     await logActivity({

@@ -49,6 +49,7 @@ const Checkout = () => {
   const [expiresAt, setExpiresAt] = useState(null);
   const countdown = useCountdown(expiresAt);
   const [preview, setPreview] = useState(null);
+  const [previewError, setPreviewError] = useState('');
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [config, setConfig] = useState({ partialPaymentPercent: 30, prepaidDiscountPercent: 5 });
 
@@ -73,8 +74,12 @@ const Checkout = () => {
         paymentType
       });
       setPreview(res.data);
+      setPreviewError('');
     } catch (err) {
       console.error('Preview failed:', err);
+      // Without a price the page showed ₹0 and still let the guest continue
+      setPreview(null);
+      setPreviewError(err?.message || 'We could not calculate the price for this stay. Please try again.');
     } finally {
       setFetchingPreview(false);
     }
@@ -108,7 +113,7 @@ const Checkout = () => {
   const rawSubtotal = roomPrice + extraGuestCharges + extraBedCharges + mealCharges;
   const discount = preview?.discountAmount || 0;
   const taxes = preview?.taxAmount || 0;
-  const taxPercentage = preview?.taxPercentage || 18;
+  const taxPercentage = preview?.taxPercentage;
   const pricingSource = preview?.pricingType;
 
   let payableNow = total;
@@ -227,6 +232,12 @@ const Checkout = () => {
       paymentObject.open();
 
     } catch (err) {
+      // If the booking was created but payment couldn't start (e.g. the payment gateway is down),
+      // release it: otherwise it held the room for 30 minutes and each retry made another one
+      if (pendingBookingRef.current) {
+        await cancelBooking(pendingBookingRef.current).catch(() => {});
+        pendingBookingRef.current = null;
+      }
       setError(err.message || 'Booking failed.');
       setLoading(false);
     }
@@ -279,6 +290,11 @@ const Checkout = () => {
           <h1 className="text-4xl md:text-5xl font-black text-gray-900">Review & Payout</h1>
         </header>
 
+        {previewError && !fetchingPreview && (
+          <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium">
+            We couldn&apos;t price this stay: {previewError}
+          </div>
+        )}
         {error && (
           <div className="mb-8 flex items-center gap-4 bg-red-50 border-l-4 border-red-500 text-red-900 p-5 rounded-r-xl shadow-sm animate-shake">
             <AlertTriangle className="text-red-500 shrink-0" size={24} />
@@ -365,7 +381,7 @@ const Checkout = () => {
 
             <button 
               onClick={handleCheckout}
-              disabled={loading || (countdown && countdown.expired) || fetchingPreview}
+              disabled={loading || (countdown && countdown.expired) || fetchingPreview || !preview}
               className="w-full bg-brand-700 hover:bg-brand-800 text-white font-black py-6 rounded-2xl shadow-xl shadow-brand-500/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xl disabled:opacity-50 disabled:grayscale disabled:transform-none"
             >
               {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Confirm Reservation' : `Secure Payment: ₹${payableNow.toLocaleString()}`}
@@ -468,7 +484,7 @@ const Checkout = () => {
                     </div>
                   )}
                   <div className="flex justify-between text-gray-500 font-medium">
-                    <span>GST ({taxPercentage}%)</span>
+                    <span>GST{taxPercentage != null ? ` (${taxPercentage}%)` : ''}</span>
                     <span className="text-gray-900">₹{taxes.toLocaleString()}</span>
                   </div>
                 </div>

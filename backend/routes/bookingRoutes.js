@@ -1,5 +1,5 @@
 import express from 'express';
-import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking } from '../controllers/bookingController.js';
+import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview } from '../controllers/bookingController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { bookingSchema } from '../schemas/bookingSchema.js';
@@ -24,6 +24,7 @@ router.route('/cleanup')
   .delete(protect, authorizeRoles('ADMIN'), cleanupExpiredBookings);
 
 // Cancel booking endpoint
+router.get('/:id/cancel-preview', protect, cancelPreview);
 router.route('/:id/cancel')
   .post(protect, cancelBooking);
 

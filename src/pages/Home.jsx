@@ -50,7 +50,8 @@ const Home = () => {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-visible flex items-center justify-center min-h-[600px]">
+      {/* z-20: keeps the search bar's date picker above the destination cards below (it opened behind them) */}
+      <section className="relative z-20 pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-visible flex items-center justify-center min-h-[600px]">
         <div className="absolute inset-0 z-0 bg-gray-900">
           <img 
             src="https://images.unsplash.com/photo-1542314831-c6a4d14d8c53?auto=format&fit=crop&w=1920&q=70" 

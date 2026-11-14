@@ -61,11 +61,12 @@ const PropertyWizard = () => {
     initialRoomIds,
     hasDraftLoaded,
     handleResetDraft,
-    saveDraftIfNeeded: hookSaveDraftIfNeeded
+    saveDraftIfNeeded: hookSaveDraftIfNeeded,
+    clearSavedProgress
   } = usePropertyWizard({
     isEditing,
     effectiveId: id || localStorage.getItem('currentHotelId_admin'),
-    storageKeyPrefix: 'zivo_onboarding',
+    storageKeyPrefix: 'zivo_onboarding_admin',
     onFetchError: handleFetchError,
     clearCurrentHotelId: handleClearHotelId
   });
@@ -360,8 +361,7 @@ const PropertyWizard = () => {
       setReferenceNumber(refNo);
       setShowSuccessModal(true);
       
-      localStorage.removeItem('zivo_onboarding_draft_admin');
-      localStorage.removeItem('zivo_onboarding_step_admin');
+      clearSavedProgress();
       localStorage.removeItem('currentHotelId_admin');
     } catch (err) {
       alert(err.message || 'An error occurred during submission.');

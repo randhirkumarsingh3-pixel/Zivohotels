@@ -407,11 +407,25 @@ export const updateHotel = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Property not found', requestId: req.id });
   }
   
+  // Optimistic concurrency: reject only if ANOTHER user edited the property since the client
+  // loaded it. updatedAt alone can't be used: the owner's own photo and KYC uploads also bump it
+  // (compliance score), which made every onboarding submission fail with a false conflict.
   if (req.body.lastUpdatedAt) {
-    const incomingDate = new Date(req.body.lastUpdatedAt).getTime();
-    const existingDate = existingHotel.updatedAt.getTime();
-    if (incomingDate < existingDate) {
-      return res.status(409).json({ success: false, message: 'Concurrency conflict: Property modified by another user.', requestId: req.id });
+    const since = new Date(req.body.lastUpdatedAt);
+    if (!isNaN(since.getTime()) && since < existingHotel.updatedAt) {
+      const otherEdit = await prisma.auditLog.findFirst({
+        where: {
+          entityType: 'HOTEL',
+          entityId: id,
+          action: 'UPDATE',
+          createdAt: { gt: since },
+          NOT: { userId: req.user.id }
+        },
+        select: { id: true }
+      });
+      if (otherEdit) {
+        return res.status(409).json({ success: false, message: 'This property was changed by someone else while you were editing. Reload the page to see their changes, then try again.', requestId: req.id });
+      }
     }
   }
   
@@ -686,12 +700,17 @@ export const getAllHotels = asyncHandler(async (req, res) => {
     const rawImage = hasMedia ? signedHotel.media[0].url : '';
     const signedImage = rawImage.startsWith('gs://') ? await mediaService.getSignedUrl(rawImage) : rawImage;
 
-    return {
+    const listed = {
       ...flattenedHotel,
       image: signedImage,
       startingPrice: startingPrice || 0,
       price: startingPrice || 0
     };
+    // The public list returned every field, including PAN, GSTIN, owner and manager contacts,
+    // commission and credit score. Only admins and the owner (own hotels) get the full record.
+    return isAdminOrOwner
+      ? listed
+      : { ...publicHotelView(listed), startingPrice: listed.startingPrice, price: listed.price };
   });
 
   const formattedHotelsWithNulls = await Promise.all(formattedHotelsPromises);
@@ -707,6 +726,17 @@ export const getAllHotels = asyncHandler(async (req, res) => {
     data: formattedHotels
   });
 });
+
+/** Fields a guest may see about a live property (no bank, legal, commercial or owner details). */
+const PUBLIC_HOTEL_FIELDS = [
+  'id', 'name', 'description', 'type', 'propertyType', 'starRating', 'rating', 'reviews',
+  'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'latitude', 'longitude',
+  'amenities', 'policies', 'checkInTime', 'checkOutTime', 'media', 'images', 'image', 'roomTypes',
+  'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday'
+];
+const publicHotelView = (hotel) => Object.fromEntries(
+  PUBLIC_HOTEL_FIELDS.filter((k) => hotel[k] !== undefined).map((k) => [k, hotel[k]])
+);
 
 export const getHotelById = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -732,6 +762,14 @@ export const getHotelById = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
   }
 
+  // Only an admin or the property's own owner sees the full record (bank account, agreement, PAN,
+  // owner contact...). Everyone else gets the public view of a live property. Before, this
+  // endpoint needed no login and returned the bank account and PAN of any hotel.
+  const isPrivileged = req.user && (req.user.role === 'ADMIN' || (req.user.role === 'OWNER' && hotel.ownerId === req.user.id));
+  if (!isPrivileged && !PUBLIC_HOTEL_STATUSES.includes(hotel.status)) {
+    return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
+  }
+
   // Fetch agreement and bankDetail manually to avoid Prisma client out-of-sync issues
   const [agreement, bankDetail, cancellationPolicy] = await Promise.all([
     prisma.agreement.findUnique({ where: { hotelId: id } }),
@@ -749,7 +787,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
   ]);
 
   const signedHotel = await mediaService.signHotelUrls(hotel);
-  const data = {
+  const full = {
     ...formatHotelResponse(signedHotel),
     agreement,
     bankDetail,
@@ -758,6 +796,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
     bookingsToday
   };
 
+  const data = isPrivileged ? full : publicHotelView(full);
   res.status(200).json({ success: true, data, requestId: req.id });
 });
 
@@ -783,7 +822,8 @@ export const searchHotels = asyncHandler(async (req, res) => {
         { city: { equals: city, mode: 'insensitive' } },
         { location: { contains: city, mode: 'insensitive' } }
       ],
-      status: 'ACTIVE',
+      // Go-live sets LIVE; 'ACTIVE' alone hid every property taken live through the admin flow
+      status: { in: PUBLIC_HOTEL_STATUSES },
       isDeleted: false
     },
     take: 100,
@@ -897,7 +937,8 @@ export const searchHotels = asyncHandler(async (req, res) => {
   
   const rankedHotels = rankingService.rankResults(filteredHotels, sortBy, isSoldOutIncluded);
 
-  const responseData = { hotels: rankedHotels };
+  // The commission rate is used for ranking but is confidential: don't send it to the browser
+  const responseData = { hotels: rankedHotels.map(({ commission: _commission, ...h }) => h) };
   
   cacheUtils.setCache(cacheKey, responseData, 60000); // 60s TTL
 
@@ -921,28 +962,36 @@ export const signAgreement = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Property is not pending an agreement' });
   }
 
-  await prisma.agreement.update({
-    where: { hotelId: id },
-    data: { 
-      status: 'SIGNED', 
-      signedAt: new Date(),
-      ipAddress: req.ip || req.connection.remoteAddress
-    }
-  });
+  // Agreement, status and audit trail are saved together. (The audit write used fields that don't
+  // exist on AdminActionLog, so every signature returned a 500 after the first two writes had
+  // already been saved: the owner saw an error although the agreement was signed.)
+  const updated = await prisma.$transaction(async (tx) => {
+    const agreement = await tx.agreement.update({
+      where: { hotelId: id },
+      data: {
+        status: 'SIGNED',
+        signedAt: new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress
+      }
+    });
 
-  const updated = await prisma.hotel.update({
-    where: { id },
-    data: { status: 'READY_FOR_GO_LIVE' }
-  });
+    const hotelNow = await tx.hotel.update({
+      where: { id },
+      data: { status: 'READY_FOR_GO_LIVE' }
+    });
 
-  await prisma.adminActionLog.create({
-    data: {
-      action: 'STATUS_AGREEMENT_SIGNED',
-      entityId: id,
-      entityType: 'HOTEL',
-      adminId: req.user.id,
-      details: 'Agreement signed digitally'
-    }
+    await tx.auditLog.create({
+      data: {
+        action: 'STATUS_AGREEMENT_SIGNED',
+        entityType: 'HOTEL',
+        entityId: id,
+        userId: req.user.id,
+        requestId: req.id,
+        details: { commissionRate: agreement.commissionRate, signedBy: req.user.role, ipAddress: agreement.ipAddress }
+      }
+    });
+
+    return hotelNow;
   });
 
   res.json({ success: true, data: updated });

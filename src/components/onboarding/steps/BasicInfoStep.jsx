@@ -4,9 +4,9 @@ import { sendVerificationOtp, verifyOtpApi } from '../../../services/api';
 
 const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
   const _isProtected = !isAdmin;
-  // Generate array of years from 1950 to current year + 2
+  // Years from the current year back to 1950 (a property can't be built, or take bookings, in the future)
   const currentYear = new Date().getFullYear();
-  const years = Array.from(new Array(currentYear - 1950 + 3), (val, index) => currentYear + 2 - index);
+  const years = Array.from(new Array(currentYear - 1950 + 1), (val, index) => currentYear - index);
 
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
@@ -174,10 +174,12 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">What year was the property built?</label>
           <select 
-            value={formData.builtYear || currentYear} 
+            value={formData.builtYear || ''} 
             onChange={e => updateForm('builtYear', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
           >
+            {/* Showed the current year without storing it, so "Not provided" was saved */}
+            <option value="">Select year</option>
             {years.map(year => (
               <option key={`built-${year}`} value={year}>{year}</option>
             ))}
@@ -189,10 +191,12 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
           <label className="font-bold text-slate-800 text-base">Since when have you been accepting bookings?</label>
           <span className="text-sm text-slate-500">Helps us build your property&apos;s history and credibility.</span>
           <select 
-            value={formData.bookingSince || currentYear} 
+            value={formData.bookingSince || ''} 
             onChange={e => updateForm('bookingSince', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
           >
+            {/* Showed the current year without storing it, so "Not provided" was saved */}
+            <option value="">Select year</option>
             {years.map(year => (
               <option key={`booking-${year}`} value={year}>{year}</option>
             ))}

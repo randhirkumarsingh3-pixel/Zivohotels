@@ -21,6 +21,9 @@ const VALID_TRANSITIONS = {
 
 const STATUS_ALIASES = { CHECKED_OUT: 'COMPLETED' };
 
+// Calendar day in India as YYYY-MM-DD (booking dates are India dates)
+const indiaDay = (d) => new Date(new Date(d).getTime() + 330 * 60 * 1000).toISOString().slice(0, 10);
+
 /**
  * Custom error for invalid transitions.
  */
@@ -50,6 +53,16 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
   // 2. Validate transition
   if (!VALID_TRANSITIONS[currentStatus] || !VALID_TRANSITIONS[currentStatus].includes(newStatus)) {
     throw new TransitionError(`Invalid transition from ${currentStatus} to ${newStatus}`);
+  }
+
+  // 2b. A stay can't be marked checked in / out / no-show before it starts (India calendar day).
+  // Doing it early created settlements for stays that hadn't happened and blocked guest cancels.
+  if (['CHECKED_IN', 'COMPLETED', 'NO_SHOW'].includes(newStatus)) {
+    const actor = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { role: true } }) : null;
+    if (actor?.role !== 'ADMIN' && indiaDay(new Date()) < indiaDay(booking.checkIn)) {
+      const label = { CHECKED_IN: 'checked in', COMPLETED: 'checked out', NO_SHOW: 'marked as a no-show' }[newStatus];
+      throw new TransitionError(`This booking can't be ${label} before its check-in date (${new Date(booking.checkIn).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}).`);
+    }
   }
 
   // 3. Cancelling goes through the refund flow: a hotel/admin cancellation refunds the guest in
