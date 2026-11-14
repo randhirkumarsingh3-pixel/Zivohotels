@@ -29,11 +29,28 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, setIsOpen]);
 
-  const handleSelect = (newRange) => {
+  const handleSelect = (pickedRange, clickedDay) => {
+    // The picker starts with a full range (today -> tomorrow). By default a click then EXTENDS that
+    // range, so choosing 18 Dec as check-in produced "today -> 18 Dec" and closed the calendar.
+    // Instead: a click on a complete range starts a new stay on that day; the next click (after
+    // it) sets check-out.
+    let newRange = pickedRange;
+    if (clickedDay) {
+      const hadFullRange = range?.from && range?.to;
+      if (hadFullRange || !range?.from || clickedDay <= range.from) {
+        newRange = { from: clickedDay, to: undefined };
+      } else {
+        newRange = { from: range.from, to: clickedDay };
+      }
+    }
     setRange(newRange);
     
     if (newRange?.from) {
       setCheckIn(format(newRange.from, 'yyyy-MM-dd'));
+    }
+    if (newRange?.from && !newRange?.to) {
+      // Don't keep an old check-out that may now be before the new check-in
+      setCheckOut('');
     }
     
     // Auto-advance if both dates are selected

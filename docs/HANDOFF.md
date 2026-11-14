@@ -159,6 +159,46 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
 - **Owners can enter legal and bank details while onboarding** (draft / information requested); they
   lock once submitted. Before, the form locked them for owners, so owners could never submit.
 
+## End-to-end review (Nov 2026)
+The whole flow was driven in a real browser: owner onboarding (8 steps) -> submit -> admin review,
+KYC verification, approval -> owner signs agreement -> admin go-live -> customer search, hotel page,
+checkout, pay-at-hotel booking, My Bookings, cancellation -> owner check-in / check-out ->
+settlement. Fixed along the way:
+- **Blockers:** owner submission always failed with a false "modified by another user" conflict;
+  signing the agreement returned a 500; search only matched status ACTIVE, so no hotel taken live
+  (LIVE) ever appeared; guests could not choose December dates on the home page (calendar behind
+  the destination cards) and picking a new check-in silently booked a stay from today.
+- **Data leaks (no login needed):** `GET /hotels/:id` returned the hotel's bank account, PAN,
+  agreement and owner contact; `GET /hotels` returned PAN, GSTIN, owner/manager contacts,
+  commission and credit score of every live hotel; search returned commission rates. Public
+  responses now use an allow list (`PUBLIC_HOTEL_FIELDS`); admins and the owner get the full record.
+  `PUT /extranet/property` is an allow list too (it let owners change PAN, payout cycle, compliance).
+- **Wizard:** progress survives reloads and is saved to the server at every step; the cancellation
+  policy row is clickable; the fake document upload in step 7 is gone (step 8 is the real one);
+  year selects store what they show; the admin wizard has its own storage keys.
+- **Payments:** a Razorpay error (e.g. bad keys) no longer logs the guest out (401 passed through);
+  non-GET requests aren't auto-retried; a booking whose payment can't start is released; unpaid
+  bookings expire automatically every 5 minutes (`services/bookingExpiryService.js`).
+- **Honest UI:** no invented "was" prices, no hard-coded pool/gym amenities, real meal plan,
+  cancellation terms on the hotel page, a refund preview that follows the property's policy
+  (`GET /bookings/:id/cancel-preview`), real property status on the owner dashboard.
+- **Rules:** owners can't mark check-in / check-out / no-show before the check-in date (admins can).
+
+### Not covered / not fixed
+- **Online payment wasn't completed end to end:** the local Razorpay keys in `backend/.env` are
+  placeholders (Razorpay answers "Authentication failed"). Put real test keys in
+  `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` and `VITE_RAZORPAY_KEY_ID`, then test a prepaid and a
+  30% booking.
+- The admin-creates-a-property-for-an-owner path wasn't walked through.
+- New rooms get 60 days of inventory regardless of the date range the owner picks (bookings and
+  search still work beyond that; the inventory calendar shows only 60 days).
+- IFSC / PAN / GST "Verify" buttons in the wizard are simulated.
+- The owner's bookings list shows abandoned checkouts as "cancelled"; the Live Ops Feed box covers
+  the last row.
+- The results page search box shows the dates as "-".
+- Search availability reads inventory by UTC date; on a server in IST (this Mac) booked rooms aren't
+  subtracted. Production runs in UTC.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.
@@ -169,7 +209,7 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
 - The hotel page estimates tax with hard-coded slabs (5% up to Rs 7,500, else 18%), not the admin's
   tax rules.
 - The local database has no tax rules, so no booking can be priced locally until an admin adds them
-  (System settings -> tax rules).
+  (System settings -> tax rules). Checkout now shows the error instead of a ₹0 total.
 
 ## Gotchas seen on this Mac
 - Local Postgres runs in IST. Raw SQL comparing `DateTime` columns with JS dates shifts by 5h30; prefer

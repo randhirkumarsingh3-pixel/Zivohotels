@@ -62,7 +62,8 @@ const PropertyOnboarding = () => {
     initialRoomIds,
     hasDraftLoaded,
     handleResetDraft,
-    saveDraftIfNeeded
+    saveDraftIfNeeded,
+    clearSavedProgress
   } = usePropertyWizard({
     isEditing,
     effectiveId,
@@ -342,8 +343,7 @@ const PropertyOnboarding = () => {
       setReferenceNumber(refNo);
       setShowSuccessModal(true);
       
-      localStorage.removeItem('zivo_onboarding_draft');
-      localStorage.removeItem('zivo_onboarding_step');
+      clearSavedProgress();
       localStorage.removeItem('currentHotelId_extranet');
       
     } catch (err) {

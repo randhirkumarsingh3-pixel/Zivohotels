@@ -39,6 +39,7 @@ import kycRoutes from './routes/kycRoutes.js';
 import socketService from './services/socketService.js';
 import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
+import { startBookingExpiryJob } from './services/bookingExpiryService.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
@@ -244,5 +245,8 @@ server.listen(PORT, '0.0.0.0', () => {
   startEmailWorker().catch(err => {
     console.error('❌ Email worker failed to start:', err.message);
   });
+
+  // Release unpaid bookings whose payment window has passed (every 5 minutes)
+  startBookingExpiryJob();
   console.log('✉️  Email worker started in-process');
 });

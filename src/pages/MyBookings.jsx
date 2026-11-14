@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-import { getUserBookings, cancelBooking, downloadInvoice, submitReview } from '../services/api';
+import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview } from '../services/api';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 const today = () => {
@@ -125,6 +125,18 @@ const MyBookings = () => {
   const [activeSection, setActiveSection] = useState('upcoming'); // upcoming | ongoing | past
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  // Real refund under the property's policy, fetched when the dialog opens (it used to always
+  // promise a full refund, even for non-refundable stays and pay-at-hotel bookings)
+  const [cancelPreview, setCancelPreview] = useState(null);
+  const [cancelPreviewError, setCancelPreviewError] = useState('');
+  useEffect(() => {
+    if (!cancelTarget) { setCancelPreview(null); setCancelPreviewError(''); return; }
+    let active = true;
+    getCancelPreview(cancelTarget.id)
+      .then(res => { if (active) setCancelPreview(res.data); })
+      .catch(err => { if (active) setCancelPreviewError(err.message || 'Could not load the refund details.'); });
+    return () => { active = false; };
+  }, [cancelTarget]);
   const [conciergeActionLoading, setConciergeActionLoading] = useState('');
   const [conciergeSuccess, setConciergeSuccess] = useState('');
 
@@ -481,6 +493,13 @@ const MyBookings = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Cancelling was only reachable under the Financials tab */}
+                  {activeBooking.status === 'CONFIRMED' && (
+                    <button onClick={() => setCancelTarget(activeBooking)} className="w-full border border-rose-200 hover:border-rose-600 text-rose-700 font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                      <XCircle size={14} />Cancel booking
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -668,10 +687,20 @@ const MyBookings = () => {
               <p className="text-gray-500 text-center text-sm mb-6">You are initiating cancellation for <span className="font-bold text-gray-900">{cancelTarget.hotel?.name}</span>.</p>
               
               <div className="border border-gray-100 rounded-2xl p-4 mb-6 space-y-3 text-xs">
-                <div className="flex justify-between pb-2 border-b border-gray-100 text-gray-500 font-semibold"><span>Price Component</span><span>Amount (INR)</span></div>
-                <div className="flex justify-between text-gray-700"><span>Total Amount Paid</span><span>₹{(cancelTarget.paidAmount || cancelTarget.totalAmount)?.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between text-rose-600 font-bold"><span>Cancellation Penalty</span><span>- ₹0</span></div>
-                <div className="flex justify-between text-emerald-600 font-black text-sm pt-2 border-t border-gray-100"><span>Estimated Refund</span><span>₹{(cancelTarget.paidAmount || cancelTarget.totalAmount)?.toLocaleString('en-IN')}</span></div>
+                {cancelPreviewError ? (
+                  <p className="text-rose-600 font-semibold">{cancelPreviewError}</p>
+                ) : !cancelPreview ? (
+                  <p className="text-gray-400">Calculating your refund…</p>
+                ) : cancelPreview.paidAmount === 0 ? (
+                  <p className="text-gray-700">Nothing was paid online for this booking, so there is no refund. Cancelling releases your reservation.</p>
+                ) : (
+                  <>
+                    <div className="flex justify-between pb-2 border-b border-gray-100 text-gray-500 font-semibold"><span>Cancellation policy</span><span className="text-right">{cancelPreview.policyLabel}</span></div>
+                    <div className="flex justify-between text-gray-700"><span>Paid online</span><span>₹{cancelPreview.paidAmount.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-rose-600 font-bold"><span>Cancellation charge</span><span>- ₹{cancelPreview.retainedAmount.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-emerald-600 font-black text-sm pt-2 border-t border-gray-100"><span>Refund</span><span>₹{cancelPreview.refundAmount.toLocaleString('en-IN')}</span></div>
+                  </>
+                )}
               </div>
 
               <div className="bg-amber-50 rounded-2xl p-4 text-xs flex items-start gap-2.5 mb-8 border border-amber-100">

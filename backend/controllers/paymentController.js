@@ -97,7 +97,19 @@ export const createOrder = asyncHandler(async (req, res) => {
       receipt: booking.bookingRef
     };
 
-    const order = await razorpay.orders.create(options);
+    let order;
+    try {
+      order = await razorpay.orders.create(options);
+    } catch (gatewayError) {
+      // Never pass Razorpay's own status through: its 401 ("Authentication failed", i.e. bad API
+      // keys) looked like an expired session, and the website logged the guest out mid-checkout.
+      console.error('[Payments] Razorpay order creation failed:', gatewayError?.statusCode, gatewayError?.error?.description || gatewayError?.message);
+      return res.status(502).json({
+        success: false,
+        message: 'Online payment is unavailable right now. Please try again in a few minutes, or choose Pay at Hotel.',
+        requestId: req.id
+      });
+    }
 
     // Save Razorpay order ID to booking
     await prisma.booking.update({

@@ -5,7 +5,11 @@
  *   { success, message, code, data, requestId }
  */
 export const errorHandler = (err, req, res, next) => {  // eslint-disable-line no-unused-vars
-  const statusCode = err.statusCode || 500;
+  // Our own auth answers 401/403 directly; a 401/403 that arrives here came from a third-party
+  // call (e.g. Razorpay "Authentication failed" on bad keys). Passing it on made the website treat
+  // it as an expired session and log the user out, so report it as a gateway error instead.
+  let statusCode = err.statusCode || 500;
+  if (statusCode === 401 || statusCode === 403) statusCode = 502;
 
   // Log with Request ID for traceability
   console.error(`[ERROR][${req.id || 'NO_ID'}] ${req.method} ${req.originalUrl}:`, err.message);

@@ -124,7 +124,10 @@ function PropertyDetailsPanel({ property }) {
                   <p className="text-xs text-gray-500">Max Occupancy: {room.maxOccupancy || 'N/A'} • Beds: {room.bedType || 'N/A'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">₹{room.basePrice || room.price || '—'}</p>
+                  <p className="text-sm font-bold text-gray-900">{(() => {
+                    const price = room.ratePlans?.[0]?.basePrice ?? room.basePrice ?? room.price;
+                    return price ? `₹${Number(price).toLocaleString('en-IN')}` : '₹—';
+                  })()}</p>
                   <p className="text-xs text-gray-400">per night</p>
                 </div>
               </div>
@@ -148,6 +151,7 @@ function PropertyDetailsPanel({ property }) {
         </SectionCard>
 
         <SectionCard title="Policies" icon={FileText}>
+          <DetailRow label="Cancellation" value={CANCELLATION_LABELS[property.cancellationPolicy?.policyCode] || 'Not set (free until 24h before check-in)'} />
           {property.policies && property.policies.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {property.policies.map((p, i) => (
@@ -179,14 +183,41 @@ function PropertyDetailsPanel({ property }) {
                 : null
             } value={property.complianceScore == null ? 'N/A' : undefined} />
             <DetailRow label="Payout Cycle" value={property.payoutCycle} />
+            <DetailRow label="Commission" value={property.agreement?.commissionRate != null ? `${property.agreement.commissionRate}% of pre-GST amount` : '15% (default, set at approval)'} />
             <DetailRow label="MSME" value={commercials.msme} />
             <DetailRow label="Built Year" value={commercials.builtYear} />
           </div>
         </div>
       </SectionCard>
+
+      {/* Payout account: check it matches the cancelled cheque before approving */}
+      <SectionCard title="Payout Bank Account" icon={Shield} accent="blue">
+        {property.bankDetail ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            <div>
+              <DetailRow label="Account Holder" value={property.bankDetail.accountName} />
+              <DetailRow label="Account Number" value={property.bankDetail.accountNumber} />
+            </div>
+            <div>
+              <DetailRow label="IFSC" value={property.bankDetail.ifscCode} />
+              <DetailRow label="Bank / Branch" value={[property.bankDetail.bankName, property.bankDetail.branchName].filter(Boolean).join(', ')} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-red-500 font-medium">No bank account on file. The property can&apos;t be approved without one.</p>
+        )}
+      </SectionCard>
     </div>
   );
 }
+
+const CANCELLATION_LABELS = {
+  FREE_CANCEL_CHECKIN: 'Free cancellation until check-in',
+  FREE_CANCEL_24H: 'Free cancellation until 24 hours before check-in',
+  FREE_CANCEL_48H: 'Free cancellation until 48 hours before check-in',
+  FREE_CANCEL_72H: 'Free cancellation until 72 hours before check-in',
+  NON_REFUNDABLE: 'Non-refundable',
+};
 
 // ── Main Page ───────────────────────────────────────────────────────────────
 export default function PropertyReview() {

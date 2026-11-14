@@ -26,3 +26,6 @@ backend/public/uploads/*
 
 # Private KYC documents stored locally in development (never commit)
 backend/private_uploads/
+
+# Property photos uploaded while running locally (user content, not source)
+public/uploads/*

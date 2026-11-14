@@ -11,7 +11,6 @@ import {
   Tag,
   BarChart3,
   BedDouble,
-  CircleDot,
   Plus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -85,19 +84,6 @@ const ExtranetSidebar = () => {
           <NavItem name="Settings" path="/extranet/settings" icon={<Settings size={18} />} />
         </ul>
 
-        {/* Ranking Tip Card */}
-        <div className="mt-8 mx-2 p-4 bg-brand-50 rounded-xl border border-brand-100">
-          <div className="flex items-center gap-2 mb-2">
-            <CircleDot className="text-brand-600" size={14} />
-            <span className="text-xs font-bold text-brand-800 uppercase tracking-tight">Ranking Health</span>
-          </div>
-          <p className="text-[11px] text-brand-700 leading-relaxed">
-            Your property is in the <strong className="font-black underline">Top 15%</strong> in New Delhi.
-          </p>
-          <button className="mt-3 w-full py-1.5 bg-white border border-brand-200 rounded-lg text-[10px] font-bold text-brand-600 hover:bg-brand-600 hover:text-white transition-all shadow-sm">
-            Improve Rank
-          </button>
-        </div>
       </nav>
 
       <div className="p-4 border-t border-gray-100 bg-[#FBFBFF]">

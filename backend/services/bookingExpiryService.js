@@ -1,0 +1,55 @@
+import prisma from '../config/db.js';
+import inventoryRepository from '../repositories/inventoryRepository.js';
+
+/**
+ * Cancels unpaid bookings whose payment window has passed (expiresAt: 30 minutes for online
+ * payment) and gives their rooms back. Before this ran on a schedule, a guest who closed the tab
+ * before paying held the room forever.
+ *
+ * Only bookings with nothing paid are touched. A payment that arrives later for an expired booking
+ * is refunded automatically by the payment verification / webhook handlers.
+ */
+export const expireStaleBookings = async (now = new Date()) => {
+  const expired = await prisma.booking.findMany({
+    where: {
+      status: 'PENDING',
+      expiresAt: { lt: now },
+      paymentStatus: { not: 'PAID' },
+      OR: [{ paidAmount: null }, { paidAmount: 0 }]
+    }
+  });
+
+  let count = 0;
+  for (const b of expired) {
+    await prisma.$transaction(async (tx) => {
+      // Re-check inside the transaction so a payment confirmed meanwhile isn't cancelled
+      const fresh = await tx.booking.findUnique({ where: { id: b.id }, select: { status: true, paymentStatus: true } });
+      if (fresh?.status !== 'PENDING' || fresh.paymentStatus === 'PAID') return;
+
+      // Restore inventory before the status changes (the helper skips CANCELLED bookings)
+      await inventoryRepository.restoreInventory(tx, b);
+      await tx.booking.update({ where: { id: b.id }, data: { status: 'CANCELLED', cancelledAt: now } });
+      await tx.bookingTimelineEvent.create({
+        data: { bookingId: b.id, status: 'CANCELLED', title: 'Booking Expired', message: 'Payment was not completed in time, so the reservation was released.' }
+      });
+      await tx.auditLog.create({
+        data: { action: 'BOOKING_EXPIRED', entityType: 'BOOKING', entityId: b.id, userId: 'SYSTEM', details: { ref: b.bookingRef, reason: 'Payment Timeout' } }
+      });
+      count++;
+    });
+  }
+  return count;
+};
+
+const FIVE_MINUTES = 5 * 60 * 1000;
+
+/** Runs the expiry every 5 minutes inside the API process. */
+export const startBookingExpiryJob = () => {
+  const run = () => expireStaleBookings()
+    .then((n) => { if (n) console.log(`[BookingExpiry] Released ${n} unpaid booking(s)`); })
+    .catch((err) => console.error('[BookingExpiry] failed:', err.message));
+  run();
+  const timer = setInterval(run, FIVE_MINUTES);
+  timer.unref?.();
+  return timer;
+};

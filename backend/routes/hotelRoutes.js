@@ -12,7 +12,7 @@ router.route('/')
 router.get('/search', searchHotels);
 
 router.route('/:id')
-  .get(getHotelById)
+  .get(extractUser, getHotelById) // optional login: owners/admins get the full record
   .put(protect, authorizeRoles('ADMIN', 'OWNER'), updateHotel)
   .patch(protect, authorizeRoles('ADMIN', 'OWNER'), updateHotel)
   .delete(protect, authorizeRoles('ADMIN'), deleteHotel);
