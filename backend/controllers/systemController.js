@@ -188,15 +188,35 @@ export const updateTaxRules = asyncHandler(async (req, res) => {
     return res.status(422).json({ success: false, message: 'Invalid data format' });
   }
 
+  // Every booking is priced from these slabs; a gap, overlap or missing open-ended slab makes some
+  // tariffs unbookable ("No applicable tax rule found"), so the set is checked before replacing.
+  const rows = slabs.map(s => ({
+    name: String(s.name || '').trim(),
+    min: Number(s.minThreshold),
+    max: s.maxThreshold === 'Infinity' || s.maxThreshold === null || s.maxThreshold === '' || s.maxThreshold === undefined ? null : Number(s.maxThreshold),
+    pct: Number(s.percentage),
+    active: s.status === 'Active' || s.isActive === true
+  }));
+  const invalid = rows.find(r => !r.name || !(r.min >= 0) || (r.max !== null && !(r.max > r.min)) || !(r.pct >= 0 && r.pct <= 28));
+  if (invalid) {
+    return res.status(422).json({ success: false, message: `Invalid slab "${invalid.name || '(no name)'}": check the tariffs and that GST % is between 0 and 28.` });
+  }
+  const active = rows.filter(r => r.active).sort((a, b) => a.min - b.min);
+  const contiguous = active.length > 0 && active[0].min === 0 && active.at(-1).max === null &&
+    active.every((r, i) => i === active.length - 1 || (r.max !== null && active[i + 1].min === r.max));
+  if (!contiguous) {
+    return res.status(422).json({ success: false, message: 'Active slabs must start at ₹0, follow on without gaps or overlaps, and the highest must have no upper limit.' });
+  }
+
   await prisma.$transaction([
     prisma.taxRule.deleteMany({}),
     prisma.taxRule.createMany({
-      data: slabs.map(s => ({
-        name: s.name,
-        minThreshold: parseFloat(s.minThreshold),
-        maxThreshold: s.maxThreshold === 'Infinity' || s.maxThreshold === null ? null : parseFloat(s.maxThreshold),
-        percentage: parseFloat(s.percentage),
-        isActive: s.status === 'Active' || s.isActive === true,
+      data: rows.map(r => ({
+        name: r.name,
+        minThreshold: r.min,
+        maxThreshold: r.max,
+        percentage: r.pct,
+        isActive: r.active,
       }))
     })
   ]);

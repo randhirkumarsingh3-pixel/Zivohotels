@@ -208,8 +208,9 @@ settlement. Fixed along the way:
   percentage.
 - The hotel page estimates tax with hard-coded slabs (5% up to Rs 7,500, else 18%), not the admin's
   tax rules.
-- The local database has no tax rules, so no booking can be priced locally until an admin adds them
-  (System settings -> tax rules). Checkout now shows the error instead of a ₹0 total.
+- Tax slabs are set in **Admin -> Platform Settings -> Tax Configuration** (that page existed but wasn't
+  routed, and its add/edit buttons did nothing). "Use standard GST slabs" fills 5% up to ₹7,500 and 18%
+  above; gaps and overlaps are refused. Production needs them saved once before taking bookings.
 
 ## Gotchas seen on this Mac
 - Local Postgres runs in IST. Raw SQL comparing `DateTime` columns with JS dates shifts by 5h30; prefer

@@ -79,8 +79,16 @@ const bookingLimiter = rateLimit({
   max: 5, // 5 booking requests per minute
   // Only throttle writes (create/preview/pay/cancel). Never throttle the Razorpay webhook:
   // a 429 there means a paid booking is never confirmed.
-  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook'),
+  // Price previews have their own, looser limit: checkout re-prices each time the guest switches
+  // payment option, and counting those here locked guests out ("busy") before they could book.
+  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook') || req.path === '/preview',
   message: { success: false, message: 'Booking system is busy. Please wait a minute.' }
+});
+
+const previewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60, // price previews per minute per IP
+  message: { success: false, message: 'Too many price checks. Please wait a moment.' }
 });
 
 const adminLimiter = rateLimit({
@@ -187,6 +195,7 @@ app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
+app.use('/api/v1/bookings/preview', previewLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/coupons', couponRoutes);

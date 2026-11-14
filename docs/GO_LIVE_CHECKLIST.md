@@ -124,8 +124,8 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
       (`backend/services/propertyReadiness.js`).
 - [ ] Promotions: creating one says "success" but nothing is saved.
 - [x] Money is stored as exact decimals (`Decimal(12,2)`).
-- [ ] Tax rules: add the GST slabs in admin System settings before taking bookings; with none, every
-      booking fails with "No applicable tax rule found".
+- [ ] Tax rules: Admin -> Platform Settings -> Tax Configuration -> "Use standard GST slabs" -> Save,
+      before taking bookings; with none, every booking fails with "No applicable tax rule found".
 - [x] Bookings store the real tax and price breakdown; customers pay the price shown at checkout.
 - [x] Commission is the hotel's agreed rate on the pre-GST amount; settlements are created at check-out and
       paid on the hotel's payout cycle.
