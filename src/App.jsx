@@ -30,7 +30,7 @@ const _Bookings = lazy(() => import('./admin/pages/Bookings'));
 const ChannelManager = lazy(() => import('./admin/pages/ChannelManager'));
 const Users = lazy(() => import('./admin/pages/Users'));
 const Reports = lazy(() => import('./admin/pages/Reports'));
-const _Settings = lazy(() => import('./admin/pages/Settings'));
+const PlatformSettings = lazy(() => import('./admin/pages/Settings'));
 const SystemControlCenter = lazy(() => import('./admin/pages/SystemControlCenter'));
 const PricingRMS = lazy(() => import('./admin/pages/PricingRMS'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
@@ -147,6 +147,8 @@ function App() {
               <Route path="control-center" element={<SystemControlCenter />} />
               <Route path="live-ops" element={<LiveOpsCommandCenter />} />
               <Route path="settings" element={<SystemHealth />} />
+              {/* Tax slabs (GST), booking rules, gateway, emails... (was built but never routed) */}
+              <Route path="platform-settings" element={<PlatformSettings />} />
             </Route>
 
             {/* FULLSCREEN ADMIN PROPERTY WIZARD ROUTES */}

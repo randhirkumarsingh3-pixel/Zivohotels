@@ -128,7 +128,8 @@ const MasterSidebar = () => {
         <NavGroup title="Control Center">
           <NavItem name="System Control" path="/admin/control-center" icon={<Zap size={18} />} />
           <NavItem name="Users & Roles" path="/admin/users" icon={<Users size={18} />} />
-          <NavItem name="Settings" path="/admin/settings" icon={<Settings size={18} />} />
+          <NavItem name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
+          <NavItem name="System Health" path="/admin/settings" icon={<Settings size={18} />} />
         </NavGroup>
       </nav>
 
