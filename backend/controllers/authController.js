@@ -137,7 +137,9 @@ export const login = asyncHandler(async (req, res) => {
   // Update last login & last active
   const _updatedUser = await prisma.user.update({
     where: { id: user.id },
-    data: { 
+    data: {
+      // An invited owner who signs in with the temporary password has claimed the account
+      ...(user.status === 'INVITED' ? { status: 'ACTIVE', inviteToken: null, inviteExpiry: null } : {}), 
       lastLogin: new Date(),
       lastActiveAt: new Date()
     }
