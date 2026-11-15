@@ -71,8 +71,8 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const price = displayPrice > 0 ? (
     <div className={row ? 'md:text-right' : ''}>
       {originalPrice && <p className="text-xs text-gray-500 line-through tabular-nums">₹{originalPrice.toLocaleString('en-IN')}</p>}
-      <p className="tabular-nums"><span className="text-xl font-bold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span><span className="text-xs text-gray-500 ml-1">/ night</span></p>
-      <p className="text-xs text-gray-500">+ GST, shown before you pay</p>
+      <p className="tabular-nums whitespace-nowrap"><span className="text-xl font-bold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span><span className="text-xs text-gray-500 ml-1">/ night</span></p>
+      <p className="text-xs text-gray-500">+ GST</p>
     </div>
   ) : <p className="text-sm font-semibold text-gray-600">Price on request</p>;
 
@@ -108,7 +108,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
           {row && <div className="hidden md:block">{score}</div>}
           <div className={`flex items-end justify-between gap-3 w-full ${row ? 'md:flex-col md:items-end' : ''}`}>
             {price}
-            <Link to={href} className="shrink-0 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm">See availability</Link>
+            <Link to={href} className="shrink-0 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm" aria-label={`See availability at ${hotel.name}`}>{row ? 'See availability' : 'View'}</Link>
           </div>
         </div>
         {row && <div className="md:hidden mt-3">{score}</div>}

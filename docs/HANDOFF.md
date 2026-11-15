@@ -438,6 +438,20 @@ settlement. Fixed along the way:
   a 404 page. Admin page titles use plain names (Finance ledger, Experiments, System health...).
 - Not done: sign-in by phone OTP or Google needs an SMS provider and a Google OAuth client.
 
+## Home page (Nov 2026)
+- Order: search with quick chips (Near me, recent searches, cities with live counts), sign-up banner
+  (signed out) or Zivo Prime banner (signed-in guests), live offers, top-rated hotels, popular
+  destinations, the guest's own rows (recently viewed, recommended), "Why book with ZivoHotels",
+  guest reviews.
+- Data: `GET /api/v1/public/home` (`controllers/homeController.js`, cached 5 minutes in memory):
+  cities with counts and average map pin, top-rated live hotels with the lowest base price, active
+  offers anyone can see (with conditions and codes), approved 4+ star reviews with comments (sent
+  only if 3+ exist), the Rewards sign-up bonus (only if set in Admin -> Loyalty) and the cheapest
+  paid membership plan. Sections with nothing real to show are hidden.
+- "Near me" picks the nearest city with hotels (within 80 km of the visitor) from those map pins.
+- Recommendation cards now use real review scores and counts (`Hotel.reviewScore`/`reviewCount`);
+  the old seeded `Hotel.reviews` number is no longer sent to the browser.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

@@ -233,9 +233,13 @@ function mapHotelBasic(hotel) {
     id: hotel.id,
     name: hotel.name,
     city: hotel.city,
-    location: hotel.location,
-    rating: hotel.rating || 0,
-    reviewCount: hotel.reviews || 0,
+    location: [hotel.integrationSettings?.addressDetails?.area || hotel.landmark, hotel.city].filter(Boolean).join(', ') || hotel.location,
+    // Guest score and count from published reviews (Hotel.rating is the star category; the old
+    // "reviews" column held seed numbers, not real reviews)
+    rating: hotel.reviewScore || 0,
+    reviewScore: hotel.reviewScore || 0,
+    reviewCount: hotel.reviewCount || 0,
+    starRating: Number.isInteger(hotel.rating) && hotel.rating >= 1 && hotel.rating <= 5 ? hotel.rating : null,
     price: minPrice === Infinity ? 0 : minPrice,
     startingPrice: minPrice === Infinity ? 0 : minPrice,
     image: hotel.media?.[0]?.url || hotel.images?.[0] || null,
