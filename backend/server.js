@@ -11,6 +11,7 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import hotelRoutes from './routes/hotelRoutes.js';
+import { getHomeFeed } from './controllers/homeController.js';
 import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
@@ -211,6 +212,7 @@ app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
+app.get('/api/v1/public/home', getHomeFeed); // home page: cities, top-rated hotels, offers, reviews
 app.use('/api/v1/bookings/preview', previewLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);

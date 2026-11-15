@@ -804,7 +804,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
 
 /** Fields a guest may see about a live property (no bank, legal, commercial or owner details). */
 const PUBLIC_HOTEL_FIELDS = [
-  'id', 'name', 'description', 'type', 'propertyType', 'starRating', 'rating', 'reviews',
+  'id', 'name', 'description', 'type', 'propertyType', 'starRating', 'rating',
   'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'addressLine', 'latitude', 'longitude',
   'amenities', 'policies', 'checkInTime', 'checkOutTime', 'images', 'image',
   'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday', 'builtYear', 'mealPrices',

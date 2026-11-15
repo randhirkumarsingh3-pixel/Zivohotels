@@ -1,14 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { useBooking } from '../context/BookingContext';
+import { cityLink } from './home/searchLinks';
 
 const CityCard = ({ city }) => {
   const navigate = useNavigate();
-  const { updateSearchParams } = useBooking();
-
-  const handleCityClick = () => {
-    updateSearchParams({ destination: city.name });
-    navigate('/hotels');
-  };
+  // Hotels in the city for tonight (dates can be changed on the results page)
+  const handleCityClick = () => navigate(cityLink(city.name));
 
   return (
     <button
