@@ -15,6 +15,7 @@ import { displayOffers } from '../services/promotionService.js';
 import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
+import nearbyPlaces from '../services/nearbyPlacesService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -81,6 +82,8 @@ const hotelSchema = z.object({
   bookingSince: z.preprocess((val) => (val === '' || val === null ? undefined : Number(val)), z.number().optional()),
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'INACTIVE', 'REJECTED']).optional(),
   lastUpdatedAt: z.string().optional(),
+  // What's nearby (Location step): [{ name, category, type, lat?, lng?, distanceKm?, source, visible }]
+  nearbyPlaces: z.array(z.object({}).passthrough()).max(80).optional(),
 });
 
 const hotelUpdateSchema = hotelSchema.partial();
@@ -321,6 +324,10 @@ export const createHotel = asyncHandler(async (req, res) => {
 
   const normalized = normalizeHotelPayload(validation.data);
   const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails, _commercials, _guestInfo } = normalized;
+  if (validation.data.nearbyPlaces) {
+    prismaData.nearbyPlaces = nearbyPlaces.normalizeList(validation.data.nearbyPlaces, prismaData.latitude, prismaData.longitude);
+    prismaData.nearbyAutoFilledAt = new Date(); // the owner manages the list: don't auto-fill over it
+  }
 
   // Check for existing draft with same name — return it instead of blocking
   const existing = await prisma.hotel.findFirst({
@@ -372,6 +379,7 @@ export const createHotel = asyncHandler(async (req, res) => {
   }
 
   if (isNewOwner) await sendOwnerInvite(hotel, ownerEmail, resolved.invite);
+  if (!hotel.nearbyAutoFilledAt) nearbyPlaces.scheduleAutoFill(hotel.id); // fills what's nearby once a pin is set and none were added
 
   // Handle manual creation of agreement and bank detail to avoid client-sync issues.
   // Only an admin sets commission; an owner's property gets its agreement at approval.
@@ -470,6 +478,17 @@ export const updateHotel = asyncHandler(async (req, res) => {
 
   const normalized = normalizeHotelPayload(validation.data);
   const { prismaData, _media, _contactInfo, _addressDetails, _commercials, _guestInfo } = normalized;
+
+  // What's nearby: distances follow the map pin (also when only the pin moved)
+  const pinLat = prismaData.latitude ?? existingHotel.latitude;
+  const pinLng = prismaData.longitude ?? existingHotel.longitude;
+  const pinMoved = (prismaData.latitude !== undefined && prismaData.latitude !== existingHotel.latitude) || (prismaData.longitude !== undefined && prismaData.longitude !== existingHotel.longitude);
+  if (validation.data.nearbyPlaces) {
+    prismaData.nearbyPlaces = nearbyPlaces.normalizeList(validation.data.nearbyPlaces, pinLat, pinLng);
+    if (!existingHotel.nearbyAutoFilledAt) prismaData.nearbyAutoFilledAt = new Date(); // owner manages it now
+  } else if (pinMoved && Array.isArray(existingHotel.nearbyPlaces) && existingHotel.nearbyPlaces.length) {
+    prismaData.nearbyPlaces = nearbyPlaces.normalizeList(existingHotel.nearbyPlaces, pinLat, pinLng);
+  }
 
   const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
 
@@ -573,6 +592,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   });
 
   if (ownerChange?.invite) await sendOwnerInvite(hotel, _contactInfo.ownerEmail, ownerChange.invite);
+  if (!hotel.nearbyAutoFilledAt && hotel.latitude && hotel.longitude && !(hotel.nearbyPlaces || []).length) nearbyPlaces.scheduleAutoFill(id);
 
   if (Object.keys(auditDetails.fields).length > 0) {
     await prisma.auditLog.create({
@@ -800,6 +820,7 @@ const PUBLIC_HOUSE_RULES = [
 const publicHotelView = (hotel) => {
   const view = Object.fromEntries(PUBLIC_HOTEL_FIELDS.filter((k) => hotel[k] !== undefined && hotel[k] !== null).map((k) => [k, hotel[k]]));
   const rules = hotel.policyRules || {};
+  view.nearbyPlaces = nearbyPlaces.publicList(hotel.nearbyPlaces);
   view.houseRules = Object.fromEntries(PUBLIC_HOUSE_RULES.filter((k) => rules[k] !== undefined && rules[k] !== '' && !(Array.isArray(rules[k]) && !rules[k].length)).map((k) => [k, rules[k]]));
   // Photos: only what the page needs (no AI analysis or internal ids of other records)
   if (Array.isArray(hotel.media)) {

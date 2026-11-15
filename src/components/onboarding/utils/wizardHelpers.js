@@ -32,6 +32,8 @@ export const getDefaultFormData = () => {
     agreeAddress: false,
     latitude: '',
     longitude: '',
+    nearbyPlaces: [],
+    nearbyPlacesEdited: false,
     
     // Amenities
     amenities: [],

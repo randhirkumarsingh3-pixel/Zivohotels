@@ -105,6 +105,8 @@ const writeCache = (url, data) => {
 
 // ─── ENDPOINT-SPECIFIC TIMEOUTS ───────────────────────────────────────────────
 const getTimeoutForUrl = (url) => {
+  if (url.includes('/nearby/suggest')) return 150000; // one map search per kind of place
+  if (url.includes('/nearby/lookup')) return 25000;
   if (url.includes('/search') || url.includes('/autocomplete')) return 5000;
   if (url.includes('/availability')) return 8000;
   if (url.includes('/auth/login') || url.includes('/auth/signup')) return 10000;
@@ -291,6 +293,9 @@ export const getHotelAvailability = (id, params) => {
   const qs = new URLSearchParams(params).toString();
   return apiFetch(`${PUBLIC_BASE}/hotels/${id}/availability?${qs}`).then(res => res?.data);
 };
+// What's nearby (onboarding Location step)
+export const suggestNearbyPlaces = (lat, lng) => apiFetch(`${PUBLIC_BASE}/hotels/nearby/suggest`, { method: 'POST', body: JSON.stringify({ lat, lng }) }).then(res => res?.data || []);
+export const lookupNearbyPlace = (q, lat, lng) => apiFetch(`${PUBLIC_BASE}/hotels/nearby/lookup`, { method: 'POST', body: JSON.stringify({ q, lat, lng }) }).then(res => res?.data || []);
 export const getHotelAmenities = (id) => apiFetch(`${PUBLIC_BASE}/hotels/${id}/amenities`).then(res => res?.data);
 export const getHotelImages = (id) => apiFetch(`${PUBLIC_BASE}/hotels/${id}/images`).then(res => res?.data);
 
