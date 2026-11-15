@@ -35,7 +35,8 @@ export const pricingDomain = {
       roomType, ratePlan, taxRules, prepaidDiscountPercent,
       checkInDate, checkOutDate, rooms, adults, children, 
       extraBeds, paymentType, appliedCoupon = null,
-      dynamicContext = null
+      dynamicContext = null,
+      dailyRates = {} // { [night ISO string]: price } from Inventory & Rates / the channel manager
     } = input;
 
     const datesToBook = getDatesInRange(checkInDate, checkOutDate);
@@ -90,7 +91,17 @@ export const pricingDomain = {
 
     // Calculate Nightly Totals
     for (const date of datesToBook) {
-      let basePricePerRoom = occupancyOverride ? occupancyOverride.price : ratePlan.basePrice;
+      // A daily rate is the price at base occupancy for that night: it replaces the base price (and
+      // any occupancy override), and extra guests are charged on top as usual
+      const dailyRate = dailyRates[date.toISOString()];
+      let basePricePerRoom = dailyRate ?? (occupancyOverride ? occupancyOverride.price : ratePlan.basePrice);
+      if (!(Number(basePricePerRoom) > 0)) {
+        // A plan without a price must never be sold for ₹0
+        throw new Error('This rate plan has no price for the selected dates and can\'t be booked.');
+      }
+      const extraGuestCostTonight = dailyRate != null
+        ? Math.max(0, guestsPerRoom - baseOccupancy) * (ratePlan.extraAdultPrice || 0)
+        : dailyExtraGuestCostPerRoom;
       
       let dynamicBreakdown = null;
       if (dynamicContext && !dynamicContext.safeMode) {
@@ -146,7 +157,7 @@ export const pricingDomain = {
       }
 
       rawBaseAmount += Math.round(basePricePerRoom * rooms);
-      totalExtraGuestCharges += Math.round(dailyExtraGuestCostPerRoom * rooms);
+      totalExtraGuestCharges += Math.round(extraGuestCostTonight * rooms);
       totalExtraBedCharges += Math.round(dailyExtraBedCostPerRoom * rooms);
       totalMealCharges += Math.round(dailyMealCostPerRoom * rooms);
 

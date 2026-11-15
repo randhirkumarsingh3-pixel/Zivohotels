@@ -20,4 +20,5 @@ export const MONEY_FIELDS = {
   refund: ['amount'],
   coupon: ['value', 'maxDiscount', 'minBookingAmount'],
   loyaltyWallet: ['balance'],
+  dailyRate: ['price'],
 };

@@ -10,6 +10,8 @@ import { mediaService } from '../services/MediaService.js';
 import { queueService } from '../services/queueService.js';
 import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
+import { getDatesInRange } from '../utils/dateUtils.js';
+import { stayNightlyPrice } from '../services/ariService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -786,6 +788,27 @@ export const getHotelById = asyncHandler(async (req, res) => {
     prisma.booking.count({ where: { hotelId: id, status: { in: STAY_BOOKING_STATUSES }, createdAt: { gte: today } } })
   ]);
 
+  // With stay dates (?checkin=&checkout=): price of each rate plan for those nights (daily rates
+  // included) and whether each room type can be booked, so the hotel page matches checkout
+  const nights = req.query.checkin && req.query.checkout ? getDatesInRange(req.query.checkin, req.query.checkout) : [];
+  if (nights.length > 0 && nights.length <= 60) {
+    const planIds = hotel.roomTypes.flatMap(rt => rt.ratePlans.map(rp => rp.id));
+    const [rateRows, invRows] = await Promise.all([
+      prisma.dailyRate.findMany({ where: { ratePlanId: { in: planIds }, date: { in: nights } }, select: { ratePlanId: true, date: true, price: true } }),
+      prisma.inventory.findMany({ where: { roomTypeId: { in: hotel.roomTypes.map(rt => rt.id) }, date: { in: nights } }, select: { roomTypeId: true, date: true, availableRooms: true, stopSell: true } }),
+    ]);
+    const ratesByPlan = {};
+    rateRows.forEach(r => { (ratesByPlan[r.ratePlanId] ||= {})[r.date.toISOString()] = r.price; });
+    hotel.roomTypes.forEach(rt => {
+      const inv = new Map(invRows.filter(i => i.roomTypeId === rt.id).map(i => [i.date.toISOString(), i]));
+      const avail = Math.min(...nights.map(n => { const row = inv.get(n.toISOString()); return row ? (row.stopSell ? 0 : row.availableRooms) : rt.totalInventory; }));
+      rt.availableForStay = Math.max(0, avail);
+      rt.ratePlans.forEach(rp => {
+        rp.stayNightlyPrice = stayNightlyPrice(rp.basePrice, nights, ratesByPlan[rp.id] || {});
+      });
+    });
+  }
+
   const signedHotel = await mediaService.signHotelUrls(hotel);
   const full = {
     ...formatHotelResponse(signedHotel),
@@ -796,6 +819,12 @@ export const getHotelById = asyncHandler(async (req, res) => {
     bookingsToday
   };
 
+  // Guests never see a rate plan without a price (it could otherwise be booked for ₹0)
+  if (!isPrivileged) {
+    full.roomTypes = (full.roomTypes || [])
+      .map(rt => ({ ...rt, ratePlans: (rt.ratePlans || []).filter(rp => Number(rp.basePrice) > 0) }))
+      .filter(rt => rt.ratePlans.length > 0);
+  }
   const data = isPrivileged ? full : publicHotelView(full);
   res.status(200).json({ success: true, data, requestId: req.id });
 });
@@ -815,6 +844,12 @@ export const searchHotels = asyncHandler(async (req, res) => {
     return res.status(200).json({ success: true, data: cachedData });
   }
 
+  // Stay nights exactly as the booking engine stores them (inventory rows, daily rates)
+  const stayNights = getDatesInRange(checkIn, checkOut);
+  if (stayNights.length === 0) {
+    return res.status(400).json({ success: false, message: 'Check-out must be after check-in' });
+  }
+
   // 1. Fetch active hotels in city (limit to 100 for latency)
   const hotels = await prisma.hotel.findMany({
     where: { 
@@ -829,12 +864,13 @@ export const searchHotels = asyncHandler(async (req, res) => {
     take: 100,
     include: {
       media: { take: 1 },
+      cancellationPolicy: { select: { policyCode: true } },
       roomTypes: {
         where: { isActive: true },
         include: {
           ratePlans: { where: { isActive: true } },
           inventories: {
-             where: { date: { gte: new Date(checkIn), lt: new Date(checkOut) } }
+             where: { date: { in: stayNights } }
           }
         }
       }
@@ -851,6 +887,14 @@ export const searchHotels = asyncHandler(async (req, res) => {
     return acc;
   }, {});
 
+  // Daily rates for every rate plan in these hotels over the stay
+  const planIds = hotels.flatMap(h => h.roomTypes.flatMap(rt => rt.ratePlans.map(rp => rp.id)));
+  const rateRows = planIds.length
+    ? await prisma.dailyRate.findMany({ where: { ratePlanId: { in: planIds }, date: { in: stayNights } }, select: { ratePlanId: true, date: true, price: true } })
+    : [];
+  const ratesByPlan = {};
+  rateRows.forEach(r => { (ratesByPlan[r.ratePlanId] ||= {})[r.date.toISOString()] = r.price; });
+
   // 2. Map and calculate availability & price
   const mappedHotels = hotels.map(hotel => {
      let hotelMinPrice = Infinity;
@@ -859,41 +903,39 @@ export const searchHotels = asyncHandler(async (req, res) => {
      let hasFreeCancellation = false;
 
      hotel.roomTypes.forEach(rt => {
-         rt.ratePlans.forEach(rp => {
-             if (rp.basePrice < hotelMinPrice) hotelMinPrice = rp.basePrice;
-             // Naive free cancellation check (can be improved based on schema)
-             if (rp.cancellationPolicy && rp.cancellationPolicy.includes('FREE')) {
-                 hasFreeCancellation = true;
-             }
-         });
-         
-         const startDate = new Date(checkIn);
-         const endDate = new Date(checkOut);
-         const daysCount = Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)));
-          
+         // Availability over the stay: the lowest available count across the nights; a night with
+         // no inventory row sells the physical count; a stop-sell night closes the room type
+         const invByNight = new Map((rt.inventories || []).map(inv => [inv.date.toISOString(), inv]));
          let minAvail = rt.totalInventory || 0;
-         const inventoryMap = {};
-         if (rt.inventories) {
-            rt.inventories.forEach(inv => {
-               const dateStr = new Date(inv.date).toISOString().split('T')[0];
-               inventoryMap[dateStr] = inv.availableRooms;
-            });
+         for (const night of stayNights) {
+            const inv = invByNight.get(night.toISOString());
+            const dayAvail = inv ? (inv.stopSell ? 0 : inv.availableRooms) : (rt.totalInventory || 0);
+            if (dayAvail < minAvail) minAvail = dayAvail;
          }
-          
-         for (let d = 0; d < daysCount; d++) {
-            const currDate = new Date(startDate);
-            currDate.setDate(startDate.getDate() + d);
-            const currDateStr = currDate.toISOString().split('T')[0];
-             
-            const dayAvail = inventoryMap[currDateStr] !== undefined ? inventoryMap[currDateStr] : (rt.totalInventory || 0);
-            if (dayAvail < minAvail) {
-               minAvail = dayAvail;
-            }
-         }
-          
          availableRooms += Math.max(0, minAvail);
          totalRooms += (rt.totalInventory || 0);
+
+         // Price shown = average nightly price for these dates (daily rates included), cheapest
+         // plan of a room type that can actually be booked
+         if (minAvail > 0) {
+           rt.ratePlans.forEach(rp => {
+             const nightly = stayNightlyPrice(rp.basePrice, stayNights, ratesByPlan[rp.id] || {});
+             if (nightly < hotelMinPrice) hotelMinPrice = nightly;
+           });
+         }
      });
+
+     // Free cancellation comes from the property's cancellation policy (no saved policy = free
+     // until 24h before check-in)
+     hasFreeCancellation = (hotel.cancellationPolicy?.policyCode || 'FREE_CANCEL_24H') !== 'NON_REFUNDABLE';
+
+     // Fully sold out: still show a price so the hotel can be listed as sold out
+     if (hotelMinPrice === Infinity) {
+       hotel.roomTypes.forEach(rt => rt.ratePlans.forEach(rp => {
+         const nightly = stayNightlyPrice(rp.basePrice, stayNights, ratesByPlan[rp.id] || {});
+         if (nightly < hotelMinPrice) hotelMinPrice = nightly;
+       }));
+     }
 
      return {
         id: hotel.id,

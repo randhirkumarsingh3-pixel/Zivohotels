@@ -287,9 +287,9 @@ const Configuration = () => {
                               <div className="flex justify-between items-start mb-2">
                                 <h5 className="font-bold text-gray-900">{rp.name}</h5>
                                 <div className="flex gap-1 items-center">
-                                  {!rp.isConfigured && (
-                                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-bold">
-                                      UNCONFIGURED
+                                  {!(Number(rp.basePrice) > 0) && (
+                                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-bold" title="Guests can't book a plan without a price">
+                                      NO PRICE
                                     </span>
                                   )}
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
@@ -297,8 +297,12 @@ const Configuration = () => {
                                   </span>
                                 </div>
                               </div>
-                              <p className={`text-xl font-extrabold mb-2 ${!rp.isConfigured ? 'text-gray-400 italic' : 'text-brand-600'}`}>
-                                {rp.isConfigured ? `₹${rp.basePrice}` : '₹—'}
+                              {/* The base price is what guests pay unless a daily rate is set in Inventory & Rates.
+                                  (It showed "₹—" for every plan whose isConfigured flag was unset,
+                                  although those plans were on sale at this price.) */}
+                              <p className={`text-xl font-extrabold mb-2 ${Number(rp.basePrice) > 0 ? 'text-brand-600' : 'text-gray-400 italic'}`}>
+                                {Number(rp.basePrice) > 0 ? `₹${Number(rp.basePrice).toLocaleString('en-IN')}` : '₹—'}
+                                {Number(rp.basePrice) > 0 && <span className="text-xs font-medium text-gray-400"> base / night</span>}
                               </p>
                               
                               <div className="flex flex-wrap gap-1 mb-1">
@@ -356,6 +360,7 @@ const Configuration = () => {
           onClose={() => setIsRatePlanModalOpen(false)}
           onSubmit={handleRatePlanSubmit}
           initialData={editingRatePlan}
+          parentRoomType={roomTypes.find(r => r.id === activeRoomTypeId)}
         />
       )}
     </div>

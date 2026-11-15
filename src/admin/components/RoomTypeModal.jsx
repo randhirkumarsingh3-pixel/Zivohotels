@@ -60,8 +60,16 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
       // 1. In a real app, you'd upload to S3/Cloudinary here. 
       // For this demo, we'll simulate a URL or use a placeholder if no actual uploader middleware is set.
       // But we must create the HotelImage record.
+      // Send the file itself (as the onboarding photo step does). This used to save a blob: URL,
+      // which only exists in the uploader's browser, so the photo was broken for everyone else.
+      const image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Could not read the file'));
+        reader.readAsDataURL(file);
+      });
       const payload = {
-        url: URL.createObjectURL(file), // Placeholder for real URL
+        image,
         hotelId: currentHotelId,
         category: uploadCategory,
         tags: uploadTags,
@@ -85,9 +93,12 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
           roomImages: [...prev.roomImages, { id: data.data.id, url: data.data.url, isPrimary: prev.roomImages.length === 0 }]
         }));
         setUploadTags([]); // reset
+      } else {
+        alert(data.message || 'The photo could not be uploaded.');
       }
     } catch (e) {
       console.error('Upload failed', e);
+      alert(e.message || 'The photo could not be uploaded.');
     } finally {
       setUploading(false);
     }

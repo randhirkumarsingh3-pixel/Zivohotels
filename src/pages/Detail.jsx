@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getHotelById, trackEvent } from '../services/api';
 import { getImageUrl } from '../utils/image';
@@ -57,11 +57,14 @@ const CANCELLATION_TEXT = {
   NON_REFUNDABLE: 'Non-refundable',
 };
 
+// Price per night for the chosen dates (daily rates included) when known, else the base price
+const nightlyPrice = (plan) => Number(plan?.stayNightlyPrice ?? plan?.basePrice ?? 0);
+
 // ─── Rate Plan Card ───────────────────────────────────────────────────────────
 const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
   const meal = MEAL_LABELS[plan.mealPlan] || MEAL_LABELS.NONE;
-  const totalPerNight = plan.basePrice;
-  const total = plan.basePrice * nights * rooms;
+  const totalPerNight = nightlyPrice(plan);
+  const total = totalPerNight * nights * rooms;
 
   return (
     <div
@@ -122,7 +125,9 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
           <div>
             <p className="font-bold text-gray-900 text-sm">{roomType.name}</p>
             <p className="text-xs text-gray-500">
-              From {fmt(roomType.ratePlans?.[0]?.basePrice || 0)} / night
+              {roomType.availableForStay === 0
+                ? <span className="text-red-600 font-semibold">Sold out for your dates</span>
+                : <>From {fmt(Math.min(...(roomType.ratePlans || []).map(nightlyPrice), Infinity) === Infinity ? 0 : Math.min(...roomType.ratePlans.map(nightlyPrice)))} / night</>}
               {roomType.ratePlans?.length > 1 && ` · ${roomType.ratePlans.length} rate plans`}
             </p>
           </div>
@@ -188,21 +193,27 @@ const Detail = () => {
   const badgeVariant = useExperiment('badge_urgency');
   const allExperiments = useAllExperiments();
 
-  // Intentional: only re-run when ID changes to prevent infinite loops from experiments context
+  // Re-fetched when the stay dates change (prices and availability depend on them). Intentionally
+  // not on experiment changes, to avoid loops.
+  const selectionRef = useRef({});
+  selectionRef.current = { room: selectedRoomType?.id, plan: selectedRatePlan?.id };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const fetchHotel = async () => {
       try {
-        const data = await getHotelById(id);
+        const data = await getHotelById(id, { checkIn, checkOut });
         setHotel(data);
         // Pre-select first room type + cheapest rate plan
         if (data.roomTypes?.length > 0) {
-          // Coming back from checkout ("Change room or meal plan"): keep what was chosen
-          const prevRoom = previousSelection?.id === data.id
-            ? data.roomTypes.find(rt => rt.id === previousSelection.selectedRoomType?.id) : null;
+          // Keep the current choice (date change), or the one made before checkout ("Change room
+          // or meal plan")
+          const wanted = selectionRef.current.room
+            ? selectionRef.current
+            : previousSelection?.id === data.id ? { room: previousSelection.selectedRoomType?.id, plan: previousSelection.selectedRatePlan?.id } : {};
+          const prevRoom = wanted.room ? data.roomTypes.find(rt => rt.id === wanted.room) : null;
           const room = prevRoom || data.roomTypes[0];
           setSelectedRoomType(room);
-          const prevPlan = prevRoom ? room.ratePlans?.find(rp => rp.id === previousSelection.selectedRatePlan?.id) : null;
+          const prevPlan = prevRoom ? room.ratePlans?.find(rp => rp.id === wanted.plan) : null;
           if (prevPlan) setSelectedRatePlan(prevPlan);
           else if (room.ratePlans?.length > 0) setSelectedRatePlan(room.ratePlans[0]);
         }
@@ -215,9 +226,9 @@ const Detail = () => {
         setLoading(false);
       }
     };
-    window.scrollTo(0, 0);
+    if (!hotel) window.scrollTo(0, 0);
     fetchHotel();
-  }, [id]);
+  }, [id, checkIn, checkOut]);
 
   const handleRoomSelect = (roomType, ratePlan) => {
     setSelectedRoomType(roomType);
@@ -230,6 +241,10 @@ const Detail = () => {
       setError('Please select a room type and rate plan to continue.');
       return;
     }
+    if (selectedRoomType.availableForStay === 0) {
+      setError(`${selectedRoomType.name} is sold out for these dates. Choose another room or other dates.`);
+      return;
+    }
     // Without dates the checkout showed "Invalid Date" and a ₹0 total
     if (!checkIn || !checkOut) {
       setError('Please choose your check-in and check-out dates first.');
@@ -238,7 +253,7 @@ const Detail = () => {
     // Pass full booking context including ratePlanId
     setSelectedHotel({
       ...hotel,
-      price: selectedRatePlan.basePrice,
+      price: nightlyPrice(selectedRatePlan),
       defaultRoomTypeId: selectedRoomType.id,
       defaultRatePlanId: selectedRatePlan.id,
       selectedRoomType,
@@ -265,7 +280,7 @@ const Detail = () => {
     .filter(Boolean);
   const nights    = getNights(checkIn, checkOut);
   const nightsN   = rooms || 1;
-  const pricePerNight = selectedRatePlan?.basePrice || 0;
+  const pricePerNight = selectedRatePlan ? nightlyPrice(selectedRatePlan) : 0;
   const baseTotal = pricePerNight * nights * nightsN;
   const taxRate   = pricePerNight <= 7500 ? 0.05 : 0.18;
   const taxes     = Math.round(baseTotal * taxRate);
@@ -400,7 +415,7 @@ const Detail = () => {
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Selected Plan</p>
                   <p className="font-semibold text-gray-900 text-sm">{selectedRatePlan.name}</p>
                   <div className="flex items-baseline mt-1">
-                    <span className="text-3xl font-extrabold text-gray-900">{fmt(selectedRatePlan.basePrice)}</span>
+                    <span className="text-3xl font-extrabold text-gray-900">{fmt(nightlyPrice(selectedRatePlan))}</span>
                     <span className="text-gray-500 ml-1 font-medium">/ night</span>
                   </div>
                 </div>
