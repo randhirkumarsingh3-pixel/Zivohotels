@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview, updateReview, getMyReviews } from '../services/api';
+import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
 import { saveVoucher } from '../utils/voucher';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
@@ -181,6 +181,8 @@ const MyBookings = () => {
     getMyReviews().then((list) => setMyReviews(Object.fromEntries(list.map((r) => [r.bookingId, r])))).catch(() => {});
   }, []);
   useEffect(() => { loadMyReviews(); }, [loadMyReviews]);
+  const [rewards, setRewards] = useState(null);
+  useEffect(() => { getMyRewards().then(setRewards).catch(() => {}); }, []);
 
   /* ── Data fetching ── */
   const fetchMyBookings = useCallback(async () => {
@@ -327,17 +329,19 @@ const MyBookings = () => {
           <p className="text-gray-500 mt-2 text-lg">Manage stay parameters, access digital invoices, and coordinate trip assistance.</p>
         </div>
 
-        {/* Reviews written (this showed a made-up "240 Zivo Points" balance) */}
-        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-brand-950 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0">
+        {/* Zivo Rewards balance (this showed a made-up "240 Zivo Points") */}
+        <Link to="/rewards" className="bg-gradient-to-r from-gray-900 via-gray-800 to-brand-950 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0 hover:border-brand-500 transition-colors">
           <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-amber-400">
             <Award size={28} />
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Your reviews</p>
-            <p className="text-2xl font-black text-white mt-0.5">{Object.keys(myReviews).length} written</p>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">Rate a stay from the day after check-in</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Zivo Rewards{rewards ? ` · ${rewards.tier.name}` : ''}</p>
+            <p className="text-2xl font-black text-white mt-0.5">{rewards ? `${rewards.available.toLocaleString('en-IN')} points` : '—'}</p>
+            <p className="text-[10px] text-gray-400 font-medium mt-1">
+              {rewards?.pending ? `${rewards.pending.toLocaleString('en-IN')} pending · ` : ''}{Object.keys(myReviews).length} review{Object.keys(myReviews).length === 1 ? '' : 's'} written · View rewards →
+            </p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {error && (

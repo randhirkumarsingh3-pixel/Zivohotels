@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { awardReviewBonus } from './loyaltyService.js';
 import prisma from '../config/db.js';
 import { mediaService } from './MediaService.js';
 import { createNotification } from './notificationService.js';
@@ -228,7 +229,10 @@ export const createReview = async (payload, { userId }) => {
     await tx.auditLog.create({ data: { action: 'REVIEW_CREATED', entityType: 'REVIEW', entityId: r.id, userId, details: { bookingId: booking.id, rating: r.rating, status: r.status } } });
     return r;
   });
-  if (review.status === 'APPROVED') notifyHotelOfReview(review, booking.hotel.name);
+  if (review.status === 'APPROVED') {
+    notifyHotelOfReview(review, booking.hotel.name);
+    awardReviewBonus(review).catch(() => {});
+  }
   return review;
 };
 
@@ -250,6 +254,7 @@ export const editReview = async (reviewId, payload, { userId }) => {
   const updated = await prisma.$transaction(async (tx) => {
     const r = await tx.review.update({ where: { id: reviewId }, data: { ...next, photos, ...moderation, publishedAt: moderation.status === 'APPROVED' ? (review.publishedAt || new Date()) : null } });
     await recomputeHotelStats(review.hotelId, tx);
+    if (r.status === 'APPROVED') awardReviewBonus(r).catch(() => {});
     await tx.auditLog.create({ data: { action: 'REVIEW_EDITED', entityType: 'REVIEW', entityId: reviewId, userId, details: { oldRating: review.rating, newRating: r.rating, status: r.status } } });
     return r;
   });
@@ -398,7 +403,10 @@ export const moderate = async (reviewId, { action, note }, adminId) => {
     await tx.auditLog.create({ data: { action: `REVIEW_${action}`, entityType: 'REVIEW', entityId: reviewId, userId: adminId, details: { note: note || null, hotelId: review.hotelId } } });
     return r;
   });
-  if (action === 'APPROVE' && review.status !== 'APPROVED') notifyHotelOfReview(updated, review.hotel.name);
+  if (action === 'APPROVE' && review.status !== 'APPROVED') {
+    notifyHotelOfReview(updated, review.hotel.name);
+    awardReviewBonus(updated).catch(() => {});
+  }
   if (review.reportedAt && !review.reportResolved && ['APPROVE', 'KEEP', 'REJECT'].includes(action)) {
     createNotification({
       hotelId: review.hotelId, type: 'REVIEW',

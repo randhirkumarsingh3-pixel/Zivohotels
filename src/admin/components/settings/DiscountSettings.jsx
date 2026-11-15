@@ -108,63 +108,23 @@ const DiscountSettings = () => {
         )}
 
         {activeTab === 'loyalty' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Bronze Tier</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase">Discount %</label>
-                  <input 
-                    type="number" 
-                    value={discountData.loyaltyTiers.bronze.discount}
-                    onChange={(e) => setDiscountData(prev => ({...prev, loyaltyTiers: {...prev.loyaltyTiers, bronze: {...prev.loyaltyTiers.bronze, discount: parseInt(e.target.value)}}}))}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative">
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-300 text-xs font-bold px-2 py-0.5 rounded">SILVER</span>
-              <h4 className="font-bold text-gray-800 border-b pb-2 mb-4 mt-2">Silver Tier</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase">Discount %</label>
-                  <input 
-                    type="number" 
-                    value={discountData.loyaltyTiers.silver.discount}
-                    onChange={(e) => setDiscountData(prev => ({...prev, loyaltyTiers: {...prev.loyaltyTiers, silver: {...prev.loyaltyTiers.silver, discount: parseInt(e.target.value)}}}))}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-200 shadow-sm relative">
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-400 text-white text-xs font-bold px-2 py-0.5 rounded">GOLD</span>
-              <h4 className="font-bold text-gray-800 border-b border-yellow-200 pb-2 mb-4 mt-2">Gold Tier</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase">Discount %</label>
-                  <input 
-                    type="number" 
-                    value={discountData.loyaltyTiers.gold.discount}
-                    onChange={(e) => setDiscountData(prev => ({...prev, loyaltyTiers: {...prev.loyaltyTiers, gold: {...prev.loyaltyTiers.gold, discount: parseInt(e.target.value)}}}))}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-            </div>
+          // These tier discounts were saved but never applied to any booking. The loyalty program
+          // (earn rate, point value, tiers, members) now lives in Admin -> Loyalty.
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h4 className="font-bold text-gray-900">Zivo Rewards has its own page</h4>
+            <p className="text-sm text-gray-600 mt-1">Set how guests earn and use points, the tiers, bonuses and adjust members&apos; points in Loyalty.</p>
+            <a href="/admin/loyalty" className="inline-block mt-3 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold">Open Loyalty</a>
           </div>
         )}
 
         {activeTab === 'engine' && (
           <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
             <h4 className="font-bold text-blue-900 mb-2">Rule Priority Engine Logic</h4>
-            <p className="text-sm text-blue-800 mb-4">When multiple discounts apply to a booking, the system uses the following strict priority order to prevent stacked discounting:</p>
+            <p className="text-sm text-blue-800 mb-4">How discounts combine on a booking (all on the pre-GST room price; GST is worked out after them):</p>
             <ol className="list-decimal pl-5 text-sm text-blue-800 space-y-2 font-medium">
-              <li>Property-Level Specific Override (Highest Priority)</li>
-              <li>Manual Coupon Code entered by User</li>
-              <li>User&apos;s Loyalty Tier Discount</li>
-              <li>Global Promotional Rules (Lowest Priority)</li>
+              <li>Pay-now discount, when the guest pays in full online</li>
+              <li>One promotion: the biggest the guest qualifies for (automatic offer or the code entered)</li>
+              <li>Zivo Rewards points the guest chooses to use (up to the program&apos;s limit)</li>
             </ol>
           </div>
         )}

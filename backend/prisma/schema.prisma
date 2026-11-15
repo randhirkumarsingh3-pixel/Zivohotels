@@ -987,12 +987,35 @@ model EmailOTP {
   @@index([email])
 }
 
+/// Zivo Rewards points ledger (one row per movement). Balance = sum of AVAILABLE rows.
+///  EARN    +points for a stay: PENDING until check-out, then AVAILABLE; REVERSED if cancelled.
+///  REDEEM  -points used at checkout: AVAILABLE; REVERSED (= returned) if the booking is cancelled.
+///  BONUS   +points (published review, sign-up) / ADJUST +/- by an admin, with a reason.
+///  VOID    rows from before Zivo Rewards (awarded on unpaid / cancelled bookings), not counted.
 model LoyaltyPoint {
-  id        String   @id @default(uuid())
-  userId    String
-  points    Int
-  source    String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String
+  points      Int
+  source      String
+  type        String   @default("EARN")
+  status      String   @default("AVAILABLE")
+  bookingId   String?
+  reviewId    String?
+  description String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([userId, status])
+  @@index([bookingId])
+}
+
+/// Zivo Rewards settings (single row, id "default"), edited in Admin -> Loyalty.
+model LoyaltySetting {
+  id          String   @id @default("default")
+  config      Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 model Agent {

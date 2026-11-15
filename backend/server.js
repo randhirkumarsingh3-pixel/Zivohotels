@@ -45,6 +45,9 @@ import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import { startBookingExpiryJob } from './services/bookingExpiryService.js';
 import { startDynamicPricingJob } from './services/dynamicPricingService.js';
+import { startLoyaltyJob } from './services/loyaltyService.js';
+import loyaltyRoutes from './routes/loyaltyRoutes.js';
+import adminLoyaltyRoutes from './routes/adminLoyaltyRoutes.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
@@ -204,6 +207,7 @@ app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.use('/api/v1/bookings/preview', previewLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/loyalty', loyaltyRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/invoices', protect, userInvoiceRoutes);
 app.use('/api/v1/payments', bookingLimiter, paymentRoutes);
@@ -243,6 +247,7 @@ app.use('/api/v1/admin/images',     imageRoutes);
 app.use('/api/v1/admin/pricing',    pricingRoutes);
 app.use('/api/v1/admin/promotions', promotionRoutes);
 app.use('/api/v1/admin/reviews',    adminReviewRoutes);
+app.use('/api/v1/admin/loyalty',    adminLoyaltyRoutes);
 app.use('/api/v1/pricing', pricingRoutes);
 app.use('/api/v1/finance', financeRoutes);
 
@@ -270,5 +275,6 @@ server.listen(PORT, '0.0.0.0', () => {
   // Release unpaid bookings whose payment window has passed (every 5 minutes)
   startBookingExpiryJob();
   startDynamicPricingJob();
+  startLoyaltyJob();
   console.log('✉️  Email worker started in-process');
 });

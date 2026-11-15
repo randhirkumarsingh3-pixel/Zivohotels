@@ -93,10 +93,12 @@ export const computeSettlement = ({ grossAmount, taxAmount, collected, commissio
   return { gross, preTax, tax, collected: collectedOnline, zivoFunded: funded, commission, cgst, sgst, igst, commissionGst, tcs, tds, netPayable };
 };
 
-/** Pre-tax discount of a Zivo-funded promotion on the booking (0 if none or hotel-funded). */
+/** Pre-tax discounts Zivo pays for: a Zivo-funded promotion and reward points used (0 if none). */
 export const zivoFundedDiscount = (booking) => {
   const promo = booking?.metadata?.promotion;
-  return promo && promo.fundedBy === 'ZIVO' ? D(promo.discountAmount || 0) : D(0);
+  const promoPart = promo && promo.fundedBy === 'ZIVO' ? D(promo.discountAmount || 0) : D(0);
+  // Zivo Rewards points used by the guest are paid for by Zivo too
+  return promoPart.plus(D(booking?.metadata?.loyalty?.discountAmount || 0));
 };
 
 /** A checked-out stay: the whole booking value; collected = paid minus refunded. */

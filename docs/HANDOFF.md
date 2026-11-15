@@ -299,6 +299,25 @@ settlement. Fixed along the way:
   no longer shown. The review form's "Zivo Points" promises and the fake points balance were
   removed (no points system exists yet).
 
+## Zivo Rewards loyalty program (Nov 2026)
+
+- Service `backend/services/loyaltyService.js`; API `/loyalty` (program, me, history) and
+  `/admin/loyalty` (stats, config, members, adjust). Guest page `/rewards`, Admin -> Loyalty.
+- Ledger `LoyaltyPoint` (type EARN / REDEEM / BONUS / ADJUST, status PENDING / AVAILABLE /
+  REVERSED / VOID); balance = sum of AVAILABLE. Settings in `LoyaltySetting` (defaults in code:
+  1 point per ₹100 pre-GST, 1 point = ₹1, min 100 points, max 20% of the room price, review bonus
+  50, tiers Blue / Silver 5 nights or ₹25k (1.25x) / Gold 15 nights or ₹75k (1.5x), 12 months).
+- A booking records the points it earns as PENDING and any points used as REDEEM, inside the booking
+  transaction (member lock against double spending). Completed -> earned points AVAILABLE;
+  cancelled -> earned reversed and used points returned; no-show -> nothing earned. Settled
+  immediately by status changes / cancellations and by a 5-minute reconcile job, which also gives
+  points for customer stays that had none.
+- Points used are a Zivo-funded discount: `metadata.loyalty.discountAmount` is added to
+  `zivoFundedDiscount`, so commission and the hotel payout are on the full price. Shown on vouchers.
+- Customer accounts only. Old LoyaltyPoint rows (awarded on booking creation, never reversed) are
+  kept as VOID and not counted. The admin "Loyalty Program" tier-discount tab (never applied) now
+  links to Admin -> Loyalty.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

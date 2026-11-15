@@ -37,6 +37,7 @@ export const pricingDomain = {
       checkInDate, checkOutDate, rooms, adults, children, 
       extraBeds, paymentType, appliedCoupon = null,
       appliedPromotion = null, // promotion chosen by promotionService (one per booking)
+      loyaltyDiscountAmount = 0, // Zivo Rewards points used (rupees), worked out by loyaltyService
       dynamicContext = null,
       dailyRates = {} // { [night ISO string]: price } from Inventory & Rates / the channel manager
     } = input;
@@ -187,8 +188,10 @@ export const pricingDomain = {
     // Promotion (Admin or property offer) on the same pre-tax subtotal
     const promotionDiscountAmount = appliedPromotion ? discountFor(appliedPromotion, rawSubtotal) : 0;
 
-    // Total discount is prepaid discount + coupon discount + promotion
-    const totalDiscountAmount = discountAmount + couponDiscountAmount + promotionDiscountAmount;
+    const pointsDiscount = Math.max(0, Math.min(Math.round(Number(loyaltyDiscountAmount) || 0), rawSubtotal - discountAmount - couponDiscountAmount - promotionDiscountAmount));
+
+    // Total discount is prepaid discount + coupon discount + promotion + reward points
+    const totalDiscountAmount = discountAmount + couponDiscountAmount + promotionDiscountAmount + pointsDiscount;
     const baseAmountAfterDiscount = Math.max(0, rawSubtotal - totalDiscountAmount);
 
     // Step 5: Determine Tax Slab based on post-discount per-night rate
@@ -219,6 +222,7 @@ export const pricingDomain = {
       prepaidDiscountAmount: discountAmount,
       couponDiscountAmount,
       promotionDiscountAmount,
+      loyaltyDiscountAmount: pointsDiscount,
       baseAmount: baseAmountAfterDiscount, 
       taxAmount,
       totalAmount,

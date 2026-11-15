@@ -12,12 +12,6 @@ const ASPECT_LABEL = { cleanliness: 'Cleanliness', staff: 'Staff & service', com
 const TRIP_LABEL = { BUSINESS: 'Business trip', COUPLE: 'Couple', FAMILY: 'Family', FRIENDS: 'Friends', SOLO: 'Solo traveller' };
 const scoreLabel = (s) => (s >= 4.5 ? 'Exceptional' : s >= 4 ? 'Very good' : s >= 3.5 ? 'Good' : s >= 3 ? 'Pleasant' : s > 0 ? 'Okay' : '');
 
-const Stars = ({ value, size = 14 }) => (
-  <span className="inline-flex gap-0.5" aria-label={`${value} out of 5`}>
-    {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={size} className={n <= Math.round(value) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />)}
-  </span>
-);
-
 const ReviewCard = ({ r }) => {
   const [open, setOpen] = useState(false);
   const long = (r.comment || '').length > 320;

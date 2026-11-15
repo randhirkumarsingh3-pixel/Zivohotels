@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { awardSignupBonus } from '../services/loyaltyService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -63,6 +64,8 @@ export const signup = asyncHandler(async (req, res) => {
       lastActiveAt: new Date()
     }
   });
+
+  if (newUser.role === 'CUSTOMER') awardSignupBonus(newUser.id).catch(() => {});
 
   const token = signToken(newUser.id, newUser.role, null, newUser.tokenVersion);
 

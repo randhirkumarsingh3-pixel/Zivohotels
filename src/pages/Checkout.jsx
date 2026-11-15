@@ -8,7 +8,7 @@ import {
   CheckCircle2, ShieldCheck, CreditCard, Building, 
   PieChart, Clock, AlertTriangle, User, Mail, 
   Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight,
-  ArrowLeft, Briefcase, Download, Tag
+  ArrowLeft, Briefcase, Download, Tag, Award
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
@@ -89,6 +89,8 @@ const Checkout = () => {
   // applied by the server, automatic offers included
   const [promoInput, setPromoInput] = useState('');
   const [promoCode, setPromoCode] = useState('');
+  // Zivo Rewards: points the guest chose to use (0 = not using)
+  const [usePoints, setUsePoints] = useState(0);
 
   useEffect(() => {
     getPublicConfig().then(res => setConfig(res.data)).catch(console.error);
@@ -109,7 +111,8 @@ const Checkout = () => {
         extraBeds: searchParams.extraBeds || 0,
         rooms: searchParams.rooms || 1,
         paymentType,
-        ...(promoCode ? { promoCode } : {})
+        ...(promoCode ? { promoCode } : {}),
+        ...(usePoints > 0 ? { usePoints } : {})
       });
       setPreview(res.data);
       setPreviewError('');
@@ -121,7 +124,7 @@ const Checkout = () => {
     } finally {
       setFetchingPreview(false);
     }
-  }, [selectedHotel, searchParams, paymentType, promoCode]);
+  }, [selectedHotel, searchParams, paymentType, promoCode, usePoints]);
 
   useEffect(() => {
     fetchPreview();
@@ -152,8 +155,10 @@ const Checkout = () => {
   const discount = preview?.discountAmount || 0;
   const promotion = preview?.promotion || null;
   const promotionOff = preview?.promotionDiscountAmount || 0;
-  const prepaidOff = preview?.prepaidDiscountAmount ?? Math.max(0, discount - promotionOff);
+  const prepaidOff = preview?.prepaidDiscountAmount ?? Math.max(0, discount - promotionOff - (preview?.loyaltyDiscountAmount || 0));
   const promoStatus = preview?.promoCodeStatus || null;
+  const rewards = preview?.loyalty || null;
+  const pointsOff = preview?.loyaltyDiscountAmount || 0;
   const taxes = preview?.taxAmount || 0;
   const taxPercentage = preview?.taxPercentage;
   const pricingSource = preview?.pricingType;
@@ -202,6 +207,7 @@ const Checkout = () => {
         rooms: searchParams.rooms || 1,
         paymentType,
         ...(promoCode && promoStatus?.ok ? { promoCode } : {}),
+        ...(rewards?.pointsApplied ? { usePoints: rewards.pointsApplied } : {}),
         ...(withCompany && company.name.trim() ? {
           companyName: company.name.trim(),
           ...(company.gstin.trim() ? { companyGstin: company.gstin.trim() } : {}),
@@ -614,6 +620,43 @@ const Checkout = () => {
                     <div className="flex justify-between text-green-600 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
                       <span className="flex items-center gap-1"><ShieldCheck size={14} /> You save (Prepaid)</span>
                       <span>-₹{prepaidOff.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {pointsOff > 0 && (
+                    <div className="flex justify-between text-green-700 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
+                      <span className="flex items-center gap-1"><Award size={14} /> Zivo Rewards ({rewards.pointsApplied.toLocaleString('en-IN')} pts)</span>
+                      <span>-₹{pointsOff.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {/* Zivo Rewards */}
+                  {rewards && (
+                    <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-gray-800 flex items-center gap-1"><Award size={14} className="text-brand-600" /> Zivo Rewards · {rewards.tier?.name}</span>
+                        <span className="text-gray-500">{rewards.available.toLocaleString('en-IN')} pts available</span>
+                      </div>
+                      {rewards.maxPoints > 0 ? (
+                        <>
+                          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" className="rounded border-gray-300" checked={usePoints > 0}
+                              onChange={(e) => setUsePoints(e.target.checked ? rewards.maxPoints : 0)} />
+                            Use my points (up to {rewards.maxPoints.toLocaleString('en-IN')} = ₹{Math.round(rewards.maxPoints * rewards.pointValue).toLocaleString('en-IN')})
+                          </label>
+                          {usePoints > 0 && (
+                            <div className="flex items-center gap-2">
+                              <input type="range" aria-label="Points to use" min={rewards.minRedeemPoints} max={rewards.maxPoints} step={1}
+                                value={Math.min(usePoints, rewards.maxPoints)} onChange={(e) => setUsePoints(Number(e.target.value))} className="flex-1 accent-brand-600" />
+                              <span className="text-xs font-bold text-gray-700 w-20 text-right">{Math.min(usePoints, rewards.maxPoints).toLocaleString('en-IN')} pts</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-gray-500">{rewards.available > 0 ? `Use points from ${rewards.minRedeemPoints} points (up to ${rewards.maxRedeemPercent}% of the room price).` : 'Points from your stays can be used on future bookings.'}</p>
+                      )}
+                      {rewards.reason && <p role="alert" className="text-[11px] text-red-600">{rewards.reason}</p>}
+                      {rewards.earn > 0 && <p className="text-[11px] text-green-700 font-semibold">You&apos;ll earn {rewards.earn.toLocaleString('en-IN')} points after this stay</p>}
                     </div>
                   )}
 

@@ -306,6 +306,11 @@ export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/profile/passwor
 export const getNotifications = () => apiFetch(`${PUBLIC_BASE}/profile/notifications`).then(res => res?.data);
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
+// Zivo Rewards (loyalty)
+export const getRewardsProgram = () => apiFetch(`${PUBLIC_BASE}/loyalty/program`).then(res => res?.data);
+export const getMyRewards = () => apiFetch(`${PUBLIC_BASE}/loyalty/me`).then(res => res?.data);
+export const getRewardsHistory = (page = 1) => apiFetch(`${PUBLIC_BASE}/loyalty/me/history?page=${page}`).then(res => res?.data || []);
+
 // Reviews: public list for a hotel, and the guest's own reviews (write / edit)
 export const getReviews = (hotelId, params = {}) => apiFetch(`${PUBLIC_BASE}/hotels/${hotelId}/reviews?${new URLSearchParams(params)}`).then(res => res?.data);
 export const getReviewOptions = () => apiFetch(`${PUBLIC_BASE}/reviews/options`).then(res => res?.data);
