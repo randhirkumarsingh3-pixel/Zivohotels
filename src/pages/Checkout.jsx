@@ -8,7 +8,7 @@ import {
   CheckCircle2, ShieldCheck, CreditCard, Building, 
   PieChart, Clock, AlertTriangle, User, Mail, 
   Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight,
-  ArrowLeft, Briefcase, Download
+  ArrowLeft, Briefcase, Download, Tag
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
@@ -85,6 +85,10 @@ const Checkout = () => {
   const [previewError, setPreviewError] = useState('');
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [config, setConfig] = useState({ partialPaymentPercent: 30, prepaidDiscountPercent: 5 });
+  // Promo code: sent with the preview (and the booking); the best offer the guest qualifies for is
+  // applied by the server, automatic offers included
+  const [promoInput, setPromoInput] = useState('');
+  const [promoCode, setPromoCode] = useState('');
 
   useEffect(() => {
     getPublicConfig().then(res => setConfig(res.data)).catch(console.error);
@@ -104,7 +108,8 @@ const Checkout = () => {
         children: searchParams.children || 0,
         extraBeds: searchParams.extraBeds || 0,
         rooms: searchParams.rooms || 1,
-        paymentType
+        paymentType,
+        ...(promoCode ? { promoCode } : {})
       });
       setPreview(res.data);
       setPreviewError('');
@@ -116,7 +121,7 @@ const Checkout = () => {
     } finally {
       setFetchingPreview(false);
     }
-  }, [selectedHotel, searchParams, paymentType]);
+  }, [selectedHotel, searchParams, paymentType, promoCode]);
 
   useEffect(() => {
     fetchPreview();
@@ -145,6 +150,10 @@ const Checkout = () => {
   const mealCharges = preview?.mealCharges || 0;
   const rawSubtotal = roomPrice + extraGuestCharges + extraBedCharges + mealCharges;
   const discount = preview?.discountAmount || 0;
+  const promotion = preview?.promotion || null;
+  const promotionOff = preview?.promotionDiscountAmount || 0;
+  const prepaidOff = preview?.prepaidDiscountAmount ?? Math.max(0, discount - promotionOff);
+  const promoStatus = preview?.promoCodeStatus || null;
   const taxes = preview?.taxAmount || 0;
   const taxPercentage = preview?.taxPercentage;
   const pricingSource = preview?.pricingType;
@@ -192,6 +201,7 @@ const Checkout = () => {
         extraBeds: searchParams.extraBeds || 0,
         rooms: searchParams.rooms || 1,
         paymentType,
+        ...(promoCode && promoStatus?.ok ? { promoCode } : {}),
         ...(withCompany && company.name.trim() ? {
           companyName: company.name.trim(),
           ...(company.gstin.trim() ? { companyGstin: company.gstin.trim() } : {}),
@@ -594,12 +604,37 @@ const Checkout = () => {
                     <span>Stay Subtotal</span>
                     <span>₹{rawSubtotal.toLocaleString()}</span>
                   </div>
-                  {discount > 0 && (
-                    <div className="flex justify-between text-green-600 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100 animate-pulse">
-                      <span className="flex items-center gap-1"><ShieldCheck size={14} /> You save (Prepaid)</span>
-                      <span>-₹{discount.toLocaleString()}</span>
+                  {promotionOff > 0 && promotion && (
+                    <div className="flex justify-between text-green-700 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
+                      <span className="flex items-center gap-1"><Tag size={14} /> {promotion.name}{promotion.code ? ` (${promotion.code})` : ''}</span>
+                      <span>-₹{promotionOff.toLocaleString()}</span>
                     </div>
                   )}
+                  {prepaidOff > 0 && (
+                    <div className="flex justify-between text-green-600 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
+                      <span className="flex items-center gap-1"><ShieldCheck size={14} /> You save (Prepaid)</span>
+                      <span>-₹{prepaidOff.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {/* Promo code */}
+                  <div className="pt-1">
+                    {promoCode && promoStatus?.ok ? (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-green-700">Code {promoCode} applied</span>
+                        <button type="button" onClick={() => { setPromoCode(''); setPromoInput(''); }} className="font-semibold text-gray-500 hover:text-red-600">Remove</button>
+                      </div>
+                    ) : (
+                      <form onSubmit={(e) => { e.preventDefault(); setPromoCode(promoInput.trim().toUpperCase()); }} className="flex gap-2">
+                        <input aria-label="Promo code" value={promoInput} onChange={(e) => setPromoInput(e.target.value.toUpperCase())} placeholder="Promo code"
+                          className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm uppercase font-mono focus:ring-2 focus:ring-brand-500 outline-none" />
+                        <button type="submit" disabled={!promoInput.trim() || fetchingPreview} className="px-3 py-2 rounded-lg text-sm font-bold bg-gray-900 text-white disabled:opacity-40">Apply</button>
+                      </form>
+                    )}
+                    {promoCode && promoStatus && !promoStatus.ok && (
+                      <p role="alert" className="text-xs text-red-600 mt-1">{promoStatus.message}</p>
+                    )}
+                  </div>
                   <div className="flex justify-between text-gray-500 font-medium">
                     <span>GST{taxPercentage != null ? ` (${taxPercentage}%)` : ''}</span>
                     <span className="text-gray-900">₹{taxes.toLocaleString()}</span>

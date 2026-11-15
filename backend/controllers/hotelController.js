@@ -11,6 +11,7 @@ import { queueService } from '../services/queueService.js';
 import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
+import { displayOffers } from '../services/promotionService.js';
 import { stayNightlyPrice } from '../services/ariService.js';
 
 // --- ZOD SCHEMAS ---
@@ -807,6 +808,15 @@ export const getHotelById = asyncHandler(async (req, res) => {
         rp.stayNightlyPrice = stayNightlyPrice(rp.basePrice, nights, ratesByPlan[rp.id] || {});
       });
     });
+
+    // Automatic offers (promotions without a code): the same discount checkout gives for one room
+    const stayEnd = new Date(nights[nights.length - 1]);
+    stayEnd.setDate(stayEnd.getDate() + 1);
+    const offers = await displayOffers({
+      hotelId: id, checkIn: nights[0], checkOut: stayEnd,
+      plans: hotel.roomTypes.flatMap(rt => rt.ratePlans.filter(rp => rp.stayNightlyPrice > 0).map(rp => ({ roomTypeId: rt.id, ratePlanId: rp.id, nightlyPrice: rp.stayNightlyPrice })))
+    });
+    hotel.roomTypes.forEach(rt => rt.ratePlans.forEach(rp => { if (offers[rp.id]) rp.offer = offers[rp.id]; }));
   }
 
   const signedHotel = await mediaService.signHotelUrls(hotel);
@@ -901,6 +911,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
      let totalRooms = 0;
      let availableRooms = 0;
      let hasFreeCancellation = false;
+     const bookablePlans = [];
 
      hotel.roomTypes.forEach(rt => {
          // Availability over the stay: the lowest available count across the nights; a night with
@@ -920,6 +931,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
          if (minAvail > 0) {
            rt.ratePlans.forEach(rp => {
              const nightly = stayNightlyPrice(rp.basePrice, stayNights, ratesByPlan[rp.id] || {});
+             if (nightly > 0) bookablePlans.push({ roomTypeId: rt.id, ratePlanId: rp.id, nightlyPrice: nightly });
              if (nightly < hotelMinPrice) hotelMinPrice = nightly;
            });
          }
@@ -948,9 +960,27 @@ export const searchHotels = asyncHandler(async (req, res) => {
         totalRooms: totalRooms || 1,
         availableRooms: availableRooms || 0,
         freeCancellation: hasFreeCancellation,
-        amenities: hotel.amenities || []
+        amenities: hotel.amenities || [],
+        bookablePlans
      };
   });
+
+  // Best automatic offer per hotel (promotions without a code), on the plan it makes cheapest
+  const searchEnd = new Date(stayNights[stayNights.length - 1]);
+  searchEnd.setDate(searchEnd.getDate() + 1);
+  await Promise.all(mappedHotels.map(async (h) => {
+    const plans = h.bookablePlans;
+    delete h.bookablePlans;
+    if (!plans.length) return;
+    const offers = await displayOffers({ hotelId: h.id, checkIn: stayNights[0], checkOut: searchEnd, plans });
+    let best = null;
+    for (const p of plans) {
+      const o = offers[p.ratePlanId];
+      const after = o ? o.nightlyPriceAfter : p.nightlyPrice;
+      if (o && (!best || after < best.nightlyPriceAfter)) best = { ...o, nightlyPriceBefore: p.nightlyPrice };
+    }
+    if (best && best.nightlyPriceAfter < h.price) h.offer = best;
+  }));
 
   // Apply filters
   let filteredHotels = mappedHotels.filter(h => h.price > 0);

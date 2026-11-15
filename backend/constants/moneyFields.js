@@ -21,4 +21,7 @@ export const MONEY_FIELDS = {
   coupon: ['value', 'maxDiscount', 'minBookingAmount'],
   loyaltyWallet: ['balance'],
   dailyRate: ['price'],
+  dynamicPricingSetting: ['minPrice', 'maxPrice'],
+  promotion: ['value', 'maxDiscount', 'minBookingAmount'],
+  promotionRedemption: ['discountAmount'],
 };

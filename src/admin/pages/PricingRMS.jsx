@@ -1,232 +1,180 @@
-import { useState } from 'react';
-import { 
-  TrendingUp, Activity, Zap, 
-  Search, Filter, Info, Clock,
-  Lock
-} from 'lucide-react';
-import FactorBreakdownDrawer from '../../components/shared/FactorBreakdownDrawer';
+import { useState, useEffect, useCallback } from 'react';
+import { Zap, Building2, CalendarDays, ShieldAlert, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import DynamicPricingManager from '../../components/pricing/DynamicPricingManager';
 
-const PricingRMS = () => {
-  const [selectedDecision, setSelectedDecision] = useState(null);
+/**
+ * Admin -> Pricing & RMS. (This page was a mock with made-up hotels and numbers.)
+ *  - Properties: dynamic pricing state of every property; open one to manage its rules and limits
+ *    (the same screen the owner has in the extranet).
+ *  - Holiday calendar: festival / event dates with a price uplift, for all cities or one city.
+ *    Each property chooses whether to apply it.
+ *  - Platform mode: SAFE_MODE holds payouts and experiments platform-wide.
+ */
+const API = `${import.meta.env.VITE_API_URL || '/api/v1'}/pricing`;
+const headers = () => {
+  const token = localStorage.getItem('jwt_token');
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+};
+const call = async (path, method = 'GET', body) => {
+  const res = await fetch(`${API}${path}`, { method, headers: headers(), ...(body ? { body: JSON.stringify(body) } : {}) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.success === false) throw new Error(json.message || 'Something went wrong');
+  return json.data;
+};
 
-  const pricingData = [
-    { 
-      hotel: 'Taj Palace', 
-      room: 'Deluxe Suite', 
-      base: 12000, 
-      final: 13440, 
-      multiplier: '1.12x', 
-      demand: 'HIGH', 
-      inventory: '2/15', 
-      holiday: 'NO', 
-      ers: 84,
-      explanation: {
-        summary: "High demand velocity in Delhi cluster + low inventory pressure.",
-        factors: {
-          demand: { weight: "+12%", signal: "SEARCH_VELOCITY" },
-          inventory: { weight: "+8%", signal: "AVAILABILITY_CRUNCH" },
-          competition: { weight: "-3%", signal: "PARITY_MATCH" }
-        },
-        confidence: "HIGH",
-        winningLayer: "AI_OPTIMIZER",
-        priority: 300,
-        version: "ai_bandit_v2.1"
-      }
-    },
-    { 
-      hotel: 'Hyatt Regency', 
-      room: 'Executive Room', 
-      base: 8500, 
-      final: 8500, 
-      multiplier: '1.00x', 
-      demand: 'NORMAL', 
-      inventory: '12/40', 
-      holiday: 'NO', 
-      ers: 72,
-      explanation: {
-        summary: "Market parity reached. No AI delta applied.",
-        factors: {
-          demand: { weight: "0%", signal: "STABLE" },
-          inventory: { weight: "0%", signal: "OPTIMAL" }
-        },
-        confidence: "MEDIUM",
-        winningLayer: "BASE_LOGIC",
-        priority: 100,
-        version: "stable_v1"
-      }
-    }
-  ];
+const TABS = [
+  { id: 'properties', label: 'Properties', icon: Building2 },
+  { id: 'holidays', label: 'Holiday calendar', icon: CalendarDays },
+  { id: 'platform', label: 'Platform mode', icon: ShieldAlert },
+];
+
+const Properties = () => {
+  const [rows, setRows] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [error, setError] = useState('');
+  const load = useCallback(() => { call('/dynamic').then(setRows).catch((e) => setError(e.message)); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  if (selected) {
+    return (
+      <div className="space-y-4">
+        <button type="button" onClick={() => { setSelected(null); load(); }} className="flex items-center gap-1 text-sm font-semibold text-gray-600 hover:text-gray-900"><ArrowLeft size={16} /> All properties</button>
+        <h2 className="text-xl font-bold text-gray-900">{selected.name} <span className="text-sm font-medium text-gray-400">· {selected.city}</span></h2>
+        <DynamicPricingManager hotelId={selected.id} inventoryLink="/admin/inventory-pricing" />
+      </div>
+    );
+  }
+  if (error) return <p className="p-4 bg-red-50 text-red-700 rounded-lg text-sm">{error}</p>;
+  if (!rows) return <p className="text-gray-400">Loading…</p>;
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-gray-500 bg-gray-50">
+            <th className="px-4 py-3 font-semibold">Property</th>
+            <th className="px-4 py-3 font-semibold">Dynamic pricing</th>
+            <th className="px-4 py-3 font-semibold">Active rules</th>
+            <th className="px-4 py-3 font-semibold">Last update</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((h) => (
+            <tr key={h.id} className="border-t border-gray-100">
+              <td className="px-4 py-3"><div className="font-semibold text-gray-900">{h.name}</div><div className="text-xs text-gray-400">{h.city}{h.integrationMode === 'CHANNEL_MANAGER' ? ' · channel manager' : ''}</div></td>
+              <td className="px-4 py-3">
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${h.enabled ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>{h.enabled ? 'ON' : 'OFF'}</span>
+              </td>
+              <td className="px-4 py-3 text-gray-700">{h.rules}</td>
+              <td className="px-4 py-3 text-xs text-gray-500">
+                {h.lastRunAt ? new Date(h.lastRunAt).toLocaleString('en-IN') : '—'}
+                {h.lastRunSummary?.status === 'ON' && <div>{h.lastRunSummary.dynamicNights} nights adjusted</div>}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <button type="button" onClick={() => setSelected(h)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-50 text-brand-700 hover:bg-brand-100">Manage</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const Holidays = () => {
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState({ date: '', name: '', city: '', upliftPercent: 15 });
+  const [msg, setMsg] = useState(null);
+  const load = useCallback(() => { call('/holidays').then(setRows).catch((e) => setMsg({ type: 'error', text: e.message })); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const add = async (e) => {
+    e.preventDefault();
+    try {
+      await call('/holidays', 'POST', form);
+      setMsg({ type: 'success', text: `${form.name} added. Properties that apply the holiday calendar are being updated.` });
+      setForm({ date: '', name: '', city: '', upliftPercent: 15 });
+      load();
+    } catch (err) { setMsg({ type: 'error', text: err.message }); }
+  };
+  const remove = async (h) => {
+    if (!confirm(`Remove ${h.name}?`)) return;
+    try { await call(`/holidays/${h.id}`, 'DELETE'); load(); } catch (err) { setMsg({ type: 'error', text: err.message }); }
+  };
+  const input = 'px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none';
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-            <span className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em]">Live Intelligence Engine</span>
-          </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Pricing & RMS Engine</h1>
-          <p className="text-gray-500 font-medium mt-1">Global yield optimization and autonomous ranking control.</p>
+    <div className="space-y-4">
+      {msg && <div role={msg.type === 'error' ? 'alert' : 'status'} className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>{msg.text}</div>}
+      <form onSubmit={add} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <label className="text-xs font-semibold text-gray-600">Date<input type="date" required className={`${input} w-full mt-1`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+        <label className="text-xs font-semibold text-gray-600 md:col-span-2">Holiday or event<input required className={`${input} w-full mt-1`} placeholder="e.g. Diwali" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="text-xs font-semibold text-gray-600">City (empty = all)<input className={`${input} w-full mt-1`} placeholder="All cities" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label>
+        <div className="flex gap-2 items-end">
+          <label className="text-xs font-semibold text-gray-600 flex-1">Uplift %<input type="number" min="-50" max="200" required className={`${input} w-full mt-1`} value={form.upliftPercent} onChange={(e) => setForm({ ...form, upliftPercent: e.target.value })} /></label>
+          <button type="submit" className="px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-bold flex items-center gap-1"><Plus size={15} /> Add</button>
         </div>
+      </form>
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        {rows.length === 0 ? <p className="p-6 text-sm text-gray-400">No upcoming holidays or events.</p> : (
+          <ul className="divide-y divide-gray-100">
+            {rows.map((h) => (
+              <li key={h.id} className="px-4 py-3 flex items-center justify-between gap-3 text-sm">
+                <span className="font-medium text-gray-900 w-32">{new Date(h.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span className="flex-1 text-gray-700">{h.name}</span>
+                <span className="text-gray-500 w-32">{h.city || 'All cities'}</span>
+                <span className="font-bold text-orange-600 w-16 text-right">{h.multiplier > 0 ? '+' : ''}{Math.round(h.multiplier * 100)}%</span>
+                <button type="button" aria-label={`Remove ${h.name}`} onClick={() => remove(h)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="text-xs text-gray-500">The uplift applies on that night to every property with dynamic pricing on that applies the holiday calendar, within its own limits.</p>
+    </div>
+  );
+};
 
-        <div className="flex items-center gap-3">
-           <button className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm">
-              <Clock size={16} /> Strategy History
-           </button>
-           <button className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-900/10">
-              <Zap size={16} fill="currentColor" /> Global AI Toggle
-           </button>
+const Platform = () => {
+  const [mode, setMode] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { call('/config').then((d) => setMode(d.systemMode)).catch((e) => setError(e.message)); }, []);
+  const change = async (next) => {
+    if (next === 'SAFE_MODE' && !confirm('Switch the platform to SAFE MODE? Payouts are held and experiments paused until you switch back.')) return;
+    try { setMode((await call('/config', 'PUT', { systemMode: next })).systemMode); } catch (e) { setError(e.message); }
+  };
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3 max-w-xl">
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <p className="text-sm text-gray-600">Current mode: <strong>{mode || '…'}</strong></p>
+      <p className="text-xs text-gray-500">SAFE MODE holds payouts and pauses pricing experiments platform-wide. Use it only during an incident.</p>
+      <div className="flex gap-2">
+        <button type="button" disabled={mode === 'NORMAL'} onClick={() => change('NORMAL')} className="px-4 py-2 rounded-lg text-sm font-bold border disabled:opacity-40">Normal</button>
+        <button type="button" disabled={mode === 'SAFE_MODE'} onClick={() => change('SAFE_MODE')} className="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white disabled:opacity-40">Safe mode</button>
+      </div>
+    </div>
+  );
+};
+
+const PricingRMS = () => {
+  const [tab, setTab] = useState('properties');
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Zap className="text-purple-600" size={22} /> Pricing &amp; RMS</h1>
+        <p className="text-gray-500 mt-1">Dynamic pricing rules per property, the holiday &amp; event calendar, and platform mode.</p>
+        <div className="flex gap-1 mt-4 border-b border-gray-100" role="tablist">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold border-b-2 -mb-px ${tab === t.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+              <t.icon size={15} /> {t.label}
+            </button>
+          ))}
         </div>
       </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-wrap items-center gap-6">
-         <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl flex-1 min-w-[200px]">
-            <Search size={16} className="text-gray-400" />
-            <input type="text" placeholder="Search Hotel, City or Room..." className="bg-transparent border-none outline-none text-sm w-full font-medium" />
-         </div>
-         <select className="px-6 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest outline-none cursor-pointer">
-            <option>All Cities</option>
-            <option>New Delhi</option>
-            <option>Mumbai</option>
-         </select>
-         <select className="px-6 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest outline-none cursor-pointer">
-            <option>All Segments</option>
-            <option>B2C (Retail)</option>
-            <option>B2B (Agents)</option>
-         </select>
-         <button className="p-3 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-all">
-            <Filter size={18} />
-         </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-        {/* Main Price Table */}
-        <div className="lg:col-span-3 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-           <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                 <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hotel & Room</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Base Rate</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-brand-500 bg-brand-50/30">AI Final</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Multiplier</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Signals</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">ERS</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-gray-50">
-                    {pricingData.map((row, i) => (
-                      <tr key={i} className="group hover:bg-gray-50/50 transition-all">
-                         <td className="px-8 py-6">
-                            <div>
-                               <p className="text-sm font-black text-gray-900 leading-tight">{row.hotel}</p>
-                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{row.room}</p>
-                            </div>
-                         </td>
-                         <td className="px-8 py-6">
-                            <p className="text-sm font-bold text-gray-500 tracking-tighter">₹ {row.base.toLocaleString()}</p>
-                         </td>
-                         <td className="px-8 py-6 bg-brand-50/20">
-                            <p className="text-sm font-black text-brand-600 tracking-tighter">₹ {row.final.toLocaleString()}</p>
-                         </td>
-                         <td className="px-8 py-6">
-                            <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-black">{row.multiplier}</span>
-                         </td>
-                         <td className="px-8 py-6">
-                            <div className="flex items-center justify-center gap-3">
-                               <div className={`w-2 h-2 rounded-full ${row.demand === 'HIGH' ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                               <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest">{row.inventory}</span>
-                            </div>
-                         </td>
-                         <td className="px-8 py-6 text-center">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white rounded-xl text-[10px] font-black">
-                               {row.ers}
-                            </div>
-                         </td>
-                         <td className="px-8 py-6">
-                            <button 
-                              onClick={() => setSelectedDecision({
-                                entityId: `${row.hotel} - ${row.room}`,
-                                type: 'DYNAMIC_PRICING',
-                                output: row.final,
-                                explanation: row.explanation
-                              })}
-                              className="p-2 text-gray-300 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
-                            >
-                               <Info size={20} />
-                            </button>
-                         </td>
-                      </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </div>
-
-        {/* Right Intelligence Panel */}
-        <div className="space-y-8">
-           <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                 <Activity size={100} />
-              </div>
-              <h3 className="text-xl font-black mb-10 flex items-center gap-3">
-                 <TrendingUp className="text-brand-500" size={24} />
-                 Forecast Intel
-              </h3>
-              
-              <div className="space-y-8 relative z-10">
-                 <div>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Predicted Demand (7d)</p>
-                    <div className="flex items-end gap-1 h-20">
-                       {[30, 45, 60, 40, 80, 95, 70].map((h, i) => (
-                         <div key={i} className={`flex-1 ${i === 5 ? 'bg-brand-500' : 'bg-white/10'} rounded-t-lg`} style={{ height: `${h}%` }}></div>
-                       ))}
-                    </div>
-                    <div className="flex justify-between mt-2 text-[9px] font-black text-gray-500 uppercase">
-                       <span>Mon</span>
-                       <span className="text-brand-500">Sat</span>
-                       <span>Sun</span>
-                    </div>
-                 </div>
-
-                 <div className="bg-white/5 rounded-3xl p-6 border border-white/10">
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Commission Impact</p>
-                    <div className="flex justify-between items-center">
-                       <h4 className="text-2xl font-black text-brand-500">+ ₹ 1,420</h4>
-                       <span className="text-[10px] text-green-400 font-bold">PER BOOKING</span>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm">
-              <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-                 <Lock className="text-orange-500" size={20} />
-                 System Clamps
-              </h3>
-              <div className="space-y-4">
-                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Price Floor</p>
-                    <p className="text-sm font-black text-gray-900">₹ 4,200 <span className="text-[10px] font-bold text-gray-400">(GLOBAL)</span></p>
-                 </div>
-                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Max AI Delta</p>
-                    <p className="text-sm font-black text-gray-900">+35% <span className="text-[10px] font-bold text-gray-400">(HARD LIMIT)</span></p>
-                 </div>
-              </div>
-           </div>
-        </div>
-      </div>
-
-      {/* Decision Intelligence Drawer */}
-      <FactorBreakdownDrawer 
-        isOpen={!!selectedDecision} 
-        onClose={() => setSelectedDecision(null)} 
-        decision={selectedDecision} 
-      />
+      {tab === 'properties' && <Properties />}
+      {tab === 'holidays' && <Holidays />}
+      {tab === 'platform' && <Platform />}
     </div>
   );
 };

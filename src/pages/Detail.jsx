@@ -59,6 +59,15 @@ const CANCELLATION_TEXT = {
 
 // Price per night for the chosen dates (daily rates included) when known, else the base price
 const nightlyPrice = (plan) => Number(plan?.stayNightlyPrice ?? plan?.basePrice ?? 0);
+// After the automatic offer (promotion) the plan qualifies for, if any: what checkout charges
+const offerPrice = (plan) => (plan?.offer ? Number(plan.offer.nightlyPriceAfter) : nightlyPrice(plan));
+// Same discount rule as checkout (backend promotionDomain.discountFor)
+const offerDiscount = (offer, subtotal) => {
+  if (!offer || !(subtotal > 0)) return 0;
+  let d = offer.discountType === 'FLAT' ? offer.value : (subtotal * offer.value) / 100;
+  if (offer.maxDiscount) d = Math.min(d, offer.maxDiscount);
+  return Math.round(Math.min(d, subtotal));
+};
 
 // ─── Rate Plan Card ───────────────────────────────────────────────────────────
 const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
@@ -89,12 +98,18 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-lg font-extrabold text-gray-900">{fmt(totalPerNight)}<span className="text-xs text-gray-400 font-normal">/night</span></p>
+          {plan.offer && <p className="text-xs text-gray-400 line-through">{fmt(totalPerNight)}</p>}
+          <p className="text-lg font-extrabold text-gray-900">{fmt(plan.offer ? plan.offer.nightlyPriceAfter : totalPerNight)}<span className="text-xs text-gray-400 font-normal">/night</span></p>
           {nights > 1 && (
-            <p className="text-xs text-brand-600 font-medium mt-0.5">{fmt(total)} total</p>
+            <p className="text-xs text-brand-600 font-medium mt-0.5">{fmt(plan.offer ? total - offerDiscount(plan.offer, total) : total)} total</p>
           )}
         </div>
       </div>
+      {plan.offer && (
+        <p className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 border border-green-200 text-green-700 text-xs font-bold">
+          {plan.offer.label} · {plan.offer.name}
+        </p>
+      )}
 
       {/* Selection indicator */}
       <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${isSelected ? 'text-brand-600' : 'text-gray-300'}`}>
@@ -127,7 +142,7 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
             <p className="text-xs text-gray-500">
               {roomType.availableForStay === 0
                 ? <span className="text-red-600 font-semibold">Sold out for your dates</span>
-                : <>From {fmt(Math.min(...(roomType.ratePlans || []).map(nightlyPrice), Infinity) === Infinity ? 0 : Math.min(...roomType.ratePlans.map(nightlyPrice)))} / night</>}
+                : <>From {fmt(Math.min(...(roomType.ratePlans || []).map(offerPrice), Infinity) === Infinity ? 0 : Math.min(...roomType.ratePlans.map(offerPrice)))} / night{roomType.ratePlans?.some(p => p.offer) && <span className="ml-1 text-green-700 font-semibold">· offer</span>}</>}
               {roomType.ratePlans?.length > 1 && ` · ${roomType.ratePlans.length} rate plans`}
             </p>
           </div>
@@ -199,9 +214,13 @@ const Detail = () => {
   selectionRef.current = { room: selectedRoomType?.id, plan: selectedRatePlan?.id };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    // Only the latest request may update the page: the first load (before the link's dates are
+    // applied) can finish after the dated one and would show prices without daily rates or offers.
+    let stale = false;
     const fetchHotel = async () => {
       try {
         const data = await getHotelById(id, { checkIn, checkOut });
+        if (stale) return;
         setHotel(data);
         // Pre-select first room type + cheapest rate plan
         if (data.roomTypes?.length > 0) {
@@ -223,11 +242,12 @@ const Detail = () => {
       } catch {
         console.error('Hotel not found');
       } finally {
-        setLoading(false);
+        if (!stale) setLoading(false);
       }
     };
     if (!hotel) window.scrollTo(0, 0);
     fetchHotel();
+    return () => { stale = true; };
   }, [id, checkIn, checkOut]);
 
   const handleRoomSelect = (roomType, ratePlan) => {
@@ -282,9 +302,12 @@ const Detail = () => {
   const nightsN   = rooms || 1;
   const pricePerNight = selectedRatePlan ? nightlyPrice(selectedRatePlan) : 0;
   const baseTotal = pricePerNight * nights * nightsN;
-  const taxRate   = pricePerNight <= 7500 ? 0.05 : 0.18;
-  const taxes     = Math.round(baseTotal * taxRate);
-  const grandTotal= baseTotal + taxes;
+  const offer     = selectedRatePlan?.offer || null;
+  const offerOff  = offerDiscount(offer, baseTotal);
+  const afterOffer= baseTotal - offerOff;
+  const taxRate   = (nights && nightsN ? afterOffer / (nights * nightsN) : pricePerNight) <= 7500 ? 0.05 : 0.18;
+  const taxes     = Math.round(afterOffer * taxRate);
+  const grandTotal= afterOffer + taxes;
 
   return (
     <div className="pt-20 pb-20 bg-gray-50">
@@ -415,9 +438,11 @@ const Detail = () => {
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Selected Plan</p>
                   <p className="font-semibold text-gray-900 text-sm">{selectedRatePlan.name}</p>
                   <div className="flex items-baseline mt-1">
-                    <span className="text-3xl font-extrabold text-gray-900">{fmt(nightlyPrice(selectedRatePlan))}</span>
+                    {offer && <span className="text-base text-gray-400 line-through mr-2">{fmt(nightlyPrice(selectedRatePlan))}</span>}
+                    <span className="text-3xl font-extrabold text-gray-900">{fmt(offerPrice(selectedRatePlan))}</span>
                     <span className="text-gray-500 ml-1 font-medium">/ night</span>
                   </div>
+                  {offer && <p className="mt-1 text-xs font-bold text-green-700">{offer.label} · {offer.name}, applied at checkout</p>}
                 </div>
               ) : (
                 <div className="mb-4 pb-4 border-b border-gray-100 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
@@ -463,6 +488,12 @@ const Detail = () => {
                       <span>{fmt(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''} × {nightsN} room{nightsN > 1 ? 's' : ''}</span>
                       <span>{fmt(baseTotal)}</span>
                     </div>
+                    {offerOff > 0 && (
+                      <div className="flex justify-between text-green-700 font-medium">
+                        <span>{offer.name}</span>
+                        <span>− {fmt(offerOff)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-gray-600">
                       <span>Taxes &amp; Fees ({Math.round(taxRate * 100)}%)</span>
                       <span>{fmt(taxes)}</span>

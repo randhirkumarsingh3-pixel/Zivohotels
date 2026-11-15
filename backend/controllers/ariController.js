@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import ariService from '../services/ariService.js';
+import { scheduleRecompute } from '../services/dynamicPricingService.js';
 
 /**
  * Rates & availability (ARI) for Admin -> Inventory & Rates and the extranet.
@@ -45,13 +46,27 @@ export const updateInventory = asyncHandler(async (req, res) => send(res, req, a
   const hotelId = await roomTypeHotel(roomTypeId);
   const { cmActive, provider } = await loadHotelFor(req, hotelId);
   guardManualEdit(req, cmActive, provider);
-  return ariService.updateInventory({ roomTypeId, start, end, weekdays, totalRooms, stopSell });
+  const result = await ariService.updateInventory({ roomTypeId, start, end, weekdays, totalRooms, stopSell });
+  scheduleRecompute(hotelId); // occupancy % changes with rooms to sell
+  return result;
 }));
 
 export const updateRates = asyncHandler(async (req, res) => send(res, req, async () => {
-  const { ratePlanId, start, end, weekdays, price } = req.body;
+  const { ratePlanId, start, end, weekdays, price, adjustPercent } = req.body;
   const hotelId = await ratePlanHotel(ratePlanId);
   const { cmActive, provider } = await loadHotelFor(req, hotelId);
   guardManualEdit(req, cmActive, provider);
-  return ariService.updateRates({ ratePlanId, start, end, weekdays, price });
+  const result = await ariService.updateRates({ ratePlanId, start, end, weekdays, price, adjustPercent });
+  scheduleRecompute(hotelId); // a reset night goes back to its dynamic price, if dynamic pricing is on
+  return result;
+}));
+
+/** Same availability / price change for several room types and rate plans of one property. */
+export const bulkUpdate = asyncHandler(async (req, res) => send(res, req, async () => {
+  const { hotelId, start, end, weekdays, inventory, rates } = req.body;
+  const { cmActive, provider } = await loadHotelFor(req, hotelId);
+  guardManualEdit(req, cmActive, provider);
+  const result = await ariService.bulkUpdate({ hotelId, start, end, weekdays, inventory, rates });
+  scheduleRecompute(hotelId);
+  return result;
 }));

@@ -111,7 +111,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
       setSentMobileOtp('');
       alert("Mobile number verified successfully!");
     } else {
-      alert("Please enter the correct 4-digit OTP shown in the alert.");
+      alert("Incorrect OTP. In testing mode the OTP is 123456.");
     }
   };
 
@@ -452,9 +452,10 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
                   onClick={() => {
                     const phone = formData.guestMobile || formData.receptionPhone;
                     if (phone && phone.length >= 10) {
-                      const code = Math.floor(1000 + Math.random() * 9000).toString();
-                      setSentMobileOtp(code);
-                      alert(`[Mock OTP Service] An OTP code has been sent to +91 ${phone}.\nYour 4-digit OTP is: ${code}`);
+                      // TESTING ONLY: no SMS provider yet, so the mobile OTP is fixed at 123456.
+                      // Replace with a real SMS OTP before going live.
+                      setSentMobileOtp('123456');
+                      alert(`Testing mode: enter OTP 123456 to verify +91 ${phone}.`);
                       setVerifyingMobile(true);
                     } else {
                       alert("Please enter a valid 10-digit mobile number first.");
@@ -471,11 +472,11 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
           {verifyingMobile && (
             <div className="mt-2 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
               <div className="flex-1 w-full sm:w-auto">
-                <span className="text-[10px] text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 4-Digit OTP</span>
+                <span className="text-[10px] text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit OTP</span>
                 <input 
                   type="text" 
-                  placeholder="e.g. 1234" 
-                  maxLength={4}
+                  placeholder="123456" 
+                  maxLength={6}
                   value={mobileOtp} 
                   onChange={e => setMobileOtp(e.target.value.replace(/\D/g, ''))}
                   className="px-4 py-2 border border-blue-200 rounded-lg text-lg font-mono w-32 text-center focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-sm bg-white" 

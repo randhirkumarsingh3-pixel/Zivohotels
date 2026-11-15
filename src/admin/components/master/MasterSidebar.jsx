@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
+  Ticket,
   Building2, 
   CalendarDays, 
   IndianRupee, 
@@ -99,7 +100,8 @@ const MasterSidebar = () => {
         </NavGroup>
 
         <NavGroup title="Pricing & RMS">
-          <NavItem name="Pricing Intelligence" path="/admin/pricing-rms" icon={<TrendingUp size={18} />} />
+          <NavItem name="Pricing & RMS" path="/admin/pricing-rms" icon={<TrendingUp size={18} />} />
+          <NavItem name="Promotions" path="/admin/promotions" icon={<Ticket size={18} />} />
           <NavItem name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} />
         </NavGroup>
 

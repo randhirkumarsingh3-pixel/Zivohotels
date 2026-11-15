@@ -33,6 +33,7 @@ const Reports = lazy(() => import('./admin/pages/Reports'));
 const PlatformSettings = lazy(() => import('./admin/pages/Settings'));
 const SystemControlCenter = lazy(() => import('./admin/pages/SystemControlCenter'));
 const PricingRMS = lazy(() => import('./admin/pages/PricingRMS'));
+const AdminPromotions = lazy(() => import('./admin/pages/Promotions'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -47,6 +48,7 @@ const WalletControl = lazy(() => import('./admin/pages/WalletControl'));
 // Hotel Extranet Pages (LAZY)
 const ExtranetDashboard = lazy(() => import('./extranet/pages/ExtranetDashboard'));
 const ExtranetInventory = lazy(() => import('./extranet/pages/ExtranetInventory'));
+const ExtranetDynamicPricing = lazy(() => import('./extranet/pages/ExtranetDynamicPricing'));
 const ExtranetFinance = lazy(() => import('./extranet/pages/ExtranetFinance'));
 const ExtranetPerformance = lazy(() => import('./extranet/pages/ExtranetPerformance'));
 const ExtranetLogin = lazy(() => import('./extranet/pages/ExtranetLogin'));
@@ -125,6 +127,7 @@ function App() {
 
               {/* Pricing & RMS */}
               <Route path="pricing-rms" element={<PricingRMS />} />
+              <Route path="promotions" element={<AdminPromotions />} />
               <Route path="forecasting" element={<DemandForecasting />} />
 
               {/* Analytics */}
@@ -203,7 +206,7 @@ function App() {
               <Route path="property" element={<ExtranetProperty />} />
               <Route path="rooms" element={<ExtranetRooms />} />
               <Route path="inventory" element={<ExtranetInventory />} />
-              <Route path="pricing" element={<ExtranetInventory />} />
+              <Route path="pricing" element={<ExtranetDynamicPricing />} />
               <Route path="bookings" element={<ExtranetBookings />} />
               <Route path="finance" element={<ExtranetFinance />} />
               <Route path="reviews" element={<ExtranetReviews />} />

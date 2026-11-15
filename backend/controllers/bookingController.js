@@ -17,7 +17,8 @@ const previewSchema = z.object({
   adults: z.number().int().min(1).optional().default(2),
   children: z.number().int().min(0).optional().default(0),
   extraBeds: z.number().int().min(0).optional().default(0),
-  paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL'])
+  paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
+  promoCode: z.string().trim().max(40).optional()
 });
 
 const createBookingSchema = z.object({
@@ -34,6 +35,7 @@ const createBookingSchema = z.object({
   children: z.number().int().min(0).optional().default(0),
   extraBeds: z.number().int().min(0).optional().default(0),
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
+  promoCode: z.string().trim().max(40).optional(),
   // Optional: GST invoice in a company's name (business travel)
   companyName: z.string().trim().max(200).optional(),
   companyGstin: z.string().trim().toUpperCase()
@@ -72,7 +74,7 @@ export const previewBooking = async (req, res, _next) => {
       });
     }
 
-    const fiscalData = await bookingService.previewBooking(validation.data);
+    const fiscalData = await bookingService.previewBooking({ ...validation.data, couponCode: validation.data.promoCode, userId: req.user?.id });
     res.status(200).json({ success: true, data: fiscalData, requestId: req.id });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message, requestId: req.id });
@@ -95,7 +97,7 @@ export const createBooking = async (req, res, next) => {
     const {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
       rooms, adults, children, extraBeds, paymentType,
-      guestName, guestEmail, guestPhone, couponCode, agentId,
+      guestName, guestEmail, guestPhone, promoCode, agentId,
       companyName, companyGstin, companyAddress
     } = validation.data;
 
@@ -108,7 +110,7 @@ export const createBooking = async (req, res, next) => {
     const serviceContext = {
       guestName, guestEmail, guestPhone,
       company: companyName ? { name: companyName, gstin: companyGstin || null, address: companyAddress || null } : null,
-      ratePlanId, paymentType, couponCode,
+      ratePlanId, paymentType, couponCode: promoCode,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,
       agentId
@@ -140,7 +142,7 @@ export const createBooking = async (req, res, next) => {
     });
 
   } catch (error) {
-    error.statusCode = error.message.includes('unavailable') ? 400 : 500;
+    error.statusCode = error.statusCode || (error.message.includes('unavailable') ? 400 : 500);
     next(error);
   }
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronLeft, ChevronRight, X, Lock, Info } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, X, Lock, Info, Layers } from 'lucide-react';
+import BulkUpdatePanel from './BulkUpdatePanel';
 
 /**
  * Rates & availability calendar for one property (Admin -> Inventory & Rates and the extranet).
@@ -7,7 +8,8 @@ import { RefreshCw, ChevronLeft, ChevronRight, X, Lock, Info } from 'lucide-reac
  * Per room type: rooms to sell / booked / available and stop-sell, per day.
  * Per rate plan: price per night (a daily rate, or the base price when none is set).
  * Clicking a cell opens the editor for that day; the editor also does date ranges and weekdays.
- * Backend: GET /admin/ari/calendar, POST /admin/ari/inventory, POST /admin/ari/rates.
+ * Bulk update changes several room types / rate plans over a date range in one go.
+ * Backend: GET /admin/ari/calendar, POST /admin/ari/inventory, /rates and /bulk.
  */
 
 const API = `${import.meta.env.VITE_API_URL || '/api/v1'}/admin/ari`;
@@ -33,6 +35,7 @@ const AriCalendar = ({ hotelId, canEditWhenChannelManager = false }) => {
   const [editor, setEditor] = useState(null); // { kind: 'inventory'|'rate', id, name, start, end, ... }
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!hotelId) return;
@@ -99,12 +102,17 @@ const AriCalendar = ({ hotelId, canEditWhenChannelManager = false }) => {
           <button type="button" aria-label="Next two weeks" onClick={() => setStart((s) => addDays(s, SPAN))} className="p-2 border rounded-lg hover:bg-gray-50"><ChevronRight size={16} /></button>
           <span className="text-xs text-gray-500 ml-1">{SPAN} days</span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border border-green-300" /> Open</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-300" /> Sold out / closed</span>
           <span className="flex items-center gap-1"><span className="px-1 rounded font-bold text-blue-700 bg-blue-50">₹</span> Daily rate (overrides base)</span>
+          <span className="flex items-center gap-1"><span className="px-1 rounded font-bold text-purple-700 bg-purple-50">₹</span> Dynamic pricing</span>
           <button type="button" onClick={load} disabled={loading} className="flex items-center gap-1.5 px-3 py-2 border rounded-lg hover:bg-gray-50 font-semibold text-gray-700">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+          <button type="button" onClick={() => { setNotice(''); setBulkOpen(true); }} disabled={locked || !data?.roomTypes?.length}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold disabled:opacity-50">
+            <Layers size={14} /> Bulk update
           </button>
         </div>
       </div>
@@ -151,6 +159,18 @@ const AriCalendar = ({ hotelId, canEditWhenChannelManager = false }) => {
             </tbody>
           </table>
         </div>
+      )}
+
+      {bulkOpen && data && (
+        <BulkUpdatePanel
+          api={API}
+          headers={headers}
+          hotelId={hotelId}
+          roomTypes={data.roomTypes}
+          defaultStart={start}
+          onClose={() => setBulkOpen(false)}
+          onSaved={async (msg) => { setBulkOpen(false); setNotice(msg); await load(); }}
+        />
       )}
 
       {/* Editor */}
@@ -207,7 +227,7 @@ const AriCalendar = ({ hotelId, canEditWhenChannelManager = false }) => {
 
             <div className="flex justify-between gap-2 pt-2">
               {editor.kind === 'rate' ? (
-                <button type="button" disabled={saving} onClick={() => save(true)} className="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900">Reset to base price</button>
+                <button type="button" disabled={saving} onClick={() => save(true)} className="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900" title="Removes the daily rate; dynamic pricing (if on) sets the price again within the hour">Reset to base price</button>
               ) : <span />}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setEditor(null)} className="px-4 py-2 border rounded-lg text-sm font-semibold">Cancel</button>
@@ -252,8 +272,9 @@ const FragmentRows = ({ rt, locked, onInventory, onRate }) => (
         {rp.rates.map((r) => (
           <td key={r.date} className="px-1 py-2 border-r border-gray-100 text-center">
             <button type="button" disabled={locked} onClick={() => onRate(rt, rp, r)}
-              aria-label={`${rp.name} ${new Date(r.date).toDateString()}: ${inr(r.price)}${r.isOverride ? ' (daily rate)' : ''}`}
-              className={`w-full rounded-md py-1.5 text-xs border border-transparent ${r.isOverride ? 'font-extrabold text-blue-700 bg-blue-50' : 'text-gray-700'} ${locked ? 'cursor-default' : 'hover:border-brand-300'}`}>
+              title={r.source === 'DYNAMIC' ? 'Set by dynamic pricing. Setting a price here overrides it.' : r.isOverride ? 'Daily rate' : 'Base price'}
+              aria-label={`${rp.name} ${new Date(r.date).toDateString()}: ${inr(r.price)}${r.source === 'DYNAMIC' ? ' (dynamic pricing)' : r.isOverride ? ' (daily rate)' : ''}`}
+              className={`w-full rounded-md py-1.5 text-xs border border-transparent ${r.source === 'DYNAMIC' ? 'font-bold text-purple-700 bg-purple-50' : r.isOverride ? 'font-extrabold text-blue-700 bg-blue-50' : 'text-gray-700'} ${locked ? 'cursor-default' : 'hover:border-brand-300'}`}>
               {Number(r.price).toLocaleString('en-IN')}
             </button>
           </td>
