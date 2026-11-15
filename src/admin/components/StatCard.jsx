@@ -1,14 +1,14 @@
 const StatCard = ({ title, value, icon, trend, trendValue, color = "brand" }) => {
   const colorMap = {
-    brand: "bg-brand-50 text-brand-600",
-    green: "bg-green-50 text-green-600",
+    brand: "bg-brand-50 text-brand-700",
+    green: "bg-green-50 text-green-700",
     blue: "bg-blue-50 text-blue-600",
     purple: "bg-purple-50 text-purple-600",
-    orange: "bg-orange-50 text-orange-600",
+    orange: "bg-orange-50 text-orange-700",
     red: "bg-red-50 text-red-600",
   };
 
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500';
+  const trendColor = trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-600' : 'text-gray-500';
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">

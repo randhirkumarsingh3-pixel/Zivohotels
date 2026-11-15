@@ -38,17 +38,17 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
               {/* Gross Amount */}
               <div className="flex justify-between items-end pb-6 border-b border-dashed border-slate-200">
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{data.kind && data.kind !== 'STAY' ? data.kindLabel : 'Gross Booking Value'}</p>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{data.kind && data.kind !== 'STAY' ? data.kindLabel : 'Gross Booking Value'}</p>
                     <p className="text-3xl font-black text-slate-900">₹ {data.grossBooking.toLocaleString()}</p>
                  </div>
-                 <div className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                 <div className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black uppercase tracking-widest">
                     Captured
                  </div>
               </div>
 
               {/* Deductions Breakdown */}
               <div className="space-y-4">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Deductions & Fees</p>
+                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Deductions & Fees</p>
                  {data.deductions.map((d, i) => (
                    <div key={i} className="flex justify-between items-center group">
                       <div className="flex items-center gap-2">
@@ -69,10 +69,10 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
               {/* Net Payable */}
               <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                       {data.netPayable < 0 ? 'Commission you owe (deducted from your next payout)' : 'Net Payout Amount'}
                     </p>
-                    <ShieldCheck className="text-blue-400" size={18} />
+                    <ShieldCheck className="text-blue-600" size={18} />
                  </div>
                  <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-black">₹ {data.netPayable.toLocaleString()}</span>
@@ -85,7 +85,7 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
                  <Info className="text-blue-600 mt-0.5" size={16} />
                  <div>
                     <p className="text-xs font-black text-blue-900">Payout Eligibility</p>
-                    <p className="text-[10px] text-blue-700 font-medium">
+                    <p className="text-xs text-blue-700 font-medium">
                        Paid out on <strong>{new Date(data.payoutEligibility).toLocaleDateString()}</strong>, your next payout-cycle date after check-out.
                     </p>
                  </div>

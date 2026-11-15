@@ -9,63 +9,67 @@ datasource db {
 }
 
 model User {
-  id                 String         @id @default(uuid())
-  name               String
-  email              String         @unique
-  password           String
-  role               Role           @default(CUSTOMER)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  phone              String?
-  inviteToken        String?
-  inviteExpiry       DateTime?
-  mustChangePassword Boolean?       @default(false)
-  status             UserStatus?    @default(ACTIVE)
-  loyalty            Int?           @default(0)
-  tokenVersion       Int            @default(1)
-  lastLogin          DateTime?
-  lastActiveAt       DateTime?
-  bookings           Booking[]
-  couponUsages       CouponUsage[]
-  hotels             Hotel[]        @relation("PrimaryOwner")
-  loyaltyWallet      LoyaltyWallet?
-  reviews            Review[]
+  id                  String         @id @default(uuid())
+  name                String
+  email               String         @unique
+  password            String
+  role                Role           @default(CUSTOMER)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  phone               String?
+  inviteToken         String?
+  inviteExpiry        DateTime?
+  /// "Forgot password": SHA-256 of the emailed token, valid until passwordResetExpiry (1 hour)
+  passwordResetToken  String?        @unique
+  passwordResetExpiry DateTime?
+  passwordChangedAt   DateTime?
+  mustChangePassword  Boolean?       @default(false)
+  status              UserStatus?    @default(ACTIVE)
+  loyalty             Int?           @default(0)
+  tokenVersion        Int            @default(1)
+  lastLogin           DateTime?
+  lastActiveAt        DateTime?
+  bookings            Booking[]
+  couponUsages        CouponUsage[]
+  hotels              Hotel[]        @relation("PrimaryOwner")
+  loyaltyWallet       LoyaltyWallet?
+  reviews             Review[]
 }
 
 model Hotel {
-  id              String          @id @default(uuid())
-  name            String
-  location        String
-  city            String
-  rating          Float           @default(0)
-  reviews         Int             @default(0)
+  id                    String          @id @default(uuid())
+  name                  String
+  location              String
+  city                  String
+  rating                Float           @default(0)
+  reviews               Int             @default(0)
   /// What's nearby (onboarding Location step): [{ id, name, category: TRANSIT | ATTRACTION |
   /// LANDMARK | RESTAURANT, type, lat, lng, distanceKm, source: OSM | MANUAL, visible }]
-  nearbyPlaces          Json      @default("[]")
+  nearbyPlaces          Json            @default("[]")
   /// When nearby places were filled automatically from the map pin (once, for the owner to review)
   nearbyAutoFilledAt    DateTime?
   /// Member price: % off for signed-in members, set by the hotel in the extranet (0 = not offered)
-  memberDiscountPercent Float   @default(0)
+  memberDiscountPercent Float           @default(0)
   /// Guest review score (average of published reviews, 1-5) and count; rating is the star category
-  reviewScore     Float?
-  reviewCount     Int             @default(0)
-  reviewAspects   Json?
-  amenities       Json            @default("[]")
-  description     String?         @default("")
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  ownerId         String
-  latitude        Float?
-  longitude       Float?
-  landmark        String?
-  state           String?
-  country         String?         @default("India")
-  pincode         String?
-  type            String?         @default("hotel")
-  status          PropertyStatus? @default(DRAFT)
-  statusReason    String?
-  statusUpdatedBy String?
-  statusUpdatedAt DateTime?
+  reviewScore           Float?
+  reviewCount           Int             @default(0)
+  reviewAspects         Json?
+  amenities             Json            @default("[]")
+  description           String?         @default("")
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  ownerId               String
+  latitude              Float?
+  longitude             Float?
+  landmark              String?
+  state                 String?
+  country               String?         @default("India")
+  pincode               String?
+  type                  String?         @default("hotel")
+  status                PropertyStatus? @default(DRAFT)
+  statusReason          String?
+  statusUpdatedBy       String?
+  statusUpdatedAt       DateTime?
 
   // Enterprise PLMS Tracking
   createdBy  String?
@@ -247,7 +251,7 @@ model Booking {
   rooms               Int
   /// Part of the amount due now that the guest paid with Zivo Cash (included in paidAmount once
   /// the booking is paid; returned to the wallet if the booking is never completed)
-  walletAmount        Decimal  @default(0) @db.Decimal(12, 2)
+  walletAmount        Decimal                @default(0) @db.Decimal(12, 2)
   totalAmount         Decimal                @db.Decimal(12, 2)
   status              BookingStatus          @default(PENDING)
   createdAt           DateTime               @default(now())
@@ -1018,22 +1022,22 @@ model EmailOTP {
 ///  EXPIRE  -points left from a batch that reached its expiry (points are used oldest first).
 ///  VOID    rows from before Zivo Rewards (awarded on unpaid / cancelled bookings), not counted.
 model LoyaltyPoint {
-  id          String   @id @default(uuid())
-  userId      String
-  points      Int
-  source      String
-  type        String   @default("EARN")
-  status      String   @default("AVAILABLE")
-  bookingId   String?
-  reviewId    String?
-  description String?
-  createdById String?
+  id             String    @id @default(uuid())
+  userId         String
+  points         Int
+  source         String
+  type           String    @default("EARN")
+  status         String    @default("AVAILABLE")
+  bookingId      String?
+  reviewId       String?
+  description    String?
+  createdById    String?
   /// When the points became usable; they expire expiryMonths (LoyaltySetting) later
-  availableAt DateTime?
+  availableAt    DateTime?
   /// When the guest was emailed that these points are about to expire
   expiryNoticeAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@index([userId, status])
   @@index([bookingId])

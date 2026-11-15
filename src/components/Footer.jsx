@@ -34,6 +34,10 @@ const Footer = () => (
       </div>
       <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row justify-between gap-3 text-sm text-navy-200">
         <p>© {new Date().getFullYear()} ZivoHotels. All rights reserved.</p>
+        <div className="flex gap-6">
+          <Link to="/privacy" className="hover:text-white">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-white">Terms of Service</Link>
+        </div>
       </div>
     </div>
   </footer>

@@ -69,7 +69,7 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
               <button 
                 onClick={() => updateCount('guests', 'sub')}
                 disabled={guests <= 1 || guests <= rooms}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -77,7 +77,7 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
               <button 
                 onClick={() => updateCount('guests', 'add')}
                 disabled={guests >= 20}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -93,7 +93,7 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
               <button 
                 onClick={() => updateCount('rooms', 'sub')}
                 disabled={rooms <= 1}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -101,7 +101,7 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
               <button 
                 onClick={() => updateCount('rooms', 'add')}
                 disabled={rooms >= 10}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>

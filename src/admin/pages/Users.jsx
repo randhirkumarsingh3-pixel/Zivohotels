@@ -175,7 +175,7 @@ const Users = () => {
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-500 mt-1">
             Manage customers, property owners, and system administrators.
-            {meta.total > 0 && <span className="ml-2 text-brand-600 font-medium">{meta.total} total</span>}
+            {meta.total > 0 && <span className="ml-2 text-brand-700 font-medium">{meta.total} total</span>}
           </p>
         </div>
         <div className="flex gap-3">
@@ -255,7 +255,7 @@ const Users = () => {
               onClick={() => switchTab(tab)}
               className={`px-6 py-4 font-semibold text-sm whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === tab
-                  ? 'border-brand-600 text-brand-600 bg-white'
+                  ? 'border-brand-600 text-brand-700 bg-white'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
               }`}
             >

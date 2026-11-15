@@ -34,10 +34,10 @@ const CustomersTable = ({ data, onEdit, onStatusChange }) => {
               </td>
               <td className="px-6 py-4 font-medium text-gray-700">{user._count?.bookings || 0}</td>
               <td className="px-6 py-4 font-bold text-gray-900">₹{user.totalSpend?.toLocaleString() || 0}</td>
-              <td className="px-6 py-4 text-brand-600 font-semibold">{user.loyalty?.points || 0} pts</td>
+              <td className="px-6 py-4 text-brand-700 font-semibold">{user.loyalty?.points || 0} pts</td>
               <td className="px-6 py-4">
                 <div className="flex items-center space-x-3">
-                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-600 transition-colors" title="Edit">
+                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-700 transition-colors" title="Edit">
                     <Edit2 size={16} />
                   </button>
                   {user.status === 'ACTIVE' ? (

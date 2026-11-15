@@ -66,7 +66,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
           {/* Role Specific Settings */}
           {formData.role === 'OWNER' && (
             <div className="border-t border-gray-100 pt-6">
-              <h3 className="font-bold text-gray-800 flex items-center mb-4"><Building2 size={18} className="mr-2 text-brand-600"/> Property Assignments & Commission</h3>
+              <h3 className="font-bold text-gray-800 flex items-center mb-4"><Building2 size={18} className="mr-2 text-brand-700"/> Property Assignments & Commission</h3>
               <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                 {formData.ownerProperties.length > 0 ? formData.ownerProperties.map((op, idx) => (
                   <div key={idx} className="flex items-center gap-4 bg-white p-3 rounded border border-gray-200">
@@ -84,14 +84,14 @@ const UserEditModal = ({ user, onClose, onSave }) => {
                 )) : (
                   <p className="text-sm text-gray-500 italic">No properties assigned yet. (Use property selector tool to assign)</p>
                 )}
-                <button className="text-sm font-medium text-brand-600 hover:text-brand-700">+ Add Property Assignment</button>
+                <button className="text-sm font-medium text-brand-700 hover:text-brand-700">+ Add Property Assignment</button>
               </div>
             </div>
           )}
 
           {formData.role === 'ADMIN' && (
             <div className="border-t border-gray-100 pt-6">
-              <h3 className="font-bold text-gray-800 flex items-center mb-4"><Shield size={18} className="mr-2 text-brand-600"/> Module Permissions</h3>
+              <h3 className="font-bold text-gray-800 flex items-center mb-4"><Shield size={18} className="mr-2 text-brand-700"/> Module Permissions</h3>
               <div className="grid grid-cols-2 gap-3">
                 {['USERS', 'REPORTS', 'SETTINGS', 'PROPERTIES', 'AGREEMENTS'].map(module => {
                   const hasPerm = formData.permissions.find(p => p.module === module);
@@ -100,11 +100,11 @@ const UserEditModal = ({ user, onClose, onSave }) => {
                       <span className="text-sm font-medium text-gray-700">{module}</span>
                       <div className="flex items-center gap-3">
                         <label className="flex items-center text-xs text-gray-600 cursor-pointer">
-                          <input type="checkbox" checked={!!hasPerm} className="mr-1.5 rounded text-brand-600" onChange={() => {}}/>
+                          <input type="checkbox" checked={!!hasPerm} className="mr-1.5 rounded text-brand-700" onChange={() => {}}/>
                           Read
                         </label>
                         <label className="flex items-center text-xs text-gray-600 cursor-pointer">
-                          <input type="checkbox" checked={hasPerm?.canWrite || false} className="mr-1.5 rounded text-brand-600" onChange={() => {}}/>
+                          <input type="checkbox" checked={hasPerm?.canWrite || false} className="mr-1.5 rounded text-brand-700" onChange={() => {}}/>
                           Write
                         </label>
                       </div>

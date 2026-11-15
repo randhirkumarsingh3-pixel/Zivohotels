@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import ExtranetSidebar from '../extranet/components/ExtranetSidebar';
 import { HelpCircle, Building, ChevronDown, AlertTriangle, Check, Menu } from 'lucide-react';
 import { LogoMark } from '../components/brand/Logo';
+import usePageTitle from '../hooks/usePageTitle';
 import { ExtranetProvider, useExtranet } from '../extranet/context/ExtranetContext';
 import { useSocketEvent } from '../context/SocketContext';
 import LiveActivityFeed from '../extranet/components/LiveActivityFeed';
@@ -29,6 +30,7 @@ const LayoutContent = () => {
     switchProperty(id);
   };
   const canSwitch = properties.length > 1;
+  usePageTitle(property?.name ? `Extranet · ${property.name}` : 'Extranet');
 
   // Phones and tablets: the menu is a slide-in drawer, closed after each page change
   const [navOpen, setNavOpen] = useState(false);
@@ -58,7 +60,7 @@ const LayoutContent = () => {
               <AlertTriangle size={16} />
               {systemStatus}
               {systemStatus.includes('CRITICAL') && (
-                <button className="ml-4 px-3 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] uppercase font-black tracking-widest transition-all">
+                <button className="ml-4 px-3 py-0.5 bg-white/20 hover:bg-white/30 rounded text-xs uppercase font-black tracking-widest transition-all">
                   Acknowledge Incident
                 </button>
               )}
@@ -103,7 +105,7 @@ const LayoutContent = () => {
                           <span className="block text-sm font-bold text-gray-900 truncate">{p.name}</span>
                           <span className="block text-xs text-gray-500">{p.city || '—'} · {String(p.status || '').replace(/_/g, ' ').toLowerCase()}</span>
                         </span>
-                        {p.id === property?.id && <Check size={16} className="text-brand-600 shrink-0" />}
+                        {p.id === property?.id && <Check size={16} className="text-brand-700 shrink-0" />}
                       </button>
                     </li>
                   ))}

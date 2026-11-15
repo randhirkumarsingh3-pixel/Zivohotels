@@ -57,7 +57,7 @@ const DiscountSettings = () => {
     { header: "Status", accessor: "status", cell: (row) => <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium">{row.status}</span> },
     { header: "Actions", accessor: "actions", cell: () => (
       <div className="flex space-x-2">
-        <button className="text-gray-500 hover:text-brand-600"><Edit2 size={16} /></button>
+        <button className="text-gray-500 hover:text-brand-700"><Edit2 size={16} /></button>
         <button className="text-gray-500 hover:text-red-600"><Trash2 size={16} /></button>
       </div>
     ) }
@@ -65,7 +65,7 @@ const DiscountSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm mt-4">Loading discount rules...</p>
     </div>
   );
@@ -88,9 +88,9 @@ const DiscountSettings = () => {
       </div>
 
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'global' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Global Rules</button>
-        <button onClick={() => setActiveTab('loyalty')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'loyalty' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Loyalty Program</button>
-        <button onClick={() => setActiveTab('engine')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'engine' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Rule Engine</button>
+        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'global' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Global Rules</button>
+        <button onClick={() => setActiveTab('loyalty')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'loyalty' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Loyalty Program</button>
+        <button onClick={() => setActiveTab('engine')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'engine' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Rule Engine</button>
       </div>
 
       <div className="pt-2">

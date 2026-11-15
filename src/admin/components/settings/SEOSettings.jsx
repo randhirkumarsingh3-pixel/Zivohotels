@@ -77,7 +77,7 @@ const SEOSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm mt-4">Loading SEO settings...</p>
     </div>
   );
@@ -90,9 +90,9 @@ const SEOSettings = () => {
       </div>
 
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'global' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Global SEO</button>
-        <button onClick={() => setActiveTab('pagewise')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'pagewise' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Page-wise SEO</button>
-        <button onClick={() => setActiveTab('advanced')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'advanced' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500'}`}>Advanced (Schema/Robots)</button>
+        <button onClick={() => setActiveTab('global')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'global' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Global SEO</button>
+        <button onClick={() => setActiveTab('pagewise')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'pagewise' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Page-wise SEO</button>
+        <button onClick={() => setActiveTab('advanced')} className={`px-4 py-2 font-medium text-sm border-b-2 ${activeTab === 'advanced' ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500'}`}>Advanced (Schema/Robots)</button>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">

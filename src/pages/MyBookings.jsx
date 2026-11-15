@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
 import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
 import { saveVoucher } from '../utils/voucher';
+import usePageTitle from '../hooks/usePageTitle';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 const today = () => {
@@ -132,13 +133,14 @@ const AspectStars = ({ value, onChange }) => {
           />
         </button>
       ))}
-      {value > 0 && <span className="ml-1 text-xs font-black text-amber-600 self-center">{value}.0</span>}
+      {value > 0 && <span className="ml-1 text-xs font-black text-amber-700 self-center">{value}.0</span>}
     </div>
   );
 };
 
 /* ─── Main Component ──────────────────────────────────────────────────── */
 const MyBookings = () => {
+  usePageTitle('My bookings');
   useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -313,8 +315,8 @@ const MyBookings = () => {
   if (loading && bookings.length === 0) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-24 flex flex-col items-center justify-center">
-        <RefreshCw className="h-12 w-12 text-brand-600 animate-spin mb-6" />
-        <p className="text-gray-600 font-semibold text-lg">Accessing Guest Travel Hub...</p>
+        <RefreshCw className="h-12 w-12 text-brand-700 animate-spin mb-6" />
+        <p className="text-gray-600 font-semibold text-lg">Loading your bookings…</p>
       </div>
     );
   }
@@ -326,9 +328,9 @@ const MyBookings = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div>
-          <span className="text-brand-600 font-bold uppercase tracking-wider text-sm">Zivo Premium</span>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight mt-1">Guest Travel Hub</h1>
-          <p className="text-gray-500 mt-2 text-lg">Manage stay parameters, access digital invoices, and coordinate trip assistance.</p>
+          <span className="text-brand-700 font-bold uppercase tracking-wider text-sm">Zivo Premium</span>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight mt-1">My bookings</h1>
+          <p className="text-gray-500 mt-2 text-lg">See your trips, download vouchers and invoices, and cancel if your plans change.</p>
         </div>
 
         {/* Zivo Rewards balance (this showed a made-up "240 Zivo Points") */}
@@ -339,7 +341,7 @@ const MyBookings = () => {
           <div>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Zivo Rewards{rewards ? ` · ${rewards.tier.name}` : ''}</p>
             <p className="text-2xl font-black text-white mt-0.5">{rewards ? `${rewards.available.toLocaleString('en-IN')} points` : '—'}</p>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
+            <p className="text-xs text-gray-400 font-medium mt-1">
               {rewards?.pending ? `${rewards.pending.toLocaleString('en-IN')} pending · ` : ''}{Object.keys(myReviews).length} review{Object.keys(myReviews).length === 1 ? '' : 's'} written · View rewards →
             </p>
           </div>
@@ -379,12 +381,12 @@ const MyBookings = () => {
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
                   activeSection === 'upcoming'
                     ? 'bg-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/25'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-700'
                 }`}
               >
                 <Calendar size={15} />
                 Upcoming Bookings
-                <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
                   activeSection === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                 }`}>{upcoming.length}</span>
               </button>
@@ -401,7 +403,7 @@ const MyBookings = () => {
                 <MapPin size={15} />
                 Ongoing Stays
                 {ongoing.length > 0 && (
-                  <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                  <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
                     activeSection === 'ongoing' ? 'bg-white/20 text-white' : 'bg-violet-100 text-violet-600'
                   }`}>{ongoing.length}</span>
                 )}
@@ -421,7 +423,7 @@ const MyBookings = () => {
               >
                 <Clock size={15} />
                 Past Bookings
-                <span className={`text-[11px] font-black rounded-full px-2 py-0.5 ml-0.5 ${
+                <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
                   activeSection === 'past' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                 }`}>{past.length}</span>
               </button>
@@ -453,7 +455,7 @@ const MyBookings = () => {
             {/* AI Trip Assistant */}
             <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
               <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                <Sparkles size={20} className="text-brand-600" />
+                <Sparkles size={20} className="text-brand-700" />
                 AI Trip Assistant
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed mb-4">
@@ -472,7 +474,7 @@ const MyBookings = () => {
             {/* Rebook card */}
             <div className="bg-gradient-to-br from-navy-800 to-navy-950 text-white rounded-3xl p-6 shadow-lg border border-navy-700/50 relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 opacity-10"><ArrowRightLeft size={200} /></div>
-              <span className="bg-white/10 text-white/90 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-white/10">Loyalty Perk</span>
+              <span className="bg-white/10 text-white/90 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-white/10">Loyalty Perk</span>
               <h3 className="text-xl font-bold text-white mt-4 mb-2">Ready for your next stay?</h3>
               <p className="text-xs text-brand-200 leading-relaxed mb-6">Enjoy a flat 10% loyalty discount at any Zivo partner property when you rebook today.</p>
               <Link to="/hotels" className="w-full bg-white text-brand-950 font-extrabold text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 hover:bg-brand-50 transition-colors">
@@ -492,7 +494,7 @@ const MyBookings = () => {
             {/* Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Booking Hub Workspace</span>
+                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Booking Hub Workspace</span>
                 <h3 className="text-xl font-black text-gray-900 mt-0.5">{activeBooking.hotel?.name}</h3>
                 <p className="text-xs text-gray-500 font-mono mt-1">Ref ID: {activeBooking.bookingRef}</p>
               </div>
@@ -512,7 +514,7 @@ const MyBookings = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 py-4 border-b-2 font-bold text-xs transition-colors ${activeTab === tab.id ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                  className={`flex items-center gap-1.5 py-4 border-b-2 font-bold text-xs transition-colors ${activeTab === tab.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                 >
                   {tab.icon}{tab.label}
                 </button>
@@ -532,7 +534,7 @@ const MyBookings = () => {
                       { label: 'Nights', value: `${Math.ceil(Math.abs(new Date(activeBooking.checkOut) - new Date(activeBooking.checkIn)) / 86400000)} Nights` }
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50 text-center">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{s.label}</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase mb-1">{s.label}</p>
                         <p className="font-extrabold text-gray-900 text-sm">{s.value}</p>
                       </div>
                     ))}
@@ -587,7 +589,7 @@ const MyBookings = () => {
                         </div>
                         <h5 className="font-extrabold text-gray-900 text-sm">{event.title}</h5>
                         <p className="text-xs text-gray-500 mt-1 leading-relaxed">{event.message}</p>
-                        <span className="text-[10px] text-gray-400 font-bold block mt-2">
+                        <span className="text-xs text-gray-400 font-bold block mt-2">
                           {new Date(event.createdAt).toLocaleDateString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                         </span>
                       </div>
@@ -615,15 +617,15 @@ const MyBookings = () => {
                     </div>
                   )}
                   <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex gap-4">
-                    <Sparkles className="text-brand-600 mt-0.5 shrink-0" size={24} />
+                    <Sparkles className="text-brand-700 mt-0.5 shrink-0" size={24} />
                     <div className="text-xs">
                       <h4 className="font-bold text-brand-900 mb-1">AI Concierge Services</h4>
                       <p className="text-brand-700 leading-relaxed mb-4">Send check-in requests or stay modifications directly to reception.</p>
                       <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => handleConciergeRequest('late')} disabled={conciergeActionLoading === 'late' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-[11px] disabled:opacity-50">
+                        <button onClick={() => handleConciergeRequest('late')} disabled={conciergeActionLoading === 'late' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
                           {conciergeActionLoading === 'late' ? <RefreshCw size={12} className="animate-spin" /> : <Clock size={12} />}Alert Late Arrival
                         </button>
-                        <button onClick={() => handleConciergeRequest('early')} disabled={conciergeActionLoading === 'early' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-[11px] disabled:opacity-50">
+                        <button onClick={() => handleConciergeRequest('early')} disabled={conciergeActionLoading === 'early' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
                           {conciergeActionLoading === 'early' ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}Early Check-in
                         </button>
                       </div>
@@ -631,7 +633,7 @@ const MyBookings = () => {
                   </div>
 
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2"><ExternalLink size={16} className="text-brand-600" />Stay Intelligence</h4>
+                    <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2"><ExternalLink size={16} className="text-brand-700" />Stay Intelligence</h4>
                     <div className="grid grid-cols-2 gap-4 text-xs">
                       {[
                         { icon: <Clock size={16} className="text-brand-500" />, label: 'Peak Check-in', val: activeBooking.intelligence?.peakCheckIn || '12 PM - 2 PM' },
@@ -655,10 +657,10 @@ const MyBookings = () => {
                   <div className="bg-gray-900 text-white rounded-2xl p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Paid</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Total Paid</p>
                         <p className="text-3xl font-black mt-1">₹{activeBooking.paidAmount?.toLocaleString('en-IN')}</p>
                       </div>
-                      <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/20">Payment Captured</span>
+                      <span className="bg-emerald-500/10 text-emerald-400 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/20">Payment Captured</span>
                     </div>
                     <div className="border-t border-white/10 pt-4 grid grid-cols-2 gap-4 text-xs text-gray-400">
                       <div><span>Payment Method</span><p className="font-bold text-white mt-0.5">{activeBooking.paymentType}</p></div>
@@ -671,7 +673,7 @@ const MyBookings = () => {
                     <p className="text-xs text-gray-500">Download official billing receipts for tax declarations.</p>
                     {activeBooking.invoice ? (
                       <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
-                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-600" />Official GST Invoice PDF</span>
+                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF</span>
                         <Download size={14} className="text-gray-400" />
                       </button>
                     ) : (
@@ -806,7 +808,7 @@ const MyBookings = () => {
                 </div>
               ) : (
                 <div className="bg-amber-50 rounded-2xl p-4 text-xs flex items-start gap-2.5 mb-8 border border-amber-100">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
                   <div className="text-amber-800"><p className="font-bold mb-0.5">Refund Notice</p><p>Refunds to your card or UPI take 5-7 working days. Zivo Cash refunds are instant.</p></div>
                 </div>
               )}
@@ -881,7 +883,7 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
         </span>
         {/* Section accent badge on image */}
         {cat === 'ongoing' && (
-          <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-violet-600 text-white shadow-sm">
+          <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-xs font-black bg-violet-600 text-white shadow-sm">
             Staying now
           </span>
         )}
@@ -891,28 +893,28 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
       <div className="p-5 md:p-7 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${getStatusColor(booking.status)}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border ${getStatusColor(booking.status)}`}>
               {booking.status}
             </span>
             {booking.paymentStatus === 'REFUNDED' && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-600 border border-purple-100">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-purple-50 text-purple-600 border border-purple-100">
                 Refunded
               </span>
             )}
             {booking.intelligence?.aiTags?.slice(0, 1).map((tag, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-gray-50 text-gray-500 border border-gray-100 flex items-center gap-0.5">
+              <span key={i} className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-50 text-gray-500 border border-gray-100 flex items-center gap-0.5">
                 <Sparkles size={8} className="text-brand-500" />{tag}
               </span>
             ))}
             {reviewReady && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
                 <Star size={9} className="fill-amber-500 text-amber-500" />
                 Review ready
               </span>
             )}
           </div>
 
-          <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-600 transition-colors mb-0.5">{booking.hotel?.name}</h3>
+          <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-700 transition-colors mb-0.5">{booking.hotel?.name}</h3>
           <p className="text-gray-500 text-xs flex items-center gap-1 mb-3">
             <MapPin size={12} className="text-gray-400" />
             {booking.hotel?.city} · {booking.roomType?.name}
@@ -920,13 +922,13 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
 
           <div className="grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50">
             <div>
-              <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-in</p>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-in</p>
               <p className="font-extrabold text-gray-800 text-xs">
                 {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
             </div>
             <div>
-              <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-out</p>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-out</p>
               <p className="font-extrabold text-gray-800 text-xs">
                 {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
@@ -936,7 +938,7 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-3">
           <div>
-            <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Ref ID</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ref ID</p>
             <p className="font-mono text-xs font-bold text-gray-700">{booking.bookingRef}</p>
           </div>
           <div className="flex gap-2">
@@ -1000,7 +1002,7 @@ const ReviewTab = ({
       <div className="space-y-5 pb-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your review</p>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Your review</p>
             <h4 className="font-black text-gray-900 text-lg">{activeBooking.hotel?.name}</h4>
           </div>
           <span className={`px-3 py-1 rounded-full border text-xs font-bold ${status.cls}`}>{status.label}</span>
@@ -1013,7 +1015,7 @@ const ReviewTab = ({
           {existingReview.title && <p className="font-black text-gray-900">{existingReview.title}</p>}
           {existingReview.comment && <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{existingReview.comment}</p>}
           {existingReview.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">{existingReview.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600">{t}</span>)}</div>
+            <div className="flex flex-wrap gap-1.5">{existingReview.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-600">{t}</span>)}</div>
           )}
           {existingReview.photos?.length > 0 && (
             <div className="flex gap-2 flex-wrap">{existingReview.photos.map((p) => <img key={p.url} src={getImageUrl(p.url)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />)}</div>
@@ -1021,17 +1023,17 @@ const ReviewTab = ({
         </div>
         {existingReview.reply && (
           <div className="bg-brand-50/60 border border-brand-100 rounded-2xl p-4">
-            <p className="text-[10px] font-black text-brand-700 uppercase tracking-widest mb-1">Response from the property</p>
+            <p className="text-xs font-black text-brand-700 uppercase tracking-widest mb-1">Response from the property</p>
             <p className="text-sm text-gray-800 whitespace-pre-line">{existingReview.reply.text}</p>
           </div>
         )}
         {existingReview.canEdit ? (
           <button type="button" onClick={() => onEdit(existingReview)} className="w-full border-2 border-gray-200 hover:border-brand-400 text-gray-800 font-black py-3 rounded-2xl text-sm">
             Edit my review
-            <span className="block text-[10px] font-semibold text-gray-400">until {new Date(existingReview.editableUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+            <span className="block text-xs font-semibold text-gray-400">until {new Date(existingReview.editableUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
           </button>
         ) : (
-          <p className="text-center text-[11px] text-gray-400">Reviews can be edited for 48 hours after posting.</p>
+          <p className="text-center text-xs text-gray-400">Reviews can be edited for 48 hours after posting.</p>
         )}
       </div>
     );
@@ -1064,7 +1066,7 @@ const ReviewTab = ({
               <h4 className="text-xl font-black text-gray-900 mb-2">Review Unlocks Soon</h4>
               <p className="text-sm text-gray-500 leading-relaxed max-w-[260px] mx-auto">
                 Your verified review becomes available on{' '}
-                <span className="font-black text-brand-600">
+                <span className="font-black text-brand-700">
                   {dayAfterCheckIn.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>{' '}— the day after check-in.
               </p>
@@ -1138,13 +1140,13 @@ const ReviewTab = ({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 p-4">
-          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-0.5">Reviewing your stay at</p>
+          <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-0.5">Reviewing your stay at</p>
           <h4 className="font-black text-white text-base leading-tight">{activeBooking.hotel?.name}</h4>
           <p className="text-xs text-white/70 flex items-center gap-1 mt-0.5">
             <MapPin size={10} />{activeBooking.hotel?.city} · {new Date(activeBooking.checkIn).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} – {new Date(activeBooking.checkOut).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
           </p>
         </div>
-        <div className="absolute top-3 right-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+        <div className="absolute top-3 right-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
           Verified Stay
         </div>
       </div>
@@ -1153,7 +1155,7 @@ const ReviewTab = ({
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 1</p>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 1</p>
             <h4 className="font-black text-gray-900 text-base">Overall Experience</h4>
           </div>
           {reviewRating > 0 && (
@@ -1169,7 +1171,7 @@ const ReviewTab = ({
       {/* Step 2: Aspect cards */}
       <div className="space-y-3">
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 2</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 2</p>
           <h4 className="font-black text-gray-900 text-base">Rate Specific Aspects</h4>
           <p className="text-xs text-gray-500 mt-0.5">Help future travelers with detailed ratings</p>
         </div>
@@ -1181,7 +1183,7 @@ const ReviewTab = ({
               <span className="text-2xl w-8 text-center">{asp.icon}</span>
               <div>
                 <p className="font-black text-gray-900 text-sm">{asp.title}</p>
-                <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{asp.hint}</p>
+                <p className="text-xs text-gray-400 leading-tight mt-0.5">{asp.hint}</p>
               </div>
             </div>
             <div className="shrink-0">
@@ -1197,12 +1199,12 @@ const ReviewTab = ({
       {/* Step 3: Experience tags */}
       <div className="space-y-3">
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 3 · Optional</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 3 · Optional</p>
           <h4 className="font-black text-gray-900 text-base">Quick Experience Tags</h4>
           <p className="text-xs text-gray-500 mt-0.5">Select all that apply to your stay</p>
         </div>
         <div>
-          <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-2">Positive Highlights</p>
+          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">Positive Highlights</p>
           <div className="flex flex-wrap gap-2">
             {POS_TAGS.map(t => (
               <button
@@ -1221,7 +1223,7 @@ const ReviewTab = ({
           </div>
         </div>
         <div>
-          <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mb-2">Areas for Improvement</p>
+          <p className="text-xs text-rose-500 font-bold uppercase tracking-wider mb-2">Areas for Improvement</p>
           <div className="flex flex-wrap gap-2">
             {NEG_TAGS.map(t => (
               <button
@@ -1244,7 +1246,7 @@ const ReviewTab = ({
       {/* Step 4: Written review */}
       <div className="space-y-2">
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 4 · Optional</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 4 · Optional</p>
           <h4 className="font-black text-gray-900 text-base">Share Your Story</h4>
         </div>
         <input
@@ -1275,12 +1277,12 @@ const ReviewTab = ({
             className="w-full bg-transparent p-4 text-sm text-gray-800 resize-none focus:outline-none placeholder-gray-400 leading-relaxed rounded-2xl"
           />
           <div className="flex items-center justify-between px-4 pb-3">
-            <p className="text-[10px] text-gray-400">
+            <p className="text-xs text-gray-400">
               {reviewComment.length >= 50
                 ? <span className="text-emerald-600 font-bold">✓ Great detail!</span>
                 : <span>A few sentences help other travellers most</span>}
             </p>
-            <p className={`text-[10px] font-bold ${
+            <p className={`text-xs font-bold ${
               reviewComment.length > 1900 ? 'text-rose-500' : 'text-gray-400'
             }`}>{reviewComment.length}/2000</p>
           </div>
@@ -1290,7 +1292,7 @@ const ReviewTab = ({
       {/* Step 5: Photo upload */}
       <div className="space-y-3">
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 5 · Optional</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 5 · Optional</p>
           <h4 className="font-black text-gray-900 text-base">Add Photos</h4>
           <p className="text-xs text-gray-500 mt-0.5">Show other travellers your room and the property</p>
         </div>
@@ -1302,7 +1304,7 @@ const ReviewTab = ({
                 <button
                   type="button"
                   onClick={() => setReviewPhotos(prev => prev.filter((_,j) => j !== i))}
-                  className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                 >✕</button>
               </div>
             ))}
@@ -1310,7 +1312,7 @@ const ReviewTab = ({
               <label className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-400 transition-colors bg-gray-50">
                 <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoFiles(e.target.files)} />
                 <span className="text-2xl text-gray-300">+</span>
-                <span className="text-[9px] text-gray-400 mt-0.5">Add</span>
+                <span className="text-xs text-gray-400 mt-0.5">Add</span>
               </label>
             )}
           </div>
@@ -1332,14 +1334,14 @@ const ReviewTab = ({
             </div>
           </label>
         )}
-        <p className="text-[10px] text-gray-400 flex items-center gap-1.5">
+        <p className="text-xs text-gray-400 flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
           {"Reviews with photos help other travelers make better decisions."}
         </p>
       </div>
 
       {reviewError && <p role="alert" className="text-sm font-semibold text-rose-600 text-center">{reviewError}</p>}
-      <p className="text-[11px] text-gray-400 text-center">Your first name and last initial are shown with your review. Please don&apos;t include phone numbers, emails or links.</p>
+      <p className="text-xs text-gray-400 text-center">Your first name and last initial are shown with your review. Please don&apos;t include phone numbers, emails or links.</p>
 
       {/* Submit button */}
       <button

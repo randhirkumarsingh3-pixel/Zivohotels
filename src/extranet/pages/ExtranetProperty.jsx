@@ -88,7 +88,7 @@ const ExtranetProperty = () => {
   };
 
   if (loading && !formValues.name) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-700" size={32} /></div>;
   }
 
   return (
@@ -102,7 +102,7 @@ const ExtranetProperty = () => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-100">
             <CheckCircle2 size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Profile Active</span>
+            <span className="text-xs font-black uppercase tracking-widest">Profile Active</span>
           </div>
           {isEditing ? (
             <div className="flex gap-2">
@@ -152,7 +152,7 @@ const ExtranetProperty = () => {
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Property Name</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Property Name</label>
                   <input 
                     aria-label="Property name" {...register('name')}
                     disabled={!isEditing}
@@ -160,7 +160,7 @@ const ExtranetProperty = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Location</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Location</label>
                   <input 
                     aria-label="Address" {...register('location')}
                     disabled={!isEditing}
@@ -168,7 +168,7 @@ const ExtranetProperty = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">City</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">City</label>
                   <input 
                     aria-label="City" {...register('city')}
                     disabled={!isEditing}
@@ -178,7 +178,7 @@ const ExtranetProperty = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Property Description</label>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Property Description</label>
                 <textarea 
                   aria-label="Description" {...register('description')}
                   rows={4} 

@@ -156,7 +156,7 @@ const AmenitiesStep = ({ formData, updateForm }) => {
                       <span className={`font-semibold text-xs ${selected ? 'text-blue-900' : 'text-slate-700'}`}>
                         {item.name}
                         {searchQuery && (
-                          <span className="block text-[10px] text-slate-400 font-normal mt-0.5">{item.categoryName}</span>
+                          <span className="block text-xs text-slate-400 font-normal mt-0.5">{item.categoryName}</span>
                         )}
                       </span>
 

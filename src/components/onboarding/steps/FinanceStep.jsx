@@ -198,7 +198,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 rounded-full bg-indigo-500/30 blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 max-w-lg">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-[10px] font-black uppercase tracking-widest mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-black uppercase tracking-widest mb-4">
             <Landmark size={12} /> Standard Partnership
           </div>
           <h3 className="text-2xl font-extrabold mb-2">Platform Fee Structure</h3>
@@ -209,21 +209,21 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
 
         <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
           <div className="text-center px-4">
-            <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
+            <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
             <div className="flex items-baseline justify-center gap-1">
               <span className="text-4xl font-black">{formData.commission !== undefined ? formData.commission : 15}</span>
               <span className="text-xl font-bold text-blue-300">%</span>
             </div>
-            <p className="text-[10px] text-blue-300 mt-1">per completed booking</p>
+            <p className="text-xs text-blue-300 mt-1">per completed booking</p>
           </div>
           <div className="w-px h-16 bg-white/20 hidden sm:block"></div>
           <div className="h-px w-full bg-white/20 sm:hidden"></div>
           <div className="text-center px-4">
-            <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
+            <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
             <div className="flex items-baseline justify-center gap-1">
               <span className="text-2xl font-black">{formData.payoutCycle || 'Weekly'}</span>
             </div>
-            <p className="text-[10px] text-blue-300 mt-1">
+            <p className="text-xs text-blue-300 mt-1">
               {formData.payoutCycle === 'Monthly' ? 'First week of month' : formData.payoutCycle === '15 days' ? '1st & 16th' : 'Every Wednesday'}
             </p>
           </div>
@@ -297,7 +297,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           }`}
                         />
                         {reAccountNumber && reAccountNumber !== formData.accountNumber && (
-                          <p className="text-[11px] text-red-600 mt-1 font-semibold flex items-center gap-1">
+                          <p className="text-xs text-red-600 mt-1 font-semibold flex items-center gap-1">
                             <AlertCircle size={12} /> Account numbers do not match
                           </p>
                         )}
@@ -310,7 +310,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                         <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
                           Bank IFSC Code <span className="text-red-550 text-red-500">*</span>
                         </label>
-                        <span className="text-[10px] text-slate-400 font-medium block mt-1 leading-relaxed">
+                        <span className="text-xs text-slate-400 font-medium block mt-1 leading-relaxed">
                           You can find this on your cheque book or bank statement
                         </span>
                       </div>
@@ -337,7 +337,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           </button>
                         </div>
                         {ifscVerified && (
-                          <div className="p-2.5 bg-emerald-50 text-emerald-800 text-[11px] rounded-lg border border-emerald-100 flex items-center gap-1.5 font-bold">
+                          <div className="p-2.5 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1.5 font-bold">
                             <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
                             IFSC Verified: {formData.bankName} - {detectedBranch || 'Main Branch'}
                           </div>
@@ -469,12 +469,12 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           </button>
                         </div>
                         {!panValid && (
-                          <p className="text-[11px] text-red-600 mt-1 font-semibold flex items-center gap-1">
+                          <p className="text-xs text-red-600 mt-1 font-semibold flex items-center gap-1">
                             <AlertCircle size={12} /> Please enter a valid 10-digit PAN format (e.g., ABCDE1234F)
                           </p>
                         )}
                         {panVerified && (
-                          <div className="p-2 bg-emerald-50 text-emerald-800 text-[10px] rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
+                          <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
                             <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> PAN Verified & Legal Name Synchronized!
                           </div>
                         )}
@@ -509,7 +509,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           </button>
                         </div>
                         {gstVerified && (
-                          <div className="p-2 bg-emerald-50 text-emerald-800 text-[10px] rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
+                          <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
                             <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> GST Verified & Legal Name Synchronized!
                           </div>
                         )}
@@ -529,7 +529,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           placeholder="e.g. Zivo Hotels Pvt Ltd"
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         />
-                        <p className="text-[10px] text-slate-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
+                        <p className="text-xs text-slate-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
                       </div>
                     </div>
 
@@ -625,8 +625,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     </div>
 
                     <div className="p-4 bg-amber-50/40 rounded-xl border border-amber-100/50 flex items-start gap-2.5 mt-4">
-                      <HelpCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                      <p className="text-[11px] text-amber-900/80 leading-relaxed font-medium">
+                      <HelpCircle size={16} className="text-amber-700 mt-0.5 shrink-0" />
+                      <p className="text-xs text-amber-900/80 leading-relaxed font-medium">
                         Verification of financial information and uploaded documents typically completes within 12-24 working hours. Once verified, your payout status is activated.
                       </p>
                     </div>
@@ -698,7 +698,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                       />
                       <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Standard platform fee applied per booking</p>
+                    <p className="text-xs text-slate-400 mt-1">Standard platform fee applied per booking</p>
                   </div>
 
                   {/* Payout Cycle */}
@@ -715,7 +715,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                       <option value="15 days">15 days (1st & 16th)</option>
                       <option value="Monthly">Monthly (First week)</option>
                     </select>
-                    <p className="text-[10px] text-slate-400 mt-1">Frequency of earnings remittance to your account</p>
+                    <p className="text-xs text-slate-400 mt-1">Frequency of earnings remittance to your account</p>
                   </div>
 
                 </div>

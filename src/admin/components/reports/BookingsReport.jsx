@@ -39,7 +39,7 @@ const BookingsReport = () => {
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-sm text-gray-500 font-medium">Web Bookings (Direct)</p>
-          <h3 className="text-2xl font-bold text-green-600 mt-1">68%</h3>
+          <h3 className="text-2xl font-bold text-green-700 mt-1">68%</h3>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-sm text-gray-500 font-medium">Cancellation Rate</p>
@@ -47,7 +47,7 @@ const BookingsReport = () => {
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-sm text-gray-500 font-medium">Avg Lead Time</p>
-          <h3 className="text-2xl font-bold text-brand-600 mt-1">14 Days</h3>
+          <h3 className="text-2xl font-bold text-brand-700 mt-1">14 Days</h3>
         </div>
       </div>
 

@@ -36,7 +36,7 @@ const AdminsTable = ({ data, onEdit, onStatusChange }) => {
                       <span key={p.module} className="flex items-center text-xs text-brand-700 bg-brand-50 border border-brand-200 px-2 py-1 rounded w-fit">
                         <Shield size={12} className="mr-1 text-brand-500"/> 
                         {p.module} 
-                        <span className="text-[10px] text-gray-400 ml-1">({p.canWrite ? 'R/W' : 'Read'})</span>
+                        <span className="text-xs text-gray-400 ml-1">({p.canWrite ? 'R/W' : 'Read'})</span>
                       </span>
                     ))}
                   </div>
@@ -46,7 +46,7 @@ const AdminsTable = ({ data, onEdit, onStatusChange }) => {
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center space-x-3">
-                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-600 transition-colors" title="Manage Permissions">
+                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-700 transition-colors" title="Manage Permissions">
                     <Edit2 size={16} />
                   </button>
                   {user.status === 'ACTIVE' ? (

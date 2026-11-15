@@ -21,7 +21,7 @@ const ActionConfirmation = ({
 
   const iconStyles = {
     brand: "bg-blue-50 text-blue-600",
-    warning: "bg-orange-50 text-orange-600",
+    warning: "bg-orange-50 text-orange-700",
     danger: "bg-red-50 text-red-600"
   };
 
@@ -42,7 +42,7 @@ const ActionConfirmation = ({
 
           {impacts.length > 0 && (
             <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Financial & Operational Impact</p>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Financial & Operational Impact</p>
               <ul className="space-y-3">
                 {impacts.map((impact, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm font-bold text-slate-700">

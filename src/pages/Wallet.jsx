@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet as WalletIcon, ArrowDownLeft, ArrowUpRight, ShieldCheck, Zap, Info } from 'lucide-react';
 import { getMyWallet } from '../services/api';
+import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Zivo Cash: the guest's wallet. Balance, how it works, and every movement with the balance after
@@ -11,6 +12,7 @@ import { getMyWallet } from '../services/api';
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 const Wallet = () => {
+  usePageTitle('Zivo Cash');
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => { getMyWallet().then(setData).catch((e) => setError(e.message || 'Could not load your Zivo Cash')); }, []);
@@ -19,7 +21,7 @@ const Wallet = () => {
     <div className="pt-24 pb-20 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div>
-          <p className="text-brand-600 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><WalletIcon size={16} /> Zivo Cash</p>
+          <p className="text-brand-700 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><WalletIcon size={16} /> Zivo Cash</p>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight mt-1">Your wallet</h1>
         </div>
         {error && <p className="text-red-600">{error}</p>}
@@ -32,8 +34,8 @@ const Wallet = () => {
             <Link to="/hotels" className="inline-block mt-6 px-5 py-2.5 rounded-full bg-white text-gray-900 text-sm font-bold">Book a stay</Link>
           </div>
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-3 text-sm text-gray-600">
-            <p className="flex gap-2"><Zap size={16} className="text-brand-600 shrink-0 mt-0.5" /> Choose Zivo Cash when you cancel and your refund arrives instantly.</p>
-            <p className="flex gap-2"><ShieldCheck size={16} className="text-brand-600 shrink-0 mt-0.5" /> If a booking paid with Zivo Cash is cancelled, that amount comes back here.</p>
+            <p className="flex gap-2"><Zap size={16} className="text-brand-700 shrink-0 mt-0.5" /> Choose Zivo Cash when you cancel and your refund arrives instantly.</p>
+            <p className="flex gap-2"><ShieldCheck size={16} className="text-brand-700 shrink-0 mt-0.5" /> If a booking paid with Zivo Cash is cancelled, that amount comes back here.</p>
             <p className="flex gap-2"><Info size={16} className="text-gray-400 shrink-0 mt-0.5" /> Zivo Cash can only be used for ZivoHotels bookings. It can&apos;t be topped up, withdrawn to a bank or transferred.</p>
           </div>
         </div>
@@ -46,7 +48,7 @@ const Wallet = () => {
             <ul className="divide-y divide-gray-100">
               {data.transactions.map((t) => (
                 <li key={t.id} className="px-6 py-4 flex items-center gap-4">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${t.type === 'CREDIT' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${t.type === 'CREDIT' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {t.type === 'CREDIT' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -55,7 +57,7 @@ const Wallet = () => {
                   </div>
                   <div className="text-right">
                     <p className={`font-bold ${t.type === 'CREDIT' ? 'text-green-700' : 'text-gray-900'}`}>{t.type === 'CREDIT' ? '+' : '−'}{inr(t.amount)}</p>
-                    {t.balanceAfter != null && <p className="text-[11px] text-gray-400">Balance {inr(t.balanceAfter)}</p>}
+                    {t.balanceAfter != null && <p className="text-xs text-gray-400">Balance {inr(t.balanceAfter)}</p>}
                   </div>
                 </li>
               ))}

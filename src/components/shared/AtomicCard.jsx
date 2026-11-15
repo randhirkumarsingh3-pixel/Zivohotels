@@ -18,10 +18,10 @@ const AtomicCard = ({
   loading = false
 }) => {
   const colorStyles = {
-    brand: 'bg-brand-50 text-brand-600 border-brand-100',
+    brand: 'bg-brand-50 text-brand-700 border-brand-100',
     red: 'bg-red-50 text-red-600 border-red-100',
-    orange: 'bg-orange-50 text-orange-600 border-orange-100',
-    green: 'bg-green-50 text-green-600 border-green-100',
+    orange: 'bg-orange-50 text-orange-700 border-orange-100',
+    green: 'bg-green-50 text-green-700 border-green-100',
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100',
   };
@@ -48,7 +48,7 @@ const AtomicCard = ({
         </div>
         
         {delta && (
-          <div className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg ${deltaType === 'up' ? 'bg-green-50 text-green-600' : deltaType === 'down' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
+          <div className={`flex items-center gap-1 text-xs font-black px-2 py-1 rounded-lg ${deltaType === 'up' ? 'bg-green-50 text-green-700' : deltaType === 'down' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
             {deltaType === 'up' ? <TrendingUp size={12} /> : deltaType === 'down' ? <TrendingDown size={12} /> : null}
             {delta}
           </div>
@@ -56,15 +56,15 @@ const AtomicCard = ({
       </div>
 
       <div className="space-y-1">
-        <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest group-hover:text-brand-500 transition-colors">{title}</p>
+        <p className="text-gray-400 text-xs font-black uppercase tracking-widest group-hover:text-brand-500 transition-colors">{title}</p>
         <div className="flex items-baseline gap-2">
            <h3 className="text-2xl font-black text-gray-900 tracking-tight">{value}</h3>
-           {subtitle && <span className="text-[10px] text-gray-400 font-bold">{subtitle}</span>}
+           {subtitle && <span className="text-xs text-gray-400 font-bold">{subtitle}</span>}
         </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+         <span className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
             <Info size={10} /> Details
          </span>
          <ChevronRight size={14} className="text-gray-300 group-hover:text-brand-500 group-hover:translate-x-1 transition-all" />

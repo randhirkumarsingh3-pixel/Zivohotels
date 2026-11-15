@@ -145,10 +145,10 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">3. Occupancy Overrides</h3>
               {formData.occupancyPricing.length > 0 && (
-                <span className="px-2 py-0.5 text-[10px] bg-brand-100 text-brand-700 font-bold rounded-full">Overrides Active</span>
+                <span className="px-2 py-0.5 text-xs bg-brand-100 text-brand-700 font-bold rounded-full">Overrides Active</span>
               )}
             </div>
-            <button type="button" onClick={() => updateForm('occupancyPricing', [...formData.occupancyPricing, { occupancy: 1, price: '' }])} className="text-xs bg-brand-50 text-brand-600 px-3 py-1.5 rounded-md font-bold border border-brand-100 hover:bg-brand-100 transition-colors">
+            <button type="button" onClick={() => updateForm('occupancyPricing', [...formData.occupancyPricing, { occupancy: 1, price: '' }])} className="text-xs bg-brand-50 text-brand-700 px-3 py-1.5 rounded-md font-bold border border-brand-100 hover:bg-brand-100 transition-colors">
               <Plus size={14} className="inline mr-1" /> Add Override
             </button>
           </div>
@@ -179,9 +179,9 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
                             const newList = [...formData.occupancyPricing];
                             newList[idx].price = e.target.value;
                             updateForm('occupancyPricing', newList);
-                          }} className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-brand-500 outline-none font-semibold ${parseFloat(op.price) < parseFloat(formData.basePrice) ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-brand-600'}`} placeholder="Price for this occupancy" />
+                          }} className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-brand-500 outline-none font-semibold ${parseFloat(op.price) < parseFloat(formData.basePrice) ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-brand-700'}`} placeholder="Price for this occupancy" />
                           {parseFloat(op.price) < parseFloat(formData.basePrice) && (
-                            <div className="absolute -top-6 left-0 bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap animate-bounce">Lower than Base!</div>
+                            <div className="absolute -top-6 left-0 bg-amber-600 text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap animate-bounce">Lower than Base!</div>
                           )}
                         </div>
                       </td>
@@ -215,7 +215,7 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
               </div>
               <div className="pt-6">
                 <label className="flex items-center space-x-2 cursor-pointer">
-                  <input type="checkbox" checked={formData.extraBedIncluded} onChange={e => updateForm('extraBedIncluded', e.target.checked)} className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                  <input type="checkbox" checked={formData.extraBedIncluded} onChange={e => updateForm('extraBedIncluded', e.target.checked)} className="rounded border-gray-300 text-brand-700 focus:ring-brand-500" />
                   <span className="text-sm font-medium text-gray-700">Included in Base Price</span>
                 </label>
               </div>

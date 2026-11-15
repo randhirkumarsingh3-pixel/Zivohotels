@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ExperimentProvider } from './context/ExperimentContext';
 
@@ -17,6 +17,12 @@ import Rewards from './pages/Rewards';
 import Wallet from './pages/Wallet';
 import Membership from './pages/Membership';
 const Help = lazy(() => import('./pages/Help'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Account = lazy(() => import('./pages/Account'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -89,6 +95,12 @@ function App() {
               <Route path="/hotels" element={<Listing />} />
               <Route path="/hotel/:id" element={<Detail />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="*" element={<NotFound />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/account" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Account /></ProtectedRoute>} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<Login />} />
               <Route path="/owner/login" element={<Login />} />
@@ -233,8 +245,6 @@ function App() {
               <Route path="settings" element={<ExtranetSettings />} />
             </Route>
 
-            {/* Default Redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </Router>

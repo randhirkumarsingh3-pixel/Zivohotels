@@ -195,18 +195,18 @@ const PoliciesStep = ({ formData, updateForm }) => {
                 </div>
                 <span className="text-sm font-semibold text-slate-800">{opt.label}</span>
                 {opt.recommended && (
-                  <span className="text-[10px] font-black tracking-wider text-green-700 border border-green-300 bg-green-50 px-2.5 py-1 rounded-md ml-2">RECOMMENDED</span>
+                  <span className="text-xs font-black tracking-wider text-green-700 border border-green-300 bg-green-50 px-2.5 py-1 rounded-md ml-2">RECOMMENDED</span>
                 )}
               </label>
 
               {/* Visual refund timeline bar for selected 24h option */}
               {opt.showBar && cancellationPolicy === opt.id && (
                 <div className="ml-8 mt-4 mb-2 max-w-lg">
-                  <div className="rounded-lg overflow-hidden flex h-8 text-[11px] font-black tracking-widest shadow-inner">
+                  <div className="rounded-lg overflow-hidden flex h-8 text-xs font-black tracking-widest shadow-inner">
                     <div className="flex-1 bg-amber-500 flex items-center justify-center text-white">100% REFUND</div>
                     <div className="flex-1 bg-slate-200 flex items-center justify-center text-slate-600">NON-REFUNDABLE</div>
                   </div>
-                  <div className="flex justify-between text-[11px] font-bold text-slate-500 mt-2 px-1">
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mt-2 px-1">
                     <span>Booking Date</span>
                     <span className="text-center">24 hours before<br/>check-in</span>
                     <span>Check-in</span>

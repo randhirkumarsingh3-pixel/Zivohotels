@@ -51,7 +51,7 @@ const Reports = () => {
           </h3>
           <button 
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-brand-600 text-sm font-medium hover:underline flex items-center"
+            className="text-brand-700 text-sm font-medium hover:underline flex items-center"
           >
             {showAdvanced ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
             {showAdvanced ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
@@ -154,7 +154,7 @@ const Reports = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-brand-600 text-brand-600'
+                  ? 'border-brand-600 text-brand-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >

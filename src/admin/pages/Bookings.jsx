@@ -75,7 +75,7 @@ const CancellationModal = ({ booking, onClose, onConfirm, loading }) => {
             </div>
             <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
               <span className="font-bold text-gray-900">Final Refund</span>
-              <span className="text-lg font-bold text-green-600">{fmt(estimatedRefund)}</span>
+              <span className="text-lg font-bold text-green-700">{fmt(estimatedRefund)}</span>
             </div>
           </div>
 
@@ -91,8 +91,8 @@ const CancellationModal = ({ booking, onClose, onConfirm, loading }) => {
           </div>
         </div>
         <div className="bg-amber-50 px-6 py-3 border-t border-amber-100 flex items-start gap-2">
-          <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
-          <p className="text-[10px] text-amber-700 leading-relaxed font-medium">Refund will be processed to the original payment method. Inventory will be restored automatically.</p>
+          <AlertCircle size={14} className="text-amber-700 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-700 leading-relaxed font-medium">Refund will be processed to the original payment method. Inventory will be restored automatically.</p>
         </div>
       </div>
     </div>
@@ -141,11 +141,11 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-brand-50 rounded-xl p-3">
-              <p className="text-[10px] text-brand-600 font-bold uppercase tracking-wider mb-1">Check-In</p>
+              <p className="text-xs text-brand-700 font-bold uppercase tracking-wider mb-1">Check-In</p>
               <p className="font-bold text-gray-900 text-sm">{fmtDate(booking.checkIn)}</p>
             </div>
             <div className="bg-brand-50 rounded-xl p-3">
-              <p className="text-[10px] text-brand-600 font-bold uppercase tracking-wider mb-1">Check-Out</p>
+              <p className="text-xs text-brand-700 font-bold uppercase tracking-wider mb-1">Check-Out</p>
               <p className="font-bold text-gray-900 text-sm">{fmtDate(booking.checkOut)}</p>
             </div>
           </div>
@@ -166,7 +166,7 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
               <div className="flex justify-between"><span className="text-gray-500">Base Amount</span><span className="font-medium">{fmt(booking.baseAmount)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Tax</span><span className="font-medium">{fmt(booking.taxAmount)}</span></div>
               <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100"><span>Total</span><span>{fmt(booking.totalAmount)}</span></div>
-              <div className="flex justify-between text-green-600"><span>Paid</span><span className="font-semibold">{fmt(booking.paidAmount)}</span></div>
+              <div className="flex justify-between text-green-700"><span>Paid</span><span className="font-semibold">{fmt(booking.paidAmount)}</span></div>
               {booking.refundAmount > 0 && (
                 <div className="flex justify-between text-purple-600 border-t border-dashed border-gray-100 pt-1 mt-1">
                   <span>Refunded</span>
@@ -174,7 +174,7 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
                 </div>
               )}
               {booking.remainingAmount > 0 && (
-                <div className="flex justify-between text-amber-600"><span>Remaining</span><span className="font-semibold">{fmt(booking.remainingAmount)}</span></div>
+                <div className="flex justify-between text-amber-700"><span>Remaining</span><span className="font-semibold">{fmt(booking.remainingAmount)}</span></div>
               )}
             </div>
           </div>
@@ -376,7 +376,7 @@ const Bookings = () => {
           <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
           <p className="text-gray-500 mt-0.5 text-sm">
             Manage all reservations across properties.
-            {meta.total > 0 && <span className="ml-2 text-brand-600 font-semibold">{meta.total} total</span>}
+            {meta.total > 0 && <span className="ml-2 text-brand-700 font-semibold">{meta.total} total</span>}
           </p>
         </div>
         <div className="flex gap-3">
@@ -463,7 +463,7 @@ const Bookings = () => {
             <p className="text-sm font-medium">
               {hasFilters ? 'No bookings match your filters.' : 'No bookings found.'}
             </p>
-            {hasFilters && <button onClick={resetFilters} className="text-xs text-brand-600 underline">Clear filters</button>}
+            {hasFilters && <button onClick={resetFilters} className="text-xs text-brand-700 underline">Clear filters</button>}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -482,7 +482,7 @@ const Bookings = () => {
                     <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button onClick={() => setSelectedBooking(b)}
-                          className="font-mono text-brand-600 font-semibold hover:underline text-xs">
+                          className="font-mono text-brand-700 font-semibold hover:underline text-xs">
                           {b.bookingRef}
                         </button>
                       </td>
@@ -510,7 +510,7 @@ const Bookings = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button onClick={() => setSelectedBooking(b)}
-                            className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors" title="View Details">
+                            className="p-1.5 text-gray-400 hover:text-brand-700 rounded-md hover:bg-brand-50 transition-colors" title="View Details">
                             <Eye size={16} />
                           </button>
                           {b.status === 'PENDING' && (

@@ -98,13 +98,13 @@ function PropertyDetailsPanel({ property }) {
       <SectionCard title="Contact Information" icon={Phone} accent="amber">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Owner</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Owner</p>
             <DetailRow label="Name" value={contact.ownerName || property.owner?.name} />
             <DetailRow label="Email" value={contact.ownerEmail || property.owner?.email} />
             <DetailRow label="Phone" value={contact.ownerPhone || property.owner?.phone} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Property Staff</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Property Staff</p>
             <DetailRow label="Reception Phone" value={contact.receptionPhone} />
             <DetailRow label="Reception Email" value={contact.receptionEmail} />
             <DetailRow label="Manager" value={contact.managerName} />
@@ -291,7 +291,7 @@ export default function PropertyReview() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Property Review & Lifecycle Console</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Property review</h1>
           <p className="text-gray-500 mt-1">Manage property approvals, agreements, and live status.</p>
         </div>
         <button
@@ -339,7 +339,7 @@ export default function PropertyReview() {
             <CheckCircle size={18} />
             <h3 className="text-sm font-medium">Ready for Go Live</h3>
           </div>
-          <p className="text-2xl font-bold text-green-600">{queue.filter(q => q.status === 'READY_FOR_GO_LIVE').length}</p>
+          <p className="text-2xl font-bold text-green-700">{queue.filter(q => q.status === 'READY_FOR_GO_LIVE').length}</p>
         </div>
       </div>
 
@@ -385,7 +385,7 @@ export default function PropertyReview() {
                     <td className="px-6 py-4 flex gap-2">
                       <button
                         onClick={() => { setSelectedProperty(hotel); setActiveTab('details'); }}
-                        className="px-3 py-1.5 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg"
+                        className="px-3 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg"
                       >
                         Review
                       </button>
@@ -426,7 +426,7 @@ export default function PropertyReview() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-brand-600 text-brand-600'
+                      ? 'border-brand-600 text-brand-700'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >

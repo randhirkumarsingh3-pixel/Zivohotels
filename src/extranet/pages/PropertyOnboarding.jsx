@@ -424,19 +424,19 @@ const PropertyOnboarding = () => {
             </p>
 
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-150 mb-6 font-mono text-center relative overflow-hidden">
-              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
                 Reference Number
               </span>
-              <span className="text-lg font-black text-brand-600 tracking-wider">
+              <span className="text-lg font-black text-brand-700 tracking-wider">
                 {referenceNumber}
               </span>
             </div>
 
             <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 text-left mb-8 flex gap-3">
-              <Sparkles className="text-amber-600 mt-0.5 shrink-0 w-5 h-5" />
+              <Sparkles className="text-amber-700 mt-0.5 shrink-0 w-5 h-5" />
               <div>
                 <span className="block text-xs font-bold text-amber-900">Awaiting Admin Approval</span>
-                <span className="text-[11px] text-amber-800/80 leading-relaxed block mt-0.5">
+                <span className="text-xs text-amber-800/80 leading-relaxed block mt-0.5">
                   As this is submitted by an extranet owner, our Super Admin team will verify the PAN/GST records, trade licenses, and payout details. Status updates are processed within 12-24 hours.
                 </span>
               </div>

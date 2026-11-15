@@ -37,9 +37,9 @@ const ExtranetWallet = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (!data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
+  if (!data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-700" size={32} /></div>;
   const cards = [
-    { icon: Clock, label: 'On hold', value: data.onHold, sub: data.nextPayoutDate ? `Next payout ${new Date(data.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Released after check-out, per your payout cycle', cls: 'text-amber-600' },
+    { icon: Clock, label: 'On hold', value: data.onHold, sub: data.nextPayoutDate ? `Next payout ${new Date(data.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Released after check-out, per your payout cycle', cls: 'text-amber-700' },
     { icon: CheckCircle2, label: 'Ready to pay', value: data.ready, sub: 'Included in the next payout', cls: 'text-blue-600' },
     { icon: AlertTriangle, label: 'Owed to ZivoHotels', value: data.owed, sub: 'Commission on stays paid at the hotel; deducted from payouts', cls: data.owed > 0 ? 'text-red-600' : 'text-gray-900' },
     { icon: Banknote, label: 'Paid out', value: data.paidOut, sub: 'Total paid to your bank account', cls: 'text-green-700' },
@@ -48,7 +48,7 @@ const ExtranetWallet = () => {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Wallet size={28} className="text-brand-600" /> Wallet</h1>
+        <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Wallet size={28} className="text-brand-700" /> Wallet</h1>
         <p className="text-gray-500 font-medium mt-1">What {property?.name || 'your property'} has earned through ZivoHotels, after commission and taxes.</p>
       </div>
 
@@ -95,7 +95,7 @@ const ExtranetWallet = () => {
                     <td className="px-4 py-2.5 text-right text-gray-600">{e.deductions != null ? `−${inr(e.deductions)}` : ''}</td>
                     <td className={`px-4 py-2.5 text-right font-bold ${e.amount < 0 ? 'text-gray-900' : 'text-green-700'}`}>{e.amount < 0 ? '−' : '+'}{inr(Math.abs(e.amount))}</td>
                     <td className="px-4 py-2.5 text-right text-gray-600">{inr(e.balance)}</td>
-                    <td className="px-4 py-2.5"><span className={`px-2 py-0.5 rounded text-[11px] font-bold ${STATUS[e.status]?.[1] || ''}`}>{STATUS[e.status]?.[0] || e.status}</span>{e.status === 'ON_HOLD' && e.payoutOn && <span className="block text-[11px] text-gray-400">pays {new Date(e.payoutOn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}</td>
+                    <td className="px-4 py-2.5"><span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS[e.status]?.[1] || ''}`}>{STATUS[e.status]?.[0] || e.status}</span>{e.status === 'ON_HOLD' && e.payoutOn && <span className="block text-xs text-gray-400">pays {new Date(e.payoutOn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}</td>
                   </tr>
                 ))}
               </tbody>

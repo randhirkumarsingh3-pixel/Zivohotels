@@ -108,7 +108,7 @@ const DestinationSearch = ({ destination, setDestination, error }) => {
                 key={loc.id}
                 onClick={() => handleSelect(loc.name)}
                 onMouseEnter={() => setFocusedIndex(index)}
-                className={`px-4 py-3 cursor-pointer flex items-center ${focusedIndex === index ? 'bg-gray-50 text-brand-600' : 'text-gray-700'}`}
+                className={`px-4 py-3 cursor-pointer flex items-center ${focusedIndex === index ? 'bg-gray-50 text-brand-700' : 'text-gray-700'}`}
               >
                 <div className="bg-gray-100 p-2 rounded-lg mr-3">
                   {getIcon(loc.type)}

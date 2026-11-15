@@ -9,8 +9,8 @@ import { useExtranet } from '../context/ExtranetContext';
 import { useSocketEvent } from '../../context/SocketContext';
 
 const _DeltaIndicator = ({ value, type }) => (
-  <div className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
-    type === 'green' ? 'bg-green-50 text-green-600' :
+  <div className={`flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full ${
+    type === 'green' ? 'bg-green-50 text-green-700' :
     type === 'red' ? 'bg-red-50 text-red-600' :
     'bg-slate-50 text-slate-500'
   } animate-in zoom-in duration-300`}>
@@ -132,7 +132,7 @@ const ExtranetDashboard = () => {
   ];
 
   if (loading && !property) {
-    return <div className="flex h-screen items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
+    return <div className="flex h-screen items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-brand-700" size={48} /></div>;
   }
 
   return (
@@ -140,7 +140,7 @@ const ExtranetDashboard = () => {
       {property?.status === 'PENDING_AGREEMENT' && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileSignature size={32} />
             </div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">Digital Agreement Pending</h2>
@@ -176,7 +176,7 @@ const ExtranetDashboard = () => {
              <div>
                 <div className="flex items-center gap-2 mb-1">
                    <span className={`w-2 h-2 rounded-full ${statusInfo.isLive ? 'bg-green-500 animate-pulse' : 'bg-amber-400'}`}></span>
-                   <span className={`text-[10px] font-black uppercase tracking-widest ${statusInfo.isLive ? 'text-blue-600' : 'text-amber-600'}`}>{statusInfo.label}</span>
+                   <span className={`text-xs font-black uppercase tracking-widest ${statusInfo.isLive ? 'text-blue-600' : 'text-amber-700'}`}>{statusInfo.label}</span>
                 </div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">{property?.name}</h1>
                 <p className="text-slate-500 font-medium mt-1 flex items-center gap-2">
@@ -189,7 +189,7 @@ const ExtranetDashboard = () => {
           <div className="flex items-center gap-4">
              <div className="bg-white px-6 py-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-6">
                 <div className="text-right">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Health Score</p>
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Health Score</p>
                    <p className="text-sm font-black text-blue-600">{property?.healthScore >= 80 ? 'Premium Partner' : 'Rising Partner'}</p>
                 </div>
                 <div className="w-14 h-14 rounded-full border-4 border-blue-600 border-t-slate-100 flex items-center justify-center text-[12px] font-black text-blue-600 bg-blue-50">
@@ -215,14 +215,14 @@ const ExtranetDashboard = () => {
                  </div>
                  
                  <div className="bg-white p-6 rounded-[2rem] border border-orange-100 shadow-sm flex items-center gap-5 group hover:border-orange-500 transition-all cursor-pointer">
-                    <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                    <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-700 group-hover:bg-orange-600 group-hover:text-white transition-all">
                        <AlertTriangle size={24} />
                     </div>
                     <div>
                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">System Mode</h4>
                        <p className="text-2xl font-black text-slate-900">{property?.isThrottled ? 'Safe Mode' : 'Normal'}</p>
                     </div>
-                    <ChevronRight className="ml-auto text-slate-300 group-hover:text-orange-600" />
+                    <ChevronRight className="ml-auto text-slate-300 group-hover:text-orange-700" />
                  </div>
               </div>
 
@@ -237,7 +237,7 @@ const ExtranetDashboard = () => {
                  <div className="p-8 space-y-8">
                     {Object.entries(activityGroups).map(([group, logs]) => logs.length > 0 && (
                       <div key={group}>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{group}</h4>
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{group}</h4>
                         <div className="space-y-4 border-l-2 border-slate-50 ml-2 pl-6">
                           {logs.map((log, i) => (
                             <div key={i} className="relative">
@@ -247,7 +247,7 @@ const ExtranetDashboard = () => {
                                   <p className="text-sm font-bold text-slate-800">{log.action.replace(/_/g, ' ')}</p>
                                   <p className="text-xs text-slate-500 mt-0.5">{log.entityType} • ID: {log.entityId.slice(0, 8)}</p>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-xs font-bold text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                             </div>
                           ))}
@@ -275,14 +275,14 @@ const ExtranetDashboard = () => {
                     {notifications.slice(0, 5).map((n, i) => (
                       <div key={i} className={`p-4 rounded-2xl border transition-all ${n.isRead ? 'bg-white border-slate-100 grayscale opacity-60' : 'bg-blue-50 border-blue-100 shadow-sm'}`}>
                          <p className="text-xs font-black text-slate-900 mb-1">{n.title}</p>
-                         <p className="text-[10px] text-slate-500 leading-relaxed">{n.message}</p>
-                         <p className="text-[9px] font-bold text-blue-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                         <p className="text-xs text-slate-500 leading-relaxed">{n.message}</p>
+                         <p className="text-xs font-bold text-blue-600 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
                       </div>
                     ))}
                     {notifications.length === 0 && (
                       <div className="text-center py-6">
                         <Bell className="mx-auto text-slate-200 mb-2" size={32} />
-                        <p className="text-[10px] text-slate-400">All clear! No alerts.</p>
+                        <p className="text-xs text-slate-400">All clear! No alerts.</p>
                       </div>
                     )}
                  </div>
@@ -291,7 +291,7 @@ const ExtranetDashboard = () => {
               {/* Quick Support */}
               <div className="flex items-center gap-4 p-6 bg-navy-900 rounded-[2rem] text-white">
                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                    <Info className="text-blue-400" />
+                    <Info className="text-blue-600" />
                  </div>
                  <div className="min-w-0">
                     <h4 className="text-sm font-bold">Need help?</h4>

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Mail, CalendarX2, CreditCard, Wallet, Award, Building2, ChevronRight } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Help & contact: how cancellations, refunds and payments work on ZivoHotels, and who to write
@@ -17,6 +18,7 @@ const Section = ({ id, icon: Icon, title, children }) => (
 );
 
 const Help = () => {
+  usePageTitle('Help centre');
   const { hash } = useLocation();
   useEffect(() => {
     // Footer links point at a topic (/help#cancellations): bring it into view

@@ -100,7 +100,7 @@ const RuleForm = ({ initial, roomTypes, onCancel, onSave }) => {
         </label>
         <label className="text-xs font-semibold text-gray-600">Price change (%)
           <input type="number" className={`${input} w-full mt-1`} value={form.adjustment} onChange={(e) => set('adjustment', e.target.value)} required step="0.5" />
-          <span className="block text-[11px] font-normal text-gray-400 mt-0.5">Use minus for a discount, e.g. -10</span>
+          <span className="block text-xs font-normal text-gray-400 mt-0.5">Use minus for a discount, e.g. -10</span>
         </label>
       </div>
 
@@ -370,21 +370,21 @@ const DynamicPricingManager = ({ hotelId, inventoryLink }) => {
           ) : (
             rules.map((rule) => (
               <div key={rule.id} className={`bg-white border rounded-xl p-4 flex items-start gap-3 ${rule.isActive ? 'border-gray-200' : 'border-dashed border-gray-300 opacity-70'}`}>
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${rule.adjustment > 0 ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'}`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${rule.adjustment > 0 ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
                   {rule.adjustment > 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-bold text-gray-900">{rule.name}</h4>
-                    <span className={`text-sm font-extrabold ${rule.adjustment > 0 ? 'text-orange-600' : 'text-green-600'}`}>{pct(rule.adjustment)}</span>
-                    {!rule.isActive && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">PAUSED</span>}
+                    <span className={`text-sm font-extrabold ${rule.adjustment > 0 ? 'text-orange-700' : 'text-green-700'}`}>{pct(rule.adjustment)}</span>
+                    {!rule.isActive && <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">PAUSED</span>}
                   </div>
                   <p className="text-sm text-gray-600">{describeRule(rule)}</p>
                   <p className="text-xs text-gray-400">{TYPE_LABEL[rule.type]} · {scopeName(rule)}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => toggleRule(rule)} className="text-xs font-semibold px-2 py-1 rounded hover:bg-gray-100 text-gray-600">{rule.isActive ? 'Pause' : 'Turn on'}</button>
-                  <button type="button" aria-label={`Edit ${rule.name}`} onClick={() => setEditing(rule)} className="p-1.5 text-gray-400 hover:text-brand-600"><Pencil size={15} /></button>
+                  <button type="button" aria-label={`Edit ${rule.name}`} onClick={() => setEditing(rule)} className="p-1.5 text-gray-400 hover:text-brand-700"><Pencil size={15} /></button>
                   <button type="button" aria-label={`Delete ${rule.name}`} onClick={() => deleteRule(rule)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
                 </div>
               </div>
@@ -427,7 +427,7 @@ const DynamicPricingManager = ({ hotelId, inventoryLink }) => {
                 {holidays.slice(0, 6).map((h) => (
                   <li key={h.id} className="text-xs text-gray-600 flex justify-between gap-2">
                     <span>{new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {h.name}</span>
-                    <span className="font-semibold text-orange-600">{pct(Math.round(h.multiplier * 100))}</span>
+                    <span className="font-semibold text-orange-700">{pct(Math.round(h.multiplier * 100))}</span>
                   </li>
                 ))}
               </ul>
@@ -474,7 +474,7 @@ const DynamicPricingManager = ({ hotelId, inventoryLink }) => {
                         : <span className="text-gray-400">None</span>}
                     </td>
                     <td className="px-4 py-2 text-right text-gray-500">{inr(preview.ratePlan.basePrice)}</td>
-                    <td className={`px-4 py-2 text-right font-bold ${n.guestPrice > preview.ratePlan.basePrice ? 'text-orange-600' : n.guestPrice < preview.ratePlan.basePrice ? 'text-green-600' : 'text-gray-900'}`}>{inr(n.guestPrice)}</td>
+                    <td className={`px-4 py-2 text-right font-bold ${n.guestPrice > preview.ratePlan.basePrice ? 'text-orange-700' : n.guestPrice < preview.ratePlan.basePrice ? 'text-green-700' : 'text-gray-900'}`}>{inr(n.guestPrice)}</td>
                   </tr>
                 ))}
               </tbody>

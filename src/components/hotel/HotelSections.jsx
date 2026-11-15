@@ -56,7 +56,7 @@ export const Highlights = ({ hotel }) => {
     <div className="flex flex-wrap gap-2">
       {items.map((it) => (
         <span key={it.text} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700">
-          <it.icon size={14} className="text-brand-600" /> {it.text}
+          <it.icon size={14} className="text-brand-700" /> {it.text}
         </span>
       ))}
     </div>
@@ -92,7 +92,7 @@ export const AmenitiesSection = ({ amenities }) => {
         </div>
       ))}
       {(order.length > 2 || order.some((g) => groups[g].length > 9)) && (
-        <button type="button" onClick={() => setShowAll((s) => !s)} className="text-sm font-bold text-brand-600 hover:text-brand-700">
+        <button type="button" onClick={() => setShowAll((s) => !s)} className="text-sm font-bold text-brand-700 hover:text-brand-700">
           {showAll ? 'Show fewer amenities' : `Show all ${list.length} amenities`}
         </button>
       )}
@@ -104,7 +104,7 @@ const RuleLine = ({ icon: Icon, allowed, text }) => (
   <li className="flex items-start gap-3 text-sm">
     <Icon size={18} className="text-gray-400 shrink-0 mt-0.5" />
     <span className="flex-1 text-gray-700">{text}</span>
-    {allowed === true && <CheckCircle2 size={16} className="text-green-600 shrink-0 mt-0.5" aria-label="Allowed" />}
+    {allowed === true && <CheckCircle2 size={16} className="text-green-700 shrink-0 mt-0.5" aria-label="Allowed" />}
     {allowed === false && <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" aria-label="Not allowed" />}
   </li>
 );
@@ -196,7 +196,7 @@ export const LocationSection = ({ hotel }) => {
   const d = 0.01;
   return (
     <div className="space-y-4">
-      <p className="flex items-start gap-2 text-gray-700"><MapPin size={18} className="text-brand-600 mt-0.5 shrink-0" /> {address || hotel.city}</p>
+      <p className="flex items-start gap-2 text-gray-700"><MapPin size={18} className="text-brand-700 mt-0.5 shrink-0" /> {address || hotel.city}</p>
       {hotel.landmark && <p className="flex items-start gap-2 text-sm text-gray-600"><Navigation size={16} className="text-gray-400 mt-0.5 shrink-0" /> Near {hotel.landmark}</p>}
       {hasPin && (
         <>
@@ -208,7 +208,7 @@ export const LocationSection = ({ hotel }) => {
               src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - d}%2C${lat - d}%2C${lng + d}%2C${lat + d}&layer=mapnik&marker=${lat}%2C${lng}`}
             />
           </div>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:text-brand-700">
+          <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-700 hover:text-brand-700">
             <Navigation size={15} /> Get directions
           </a>
         </>
@@ -232,7 +232,7 @@ const NearbyPlaces = ({ places }) => {
           const shown = open[g.key] ? g.items : g.items.slice(0, 5);
           return (
             <div key={g.key}>
-              <p className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2"><g.icon size={16} className="text-brand-600" /> {g.label}</p>
+              <p className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2"><g.icon size={16} className="text-brand-700" /> {g.label}</p>
               <ul className="space-y-2">
                 {shown.map((p, i) => (
                   <li key={`${p.name}-${i}`} className="flex items-start justify-between gap-3 text-sm">
@@ -245,7 +245,7 @@ const NearbyPlaces = ({ places }) => {
                 ))}
               </ul>
               {g.items.length > 5 && (
-                <button type="button" onClick={() => setOpen((o) => ({ ...o, [g.key]: !o[g.key] }))} className="mt-2 text-sm font-bold text-brand-600 hover:text-brand-700">
+                <button type="button" onClick={() => setOpen((o) => ({ ...o, [g.key]: !o[g.key] }))} className="mt-2 text-sm font-bold text-brand-700 hover:text-brand-700">
                   {open[g.key] ? 'Show less' : `View all ${g.items.length}`}
                 </button>
               )}
@@ -278,8 +278,8 @@ export const RoomFeatures = ({ roomType }) => {
       {roomType.description && <p className="text-xs text-gray-500 leading-relaxed">{roomType.description}</p>}
       {amenities.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {amenities.slice(0, 8).map((a) => <span key={a} className="px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 text-[11px] text-gray-600">{String(a).split(':')[0]}</span>)}
-          {amenities.length > 8 && <span className="text-[11px] text-gray-400 self-center">+{amenities.length - 8} more</span>}
+          {amenities.slice(0, 8).map((a) => <span key={a} className="px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">{String(a).split(':')[0]}</span>)}
+          {amenities.length > 8 && <span className="text-xs text-gray-400 self-center">+{amenities.length - 8} more</span>}
         </div>
       )}
     </div>

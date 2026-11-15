@@ -129,7 +129,7 @@ const AdminMembership = () => {
               {['ACTIVE', 'EXPIRED', 'CANCELLED', 'ALL'].map((s) => <option key={s} value={s}>{s.toLowerCase()}</option>)}
             </select>
             <input aria-label="Search members" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or email" className="px-3 py-2 border border-gray-200 rounded-lg text-sm" />
-            <button type="button" onClick={() => setGrant({ email: '', planId: paidPlans[0]?.id || '', days: paidPlans[0]?.durationDays || 365, note: '' })} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold bg-amber-500 text-white"><Gift size={14} /> Gift a plan</button>
+            <button type="button" onClick={() => setGrant({ email: '', planId: paidPlans[0]?.id || '', days: paidPlans[0]?.durationDays || 365, note: '' })} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold bg-amber-700 text-white"><Gift size={14} /> Gift a plan</button>
           </div>
         </div>
         {grant && (
@@ -169,7 +169,7 @@ const AdminMembership = () => {
               <tr key={h.id} className="border-t border-gray-100 first:border-0">
                 <td className="px-4 py-2.5"><p className="font-semibold text-gray-900">{h.name}</p><p className="text-xs text-gray-500">{h.city}</p></td>
                 <td className="px-4 py-2.5">{h.memberDiscountPercent > 0 ? <span className="font-bold text-green-700">{h.memberDiscountPercent}% off for members</span> : <span className="text-gray-400">Not offered</span>}</td>
-                <td className="px-4 py-2.5 text-right"><button type="button" onClick={() => setHotelPct(h)} className="text-xs font-semibold text-brand-600">Change</button></td>
+                <td className="px-4 py-2.5 text-right"><button type="button" onClick={() => setHotelPct(h)} className="text-xs font-semibold text-brand-700">Change</button></td>
               </tr>
             ))}
           </tbody>

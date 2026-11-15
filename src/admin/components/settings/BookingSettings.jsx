@@ -45,7 +45,7 @@ const BookingSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm mt-4">Loading booking rules...</p>
     </div>
   );
@@ -62,7 +62,7 @@ const BookingSettings = () => {
         {/* Pay At Hotel */}
         <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${types.payAtHotel ? 'border-brand-500 bg-brand-50/30' : 'border-gray-200 bg-white'}`}>
           <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-lg ${types.payAtHotel ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
+            <div className={`p-2 rounded-lg ${types.payAtHotel ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}`}>
               <Clock size={24} />
             </div>
             <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
@@ -93,7 +93,7 @@ const BookingSettings = () => {
         {/* Partial Payment */}
         <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${types.partial ? 'border-brand-500 bg-brand-50/30' : 'border-gray-200 bg-white'}`}>
           <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-lg ${types.partial ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
+            <div className={`p-2 rounded-lg ${types.partial ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}`}>
               <Wallet size={24} />
             </div>
             <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
@@ -124,7 +124,7 @@ const BookingSettings = () => {
         {/* Prepaid */}
         <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${types.prepaid ? 'border-brand-500 bg-brand-50/30' : 'border-gray-200 bg-white'}`}>
           <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-lg ${types.prepaid ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
+            <div className={`p-2 rounded-lg ${types.prepaid ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}`}>
               <CreditCard size={24} />
             </div>
             <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">

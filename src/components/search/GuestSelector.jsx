@@ -34,7 +34,7 @@ const GuestSelector = ({ guests, setGuests, rooms, setRooms }) => {
         <button 
           onClick={() => onChange(value - 1)} 
           disabled={value <= min}
-          className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -42,7 +42,7 @@ const GuestSelector = ({ guests, setGuests, rooms, setRooms }) => {
         <button 
           onClick={() => onChange(value + 1)} 
           disabled={value >= max}
-          className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-brand-500 hover:text-brand-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Plus className="h-4 w-4" />
         </button>

@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import Logo from '../../components/brand/Logo';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const ExtranetLogin = () => {
+  usePageTitle('Extranet log in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -60,7 +62,7 @@ const ExtranetLogin = () => {
               )}
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Email ID / Username</label>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Email ID / Username</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-600">
                     <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
@@ -78,8 +80,8 @@ const ExtranetLogin = () => {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
-                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Password</label>
-                   <a href="/help#contact" className="text-xs font-semibold text-navy-700 hover:underline">Forgot password?</a>
+                   <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Password</label>
+                   <a href="/forgot-password" className="text-xs font-semibold text-navy-700 hover:underline">Forgot password?</a>
                 </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-600">
@@ -123,7 +125,7 @@ const ExtranetLogin = () => {
           
           <div className="bg-gray-50 p-6 border-t border-gray-100 flex items-center justify-center gap-3">
              <ShieldCheck className="text-green-500" size={18} />
-             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Secure 256-bit SSL Encrypted Portal</span>
+             <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Secure 256-bit SSL Encrypted Portal</span>
           </div>
         </div>
         

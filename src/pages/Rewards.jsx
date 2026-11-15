@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Award, Gift, BedDouble, Star, Clock, ArrowDownLeft, ArrowUpRight, Crown, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getRewardsProgram, getMyRewards, getRewardsHistory } from '../services/api';
+import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Zivo Rewards for guests: balance and tier for members, how earning and using points works,
@@ -17,6 +18,7 @@ const TIER_STYLE = {
 const TYPE_LABEL = { EARN: 'Stay', REDEEM: 'Used', BONUS: 'Bonus', ADJUST: 'Adjustment', EXPIRE: 'Expired' };
 
 const Rewards = () => {
+  usePageTitle('Zivo Rewards');
   const { isAuthenticated, user } = useAuth();
   const [program, setProgram] = useState(null);
   const [me, setMe] = useState(null);
@@ -40,7 +42,7 @@ const Rewards = () => {
     <div className="pt-24 pb-20 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div>
-          <p className="text-brand-600 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><Award size={16} /> Zivo Rewards</p>
+          <p className="text-brand-700 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><Award size={16} /> Zivo Rewards</p>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight mt-1">Earn points on every stay. Use them on the next.</h1>
           {p && <p className="text-gray-500 mt-2 text-lg">{p.earnPointsPer100} point{p.earnPointsPer100 === 1 ? '' : 's'} per ₹100 you spend, each worth {inr(p.pointValue)} off a future booking.</p>}
         </div>
@@ -60,7 +62,7 @@ const Rewards = () => {
                 <Crown size={36} className="opacity-80" />
               </div>
               <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
-                <div><p className="opacity-70 text-xs">Pending</p><p className="font-bold">{me.pending.toLocaleString('en-IN')} pts</p><p className="opacity-60 text-[11px]">available after check-out</p></div>
+                <div><p className="opacity-70 text-xs">Pending</p><p className="font-bold">{me.pending.toLocaleString('en-IN')} pts</p><p className="opacity-60 text-xs">available after check-out</p></div>
                 <div><p className="opacity-70 text-xs">Earned so far</p><p className="font-bold">{me.lifetimeEarned.toLocaleString('en-IN')} pts</p></div>
                 <div><p className="opacity-70 text-xs">Used so far</p><p className="font-bold">{me.lifetimeUsed.toLocaleString('en-IN')} pts</p></div>
               </div>
@@ -84,7 +86,7 @@ const Rewards = () => {
                   </p>
                 </>
               ) : <p className="text-sm text-green-700 font-semibold">You&apos;re at our top tier. Thank you!</p>}
-              <Link to="/hotels" className="inline-block mt-2 text-sm font-bold text-brand-600 hover:text-brand-700">Find your next stay →</Link>
+              <Link to="/hotels" className="inline-block mt-2 text-sm font-bold text-brand-700 hover:text-brand-700">Find your next stay →</Link>
             </div>
           </div>
         ) : !isAuthenticated ? (
@@ -111,7 +113,7 @@ const Rewards = () => {
               { icon: Star, title: 'Bonus points', text: p.reviewBonusPoints ? `${p.reviewBonusPoints} points when your review of a stay is published.` : 'Watch for bonus offers.' },
             ].map((c) => (
               <div key={c.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                <c.icon className="text-brand-600" size={26} />
+                <c.icon className="text-brand-700" size={26} />
                 <h3 className="font-bold text-gray-900 mt-3">{c.title}</h3>
                 <p className="text-sm text-gray-600 mt-1 leading-relaxed">{c.text}</p>
               </div>
@@ -131,12 +133,12 @@ const Rewards = () => {
                 <div key={t.id} className={`p-6 ${me?.tier?.id === t.id ? 'bg-brand-50/50' : ''}`}>
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-black text-gray-900">{t.name}</p>
-                    {me?.tier?.id === t.id && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-600 text-white">You</span>}
+                    {me?.tier?.id === t.id && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-600 text-white">You</span>}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">{i === 0 ? 'Every member' : `${t.minNights}+ nights or ${inr(t.minSpend)}+`}</p>
                   <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                    <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-600 shrink-0 mt-0.5" /> {t.multiplier}× points ({Math.round(p.earnPointsPer100 * t.multiplier * 100) / 100} per ₹100)</li>
-                    <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-600 shrink-0 mt-0.5" /> Use points on any Zivo hotel</li>
+                    <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-700 shrink-0 mt-0.5" /> {t.multiplier}× points ({Math.round(p.earnPointsPer100 * t.multiplier * 100) / 100} per ₹100)</li>
+                    <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-700 shrink-0 mt-0.5" /> Use points on any Zivo hotel</li>
                   </ul>
                 </div>
               ))}
@@ -154,7 +156,7 @@ const Rewards = () => {
               <ul className="divide-y divide-gray-100">
                 {history.map((h) => (
                   <li key={h.id} className="px-6 py-4 flex items-center gap-4">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${h.points > 0 ? 'bg-green-50 text-green-600' : h.type === 'EXPIRE' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${h.points > 0 ? 'bg-green-50 text-green-700' : h.type === 'EXPIRE' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
                       {h.points > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -163,7 +165,7 @@ const Rewards = () => {
                     </div>
                     <div className="text-right">
                       <p className={`font-bold ${h.status === 'REVERSED' ? 'text-gray-400 line-through' : h.points > 0 ? 'text-green-700' : 'text-gray-900'}`}>{h.points > 0 ? '+' : ''}{h.points.toLocaleString('en-IN')}</p>
-                      <p className="text-[11px] text-gray-500">{h.status === 'PENDING' ? 'Pending' : h.status === 'REVERSED' ? (h.type === 'REDEEM' ? 'Returned' : 'Cancelled') : ''}</p>
+                      <p className="text-xs text-gray-500">{h.status === 'PENDING' ? 'Pending' : h.status === 'REVERSED' ? (h.type === 'REDEEM' ? 'Returned' : 'Cancelled') : ''}</p>
                     </div>
                   </li>
                 ))}

@@ -11,11 +11,11 @@ const MetricCard = ({ title, value, status, icon: Icon, color }) => (
       <div className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600`}>
         <Icon size={20} />
       </div>
-      <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${status === 'OPTIMAL' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
+      <span className={`px-2 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${status === 'OPTIMAL' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
         {status}
       </span>
     </div>
-    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{title}</p>
+    <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{title}</p>
     <h3 className="text-2xl font-black text-gray-900">{value}</h3>
   </div>
 );
@@ -27,7 +27,7 @@ const SystemHealth = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">System Observability</h1>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">System health</h1>
           <p className="text-gray-500 font-medium mt-1">Real-time DevOps & Operational Intelligence.</p>
         </div>
 
@@ -71,12 +71,12 @@ const SystemHealth = () => {
                       <div className={`w-3 h-3 rounded-full ${s.status === 'RUNNING' ? 'bg-green-500' : 'bg-orange-500'} animate-pulse`}></div>
                       <div>
                          <p className="text-sm font-black text-gray-900">{s.name}</p>
-                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Uptime: {s.uptime}</p>
+                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Uptime: {s.uptime}</p>
                       </div>
                    </div>
                    <div className="flex items-center gap-8">
                       <div className="text-right">
-                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Load</p>
+                         <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Load</p>
                          <p className="text-xs font-black text-gray-900">{s.load}%</p>
                       </div>
                       <div className="w-24 bg-gray-200 h-1.5 rounded-full overflow-hidden">
@@ -102,7 +102,7 @@ const SystemHealth = () => {
               <div className="space-y-6">
                  <div>
                     <div className="flex justify-between items-center mb-2">
-                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">WAF Throttling</span>
+                       <span className="text-xs font-black text-gray-500 uppercase tracking-widest">WAF Throttling</span>
                        <span className="text-xs font-bold">0.4%</span>
                     </div>
                     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
@@ -111,7 +111,7 @@ const SystemHealth = () => {
                  </div>
                  <div>
                     <div className="flex justify-between items-center mb-2">
-                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Auth Success Rate</span>
+                       <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Auth Success Rate</span>
                        <span className="text-xs font-bold">99.8%</span>
                     </div>
                     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
@@ -121,10 +121,10 @@ const SystemHealth = () => {
               </div>
 
               <div className="mt-12 p-6 bg-white/5 rounded-3xl border border-white/10">
-                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Detected Threats (24h)</p>
+                 <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Detected Threats (24h)</p>
                  <div className="flex items-center gap-3">
                     <span className="text-3xl font-black">04</span>
-                    <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest bg-orange-400/10 px-2 py-1 rounded">Mitigated</span>
+                    <span className="text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-400/10 px-2 py-1 rounded">Mitigated</span>
                  </div>
               </div>
            </div>
@@ -136,9 +136,9 @@ const SystemHealth = () => {
               </h3>
               <div className="space-y-4">
                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Slowest Operation</p>
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Slowest Operation</p>
                     <p className="text-xs font-bold text-gray-900">GET /api/v1/inventory/search</p>
-                    <p className="text-[10px] text-red-500 font-bold mt-1">842ms Avg</p>
+                    <p className="text-xs text-red-500 font-bold mt-1">842ms Avg</p>
                  </div>
               </div>
            </div>

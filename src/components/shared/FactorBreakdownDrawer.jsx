@@ -26,7 +26,7 @@ const FactorBreakdownDrawer = ({ isOpen, onClose, decision }) => {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-                <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Decision Intelligence</span>
+                <span className="text-xs font-black text-brand-700 uppercase tracking-widest">Decision Intelligence</span>
               </div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight">Factor Breakdown</h2>
               <p className="text-gray-400 text-xs font-bold mt-1">{type} • {entityId}</p>
@@ -41,11 +41,11 @@ const FactorBreakdownDrawer = ({ isOpen, onClose, decision }) => {
              <div className="absolute top-0 right-0 p-8 opacity-10">
                 <Zap size={120} />
              </div>
-             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Final System Output</p>
+             <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Final System Output</p>
              <h3 className="text-4xl font-black mb-2">{typeof output === 'number' ? `₹ ${output.toLocaleString()}` : output}</h3>
              <div className="flex items-center gap-2">
                 <ShieldCheck size={14} className="text-brand-500" />
-                <span className="text-[10px] font-black text-brand-400 uppercase tracking-widest">Confidence: {explanation.confidence}</span>
+                <span className="text-xs font-black text-brand-400 uppercase tracking-widest">Confidence: {explanation.confidence}</span>
              </div>
           </div>
 
@@ -58,7 +58,7 @@ const FactorBreakdownDrawer = ({ isOpen, onClose, decision }) => {
                 </div>
                 <div>
                    <p className="text-sm font-black text-gray-900">{explanation.winningLayer.replace(/_/g, ' ')}</p>
-                   <p className="text-[10px] text-brand-600 font-bold uppercase tracking-widest">Priority Score: {explanation.priority}</p>
+                   <p className="text-xs text-brand-700 font-bold uppercase tracking-widest">Priority Score: {explanation.priority}</p>
                 </div>
              </div>
           </div>
@@ -73,10 +73,10 @@ const FactorBreakdownDrawer = ({ isOpen, onClose, decision }) => {
                         <Activity size={16} className="text-gray-300 group-hover:text-brand-500 transition-colors" />
                         <div>
                            <p className="text-xs font-black text-gray-900 uppercase tracking-tighter">{name}</p>
-                           <p className="text-[10px] text-gray-400 font-medium">{data.signal || 'System Signal'}</p>
+                           <p className="text-xs text-gray-400 font-medium">{data.signal || 'System Signal'}</p>
                         </div>
                      </div>
-                     <span className="text-sm font-black text-brand-600">{data.weight}</span>
+                     <span className="text-sm font-black text-brand-700">{data.weight}</span>
                   </div>
                 ))}
              </div>
@@ -87,9 +87,9 @@ const FactorBreakdownDrawer = ({ isOpen, onClose, decision }) => {
              <div className="flex items-center justify-between text-gray-400">
                 <div className="flex items-center gap-2">
                    <Info size={14} />
-                   <span className="text-[10px] font-bold uppercase tracking-widest">Model Version</span>
+                   <span className="text-xs font-bold uppercase tracking-widest">Model Version</span>
                 </div>
-                <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{explanation.version}</span>
+                <span className="text-xs font-black text-gray-900 uppercase tracking-widest">{explanation.version}</span>
              </div>
           </div>
         </div>

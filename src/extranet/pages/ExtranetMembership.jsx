@@ -35,7 +35,7 @@ const ExtranetMembership = () => {
     } catch (e) { addToast(e.message, 'error'); } finally { setSaving(false); }
   };
 
-  if (!data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
+  if (!data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-700" size={32} /></div>;
   const on = data.memberDiscountPercent > 0;
   const example = 5000;
 

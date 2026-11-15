@@ -87,7 +87,7 @@ const EmailSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm">Loading templates...</p>
     </div>
   );
@@ -130,7 +130,7 @@ const EmailSettings = () => {
                 onChange={(e) => updateCurrentTemplate('subject', e.target.value)}
               />
             </div>
-            <button className="text-gray-500 hover:text-brand-600 ml-4"><Code size={18} title="View Source" /></button>
+            <button className="text-gray-500 hover:text-brand-700 ml-4"><Code size={18} title="View Source" /></button>
           </div>
           
           <div className="p-4 flex-1">
@@ -148,7 +148,7 @@ const EmailSettings = () => {
                 <button 
                   key={v} 
                   onClick={() => handleCopyVar(v)}
-                  className="text-xs bg-white border border-gray-300 px-2 py-1 rounded text-gray-600 hover:border-brand-500 hover:text-brand-600 transition-colors"
+                  className="text-xs bg-white border border-gray-300 px-2 py-1 rounded text-gray-600 hover:border-brand-500 hover:text-brand-700 transition-colors"
                 >
                   {v}
                 </button>

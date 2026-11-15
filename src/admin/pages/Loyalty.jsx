@@ -69,7 +69,7 @@ const Settings = ({ config, onSaved }) => {
             </tbody>
           </table>
         </div>
-        {c.tiers.length < 5 && <button type="button" onClick={() => setC((x) => ({ ...x, tiers: [...x.tiers, { name: 'New tier', minNights: (x.tiers.at(-1)?.minNights || 0) + 10, minSpend: (x.tiers.at(-1)?.minSpend || 0) + 50000, multiplier: (x.tiers.at(-1)?.multiplier || 1) + 0.25 }] }))} className="mt-2 text-xs font-bold text-brand-600">+ Add tier</button>}
+        {c.tiers.length < 5 && <button type="button" onClick={() => setC((x) => ({ ...x, tiers: [...x.tiers, { name: 'New tier', minNights: (x.tiers.at(-1)?.minNights || 0) + 10, minSpend: (x.tiers.at(-1)?.minSpend || 0) + 50000, multiplier: (x.tiers.at(-1)?.multiplier || 1) + 0.25 }] }))} className="mt-2 text-xs font-bold text-brand-700">+ Add tier</button>}
       </div>
       <div className="flex items-center justify-end gap-3">
         {msg && <p role={msg.ok ? 'status' : 'alert'} className={`mr-auto text-sm ${msg.ok ? 'text-green-700' : 'text-red-600'}`}>{msg.text}</p>}
@@ -96,7 +96,7 @@ const MemberDrawer = ({ member, onClose, onChanged }) => {
           <div><h3 className="text-lg font-bold text-gray-900">{member.name}</h3><p className="text-sm text-gray-500">{member.email}</p></div>
           <button type="button" aria-label="Close" onClick={onClose} className="text-gray-400"><X size={20} /></button>
         </div>
-        {!data ? <Loader2 className="animate-spin text-brand-600" /> : (
+        {!data ? <Loader2 className="animate-spin text-brand-700" /> : (
           <>
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Available</p><p className="text-xl font-black">{num(data.summary.available)}</p></div>
@@ -149,7 +149,7 @@ const Loyalty = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Award className="text-brand-600" size={22} /> Zivo Rewards</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Award className="text-brand-700" size={22} /> Zivo Rewards</h1>
         <p className="text-gray-500 mt-1">Guests earn points on completed stays and use them at checkout. Zivo pays for points used, so hotel payouts are on the full price.</p>
       </div>
       {error && <p className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</p>}

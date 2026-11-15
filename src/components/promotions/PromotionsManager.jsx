@@ -337,18 +337,18 @@ const PromotionsManager = ({ mode = 'owner', hotelId = null }) => {
   const card = (p) => (
     <div key={p.id} className={`bg-white border rounded-xl p-4 shadow-sm ${p.isActive ? 'border-gray-200' : 'border-dashed border-gray-300 opacity-70'}`}>
       <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.scope === 'PLATFORM' ? 'bg-indigo-50 text-indigo-600' : 'bg-green-50 text-green-600'}`}>
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.scope === 'PLATFORM' ? 'bg-indigo-50 text-indigo-600' : 'bg-green-50 text-green-700'}`}>
           {p.code ? <Ticket size={18} /> : <Tag size={18} />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="font-bold text-gray-900">{p.name}</h4>
             <span className="text-sm font-extrabold text-green-700">{p.label}</span>
-            {p.code ? <span className="px-2 py-0.5 rounded bg-gray-900 text-white text-[11px] font-mono font-bold">{p.code}</span> : <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">AUTOMATIC</span>}
-            {p.scope === 'PLATFORM' && <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">ZIVO OFFER</span>}
-            {p.audience && p.audience !== 'ALL' && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">{p.audience === 'MEMBERS' ? 'MEMBERS ONLY' : `${p.audience} ONLY`}</span>}
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.fundedBy === 'ZIVO' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>{p.fundedBy === 'ZIVO' ? 'FUNDED BY ZIVO' : 'FUNDED BY HOTEL'}</span>
-            {!p.isActive && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-500 text-[10px] font-bold">PAUSED</span>}
+            {p.code ? <span className="px-2 py-0.5 rounded bg-gray-900 text-white text-xs font-mono font-bold">{p.code}</span> : <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-bold">AUTOMATIC</span>}
+            {p.scope === 'PLATFORM' && <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-xs font-bold">ZIVO OFFER</span>}
+            {p.audience && p.audience !== 'ALL' && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-bold">{p.audience === 'MEMBERS' ? 'MEMBERS ONLY' : `${p.audience} ONLY`}</span>}
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.fundedBy === 'ZIVO' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>{p.fundedBy === 'ZIVO' ? 'FUNDED BY ZIVO' : 'FUNDED BY HOTEL'}</span>
+            {!p.isActive && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-500 text-xs font-bold">PAUSED</span>}
           </div>
           {p.description && <p className="text-sm text-gray-600">{p.description}</p>}
           <p className="text-xs text-gray-500 mt-1">
@@ -363,7 +363,7 @@ const PromotionsManager = ({ mode = 'owner', hotelId = null }) => {
         {p.canEdit && (
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => toggleActive(p)} className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-gray-100 ${p.isActive ? 'text-gray-600' : 'text-green-700'}`}><Power size={13} /> {p.isActive ? 'Pause' : 'Go live'}</button>
-            <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditing({ id: p.id, initial: fromPromotion(p) })} className="p-1.5 text-gray-400 hover:text-brand-600"><Pencil size={15} /></button>
+            <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditing({ id: p.id, initial: fromPromotion(p) })} className="p-1.5 text-gray-400 hover:text-brand-700"><Pencil size={15} /></button>
             <button type="button" aria-label={`Delete ${p.name}`} onClick={() => remove(p)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
           </div>
         )}

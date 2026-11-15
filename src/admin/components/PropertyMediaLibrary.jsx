@@ -88,7 +88,7 @@ const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
                 <div className="absolute inset-x-0 bottom-0 bg-black/50 p-1">
                   <div className="flex flex-wrap gap-0.5">
                     {img.tags.slice(0, 2).map(t => (
-                      <span key={t} className="text-[7px] text-white bg-white/20 px-1 rounded-sm font-bold">
+                      <span key={t} className="text-xs text-white bg-white/20 px-1 rounded-sm font-bold">
                         {formatTag(t)}
                       </span>
                     ))}

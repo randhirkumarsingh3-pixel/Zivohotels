@@ -73,7 +73,7 @@ const PricingCalendar = ({ roomTypes }) => {
       <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50">
         <div className="flex items-center space-x-4">
           <h3 className="text-lg font-bold text-gray-800 flex items-center">
-            <IndianRupee className="mr-2 h-5 w-5 text-brand-600" />
+            <IndianRupee className="mr-2 h-5 w-5 text-brand-700" />
             Pricing Grid
           </h3>
           <div className="flex items-center space-x-1 bg-white border border-gray-300 rounded-lg p-1 shadow-sm">
@@ -92,7 +92,7 @@ const PricingCalendar = ({ roomTypes }) => {
           </div>
           <button 
             onClick={() => setIsBulkModalOpen(true)}
-            className="text-sm font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 px-4 py-2 rounded-lg transition-colors border border-brand-200"
+            className="text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-4 py-2 rounded-lg transition-colors border border-brand-200"
           >
             Bulk Update
           </button>

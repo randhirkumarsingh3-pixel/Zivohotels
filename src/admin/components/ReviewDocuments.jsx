@@ -82,7 +82,7 @@ export default function ReviewDocuments({ hotelId }) {
                       <span className="text-xs text-gray-400">File unavailable — ask the owner to re-upload</span>
                     )}
                     <span className="text-xs text-gray-400">|</span>
-                    <span className={`text-xs font-semibold ${doc.documentStatus === 'VERIFIED' ? 'text-green-600' : doc.documentStatus === 'REJECTED' ? 'text-red-600' : 'text-amber-600'}`}>
+                    <span className={`text-xs font-semibold ${doc.documentStatus === 'VERIFIED' ? 'text-green-700' : doc.documentStatus === 'REJECTED' ? 'text-red-600' : 'text-amber-700'}`}>
                       {doc.documentStatus}
                     </span>
                     {doc.version > 1 && <span className="text-xs text-gray-400">v{doc.version}</span>}
@@ -93,7 +93,7 @@ export default function ReviewDocuments({ hotelId }) {
 
               {doc.documentStatus === 'PENDING' && doc.hasFile && (
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleVerify(doc.id, 'VERIFIED')} title="Verify" aria-label={`Verify ${kycDocumentLabel(doc.documentType)}`} className="p-1.5 text-green-600 hover:bg-green-100 rounded">
+                  <button onClick={() => handleVerify(doc.id, 'VERIFIED')} title="Verify" aria-label={`Verify ${kycDocumentLabel(doc.documentType)}`} className="p-1.5 text-green-700 hover:bg-green-100 rounded">
                     <CheckCircle size={18} />
                   </button>
                   <button onClick={() => handleVerify(doc.id, 'REJECTED')} title="Reject" aria-label={`Reject ${kycDocumentLabel(doc.documentType)}`} className="p-1.5 text-red-600 hover:bg-red-100 rounded">

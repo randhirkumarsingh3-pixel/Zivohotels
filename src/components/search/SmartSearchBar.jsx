@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import DestinationAutocomplete from './DestinationAutocomplete';
@@ -6,16 +6,28 @@ import DatePickerV2 from './DatePickerV2';
 import GuestSelectorV2 from './GuestSelectorV2';
 import { track } from '../../utils/analytics';
 
-const SmartSearchBar = ({ isMobile }) => {
+// `initial` prefills the bar with the current search (results page); the home page starts empty
+const SmartSearchBar = ({ isMobile, initial = null }) => {
   const navigate = useNavigate();
-  
+  const asDest = (d) => (d ? { label: d, value: d } : null);
+
   // Form State
-  const [destination, setDestination] = useState(null);
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(2);
-  const [rooms, setRooms] = useState(1);
+  const [destination, setDestination] = useState(asDest(initial?.destination));
+  const [checkIn, setCheckIn] = useState(initial?.checkIn || '');
+  const [checkOut, setCheckOut] = useState(initial?.checkOut || '');
+  const [guests, setGuests] = useState(initial?.guests || 2);
+  const [rooms, setRooms] = useState(initial?.rooms || 1);
   const [error, setError] = useState(null);
+  const initKey = initial ? [initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms].join('|') : '';
+  useEffect(() => {
+    if (!initial) return;
+    setDestination(asDest(initial.destination));
+    setCheckIn(initial.checkIn || '');
+    setCheckOut(initial.checkOut || '');
+    setGuests(initial.guests || 2);
+    setRooms(initial.rooms || 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initKey]);
 
   // Sequential Flow Control
   const [openSection, setOpenSection] = useState(null); // 'destination', 'dates', 'guests', or null

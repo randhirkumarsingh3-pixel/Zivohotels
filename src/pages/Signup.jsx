@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signupUser } from '../services/api';
 import { Lock, Mail, User, ArrowRight, AlertCircle } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Signup = () => {
+  usePageTitle('Create an account');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -96,15 +98,17 @@ const Signup = () => {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 block w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-500">Must be at least 6 characters long.</p>
+              <p className="mt-2 text-xs text-gray-500">At least 8 characters.</p>
             </div>
+
+            <p className="text-xs text-gray-500">By creating an account you confirm you&apos;re 18 or older and agree to our <Link to="/terms" className="text-navy-700 underline">Terms of Service</Link> and <Link to="/privacy" className="text-navy-700 underline">Privacy Policy</Link>.</p>
 
             <button
               type="submit"

@@ -49,23 +49,23 @@ const FraudRiskCenter = () => {
         <div className="bg-red-50 border border-red-100 rounded-3xl p-6">
           <div className="flex items-center justify-between mb-4">
             <AlertTriangle className="text-red-600" size={24} />
-            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">Immediate Action</span>
+            <span className="text-xs font-black text-red-400 uppercase tracking-widest">Immediate Action</span>
           </div>
           <h3 className="text-3xl font-black text-red-900">12</h3>
           <p className="text-xs font-bold text-red-700 mt-1 uppercase tracking-tighter">Flagged Transactions</p>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Blocked Users</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Blocked Users</p>
           <h3 className="text-3xl font-black text-gray-900">1,242</h3>
           <p className="text-xs font-medium text-gray-400 mt-1">All-time prevention</p>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Platform Risk Score</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Platform Risk Score</p>
           <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-3xl font-black text-green-600">14</h3>
-            <span className="text-[10px] text-gray-400 font-bold mb-1">/ 100</span>
+            <h3 className="text-3xl font-black text-green-700">14</h3>
+            <span className="text-xs text-gray-400 font-bold mb-1">/ 100</span>
           </div>
           <p className="text-xs font-medium text-gray-400 mt-1">LOW RISK (HEALTHY)</p>
         </div>
@@ -73,11 +73,11 @@ const FraudRiskCenter = () => {
         <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
           <div className="flex items-center justify-between mb-2">
             <Zap className="text-brand-500" size={20} fill="currentColor" />
-            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Active Guard</span>
+            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Active Guard</span>
           </div>
           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Auto-Throttle</p>
           <h3 className="text-xl font-black text-brand-500 uppercase">STANDBY</h3>
-          <p className="text-[10px] text-gray-500 mt-2 font-medium">Ready to engage on spike.</p>
+          <p className="text-xs text-gray-500 mt-2 font-medium">Ready to engage on spike.</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ const FraudRiskCenter = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
               <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-gray-50 border-gray-100 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500/20" />
             </div>
-            <button className="px-4 py-2 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">Bulk Approve</button>
+            <button className="px-4 py-2 bg-gray-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">Bulk Approve</button>
           </div>
         </div>
 
@@ -98,11 +98,11 @@ const FraudRiskCenter = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Entity / User</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Risk Signal</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Exposure</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Risk Score</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Entity / User</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Risk Signal</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Exposure</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Risk Score</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -115,29 +115,29 @@ const FraudRiskCenter = () => {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">Arjun Sharma</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">IP: 103.21.XX.XX · New Delhi</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-tight">IP: 103.21.XX.XX · New Delhi</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-8 py-6">
                     <div className="space-y-1">
-                      <span className="px-2 py-0.5 bg-red-50 text-red-700 text-[9px] font-black rounded uppercase tracking-widest border border-red-100">VELOCITY_SPIKE</span>
+                      <span className="px-2 py-0.5 bg-red-50 text-red-700 text-xs font-black rounded uppercase tracking-widest border border-red-100">VELOCITY_SPIKE</span>
                       <p className="text-xs text-gray-500 font-medium">3 bookings in 2m from same card fingerprint.</p>
                     </div>
                   </td>
                   <td className="px-8 py-6">
                     <p className="text-sm font-black text-gray-900">₹ 24,500.00</p>
-                    <p className="text-[10px] text-gray-400 font-medium italic">Unsettled liability</p>
+                    <p className="text-xs text-gray-400 font-medium italic">Unsettled liability</p>
                   </td>
                   <td className="px-8 py-6 w-48">
                     <RiskMeter score={82 + i * 2} />
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 text-gray-400 hover:bg-gray-100 hover:text-brand-600 rounded-lg transition-all" title="View Details">
+                      <button className="p-2 text-gray-400 hover:bg-gray-100 hover:text-brand-700 rounded-lg transition-all" title="View Details">
                         <Eye size={18} />
                       </button>
-                      <button className="p-2 text-gray-400 hover:bg-green-50 hover:text-green-600 rounded-lg transition-all" title="Approve">
+                      <button className="p-2 text-gray-400 hover:bg-green-50 hover:text-green-700 rounded-lg transition-all" title="Approve">
                         <ShieldCheck size={18} />
                       </button>
                       <button className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all" title="Block User">
@@ -156,7 +156,7 @@ const FraudRiskCenter = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
           <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-            <Activity className="text-brand-600" size={20} />
+            <Activity className="text-brand-700" size={20} />
             Fraud Trend (Last 24h)
           </h3>
           <div className="h-48 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex items-center justify-center">
@@ -178,7 +178,7 @@ const FraudRiskCenter = () => {
             ].map(f => (
               <div key={f.label}>
                 <div className="flex justify-between items-end mb-1">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{f.label}</span>
+                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{f.label}</span>
                   <span className="text-xs font-bold text-gray-900">{f.pct}%</span>
                 </div>
                 <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">

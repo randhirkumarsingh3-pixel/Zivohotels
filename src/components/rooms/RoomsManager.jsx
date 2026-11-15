@@ -216,10 +216,10 @@ const RoomsManager = ({ hotelId, inventoryLink }) => {
                     <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${room.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                       {room.isActive ? 'On sale' : 'Switched off'}
                     </span>
-                    <button type="button" title="Edit room type" aria-label={`Edit ${room.name}`} onClick={() => { setEditingRoomType(room); setIsRoomModalOpen(true); }} className="text-gray-400 hover:text-brand-600 p-1.5 transition-colors">
+                    <button type="button" title="Edit room type" aria-label={`Edit ${room.name}`} onClick={() => { setEditingRoomType(room); setIsRoomModalOpen(true); }} className="text-gray-400 hover:text-brand-700 p-1.5 transition-colors">
                       <Settings2 size={18} />
                     </button>
-                    <button type="button" title={room.isActive ? 'Switch off' : 'Switch back on'} aria-label={room.isActive ? `Switch off ${room.name}` : `Switch on ${room.name}`} onClick={() => toggleRoomActive(room)} className={`p-1.5 transition-colors ${room.isActive ? 'text-gray-400 hover:text-red-600' : 'text-green-600 hover:text-green-700'}`}>
+                    <button type="button" title={room.isActive ? 'Switch off' : 'Switch back on'} aria-label={room.isActive ? `Switch off ${room.name}` : `Switch on ${room.name}`} onClick={() => toggleRoomActive(room)} className={`p-1.5 transition-colors ${room.isActive ? 'text-gray-400 hover:text-red-600' : 'text-green-700 hover:text-green-700'}`}>
                       <Power size={18} />
                     </button>
                     <button type="button" aria-label={expanded ? 'Hide rate plans' : 'Show rate plans'} onClick={() => setExpandedRooms((p) => ({ ...p, [room.id]: !p[room.id] }))} className="text-gray-400 hover:text-gray-800 p-1.5 transition-colors">
@@ -235,8 +235,8 @@ const RoomsManager = ({ hotelId, inventoryLink }) => {
                         <Network size={16} className="text-brand-500" /> Rate plans
                       </h4>
                       <div className="flex items-center gap-3">
-                        {inventoryLink && <a href={inventoryLink} className="text-xs font-medium text-gray-500 hover:text-brand-600">Prices by date →</a>}
-                        <button type="button" onClick={() => openRatePlanModal(room.id)} className="text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-md transition-colors">
+                        {inventoryLink && <a href={inventoryLink} className="text-xs font-medium text-gray-500 hover:text-brand-700">Prices by date →</a>}
+                        <button type="button" onClick={() => openRatePlanModal(room.id)} className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-md transition-colors">
                           + Add Rate Plan
                         </button>
                       </div>
@@ -250,31 +250,31 @@ const RoomsManager = ({ hotelId, inventoryLink }) => {
                               <h5 className="font-bold text-gray-900">{rp.name}</h5>
                               <div className="flex gap-1 items-center shrink-0">
                                 {!(Number(rp.basePrice) > 0) && (
-                                  <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-bold" title="Guests can't book a plan without a price">NO PRICE</span>
+                                  <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-bold" title="Guests can't book a plan without a price">NO PRICE</span>
                                 )}
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${rp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                                   {rp.isActive ? 'ON SALE' : 'OFF SALE'}
                                 </span>
                               </div>
                             </div>
-                            <p className={`text-xl font-extrabold mb-2 ${Number(rp.basePrice) > 0 ? 'text-brand-600' : 'text-gray-400 italic'}`}>
+                            <p className={`text-xl font-extrabold mb-2 ${Number(rp.basePrice) > 0 ? 'text-brand-700' : 'text-gray-400 italic'}`}>
                               {Number(rp.basePrice) > 0 ? inr(rp.basePrice) : '₹—'}
                               {Number(rp.basePrice) > 0 && <span className="text-xs font-medium text-gray-400"> base / night</span>}
                             </p>
                             <div className="flex flex-wrap gap-1 mb-3">
-                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded border border-gray-200">{MEAL_LABEL[rp.mealPlan] || rp.mealPlan}</span>
+                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded border border-gray-200">{MEAL_LABEL[rp.mealPlan] || rp.mealPlan}</span>
                               {rp.occupancyPricing?.length > 0 && (
-                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-medium rounded border border-amber-200">Per-guest prices</span>
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded border border-amber-200">Per-guest prices</span>
                               )}
                               {Number(rp.extraBedPrice) > 0 && (
-                                <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-medium rounded border border-purple-200">
+                                <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-xs font-medium rounded border border-purple-200">
                                   Extra bed {rp.extraBedIncluded ? '(included)' : inr(rp.extraBedPrice)}
                                 </span>
                               )}
                             </div>
                             <div className="flex gap-2 border-t border-gray-100 pt-2">
-                              <button type="button" onClick={() => openRatePlanModal(room.id, rp)} className="text-xs font-semibold text-gray-600 hover:text-brand-600 flex items-center gap-1"><Settings2 size={13} /> Edit</button>
-                              <button type="button" onClick={() => toggleRatePlanActive(rp)} className={`text-xs font-semibold flex items-center gap-1 ${rp.isActive ? 'text-gray-500 hover:text-red-600' : 'text-green-600 hover:text-green-700'}`}>
+                              <button type="button" onClick={() => openRatePlanModal(room.id, rp)} className="text-xs font-semibold text-gray-600 hover:text-brand-700 flex items-center gap-1"><Settings2 size={13} /> Edit</button>
+                              <button type="button" onClick={() => toggleRatePlanActive(rp)} className={`text-xs font-semibold flex items-center gap-1 ${rp.isActive ? 'text-gray-500 hover:text-red-600' : 'text-green-700 hover:text-green-700'}`}>
                                 <Power size={13} /> {rp.isActive ? 'Take off sale' : 'Put on sale'}
                               </button>
                             </div>

@@ -18,7 +18,7 @@ const ControlCard = ({ title, status, active, onToggle, icon: Icon, color }) => 
       </button>
     </div>
     
-    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{title}</p>
+    <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{title}</p>
     <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-gray-900' : 'text-gray-400'}`}>
       {status}
     </h3>
@@ -34,9 +34,9 @@ const SystemControlCenter = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            <span className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em]">Platform Command Core</span>
+            <span className="text-xs font-black text-red-600 uppercase tracking-[0.2em]">Platform Command Core</span>
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Control Center</h1>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">System control</h1>
           <p className="text-gray-500 font-medium mt-1">Global overrides, safety toggles, and systemic state management.</p>
         </div>
 
@@ -89,7 +89,7 @@ const SystemControlCenter = () => {
            <div className="flex justify-between items-start mb-12 relative z-10">
               <div>
                  <h3 className="text-3xl font-black tracking-tight mb-2">Operational Integrity</h3>
-                 <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Real-time distributed diagnostics</p>
+                 <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Real-time distributed diagnostics</p>
               </div>
               <button className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all">
                  <RefreshCw size={24} className="text-brand-500" />
@@ -108,11 +108,11 @@ const SystemControlCenter = () => {
                       <h.icon size={32} />
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{h.label}</p>
+                      <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{h.label}</p>
                       <h4 className="text-2xl font-black mb-1">{h.value}</h4>
                       <div className="flex items-center gap-2">
                          <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                         <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">{h.status}</span>
+                         <span className="text-xs font-black text-green-500 uppercase tracking-widest">{h.status}</span>
                       </div>
                    </div>
                 </div>
@@ -141,15 +141,15 @@ const SystemControlCenter = () => {
                    <div className="flex-1 pb-6">
                       <div className="flex justify-between items-start mb-1">
                          <h4 className="text-sm font-black text-gray-900 uppercase tracking-tighter">{l.action}</h4>
-                         <span className="text-[9px] font-black text-gray-400">{l.time}</span>
+                         <span className="text-xs font-black text-gray-400">{l.time}</span>
                       </div>
-                      <p className="text-[10px] text-gray-500 font-medium">Triggered by <span className="font-black text-gray-900 underline">{l.admin}</span></p>
+                      <p className="text-xs text-gray-500 font-medium">Triggered by <span className="font-black text-gray-900 underline">{l.admin}</span></p>
                    </div>
                 </div>
               ))}
            </div>
 
-           <button className="w-full mt-6 py-4 bg-gray-50 text-gray-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-900 hover:text-white transition-all shadow-sm">
+           <button className="w-full mt-6 py-4 bg-gray-50 text-gray-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-900 hover:text-white transition-all shadow-sm">
               View Governance Trail
            </button>
         </div>

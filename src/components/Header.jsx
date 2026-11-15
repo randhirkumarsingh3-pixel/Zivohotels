@@ -47,10 +47,10 @@ const Header = () => {
             <div className="flex items-center gap-3 ml-2 border-l pl-6 border-gray-200">
               {isAuthenticated ? (
                 <>
-                  <span className="flex items-center text-gray-700 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                  <Link to="/account" className="flex items-center text-gray-700 font-medium bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200" title="My account">
                     <User className="h-4 w-4 mr-2 text-navy-700" aria-hidden="true" />
                     Hi, {user?.name?.split(' ')[0]}
-                  </span>
+                  </Link>
                   <button type="button" onClick={handleLogout} className="flex items-center font-medium px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-navy-800 hover:bg-gray-50">
                     <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
                     Log out
@@ -79,6 +79,7 @@ const Header = () => {
             {links.map((l) => (
               <NavLink key={l.to} to={l.to} className={({ isActive }) => `px-2 py-3 rounded-lg text-base font-medium ${isActive ? 'text-navy-800 bg-navy-50' : 'text-gray-700 hover:bg-gray-50'}`}>{l.label}</NavLink>
             ))}
+            {isAuthenticated && <NavLink to="/account" className={({ isActive }) => `px-2 py-3 rounded-lg text-base font-medium ${isActive ? 'text-navy-800 bg-navy-50' : 'text-gray-700 hover:bg-gray-50'}`}>My account</NavLink>}
             <Link to="/help" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">Help</Link>
             <div className="border-t border-gray-200 mt-2 pt-3 pb-1 flex gap-3">
               {isAuthenticated ? (

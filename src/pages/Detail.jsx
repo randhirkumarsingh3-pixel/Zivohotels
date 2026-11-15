@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useExperiment, useAllExperiments } from '../context/ExperimentContext';
 import PhotoGallery from '../components/hotel/PhotoGallery';
+import usePageTitle from '../hooks/usePageTitle';
 import { galleryPhotos } from '../components/hotel/galleryPhotos';
 import ReviewsSection from '../components/hotel/ReviewsSection';
 import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection, RoomFeatures } from '../components/hotel/HotelSections';
@@ -54,6 +55,16 @@ const CANCELLATION_TEXT = {
 };
 
 // Price per night for the chosen dates (daily rates included) when known, else the base price
+// "Whitefield, Bangalore" + "Bangalore" -> "Whitefield, Bangalore" (no repeated parts)
+const placeLine = (...parts) => {
+  const seen = new Set();
+  return parts.filter(Boolean).flatMap((p) => String(p).split(',')).map((p) => p.trim()).filter((p) => {
+    const k = p.toLowerCase();
+    if (!p || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).join(', ');
+};
 const nightlyPrice = (plan) => Number(plan?.stayNightlyPrice ?? plan?.basePrice ?? 0);
 // After the automatic offer (promotion) the plan qualifies for, if any: what checkout charges
 const offerPrice = (plan) => (plan?.offer ? Number(plan.offer.nightlyPriceAfter) : nightlyPrice(plan));
@@ -97,7 +108,7 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
           {plan.offer && <p className="text-xs text-gray-400 line-through">{fmt(totalPerNight)}</p>}
           <p className="text-lg font-extrabold text-gray-900">{fmt(plan.offer ? plan.offer.nightlyPriceAfter : totalPerNight)}<span className="text-xs text-gray-400 font-normal">/night</span></p>
           {nights > 1 && (
-            <p className="text-xs text-brand-600 font-medium mt-0.5">{fmt(plan.offer ? total - offerDiscount(plan.offer, total) : total)} total</p>
+            <p className="text-xs text-brand-700 font-medium mt-0.5">{fmt(plan.offer ? total - offerDiscount(plan.offer, total) : total)} total</p>
           )}
         </div>
       </div>
@@ -108,7 +119,7 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
       )}
 
       {/* Selection indicator */}
-      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${isSelected ? 'text-brand-600' : 'text-gray-300'}`}>
+      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${isSelected ? 'text-brand-700' : 'text-gray-300'}`}>
         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-600' : 'border-gray-300'}`}>
           {isSelected && <div className="w-2 h-2 bg-brand-600 rounded-full" />}
         </div>
@@ -135,7 +146,7 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
             <img src={getImageUrl(roomPhoto)} alt={roomType.name} loading="lazy" className="w-24 h-20 md:w-32 md:h-24 rounded-lg object-cover bg-gray-100 shrink-0" />
           ) : (
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${isExpanded ? 'bg-brand-100' : 'bg-gray-100'}`}>
-              <BedDouble size={20} className={isExpanded ? 'text-brand-600' : 'text-gray-400'} />
+              <BedDouble size={20} className={isExpanded ? 'text-brand-700' : 'text-gray-400'} />
             </div>
           )}
           <div className="min-w-0 space-y-1.5">
@@ -149,7 +160,7 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
             <RoomFeatures roomType={roomType} />
           </div>
         </div>
-        {isExpanded ? <ChevronUp size={16} className="text-brand-600" /> : <ChevronDown size={16} className="text-gray-400" />}
+        {isExpanded ? <ChevronUp size={16} className="text-brand-700" /> : <ChevronDown size={16} className="text-gray-400" />}
       </button>
 
       {/* Rate plans */}
@@ -261,6 +272,7 @@ const Detail = () => {
   // The price shown here comes from the same server calculation as checkout (offers, member
   // prices, pay-now saving, GST), so the total doesn't change between this page and checkout.
   // The local estimate below is only shown until it arrives, or if it fails.
+  usePageTitle(hotel ? [hotel.name, hotel.city].filter(Boolean).join(', ') : 'Hotel', hotel?.description ? String(hotel.description).slice(0, 155) : undefined);
   const [quote, setQuote] = useState(null);
   const quoteRoomId = selectedRoomType?.id;
   const quotePlanId = selectedRatePlan?.id;
@@ -342,11 +354,56 @@ const Detail = () => {
   const taxes     = Math.round(afterOffer * taxRate);
   const estimateTotal = afterOffer + taxes;
   const grandTotal = quote?.totalAmount ?? estimateTotal;
+  // Lowest nightly price across rooms (after automatic offers), for the summary at the top
+  const allPlans = (hotel.roomTypes || []).filter((rt) => rt.availableForStay !== 0).flatMap((rt) => rt.ratePlans || []);
+  const fromPrice = allPlans.length ? Math.min(...allPlans.map(offerPrice).filter((n) => n > 0)) : 0;
+  const placeText = placeLine(hotel.area || hotel.location, hotel.city);
+  const goRooms = () => document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="pt-20 pb-20 bg-gray-50">
+    <div className="pt-16 pb-28 lg:pb-20 bg-gray-50">
+      {/* Summary first, as on other OTAs: name, rating, place and the lowest price, then the photos */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {stars > 0 && (
+                <span className="inline-flex items-center gap-0.5" role="img" aria-label={`${stars}-star property`}>
+                  {Array.from({ length: stars }, (_, i) => <Star key={i} size={14} className="text-amber-400 fill-current" aria-hidden="true" />)}
+                </span>
+              )}
+              {hotel.type && <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{hotel.type}</span>}
+              {hotel.memberDiscountPercent > 0 && <RouterLink to="/membership" className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-xs font-bold">Member price: {hotel.memberDiscountPercent}% off</RouterLink>}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-navy-900">{hotel.name}</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <a href="#location" className="inline-flex items-start text-gray-600 hover:text-navy-800">
+                <MapPin className="h-4 w-4 mr-1 mt-0.5 text-brand-700 shrink-0" aria-hidden="true" />
+                {placeText}
+                <span className="ml-2 font-semibold text-navy-700">Map</span>
+              </a>
+              {hotel.reviewCount > 0 ? (
+                <a href="#reviews" className="inline-flex items-center gap-2">
+                  <span className="bg-navy-800 text-white px-2 py-0.5 rounded-md text-sm font-bold tabular-nums">{hotel.reviewScore}</span>
+                  <span className="text-gray-700 font-medium">{hotel.reviewCount} review{hotel.reviewCount === 1 ? '' : 's'}</span>
+                </a>
+              ) : <span className="text-gray-500">New on ZivoHotels</span>}
+            </div>
+          </div>
+          {fromPrice > 0 && (
+            <div className="hidden md:flex items-center gap-4 shrink-0">
+              <div className="text-right">
+                <p className="text-xs text-gray-500">From</p>
+                <p className="text-2xl font-bold text-gray-900 tabular-nums">{fmt(fromPrice)}<span className="text-sm font-normal text-gray-500"> /night</span></p>
+              </div>
+              <button type="button" onClick={goRooms} className="px-5 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">See rooms</button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Photos from onboarding (primary first, then the rest and room photos) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
         <PhotoGallery hotelName={hotel.name} photos={photos} />
       </div>
 
@@ -372,24 +429,7 @@ const Detail = () => {
                   <p>{error}</p>
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {stars > 0 && (
-                  <span className="inline-flex items-center gap-0.5" aria-label={`${stars}-star property`}>
-                    {Array.from({ length: stars }, (_, i) => <Star key={i} size={14} className="text-amber-400 fill-current" />)}
-                  </span>
-                )}
-                {hotel.reviewCount > 0 && (
-                  <a href="#reviews" className="inline-flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded-md text-xs font-bold"><Star size={12} className="fill-current" /> {hotel.reviewScore} · {hotel.reviewCount} review{hotel.reviewCount === 1 ? '' : 's'}</a>
-                )}
-                {hotel.type && <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{hotel.type}</span>}
-                {hotel.memberDiscountPercent > 0 && <RouterLink to="/membership" className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">Member price: {hotel.memberDiscountPercent}% off</RouterLink>}
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
-              <a href="#location" className="inline-flex items-start text-gray-500 hover:text-gray-800 mb-4 text-sm">
-                <MapPin className="h-4 w-4 mr-1 mt-0.5 text-brand-600 shrink-0" />
-                {[hotel.area || hotel.location, hotel.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ')}
-                <span className="ml-2 font-semibold text-brand-600">View on map</span>
-              </a>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">Overview</h2>
                   {/* Urgency Badges (A/B Tested) */}
                   {badgeVariant === 'variantA' && (
                     <div className="flex flex-wrap gap-2">
@@ -476,7 +516,7 @@ const Detail = () => {
                   {offer && <p className="mt-1 text-xs font-bold text-green-700">{offer.label} · {offer.name}, applied at checkout</p>}
                 </div>
               ) : (
-                <div className="mb-4 pb-4 border-b border-gray-100 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                <div className="mb-4 pb-4 border-b border-gray-100 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
                   ← Select a room &amp; plan from the left
                 </div>
               )}
@@ -550,7 +590,7 @@ const Detail = () => {
                     <div className="h-5 bg-gray-200 rounded animate-pulse w-2/3" />
                   </div>
                 ) : !checkIn && (
-                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg font-medium">
+                  <p className="text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg font-medium">
                     ⚠ Search with dates for accurate pricing.
                   </p>
                 )}
@@ -568,11 +608,35 @@ const Detail = () => {
               <p className="text-center text-sm text-gray-500 mt-4">You won&apos;t be charged yet</p>
               {/* Guests should see the cancellation terms before booking */}
               <p className="text-center text-xs text-gray-500 mt-2 flex items-center justify-center gap-1">
-                <ShieldCheck size={12} className="text-green-600" />
+                <ShieldCheck size={12} className="text-green-700" />
                 {CANCELLATION_TEXT[hotel.cancellationPolicy] || CANCELLATION_TEXT.FREE_CANCEL_24H}
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Phones: price and Book button always in reach */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(6,44,77,0.08)] px-4 py-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div className="min-w-0">
+            {checkIn && checkOut && selectedRatePlan && quote ? (
+              <>
+                <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">{fmt(grandTotal)}</p>
+                <p className="text-xs text-gray-500 truncate">{selectedRoomType?.name} · {nights} night{nights > 1 ? 's' : ''} · incl. GST</p>
+              </>
+            ) : fromPrice > 0 ? (
+              <>
+                <p className="text-xs text-gray-500">From</p>
+                <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">{fmt(fromPrice)}<span className="text-sm font-normal text-gray-500"> /night</span></p>
+              </>
+            ) : <p className="text-sm text-gray-600">Choose your dates</p>}
+          </div>
+          {selectedRatePlan && checkIn && checkOut ? (
+            <button type="button" onClick={handleBookNow} className="shrink-0 px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">Book now</button>
+          ) : (
+            <button type="button" onClick={goRooms} className="shrink-0 px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">See rooms</button>
+          )}
         </div>
       </div>
     </div>

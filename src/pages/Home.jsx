@@ -5,8 +5,10 @@ import HotelCard from '../components/HotelCard';
 import { getRecommendations, getHotels } from '../services/api';
 import { CheckCircle2, ArrowRight, History, Sparkles, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Home = () => {
+  usePageTitle();
   const [recommendations, setRecommendations] = useState(null);
   const [fallbackHotels, setFallbackHotels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,12 @@ const Home = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Each hotel appears once on the page: rows further down skip hotels already shown above
+  const seenIds = new Set((recommendations?.recentlyViewed || []).slice(0, 8).map((h) => h.id));
+  const recommendedRow = (recommendations?.recommended || []).filter((h) => !seenIds.has(h.id)).slice(0, 8);
+  recommendedRow.forEach((h) => seenIds.add(h.id));
+  const trendingRow = (recommendations?.popularInCity || []).filter((h) => !seenIds.has(h.id)).slice(0, 8);
+
   return (
     <>
       {/* Hero Section */}
@@ -57,7 +65,6 @@ const Home = () => {
             src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1920&q=70"
             alt=""
             className="w-full h-full object-cover opacity-80"
-            fetchpriority="high"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-navy-950/90 via-navy-900/60 to-navy-950/90"></div>
         </div>
@@ -120,46 +127,46 @@ const Home = () => {
               {recommendations?.recentlyViewed?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-6">
-                    <History className="text-brand-600" size={24} />
-                    <h2 className="text-2xl font-bold text-gray-900">Recently Viewed</h2>
+                    <History className="text-brand-700" size={24} />
+                    <h2 className="text-2xl font-bold text-navy-900">Recently viewed</h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {recommendations.recentlyViewed.slice(0, 3).map(hotel => (
-                      <HotelCard key={hotel.id} hotel={hotel} />
+                  <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    {recommendations.recentlyViewed.slice(0, 8).map(hotel => (
+                      <div key={hotel.id} className="w-[280px] sm:w-[310px] shrink-0 snap-start"><HotelCard hotel={hotel} /></div>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Recommended For You */}
-              {recommendations?.recommended?.length > 0 && (
+              {recommendedRow.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-6">
                     <Sparkles className="text-amber-500" size={24} />
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      {recommendations.recentlyViewed?.length > 0 ? 'Based on your recent views' : 'Recommended For You'}
+                    <h2 className="text-2xl font-bold text-navy-900">
+                      {recommendations.recentlyViewed?.length > 0 ? 'Based on your recent views' : 'Recommended for you'}
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {recommendations.recommended.slice(0, 3).map(hotel => (
-                      <HotelCard key={hotel.id} hotel={hotel} />
+                  <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    {recommendedRow.map(hotel => (
+                      <div key={hotel.id} className="w-[280px] sm:w-[310px] shrink-0 snap-start"><HotelCard hotel={hotel} /></div>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Trending in City */}
-              {recommendations?.popularInCity?.length > 0 ? (
+              {trendingRow.length > 0 ? (
                 <div>
                   <div className="flex items-center gap-2 mb-6">
                     <TrendingUp className="text-green-500" size={24} />
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      {recommendations.contextCity ? `Because you searched ${recommendations.contextCity}` : 'Trending Right Now'}
+                    <h2 className="text-2xl font-bold text-navy-900">
+                      {recommendations.contextCity ? `Because you searched ${recommendations.contextCity}` : 'Trending right now'}
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {recommendations.popularInCity.slice(0, 3).map(hotel => (
-                      <HotelCard key={hotel.id} hotel={hotel} />
+                  <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    {trendingRow.map(hotel => (
+                      <div key={hotel.id} className="w-[280px] sm:w-[310px] shrink-0 snap-start"><HotelCard hotel={hotel} /></div>
                     ))}
                   </div>
                 </div>
@@ -167,11 +174,11 @@ const Home = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-6">
                     <TrendingUp className="text-green-500" size={24} />
-                    <h2 className="text-2xl font-bold text-gray-900">Featured Hotels</h2>
+                    <h2 className="text-2xl font-bold text-navy-900">Featured hotels</h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                     {fallbackHotels.map(hotel => (
-                      <HotelCard key={hotel.id} hotel={hotel} />
+                      <div key={hotel.id} className="w-[280px] sm:w-[310px] shrink-0 snap-start"><HotelCard hotel={hotel} /></div>
                     ))}
                   </div>
                 </div>

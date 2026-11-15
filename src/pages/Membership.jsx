@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Crown, Check, X, Percent, Award, CalendarX, Headphones, Tag, Loader2, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getMembershipPlans, getMyMembership, buyMembership, verifyMembership, getMyWallet } from '../services/api';
+import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Membership: the free Member plan every guest account has, and paid plans (e.g. Zivo Prime) with
@@ -30,6 +31,7 @@ const loadRazorpay = () => new Promise((resolve) => {
 });
 
 const Membership = () => {
+  usePageTitle('Membership');
   const { isAuthenticated, user } = useAuth();
   const [plans, setPlans] = useState([]);
   const [me, setMe] = useState(null);
@@ -82,7 +84,7 @@ const Membership = () => {
     <div className="pt-24 pb-20 bg-gray-50 min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div>
-          <p className="text-brand-600 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><Crown size={16} /> Membership</p>
+          <p className="text-brand-700 font-bold uppercase tracking-wider text-sm flex items-center gap-1.5"><Crown size={16} /> Membership</p>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight mt-1">Member prices, extra savings, more flexibility</h1>
         </div>
 
@@ -108,14 +110,14 @@ const Membership = () => {
                     <p className="text-xl font-black text-gray-900 flex items-center gap-2">{!p.isFree && <Crown size={20} className="text-amber-500" />}{p.name}</p>
                     {p.description && <p className="text-sm text-gray-500">{p.description}</p>}
                   </div>
-                  {isCurrent && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-900 text-white">Your plan</span>}
+                  {isCurrent && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-900 text-white">Your plan</span>}
                 </div>
                 <p className="text-3xl font-black text-gray-900 mt-4">{p.isFree ? 'Free' : inr(p.price)}<span className="text-sm font-medium text-gray-500">{p.isFree ? '' : ` / ${p.durationDays === 365 ? 'year' : `${p.durationDays} days`}`}</span></p>
-                {!p.isFree && <p className="text-[11px] text-gray-400">Price includes GST</p>}
+                {!p.isFree && <p className="text-xs text-gray-400">Price includes GST</p>}
                 <ul className="mt-5 space-y-2.5 flex-1">
                   {benefitRows(p.benefits).map((b) => (
                     <li key={b.label} className={`flex gap-2 text-sm ${b.on ? 'text-gray-800' : 'text-gray-400'}`}>
-                      {b.on ? <Check size={16} className="text-green-600 shrink-0 mt-0.5" /> : <X size={16} className="shrink-0 mt-0.5" />} {b.label}
+                      {b.on ? <Check size={16} className="text-green-700 shrink-0 mt-0.5" /> : <X size={16} className="shrink-0 mt-0.5" />} {b.label}
                     </li>
                   ))}
                 </ul>
@@ -137,7 +139,7 @@ const Membership = () => {
                           <Wallet size={15} /> Pay with Zivo Cash ({inr(wallet)} available)
                         </button>
                       )}
-                      {isCurrent && <p className="text-center text-[11px] text-gray-400">Renewing adds {p.durationDays} days after your current period.</p>}
+                      {isCurrent && <p className="text-center text-xs text-gray-400">Renewing adds {p.durationDays} days after your current period.</p>}
                     </>
                   )}
                 </div>

@@ -198,7 +198,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Starting price / night (₹)</label>
                   <input type="number" min="1" step="0.01" value={formData.basePrice} onChange={e => updateForm('basePrice', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none" required placeholder="e.g. 4500" />
-                  <p className="text-[11px] text-gray-400 mt-1">Base price of the first rate plan (room only), before tax. Add breakfast or meal plans as more rate plans. Change prices per date in Inventory &amp; Rates.</p>
+                  <p className="text-xs text-gray-400 mt-1">Base price of the first rate plan (room only), before tax. Add breakfast or meal plans as more rate plans. Change prices per date in Inventory &amp; Rates.</p>
                 </div>
               </>
             )}
@@ -237,17 +237,17 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:bg-gray-50 transition-all cursor-pointer relative">
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" disabled={uploading} />
                     <div className="flex flex-col items-center">
-                      <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mb-3">
+                      <div className="w-12 h-12 bg-brand-50 text-brand-700 rounded-2xl flex items-center justify-center mb-3">
                         {uploading ? <div className="animate-spin h-5 w-5 border-2 border-brand-600 border-t-transparent rounded-full" /> : <Camera size={24} />}
                       </div>
                       <span className="text-sm font-bold text-gray-700">Drag or Click to Upload</span>
-                      <span className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tight">Auto-classified under category</span>
+                      <span className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-tight">Auto-classified under category</span>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Category</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase mb-1">Category</label>
                       <select 
                         value={uploadCategory} 
                         onChange={e => setUploadCategory(e.target.value)}
@@ -272,7 +272,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
             </div>
 
             <div className="space-y-4">
-              <h5 className="text-[10px] font-black text-gray-400 uppercase">Attached to this Room ({formData.roomImages.length})</h5>
+              <h5 className="text-xs font-black text-gray-400 uppercase">Attached to this Room ({formData.roomImages.length})</h5>
               {formData.roomImages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-300 py-12">
                   <Image className="h-10 w-10 mb-2 opacity-20" />
@@ -300,7 +300,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                         </button>
                       </div>
                       {img.isPrimary && (
-                        <div className="absolute top-2 left-2 bg-brand-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-md">
+                        <div className="absolute top-2 left-2 bg-brand-600 text-white text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-md">
                           Cover Image
                         </div>
                       )}
@@ -354,7 +354,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
             <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Extra Bed Rules</h4>
             <div className="space-y-4">
               <label className="flex items-center space-x-3 cursor-pointer p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:bg-gray-100 transition-all">
-                <input type="checkbox" checked={formData.extraBedAllowed} onChange={e => updateForm('extraBedAllowed', e.target.checked)} className="w-5 h-5 rounded-lg border-gray-300 text-brand-600 focus:ring-brand-500" />
+                <input type="checkbox" checked={formData.extraBedAllowed} onChange={e => updateForm('extraBedAllowed', e.target.checked)} className="w-5 h-5 rounded-lg border-gray-300 text-brand-700 focus:ring-brand-500" />
                 <span className="text-sm font-bold text-gray-700">Allow Extra Bed</span>
               </label>
               {formData.extraBedAllowed && (

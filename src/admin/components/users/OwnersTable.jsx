@@ -52,7 +52,7 @@ const OwnersTable = ({ data, onEdit, onStatusChange }) => {
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center space-x-3">
-                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-600 transition-colors" title="Manage Assignments">
+                  <button onClick={() => onEdit(user)} className="text-gray-400 hover:text-brand-700 transition-colors" title="Manage Assignments">
                     <Edit2 size={16} />
                   </button>
                   <button className="text-gray-400 hover:text-blue-600 transition-colors" title="View Agreements">

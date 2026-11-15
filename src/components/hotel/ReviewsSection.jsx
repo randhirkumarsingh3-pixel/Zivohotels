@@ -21,7 +21,7 @@ const ReviewCard = ({ r }) => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-700 font-bold flex items-center justify-center shrink-0">{(r.guest || 'G')[0]}</div>
           <div>
-            <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">{r.guest}{r.verified && <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-green-700"><BadgeCheck size={13} /> Verified stay</span>}</p>
+            <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">{r.guest}{r.verified && <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-700"><BadgeCheck size={13} /> Verified stay</span>}</p>
             <p className="text-xs text-gray-500">
               {[r.tripType && TRIP_LABEL[r.tripType], r.roomType, r.stayedIn && `Stayed ${new Date(r.stayedIn).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`, r.nights && `${r.nights} night${r.nights === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
             </p>
@@ -29,17 +29,17 @@ const ReviewCard = ({ r }) => {
         </div>
         <div className="text-right shrink-0">
           <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 font-bold text-sm px-2 py-0.5 rounded"><Star size={12} className="fill-current" /> {r.rating}</span>
-          <p className="text-[11px] text-gray-400 mt-1">{new Date(r.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+          <p className="text-xs text-gray-400 mt-1">{new Date(r.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
         </div>
       </div>
       {r.title && <h4 className="font-bold text-gray-900 mt-3">{r.title}</h4>}
       {r.comment && (
         <p className="text-sm text-gray-700 leading-relaxed mt-1 whitespace-pre-line">
           {long && !open ? `${r.comment.slice(0, 320)}…` : r.comment}
-          {long && <button type="button" onClick={() => setOpen((o) => !o)} className="ml-1 text-brand-600 font-semibold text-sm">{open ? 'Show less' : 'Read more'}</button>}
+          {long && <button type="button" onClick={() => setOpen((o) => !o)} className="ml-1 text-brand-700 font-semibold text-sm">{open ? 'Show less' : 'Read more'}</button>}
         </p>
       )}
-      {r.tags?.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{r.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-[11px] text-gray-600">{t}</span>)}</div>}
+      {r.tags?.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{r.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600">{t}</span>)}</div>}
       {r.photos?.length > 0 && (
         <div className="flex gap-2 mt-3 flex-wrap">
           {r.photos.map((p) => (
@@ -49,7 +49,7 @@ const ReviewCard = ({ r }) => {
       )}
       {r.reply && (
         <div className="mt-3 ml-4 pl-4 border-l-2 border-brand-200">
-          <p className="text-xs font-bold text-gray-900 flex items-center gap-1"><MessageSquareReply size={13} className="text-brand-600" /> Response from the property</p>
+          <p className="text-xs font-bold text-gray-900 flex items-center gap-1"><MessageSquareReply size={13} className="text-brand-700" /> Response from the property</p>
           <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{r.reply.text}</p>
         </div>
       )}
@@ -148,7 +148,7 @@ const ReviewsSection = ({ hotelId }) => {
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border ${filters.withPhotos === 'true' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}>
           <Camera size={14} /> With photos
         </button>
-        {filters.rating && <button type="button" onClick={() => setF('rating', '')} className="text-sm text-brand-600 font-semibold">{filters.rating}★ only ✕</button>}
+        {filters.rating && <button type="button" onClick={() => setF('rating', '')} className="text-sm text-brand-700 font-semibold">{filters.rating}★ only ✕</button>}
       </div>
 
       <div>

@@ -43,6 +43,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // After a password change the server signs every other session out and returns a new token
+  const replaceToken = (jwtToken) => {
+    if (!jwtToken) return;
+    setToken(jwtToken);
+    localStorage.setItem('jwt_token', jwtToken);
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -58,7 +65,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, login, logout, replaceToken }}>
       {children}
     </AuthContext.Provider>
   );

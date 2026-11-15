@@ -26,10 +26,10 @@ const IncidentForensicTimeline = ({ incidentId, events }) => {
     <div className="bg-slate-900 rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col h-[600px] shadow-2xl">
       <div className="p-8 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
          <div className="flex items-center gap-4">
-            <History className="text-blue-400" size={24} />
+            <History className="text-blue-600" size={24} />
             <div>
                <h3 className="text-xl font-black">Forensic Replay</h3>
-               <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Incident Root Cause Analysis • ID: {incidentId?.slice(0, 8)}</p>
+               <p className="text-xs text-white/40 font-black uppercase tracking-widest">Incident Root Cause Analysis • ID: {incidentId?.slice(0, 8)}</p>
             </div>
          </div>
          <div className="flex items-center gap-2">
@@ -46,10 +46,10 @@ const IncidentForensicTimeline = ({ incidentId, events }) => {
                 className="flex items-center gap-3 w-full text-left group"
               >
                  {expandedGroups.has(phase) ? <ChevronDown size={16} className="text-white/20" /> : <ChevronRight size={16} className="text-white/20" />}
-                 <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                 <span className={`text-xs font-black uppercase tracking-[0.2em] ${
                    phase === 'cause' ? 'text-red-400' :
                    phase === 'trigger' ? 'text-orange-400' :
-                   'text-blue-400'
+                   'text-blue-600'
                  }`}>
                     {phase}
                  </span>
@@ -68,9 +68,9 @@ const IncidentForensicTimeline = ({ incidentId, events }) => {
                      >
                         <div className="flex justify-between items-start mb-1">
                            <span className="text-xs font-bold text-white">{ev.event}</span>
-                           <span className="text-[9px] text-white/40">{new Date(ev.timestamp).toLocaleTimeString()}</span>
+                           <span className="text-xs text-white/40">{new Date(ev.timestamp).toLocaleTimeString()}</span>
                         </div>
-                        <p className="text-[10px] text-white/60 font-medium truncate">{JSON.stringify(ev.data)}</p>
+                        <p className="text-xs text-white/60 font-medium truncate">{JSON.stringify(ev.data)}</p>
                      </div>
                    ))}
                 </div>
@@ -82,12 +82,12 @@ const IncidentForensicTimeline = ({ incidentId, events }) => {
       {selectedEvent && (
         <div className="p-8 bg-white/5 border-t border-white/10 animate-in slide-in-from-bottom-5">
            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-600 shrink-0">
                  <Cpu size={20} />
               </div>
               <div className="flex-1">
                  <h4 className="text-sm font-black mb-1">Autonomous Reasoning</h4>
-                 <p className="text-[11px] text-white/60 leading-relaxed italic">
+                 <p className="text-xs text-white/60 leading-relaxed italic">
                     {`"Model detected anomalous ${selectedEvent.event} pattern. Confidence ${selectedEvent.data.confidence || 0.85}. Executed automated ${selectedEvent.data.action || 'escalation'} per policy POL_SYS_001."`}
                  </p>
               </div>

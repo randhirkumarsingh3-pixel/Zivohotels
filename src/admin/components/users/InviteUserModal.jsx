@@ -61,7 +61,7 @@ const InviteUserModal = ({ properties = [], onClose, onSuccess }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
-              <Mail size={16} className="text-amber-600" />
+              <Mail size={16} className="text-amber-700" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">Invite User</h2>
           </div>
@@ -133,14 +133,14 @@ const InviteUserModal = ({ properties = [], onClose, onSuccess }) => {
           <div className="p-6 space-y-5">
             <div className="text-center">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Mail size={22} className="text-green-600" />
+                <Mail size={22} className="text-green-700" />
               </div>
               <h3 className="font-bold text-gray-900 mb-1">Invite Created!</h3>
               <p className="text-sm text-gray-500">Copy and share this link with <strong>{form.email}</strong>.</p>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-              <p className="text-[11px] text-gray-500 font-semibold mb-1.5 uppercase tracking-wide">Invite Link</p>
+              <p className="text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wide">Invite Link</p>
               <p className="text-xs text-gray-700 break-all font-mono leading-relaxed">{inviteLink}</p>
             </div>
 

@@ -59,7 +59,7 @@ const ReviewModeration = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ShieldCheck className="text-brand-600" size={22} /> Guest Reviews</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ShieldCheck className="text-brand-700" size={22} /> Guest Reviews</h1>
         <p className="text-gray-500 mt-1">Clean reviews are published automatically. Check held reviews and hotels&apos; reports here.</p>
         <div className="flex flex-wrap items-center gap-2 mt-4">
           {QUEUES.map(([id, label]) => (
@@ -77,7 +77,7 @@ const ReviewModeration = () => {
 
       {msg && <div role={msg.type === 'error' ? 'alert' : 'status'} className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>{msg.text}</div>}
 
-      {loading && !data ? <div className="flex justify-center py-12"><Loader2 className="animate-spin text-brand-600" /></div> : (data?.reviews || []).length === 0 ? (
+      {loading && !data ? <div className="flex justify-center py-12"><Loader2 className="animate-spin text-brand-700" /></div> : (data?.reviews || []).length === 0 ? (
         <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500">Nothing in this queue.</div>
       ) : (
         <div className="space-y-4">
@@ -86,11 +86,11 @@ const ReviewModeration = () => {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-bold text-gray-900">{r.hotel?.name} <span className="text-xs font-medium text-gray-400">· {r.hotel?.city}</span></p>
-                  <p className="text-xs text-gray-500 mt-0.5">{r.guestName} ({r.guestEmail}) <BadgeCheck size={12} className="inline text-green-600" /> · {r.bookingRef} · {new Date(r.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{r.guestName} ({r.guestEmail}) <BadgeCheck size={12} className="inline text-green-700" /> · {r.bookingRef} · {new Date(r.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={15} className={n <= r.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />)}
-                  <span className={`ml-2 px-2 py-0.5 rounded text-[11px] font-bold ${r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : r.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'}`}>{r.status === 'APPROVED' ? 'PUBLISHED' : r.status === 'PENDING' ? 'HELD' : 'NOT PUBLISHED'}</span>
+                  <span className={`ml-2 px-2 py-0.5 rounded text-xs font-bold ${r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : r.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'}`}>{r.status === 'APPROVED' ? 'PUBLISHED' : r.status === 'PENDING' ? 'HELD' : 'NOT PUBLISHED'}</span>
                 </div>
               </div>
               {r.status === 'PENDING' && r.moderationNote && <p className="mt-3 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">Held because: {r.moderationNote}</p>}

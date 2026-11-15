@@ -48,7 +48,7 @@ const ExtranetFinance = () => {
           <p className="text-slate-500 font-medium mt-1">Track settlements, payouts, and financial health.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
+          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
             <Download size={14} /> Export Report
           </button>
         </div>
@@ -60,7 +60,7 @@ const ExtranetFinance = () => {
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <IndianRupee size={80} />
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Net Earned (Life-to-Date)</p>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Net Earned (Life-to-Date)</p>
           <h2 className="text-4xl font-black mb-4 tabular-nums">₹{Number(overview?.metrics?.totalEarned || 0).toLocaleString('en-IN')}</h2>
           <div className="flex items-center gap-2 text-navy-100 text-xs font-semibold">
             From {overview?.metrics?.count || 0} settled booking{overview?.metrics?.count === 1 ? '' : 's'}
@@ -68,7 +68,7 @@ const ExtranetFinance = () => {
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pending Payouts</p>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Pending Payouts</p>
           <h2 className="text-4xl font-black text-navy-800 mb-4 tabular-nums">₹{Number(overview?.metrics?.pendingAmount || 0).toLocaleString('en-IN')}</h2>
           <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
             <Clock size={14} /> {overview?.metrics?.nextPayoutDate ? `Next payout ${new Date(overview.metrics.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'No payout scheduled yet'}
@@ -76,7 +76,7 @@ const ExtranetFinance = () => {
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Paid Out (Life-to-Date)</p>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paid Out (Life-to-Date)</p>
           <h2 className="text-4xl font-black text-slate-900 mb-4 tabular-nums">₹{Number(overview?.metrics?.totalPayouts || 0).toLocaleString('en-IN')}</h2>
           <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
             <ShieldCheck size={14} /> Sent to your bank account on file
@@ -93,7 +93,7 @@ const ExtranetFinance = () => {
                    <History className="text-blue-600" size={20} />
                    <h3 className="text-xl font-black text-slate-900">Settlement Timeline</h3>
                 </div>
-                <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                <button className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
                    Filter <Filter size={14} />
                 </button>
              </div>
@@ -108,14 +108,14 @@ const ExtranetFinance = () => {
                            </div>
                            <div>
                               <p className="text-sm font-black text-slate-900">ID: #{s.id.slice(0, 8)}</p>
-                              <p className="text-[10px] text-slate-500 font-medium">Generated: {new Date(s.createdAt).toLocaleDateString()}</p>
+                              <p className="text-xs text-slate-500 font-medium">Generated: {new Date(s.createdAt).toLocaleDateString()}</p>
                            </div>
                         </div>
                         <div className="text-right">
                            <p className="text-lg font-black text-slate-900">₹ {Number(s.netPayable).toLocaleString()}</p>
                            <button 
                              onClick={() => setSelectedSettlement(s)}
-                             className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                             className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline"
                            >
                              View Breakdown
                            </button>
@@ -146,14 +146,14 @@ const ExtranetFinance = () => {
                   <div key={i} className="relative pl-6 border-l-2 border-slate-100">
                     <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
                     <p className="text-xs font-black text-slate-900">₹ {Number(p.totalAmount).toLocaleString()}</p>
-                    <p className="text-[10px] text-slate-500 font-medium mb-2">{p.status} • Ref: {p.reference || 'N/A'}</p>
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-blue-100">
+                    <p className="text-xs text-slate-500 font-medium mb-2">{p.status} • Ref: {p.reference || 'N/A'}</p>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100">
                        Processing
                     </span>
                   </div>
                 ))}
                 {payouts.length === 0 && (
-                  <p className="text-[10px] text-slate-400 font-medium text-center py-4 italic">No payouts currently in queue.</p>
+                  <p className="text-xs text-slate-400 font-medium text-center py-4 italic">No payouts currently in queue.</p>
                 )}
               </div>
            </div>
