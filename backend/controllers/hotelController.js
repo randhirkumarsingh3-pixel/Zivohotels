@@ -285,6 +285,8 @@ export const createHotel = asyncHandler(async (req, res) => {
       targetOwnerId = existingOwner.id;
     } else {
       // Auto-create OWNER
+      // Invite link token: the raw value goes in the email, its SHA-256 is stored (as
+      // /users/accept-invite expects)
       inviteToken = crypto.randomBytes(32).toString('hex');
       tempPassword = crypto.randomBytes(6).toString('hex');
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
@@ -296,8 +298,8 @@ export const createHotel = asyncHandler(async (req, res) => {
           password: hashedPassword,
           phone: _contactInfo.ownerPhone || null,
           role: 'OWNER',
-          status: 'PENDING',
-          inviteToken,
+          status: 'INVITED', // was 'PENDING', which isn't a user status: saving the property failed
+          inviteToken: crypto.createHash('sha256').update(inviteToken).digest('hex'),
           inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           mustChangePassword: true
         }
@@ -345,6 +347,8 @@ export const createHotel = asyncHandler(async (req, res) => {
             <p><strong>Email:</strong> ${ownerEmail}</p>
             <p><strong>Temporary Password:</strong> ${tempPassword}</p>
           </div>
+          <p>Or set your own password here (link valid for 7 days):<br>
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/accept-invite?token=${inviteToken}">Set my password</a></p>
           <p>Please change your password immediately after logging in.</p>
         </div>
       `
