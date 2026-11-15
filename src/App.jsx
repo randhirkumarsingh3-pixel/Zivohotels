@@ -14,6 +14,7 @@ import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import MyBookings from './pages/MyBookings';
 import Rewards from './pages/Rewards';
+import Wallet from './pages/Wallet';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -37,6 +38,7 @@ const PricingRMS = lazy(() => import('./admin/pages/PricingRMS'));
 const AdminPromotions = lazy(() => import('./admin/pages/Promotions'));
 const ReviewModeration = lazy(() => import('./admin/pages/ReviewModeration'));
 const AdminLoyalty = lazy(() => import('./admin/pages/Loyalty'));
+const ExtranetWallet = lazy(() => import('./extranet/pages/ExtranetWallet'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -97,6 +99,7 @@ function App() {
                 } 
               />
               <Route path="/rewards" element={<Rewards />} />
+              <Route path="/wallet" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Wallet /></ProtectedRoute>} />
               <Route 
                 path="/my-bookings" 
                 element={
@@ -215,6 +218,7 @@ function App() {
               <Route path="pricing" element={<ExtranetDynamicPricing />} />
               <Route path="bookings" element={<ExtranetBookings />} />
               <Route path="finance" element={<ExtranetFinance />} />
+              <Route path="wallet" element={<ExtranetWallet />} />
               <Route path="reviews" element={<ExtranetReviews />} />
               <Route path="promotions" element={<ExtranetPromotions />} />
               <Route path="performance" element={<ExtranetPerformance />} />

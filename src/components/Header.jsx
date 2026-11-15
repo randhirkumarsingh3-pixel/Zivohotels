@@ -42,6 +42,11 @@ const Header = () => {
                 My Bookings
               </Link>
             )}
+            {isAuthenticated && user?.role === 'CUSTOMER' && (
+              <Link to="/wallet" className="font-medium transition-colors hover:text-brand-600 text-gray-600">
+                Zivo Cash
+              </Link>
+            )}
 
             {isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'OWNER') && (
               <Link 

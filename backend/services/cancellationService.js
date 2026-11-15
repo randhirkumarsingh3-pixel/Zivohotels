@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { move as moveWallet } from './finance/walletService.js';
 import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import prisma from '../config/db.js';
 import { calculateRefund, getDefaultPolicy } from '../utils/refundCalculator.js';
@@ -45,9 +46,13 @@ export const previewGuestCancellation = async (booking) => {
   const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
   const paidAmount = toMoney(booking.paidAmount) || 0;
   const { refundAmount, policyApplied } = calculateRefund(booking, policy);
+  // Zivo Cash used on the booking goes back to the wallet; for the rest the guest can choose
+  const walletPart = Math.min(refundAmount, toMoney(booking.walletAmount) || 0);
   return {
     paidAmount,
     refundAmount,
+    walletRefund: roundMoney(walletPart),
+    choosableRefund: roundMoney(refundAmount - walletPart),
     retainedAmount: roundMoney(paidAmount - refundAmount),
     payAtHotel: booking.paymentType === 'PAY_AT_HOTEL',
     policyCode: policy.policyCode,
@@ -67,7 +72,7 @@ export const previewGuestCancellation = async (booking) => {
  * Refunds go through Razorpay with an idempotency key; a failed refund leaves the booking as it
  * was so it can be retried (up to 3 attempts).
  */
-export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, requestId }) => {
+export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, requestId, refundTo = 'SOURCE' }) => {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
   if (!booking) throw new CancellationError(404, 'Booking not found');
@@ -97,6 +102,20 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   }
   const retainedAmount = roundMoney(paidAmount - refundAmount);
 
+  // Where the refund goes. Zivo Cash used on the booking always goes back to the wallet; the rest
+  // goes back to the card / UPI, or to Zivo Cash (instant) only when the guest chose that.
+  const walletUsed = toMoney(booking.walletAmount) || 0;
+  const isPaid = ['PAID', 'PARTIAL_PAID'].includes(booking.paymentStatus);
+  let toWallet = 0;
+  if (isPaid) {
+    toWallet = Math.min(refundAmount, walletUsed);
+    if (refundTo === 'WALLET' && initiatedBy === 'GUEST' && booking.userId) toWallet = refundAmount;
+  }
+  toWallet = roundMoney(toWallet);
+  const toSource = roundMoney(refundAmount - toWallet);
+  // Never completed (abandoned at checkout): the Zivo Cash put towards it comes back in full
+  const walletReturned = !isPaid && walletUsed > 0 && booking.userId ? walletUsed : 0;
+
   const refundRecord = await prisma.refund.upsert({
     where: { bookingId },
     update: { status: 'INITIATED', amount: refundAmount, retryCount: { increment: 1 }, lastAttemptAt: new Date(), requestId },
@@ -105,11 +124,11 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
   // Razorpay refund (outside the DB transaction, with an idempotency key)
   let razorpayRefundId = null;
-  if (refundAmount > 0 && booking.razorpayPaymentId) {
+  if (toSource > 0 && booking.razorpayPaymentId) {
     try {
       const razorResponse = await withTimeout(
         razorpay.payments.refund(booking.razorpayPaymentId, {
-          amount: Math.round(refundAmount * 100),
+          amount: Math.round(toSource * 100),
           notes: { requestId, bookingId, retry: refundRecord.retryCount, initiatedBy }
         }, {
           'X-Razorpay-Idempotency-Key': `${bookingId}-${refundRecord.retryCount}`
@@ -145,14 +164,24 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
     await inventoryRepository.restoreInventory(tx, booking);
 
+    if (toWallet > 0) {
+      await moveWallet(tx, { userId: booking.userId, type: 'CREDIT', amount: toWallet, category: 'REFUND', description: `Refund for cancelled booking ${booking.bookingRef}`, bookingId });
+    }
+    if (walletReturned > 0) {
+      await moveWallet(tx, { userId: booking.userId, type: 'CREDIT', amount: walletReturned, category: 'PAYMENT_RETURNED', description: `Booking ${booking.bookingRef} was cancelled before payment`, bookingId });
+    }
+
     await tx.bookingTimelineEvent.create({
       data: {
         bookingId,
         status: 'CANCELLED',
         title: 'Booking Cancelled',
         message: refundAmount > 0
-          ? `Cancelled by ${byLabel}. A refund of ${inr(refundAmount)} has been initiated to your original payment method.`
-          : `Cancelled by ${byLabel}.`
+          ? `Cancelled by ${byLabel}. Refund of ${inr(refundAmount)}: ` + [
+              toWallet > 0 && `${inr(toWallet)} added to your Zivo Cash`,
+              toSource > 0 && `${inr(toSource)} to your original payment method (5-7 working days)`,
+            ].filter(Boolean).join(', ') + '.'
+          : walletReturned > 0 ? `Cancelled by ${byLabel}. ${inr(walletReturned)} returned to your Zivo Cash.` : `Cancelled by ${byLabel}.`
       }
     });
 
@@ -169,7 +198,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         userId,
         requestId,
         details: {
-          initiatedBy, refundAmount, retainedAmount, status: 'SUCCESS', policy: policyApplied,
+          initiatedBy, refundAmount, retainedAmount, refundToWallet: toWallet, refundToSource: toSource, walletReturned, status: 'SUCCESS', policy: policyApplied,
           razorpayRefundId, paymentId: booking.razorpayPaymentId
         }
       }
@@ -192,7 +221,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   // the hotel doesn't need to hear about it
   const abandonedAtCheckout = booking.status === 'PENDING' && paidAmount === 0;
   if (abandonedAtCheckout) {
-    return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId };
+    return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId, refundToWallet: toWallet, refundToSource: toSource };
   }
 
   await createNotification({
@@ -214,7 +243,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     }
   }
 
-  return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId };
+  return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId, refundToWallet: toWallet, refundToSource: toSource };
 };
 
 export default { cancelBookingWithRefund, initiatorForRole, CancellationError };

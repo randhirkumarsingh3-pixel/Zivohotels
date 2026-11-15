@@ -238,6 +238,9 @@ model Booking {
   checkOut            DateTime
   guests              Int
   rooms               Int
+  /// Part of the amount due now that the guest paid with Zivo Cash (included in paidAmount once
+  /// the booking is paid; returned to the wallet if the booking is never completed)
+  walletAmount        Decimal  @default(0) @db.Decimal(12, 2)
   totalAmount         Decimal                @db.Decimal(12, 2)
   status              BookingStatus          @default(PENDING)
   createdAt           DateTime               @default(now())
@@ -941,14 +944,27 @@ model Wallet {
   transactions WalletTransaction[]
 }
 
+/// A movement on a wallet (Zivo Cash for guests). category says why:
+///  REFUND           refund of a cancelled booking the guest chose to receive as Zivo Cash
+///  BOOKING_PAYMENT  Zivo Cash used to pay for a booking (debit)
+///  PAYMENT_RETURNED Zivo Cash returned when that booking was cancelled or never completed
+///  ADMIN_CREDIT / ADMIN_DEBIT  goodwill or correction by a Zivo admin, with a reason
 model WalletTransaction {
-  id        String   @id @default(uuid())
-  walletId  String
-  type      String
-  amount    Decimal  @db.Decimal(12, 2)
-  reference String
-  createdAt DateTime @default(now())
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  id           String   @id @default(uuid())
+  walletId     String
+  type         String // CREDIT | DEBIT
+  amount       Decimal  @db.Decimal(12, 2)
+  reference    String
+  category     String   @default("OTHER")
+  description  String?
+  bookingId    String?
+  balanceAfter Decimal? @db.Decimal(12, 2)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  wallet       Wallet   @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+  @@index([bookingId])
 }
 
 model FraudLog {

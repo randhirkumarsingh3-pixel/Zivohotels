@@ -38,6 +38,7 @@ const createBookingSchema = z.object({
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
   promoCode: z.string().trim().max(40).optional(),
   usePoints: z.number().int().min(0).max(10000000).optional(),
+  useWallet: z.boolean().optional(),
   // Optional: GST invoice in a company's name (business travel)
   companyName: z.string().trim().max(200).optional(),
   companyGstin: z.string().trim().toUpperCase()
@@ -99,7 +100,7 @@ export const createBooking = async (req, res, next) => {
     const {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
       rooms, adults, children, extraBeds, paymentType,
-      guestName, guestEmail, guestPhone, promoCode, usePoints, agentId,
+      guestName, guestEmail, guestPhone, promoCode, usePoints, useWallet, agentId,
       companyName, companyGstin, companyAddress
     } = validation.data;
 
@@ -112,7 +113,7 @@ export const createBooking = async (req, res, next) => {
     const serviceContext = {
       guestName, guestEmail, guestPhone,
       company: companyName ? { name: companyName, gstin: companyGstin || null, address: companyAddress || null } : null,
-      ratePlanId, paymentType, couponCode: promoCode, usePoints,
+      ratePlanId, paymentType, couponCode: promoCode, usePoints, useWallet,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,
       agentId
@@ -290,7 +291,9 @@ export const cancelBooking = async (req, res, next) => {
       bookingId: id,
       initiatedBy: initiatorForRole(req.user.role),
       userId: req.user.id,
-      requestId
+      requestId,
+      // The guest's choice: refund to Zivo Cash (instant) or to the original payment method
+      refundTo: req.body?.refundTo === 'WALLET' ? 'WALLET' : 'SOURCE'
     });
 
     res.status(200).json({
@@ -300,6 +303,8 @@ export const cancelBooking = async (req, res, next) => {
         bookingStatus: result.booking.status,
         refundStatus: 'SUCCESS',
         refundAmount: result.refundAmount,
+        refundToWallet: result.refundToWallet,
+        refundToSource: result.refundToSource,
         retainedAmount: result.retainedAmount,
         policyApplied: result.policyApplied,
         booking: result.booking

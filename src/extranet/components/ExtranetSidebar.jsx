@@ -11,7 +11,8 @@ import {
   Tag,
   BarChart3,
   BedDouble,
-  Plus
+  Plus,
+  Wallet
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -74,6 +75,7 @@ const ExtranetSidebar = () => {
           </div>
           <NavItem name="Bookings" path="/extranet/bookings" icon={<ClipboardList size={18} />} />
           <NavItem name="Finance Hub" path="/extranet/finance" icon={<IndianRupee size={18} />} />
+          <NavItem name="Wallet" path="/extranet/wallet" icon={<Wallet size={18} />} />
           <NavItem name="Guest Reviews" path="/extranet/reviews" icon={<Star size={18} />} />
           <NavItem name="Promotions" path="/extranet/promotions" icon={<Tag size={18} />} />
           
