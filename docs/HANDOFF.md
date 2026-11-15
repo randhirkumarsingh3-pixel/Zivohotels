@@ -344,6 +344,27 @@ settlement. Fixed along the way:
 - Razorpay is not configured locally, so the "part wallet + online" path could only be checked up
   to the order amount; test it end to end with test keys.
 
+## Membership (Nov 2026)
+
+- Owner decisions: every signed-in guest account is a free Member; paid plans (default Zivo Prime,
+  ₹999 / 365 days, GST inclusive) on top. Member room discounts are hotel opt-in (hotel-funded); a
+  paid plan can add a Zivo-funded extra. Benefits: member price, extra Rewards points, member-only
+  offers, longer free cancellation (Zivo pays the hotel's fee), priority support.
+- Service `backend/services/membershipService.js`; models `MembershipPlan`, `Membership`,
+  `Hotel.memberDiscountPercent`, `Promotion.audience` (ALL | MEMBERS | plan code). API
+  `/membership` (plans, me, buy WALLET/ONLINE, verify), `/extranet/membership`, `/admin/membership`.
+  Pages: `/membership`, Extranet -> Member Prices, Admin -> Membership.
+- Wiring: pricing (`memberDiscountAmount`, after promotions, before points) in preview and booking;
+  `booking.metadata.membership` snapshot; Zivo-funded part added to `zivoFundedDiscount` (hotel
+  paid on its member price); Rewards earn x plan multiplier; promotions filtered by audience
+  (hotel page shows member offers to those who can use them); cancellations use the snapshot's
+  freeCancelExtraHours (refund as if cancelled earlier; the fee goes to the hotel via the same
+  CANCELLATION settlement and is booked to ledger account ZIVO_MEMBERSHIP); hotel page / search show
+  member prices; extranet bookings show paid members with priority support; vouchers show the
+  member price line. Hourly job expires plans and emails a renewal reminder 7 days before.
+- Plan fees are booked to ledger account MEMBERSHIP_REVENUE (GST inclusive): confirm GST invoicing
+  for membership fees with the accountant. Online purchase needs Razorpay keys (not set locally).
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

@@ -38,6 +38,7 @@ export const pricingDomain = {
       extraBeds, paymentType, appliedCoupon = null,
       appliedPromotion = null, // promotion chosen by promotionService (one per booking)
       loyaltyDiscountAmount = 0, // Zivo Rewards points used (rupees), worked out by loyaltyService
+      memberDiscountAmount = 0, // member prices (hotel) + paid-plan extra (Zivo), from membershipService
       dynamicContext = null,
       dailyRates = {} // { [night ISO string]: price } from Inventory & Rates / the channel manager
     } = input;
@@ -188,10 +189,11 @@ export const pricingDomain = {
     // Promotion (Admin or property offer) on the same pre-tax subtotal
     const promotionDiscountAmount = appliedPromotion ? discountFor(appliedPromotion, rawSubtotal) : 0;
 
-    const pointsDiscount = Math.max(0, Math.min(Math.round(Number(loyaltyDiscountAmount) || 0), rawSubtotal - discountAmount - couponDiscountAmount - promotionDiscountAmount));
+    const memberDiscount = Math.max(0, Math.min(Math.round(Number(memberDiscountAmount) || 0), rawSubtotal - discountAmount - couponDiscountAmount - promotionDiscountAmount));
+    const pointsDiscount = Math.max(0, Math.min(Math.round(Number(loyaltyDiscountAmount) || 0), rawSubtotal - discountAmount - couponDiscountAmount - promotionDiscountAmount - memberDiscount));
 
     // Total discount is prepaid discount + coupon discount + promotion + reward points
-    const totalDiscountAmount = discountAmount + couponDiscountAmount + promotionDiscountAmount + pointsDiscount;
+    const totalDiscountAmount = discountAmount + couponDiscountAmount + promotionDiscountAmount + memberDiscount + pointsDiscount;
     const baseAmountAfterDiscount = Math.max(0, rawSubtotal - totalDiscountAmount);
 
     // Step 5: Determine Tax Slab based on post-discount per-night rate
@@ -223,6 +225,7 @@ export const pricingDomain = {
       couponDiscountAmount,
       promotionDiscountAmount,
       loyaltyDiscountAmount: pointsDiscount,
+      memberDiscountAmount: memberDiscount,
       baseAmount: baseAmountAfterDiscount, 
       taxAmount,
       totalAmount,

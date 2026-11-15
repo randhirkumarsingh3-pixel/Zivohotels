@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { canUseAudience } from './membershipService.js';
 import { Prisma } from '@prisma/client';
 import { checkEligibility, discountFor, promotionLabel, coversHotel } from '../domains/promotionDomain.js';
 
@@ -76,7 +77,10 @@ export const resolveBest = async (ctx) => {
 
   for (const p of list) {
     const elig = checkEligibility(p, ctx);
-    const problem = elig.ok ? await limitProblem(p, ctx.userId) : elig.reason;
+    const audienceOk = canUseAudience(ctx.membership, p.audience);
+    const problem = !audienceOk
+      ? (p.audience === 'MEMBERS' ? 'This offer is for members: sign in with a guest account' : 'This offer is for a membership plan you don\'t have')
+      : elig.ok ? await limitProblem(p, ctx.userId) : elig.reason;
     if (code && p.code === code) codeStatus = problem ? { code, ok: false, message: problem } : { code, ok: true };
     if (problem) continue;
     const discount = discountFor(p, ctx.subtotal);
@@ -94,9 +98,10 @@ export const resolveBest = async (ctx) => {
  * that have run out, aren't shown. plans: [{ roomTypeId, ratePlanId, nightlyPrice }].
  * Returns { [ratePlanId]: { name, label, discountPerNight, nightlyPriceAfter, fundedBy } }.
  */
-export const displayOffers = async ({ hotelId, checkIn, checkOut, plans }) => {
+export const displayOffers = async ({ hotelId, checkIn, checkOut, plans, membership = null }) => {
   if (!checkIn || !checkOut || !plans.length) return {};
-  const list = (await candidates(hotelId, null)).filter((p) => !p.code && !p.firstBookingOnly);
+  // Member-only offers show only to members who can use them
+  const list = (await candidates(hotelId, null)).filter((p) => !p.code && !p.firstBookingOnly && canUseAudience(membership, p.audience));
   if (!list.length) return {};
   const usable = [];
   for (const p of list) if (!(await limitProblem(p, null))) usable.push(p);
@@ -115,6 +120,7 @@ export const displayOffers = async ({ hotelId, checkIn, checkOut, plans }) => {
         id: best.p.id,
         name: best.p.name,
         label: promotionLabel(best.p),
+        audience: best.p.audience,
         discountType: best.p.discountType,
         value: Number(best.p.value),
         maxDiscount: best.p.maxDiscount != null ? Number(best.p.maxDiscount) : null,

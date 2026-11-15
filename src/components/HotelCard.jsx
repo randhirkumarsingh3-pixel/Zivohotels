@@ -99,6 +99,9 @@ const HotelCard = ({ hotel }) => {
           {offer && (
             <span className="bg-green-600 text-white px-2 py-1 rounded-md font-bold" title={offer.name}>{offer.label}</span>
           )}
+          {hotel.memberDiscountPercent > 0 && (
+            <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded-md font-bold" title="For signed-in members">Member −{hotel.memberDiscountPercent}%</span>
+          )}
         </div>
         
         <div className="mt-auto pt-5 border-t border-gray-100 flex justify-between items-end">

@@ -51,6 +51,7 @@ const emptyForm = (hotelId, mode) => ({
   minNights: 1, minAdvanceDays: '', maxAdvanceDays: '',
   usageLimit: '', perUserLimit: '', firstBookingOnly: false,
   fundedBy: mode === 'admin' && !hotelId ? 'ZIVO' : 'HOTEL',
+  audience: 'ALL',
 });
 
 const fromPromotion = (p) => ({
@@ -62,10 +63,16 @@ const fromPromotion = (p) => ({
   minNights: p.minNights || 1, minAdvanceDays: p.minAdvanceDays ?? '', maxAdvanceDays: p.maxAdvanceDays ?? '',
   usageLimit: p.usageLimit ?? '', perUserLimit: p.perUserLimit ?? '', firstBookingOnly: p.firstBookingOnly,
   fundedBy: p.fundedBy,
+  audience: p.audience || 'ALL',
 });
 
 const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) => {
   const [f, setF] = useState(initial);
+  const [paidPlans, setPaidPlans] = useState([]);
+  useEffect(() => {
+    if (mode !== 'admin') return;
+    fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/membership/plans`).then((r) => r.json()).then((j) => setPaidPlans((j.data || []).filter((p) => !p.isFree))).catch(() => {});
+  }, [mode]);
   const [roomTypes, setRoomTypes] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -90,6 +97,7 @@ const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) 
       stayStart: f.stayStart || null, stayEnd: f.stayEnd || null, bookStart: f.bookStart || null, bookEnd: f.bookEnd || null,
       minNights: Number(f.minNights) || 1, minAdvanceDays: f.minAdvanceDays, maxAdvanceDays: f.maxAdvanceDays,
       usageLimit: f.usageLimit, perUserLimit: f.perUserLimit, firstBookingOnly: f.firstBookingOnly,
+      audience: f.audience || 'ALL',
       ...(mode === 'admin' ? { fundedBy: f.fundedBy } : {}),
       ...(f.scope === 'PROPERTY'
         ? { ...(editingId ? {} : { hotelId: f.hotelId }), roomTypeIds: f.roomTypeIds, ratePlanIds: f.ratePlanIds }
@@ -182,6 +190,13 @@ const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) 
           )}
         </div>
         <p className="text-xs text-gray-500">{f.useCode ? 'Only guests who enter the code at checkout get it.' : 'Shown on search results and the hotel page with the discounted price, and applied at checkout.'}</p>
+        <label className="block text-xs font-semibold text-gray-600 pt-1">Who can use it
+          <select className="mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white w-full md:w-80" value={f.audience} onChange={(e) => set('audience', e.target.value)}>
+            <option value="ALL">Everyone</option>
+            <option value="MEMBERS">Members only (signed-in guests)</option>
+            {mode === 'admin' && paidPlans.map((pl) => <option key={pl.code} value={pl.code}>{pl.name} members only</option>)}
+          </select>
+        </label>
       </section>
 
       {/* Where */}
@@ -331,6 +346,7 @@ const PromotionsManager = ({ mode = 'owner', hotelId = null }) => {
             <span className="text-sm font-extrabold text-green-700">{p.label}</span>
             {p.code ? <span className="px-2 py-0.5 rounded bg-gray-900 text-white text-[11px] font-mono font-bold">{p.code}</span> : <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">AUTOMATIC</span>}
             {p.scope === 'PLATFORM' && <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">ZIVO OFFER</span>}
+            {p.audience && p.audience !== 'ALL' && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">{p.audience === 'MEMBERS' ? 'MEMBERS ONLY' : `${p.audience} ONLY`}</span>}
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.fundedBy === 'ZIVO' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>{p.fundedBy === 'ZIVO' ? 'FUNDED BY ZIVO' : 'FUNDED BY HOTEL'}</span>
             {!p.isActive && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-500 text-[10px] font-bold">PAUSED</span>}
           </div>

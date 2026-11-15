@@ -12,6 +12,7 @@ import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { displayOffers } from '../services/promotionService.js';
+import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
 
@@ -787,7 +788,7 @@ const PUBLIC_HOTEL_FIELDS = [
   'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'addressLine', 'latitude', 'longitude',
   'amenities', 'policies', 'checkInTime', 'checkOutTime', 'images', 'image',
   'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday', 'builtYear', 'mealPrices',
-  'reviewScore', 'reviewCount', 'reviewAspects'
+  'reviewScore', 'reviewCount', 'reviewAspects', 'memberDiscountPercent'
 ];
 /** House-rule answers from onboarding that guests may see (the Policies step). */
 const PUBLIC_HOUSE_RULES = [
@@ -885,7 +886,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
     const stayEnd = new Date(nights[nights.length - 1]);
     stayEnd.setDate(stayEnd.getDate() + 1);
     const offers = await displayOffers({
-      hotelId: id, checkIn: nights[0], checkOut: stayEnd,
+      hotelId: id, checkIn: nights[0], checkOut: stayEnd, membership: await membershipFor(req.user?.id),
       plans: hotel.roomTypes.flatMap(rt => rt.ratePlans.filter(rp => rp.stayNightlyPrice > 0).map(rp => ({ roomTypeId: rt.id, ratePlanId: rp.id, nightlyPrice: rp.stayNightlyPrice })))
     });
     hotel.roomTypes.forEach(rt => rt.ratePlans.forEach(rp => { if (offers[rp.id]) rp.offer = offers[rp.id]; }));
@@ -1030,6 +1031,8 @@ export const searchHotels = asyncHandler(async (req, res) => {
         rating: hotel.reviewScore || 0,
         reviewCount: hotel.reviewCount || 0,
         starRating: Number.isInteger(hotel.rating) ? hotel.rating : null,
+        // Member price: % off for signed-in members (hotel's choice); the page works out the price
+        memberDiscountPercent: hotel.memberDiscountPercent || 0,
         commission: agreementMap[hotel.id]?.commissionRate || 15,
         totalRooms: totalRooms || 1,
         availableRooms: availableRooms || 0,

@@ -86,6 +86,7 @@ export const transitionBookingStatus = (bookingId, status) => extranetFetch(`/bo
 // --- REVIEWS ---
 /** Generic GET for the active property (e.g. '/wallet'). */
 export const extranetGet = (endpoint) => extranetFetch(endpoint, { method: 'GET' });
+export const extranetPut = (endpoint, body) => extranetFetch(endpoint, { method: 'PUT', body: JSON.stringify(body) });
 export const fetchReviews = (params = {}) => extranetFetch(`/reviews?${new URLSearchParams(params)}`, { method: 'GET' });
 export const replyToReview = (reviewId, replyText) => extranetFetch(`/reviews/${reviewId}/reply`, { method: 'POST', body: JSON.stringify({ replyText }) });
 export const deleteReviewReply = (reviewId) => extranetFetch(`/reviews/${reviewId}/reply`, { method: 'DELETE' });

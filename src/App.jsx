@@ -15,6 +15,7 @@ import AcceptInvite from './pages/AcceptInvite';
 import MyBookings from './pages/MyBookings';
 import Rewards from './pages/Rewards';
 import Wallet from './pages/Wallet';
+import Membership from './pages/Membership';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -39,6 +40,8 @@ const AdminPromotions = lazy(() => import('./admin/pages/Promotions'));
 const ReviewModeration = lazy(() => import('./admin/pages/ReviewModeration'));
 const AdminLoyalty = lazy(() => import('./admin/pages/Loyalty'));
 const ExtranetWallet = lazy(() => import('./extranet/pages/ExtranetWallet'));
+const ExtranetMembership = lazy(() => import('./extranet/pages/ExtranetMembership'));
+const AdminMembership = lazy(() => import('./admin/pages/Membership'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -99,6 +102,7 @@ function App() {
                 } 
               />
               <Route path="/rewards" element={<Rewards />} />
+              <Route path="/membership" element={<Membership />} />
               <Route path="/wallet" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Wallet /></ProtectedRoute>} />
               <Route 
                 path="/my-bookings" 
@@ -137,6 +141,7 @@ function App() {
               <Route path="promotions" element={<AdminPromotions />} />
               <Route path="reviews" element={<ReviewModeration />} />
               <Route path="loyalty" element={<AdminLoyalty />} />
+              <Route path="membership" element={<AdminMembership />} />
               <Route path="forecasting" element={<DemandForecasting />} />
 
               {/* Analytics */}
@@ -219,6 +224,7 @@ function App() {
               <Route path="bookings" element={<ExtranetBookings />} />
               <Route path="finance" element={<ExtranetFinance />} />
               <Route path="wallet" element={<ExtranetWallet />} />
+              <Route path="member-prices" element={<ExtranetMembership />} />
               <Route path="reviews" element={<ExtranetReviews />} />
               <Route path="promotions" element={<ExtranetPromotions />} />
               <Route path="performance" element={<ExtranetPerformance />} />

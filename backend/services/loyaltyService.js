@@ -160,7 +160,7 @@ export const history = async (userId, { page = 1, limit = 20 } = {}) => {
  * What the member can use and earn on a stay. eligibleAmount = pre-GST amount after other
  * discounts. Returns { available, pointsApplied, discount, maxPoints, earn, tier, reason? }.
  */
-export const planForCheckout = async ({ userId, eligibleAmount, requestedPoints = 0 }) => {
+export const planForCheckout = async ({ userId, eligibleAmount, requestedPoints = 0, extraMultiplier = 1 }) => {
   const cfg = await getConfig();
   if (!cfg.enabled || !userId) return null;
   // Zivo Rewards is for guest accounts (not admins or hotel owners booking for testing)
@@ -181,8 +181,10 @@ export const planForCheckout = async ({ userId, eligibleAmount, requestedPoints 
   return {
     available, pointsApplied, discount, maxPoints: maxPoints >= cfg.minRedeemPoints ? maxPoints : 0,
     pointValue: cfg.pointValue, minRedeemPoints: cfg.minRedeemPoints, maxRedeemPercent: cfg.maxRedeemPercent,
-    earn: pointsForAmount((Number(eligibleAmount) || 0) - discount, cfg, t.tier.multiplier),
+    // Tier multiplier x membership plan multiplier (e.g. Zivo Prime)
+    earn: pointsForAmount((Number(eligibleAmount) || 0) - discount, cfg, t.tier.multiplier * (Number(extraMultiplier) || 1)),
     tier: { id: t.tier.id, name: t.tier.name, multiplier: t.tier.multiplier },
+    planMultiplier: Number(extraMultiplier) || 1,
     reason,
   };
 };

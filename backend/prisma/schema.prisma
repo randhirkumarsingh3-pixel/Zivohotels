@@ -39,6 +39,8 @@ model Hotel {
   city            String
   rating          Float           @default(0)
   reviews         Int             @default(0)
+  /// Member price: % off for signed-in members, set by the hotel in the extranet (0 = not offered)
+  memberDiscountPercent Float   @default(0)
   /// Guest review score (average of published reviews, 1-5) and count; rating is the star category
   reviewScore     Float?
   reviewCount     Int             @default(0)
@@ -666,6 +668,7 @@ model Promotion {
   usageLimit       Int?
   perUserLimit     Int?
   firstBookingOnly Boolean               @default(false)
+  audience         String                @default("ALL") // ALL | MEMBERS (any member) | a paid plan code (e.g. PRIME)
   fundedBy         String                @default("HOTEL") // HOTEL | ZIVO
   isActive         Boolean               @default(true)
   createdById      String?
@@ -1029,6 +1032,53 @@ model LoyaltyPoint {
 
   @@index([userId, status])
   @@index([bookingId])
+}
+
+/// Membership plans (Admin -> Membership). Every signed-in guest is on the free plan (isFree);
+/// paid plans are bought for durationDays. benefits (JSON):
+///   hotelMemberRates    member prices from hotels that opted in (hotel-funded)
+///   zivoDiscountPercent extra discount Zivo pays for (hotel paid the full price), capped by zivoDiscountMax
+///   pointsMultiplier    extra Zivo Rewards points (on top of the tier multiplier)
+///   memberOffers        can use promotions for members / this plan
+///   freeCancelExtraHours free cancellation this many hours past the hotel's deadline (Zivo pays the fee)
+///   prioritySupport     bookings flagged for priority support
+model MembershipPlan {
+  id           String       @id @default(uuid())
+  code         String       @unique
+  name         String
+  description  String?
+  price        Decimal      @default(0) @db.Decimal(12, 2)
+  durationDays Int          @default(365)
+  isFree       Boolean      @default(false)
+  isActive     Boolean      @default(true)
+  sortOrder    Int          @default(0)
+  benefits     Json         @default("{}")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+}
+
+/// A guest's paid plan for a period. PENDING_PAYMENT while paying online; ACTIVE until endsAt.
+model Membership {
+  id                String         @id @default(uuid())
+  userId            String
+  planId            String
+  status            String         @default("PENDING_PAYMENT") // PENDING_PAYMENT | ACTIVE | EXPIRED | CANCELLED
+  startsAt          DateTime?
+  endsAt            DateTime?
+  pricePaid         Decimal        @default(0) @db.Decimal(12, 2)
+  paymentMethod     String? // WALLET | RAZORPAY | ADMIN
+  razorpayOrderId   String?        @unique
+  razorpayPaymentId String?
+  note              String?
+  reminderSentAt    DateTime?
+  createdById       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  plan              MembershipPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+  @@index([endsAt])
 }
 
 /// Zivo Rewards settings (single row, id "default"), edited in Admin -> Loyalty.

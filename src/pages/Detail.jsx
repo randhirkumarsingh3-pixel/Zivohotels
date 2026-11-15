@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getHotelById, trackEvent } from '../services/api';
+import { getHotelById, trackEvent, getMyMembership } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { Link as RouterLink } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
 import { useBooking } from '../context/BookingContext';
 import {
@@ -179,6 +181,12 @@ const Detail = () => {
   const navigate     = useNavigate();
   const location     = useLocation();
   const { searchParams, selectedHotel: previousSelection, setSelectedHotel, updateSearchParams } = useBooking();
+  // Membership: member prices (hotel's %) and a paid plan's extra (same rules as checkout)
+  const { isAuthenticated, user } = useAuth();
+  const [membership, setMembership] = useState(null);
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'CUSTOMER') getMyMembership().then((m) => setMembership(m?.current || null)).catch(() => {});
+  }, [isAuthenticated, user]);
   const { checkIn, checkOut, guests, rooms } = searchParams;
 
   // Dates in the link (from search results, a reload or a shared link) take effect here
@@ -304,7 +312,12 @@ const Detail = () => {
   const baseTotal = pricePerNight * nights * nightsN;
   const offer     = selectedRatePlan?.offer || null;
   const offerOff  = offerDiscount(offer, baseTotal);
-  const afterOffer= baseTotal - offerOff;
+  const memberPct = Number(hotel.memberDiscountPercent) || 0;
+  const mb        = membership?.benefits;
+  const memberHotelOff = membership && mb?.hotelMemberRates ? Math.round(((baseTotal - offerOff) * memberPct) / 100) : 0;
+  let   memberZivoOff  = membership?.isPaid ? Math.round(((baseTotal - offerOff - memberHotelOff) * (mb.zivoDiscountPercent || 0)) / 100) : 0;
+  if (mb?.zivoDiscountMax > 0) memberZivoOff = Math.min(memberZivoOff, mb.zivoDiscountMax);
+  const afterOffer= baseTotal - offerOff - memberHotelOff - memberZivoOff;
   const taxRate   = (nights && nightsN ? afterOffer / (nights * nightsN) : pricePerNight) <= 7500 ? 0.05 : 0.18;
   const taxes     = Math.round(afterOffer * taxRate);
   const grandTotal= afterOffer + taxes;
@@ -348,6 +361,7 @@ const Detail = () => {
                   <a href="#reviews" className="inline-flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded-md text-xs font-bold"><Star size={12} className="fill-current" /> {hotel.reviewScore} · {hotel.reviewCount} review{hotel.reviewCount === 1 ? '' : 's'}</a>
                 )}
                 {hotel.type && <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{hotel.type}</span>}
+                {hotel.memberDiscountPercent > 0 && <RouterLink to="/membership" className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">Member price: {hotel.memberDiscountPercent}% off</RouterLink>}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
               <a href="#location" className="inline-flex items-start text-gray-500 hover:text-gray-800 mb-4 text-sm">
@@ -489,6 +503,17 @@ const Detail = () => {
                         <span>{offer.name}</span>
                         <span>− {fmt(offerOff)}</span>
                       </div>
+                    )}
+                    {memberHotelOff > 0 && (
+                      <div className="flex justify-between text-amber-700 font-medium"><span>Member price ({memberPct}%)</span><span>− {fmt(memberHotelOff)}</span></div>
+                    )}
+                    {memberZivoOff > 0 && (
+                      <div className="flex justify-between text-amber-700 font-medium"><span>{membership.plan.name} extra</span><span>− {fmt(memberZivoOff)}</span></div>
+                    )}
+                    {memberPct > 0 && !membership && (
+                      <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5">
+                        {memberPct}% off for members. {isAuthenticated ? 'Member prices are for guest accounts.' : <><RouterLink to="/login" className="font-bold underline">Log in</RouterLink> or <RouterLink to="/signup" className="font-bold underline">sign up free</RouterLink> to get it.</>}
+                      </p>
                     )}
                     <div className="flex justify-between text-gray-600">
                       <span>Taxes &amp; Fees ({Math.round(taxRate * 100)}%)</span>

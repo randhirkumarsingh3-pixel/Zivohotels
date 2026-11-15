@@ -55,7 +55,7 @@ const getCacheConfig = (url) => {
   if (url.includes('/availability') || url.includes('/pricing') || 
       url.includes('/bookings') || url.includes('/payments') || 
       url.includes('/auth') || url.includes('/wallet') || 
-      url.includes('/loyalty') || url.includes('/admin')) {
+      url.includes('/loyalty') || url.includes('/admin') || url.includes('/membership') || url.includes('/reviews')) {
     return null;
   }
 
@@ -306,6 +306,12 @@ export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/profile/passwor
 export const getNotifications = () => apiFetch(`${PUBLIC_BASE}/profile/notifications`).then(res => res?.data);
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
+// Membership (free Member + paid plans)
+export const getMembershipPlans = () => apiFetch(`${PUBLIC_BASE}/membership/plans`).then(res => res?.data || []);
+export const getMyMembership = () => apiFetch(`${PUBLIC_BASE}/membership/me`).then(res => res?.data);
+export const buyMembership = (planId, method) => apiFetch(`${PUBLIC_BASE}/membership/buy`, { method: 'POST', body: JSON.stringify({ planId, method }) }).then(res => res?.data);
+export const verifyMembership = (data) => apiFetch(`${PUBLIC_BASE}/membership/verify`, { method: 'POST', body: JSON.stringify(data) }).then(res => res?.data);
+
 // Zivo Cash (guest wallet)
 export const getMyWallet = () => apiFetch(`${PUBLIC_BASE}/wallet`).then(res => res?.data);
 

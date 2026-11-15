@@ -245,8 +245,11 @@ export const guestVoucherHtml = (d) => {
             const promoAmt = toMoney(promo?.discountAmount) || 0;
             const pts = booking.metadata?.loyalty;
             const ptsAmt = toMoney(pts?.discountAmount) || 0;
-            const other = roundMoney(discount - promoAmt - ptsAmt);
+            const mem = booking.metadata?.membership;
+            const memAmt = roundMoney((toMoney(mem?.hotelDiscount) || 0) + (toMoney(mem?.zivoDiscount) || 0));
+            const other = roundMoney(discount - promoAmt - ptsAmt - memAmt);
             return (promoAmt ? `<div><span>Offer: ${h(promo.name)}${promo.code ? ` (${h(promo.code)})` : ''}</span><span>− ${inr(promoAmt)}</span></div>` : '')
+              + (memAmt ? `<div><span>${h(mem.plan)} price</span><span>− ${inr(memAmt)}</span></div>` : '')
               + (ptsAmt ? `<div><span>Zivo Rewards (${Number(pts.pointsRedeemed).toLocaleString('en-IN')} points)</span><span>− ${inr(ptsAmt)}</span></div>` : '')
               + (other > 0 ? `<div><span>${booking.metadata?.prepaidDiscountAmount ? 'Pay-now discount' : 'Discount'}</span><span>− ${inr(other)}</span></div>` : '');
           })()}
