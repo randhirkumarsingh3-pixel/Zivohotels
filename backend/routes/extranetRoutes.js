@@ -1,3 +1,4 @@
+import prisma from '../config/db.js';
 import express from 'express';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
@@ -27,6 +28,22 @@ router.use(authorizeRoles('OWNER', 'ADMIN', 'MANAGER'));
 
 // Property Onboarding (Bypasses scoping during creation)
 router.post('/onboarding/init', initOnboarding);
+
+// The signed-in owner's properties, for the "Active property" switcher (before scoping: it lists
+// every hotel the owner may pick)
+router.get('/properties', async (req, res) => {
+  try {
+    const hotels = await prisma.hotel.findMany({
+      where: { ownerId: req.user.id, isDeleted: false },
+      select: { id: true, name: true, city: true, status: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json({ success: true, data: hotels });
+  } catch (error) {
+    console.error('Error listing extranet properties:', error);
+    res.status(500).json({ success: false, message: 'Could not load your properties' });
+  }
+});
 
 // Apply strict hotel scoping for all following extranet routes
 router.use(hotelScopeGuard);

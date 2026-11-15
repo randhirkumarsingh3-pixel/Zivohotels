@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useCallback, useEffect } from 'react';
-import { fetchProperty } from '../../services/extranetApi';
+import { fetchProperty, fetchMyProperties, getActiveHotelId, setActiveHotelId } from '../../services/extranetApi';
 
 const ExtranetContext = createContext();
 
@@ -16,6 +16,7 @@ export const ExtranetProvider = ({ children }) => {
   // Active Property Info
   const [property, setProperty] = useState(null);
   const [hotelId, setHotelId] = useState(null);
+  const [properties, setProperties] = useState([]);
 
   const addToast = useCallback((message, type = 'info') => {
     const id = crypto.randomUUID();
@@ -55,20 +56,45 @@ export const ExtranetProvider = ({ children }) => {
     // Only fetch if we are NOT already on the onboarding page
     if (window.location.pathname.startsWith('/extranet/onboarding')) return;
 
-    fetchProperty()
-      .then(res => {
+    // Check the remembered property against the owner's list first, so a property that's gone
+    // (deleted, another account) falls back to their first one. Only an owner with no properties
+    // at all is sent to onboarding.
+    let cancelled = false;
+    (async () => {
+      let list = null;
+      try { list = await fetchMyProperties(); } catch { /* fall through: let /property decide */ }
+      if (cancelled) return;
+      if (Array.isArray(list)) {
+        setProperties(list);
+        const stored = getActiveHotelId();
+        if (stored && !list.some(h => h.id === stored)) setActiveHotelId(null);
+      }
+      try {
+        const res = await fetchProperty();
+        if (cancelled) return;
         setProperty(res);
         setHotelId(res.id);
-      })
-      .catch(err => {
+        setActiveHotelId(res.id);
+      } catch (err) {
+        if (cancelled) return;
         console.error('Failed to fetch extranet property:', err);
         // If 403 (Forbidden) or 404, the user likely has no properties yet.
         // Redirect to onboarding to initialize supply acquisition.
         if (err.status === 403 || err.status === 404) {
           window.location.href = '/extranet/onboarding';
         }
-      });
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  /** Switch the whole extranet to another of the owner's properties. */
+  const switchProperty = useCallback((id) => {
+    if (!id || id === hotelId) return;
+    setActiveHotelId(id);
+    // Reload so every page and cache picks up the new property
+    window.location.assign('/extranet');
+  }, [hotelId]);
 
   return (
     <ExtranetContext.Provider
@@ -79,7 +105,9 @@ export const ExtranetProvider = ({ children }) => {
         registerDirtyState,
         isAnyDirty,
         property,
-        hotelId
+        hotelId,
+        properties,
+        switchProperty
       }}
     >
       {children}

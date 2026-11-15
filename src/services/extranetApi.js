@@ -11,10 +11,26 @@ const generateIdempotencyKey = () => {
   return crypto.randomUUID();
 };
 
+// The property the owner picked in the "Active property" switcher. Every extranet request carries
+// it as ?hotelId= (the server checks the owner owns it). Without it the server always used the
+// owner's first hotel, so owners with several properties could only manage one.
+const ACTIVE_HOTEL_KEY = 'extranet_active_hotel';
+export const getActiveHotelId = () => { try { return localStorage.getItem(ACTIVE_HOTEL_KEY); } catch { return null; } };
+export const setActiveHotelId = (id) => {
+  try { id ? localStorage.setItem(ACTIVE_HOTEL_KEY, id) : localStorage.removeItem(ACTIVE_HOTEL_KEY); } catch { /* private mode */ }
+};
+
+const withActiveHotel = (endpoint) => {
+  const id = getActiveHotelId();
+  if (!id || endpoint.startsWith('/properties') || endpoint.startsWith('/onboarding/init') || /[?&]hotelId=/.test(endpoint)) return endpoint;
+  return `${endpoint}${endpoint.includes('?') ? '&' : '?'}hotelId=${encodeURIComponent(id)}`;
+};
+
 /**
  * Extranet-specific fetch interceptor to handle specialized headers and error normalization.
  */
 const extranetFetch = async (endpoint, options = {}) => {
+  endpoint = withActiveHotel(endpoint);
   const headers = getAuthHeaders();
   
   // Inject Idempotency-Key for mutations
@@ -56,6 +72,7 @@ const extranetFetch = async (endpoint, options = {}) => {
 };
 
 // --- PROPERTY ---
+export const fetchMyProperties = () => extranetFetch('/properties', { method: 'GET' });
 export const fetchProperty = () => extranetFetch('/property', { method: 'GET' });
 export const updateProperty = (data) => extranetFetch('/property', { method: 'PUT', body: JSON.stringify(data) });
 
