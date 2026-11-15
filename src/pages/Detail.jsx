@@ -38,6 +38,16 @@ const MEAL_LABELS = {
   FULL_BOARD: { label: 'Full Board (AP)', icon: '🍴', color: 'bg-green-50 border-green-200 text-green-800' },
 };
 
+// A photo that hides itself (grey tile) if the file can't be loaded, instead of a broken icon
+const GalleryImage = ({ src, alt }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <div className="w-full h-full bg-gray-100" aria-label={alt} />;
+  return (
+    <img src={getImageUrl(src)} alt={alt} onError={() => setFailed(true)}
+      className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+  );
+};
+
 // The property's cancellation policy (CancellationPolicy.policyCode)
 const CANCELLATION_TEXT = {
   FREE_CANCEL_CHECKIN: 'Free cancellation until check-in',
@@ -148,7 +158,7 @@ const Detail = () => {
   const { id }       = useParams();
   const navigate     = useNavigate();
   const location     = useLocation();
-  const { searchParams, setSelectedHotel, updateSearchParams } = useBooking();
+  const { searchParams, selectedHotel: previousSelection, setSelectedHotel, updateSearchParams } = useBooking();
   const { checkIn, checkOut, guests, rooms } = searchParams;
 
   // Dates in the link (from search results, a reload or a shared link) take effect here
@@ -187,9 +197,14 @@ const Detail = () => {
         setHotel(data);
         // Pre-select first room type + cheapest rate plan
         if (data.roomTypes?.length > 0) {
-          const firstRoom = data.roomTypes[0];
-          setSelectedRoomType(firstRoom);
-          if (firstRoom.ratePlans?.length > 0) setSelectedRatePlan(firstRoom.ratePlans[0]);
+          // Coming back from checkout ("Change room or meal plan"): keep what was chosen
+          const prevRoom = previousSelection?.id === data.id
+            ? data.roomTypes.find(rt => rt.id === previousSelection.selectedRoomType?.id) : null;
+          const room = prevRoom || data.roomTypes[0];
+          setSelectedRoomType(room);
+          const prevPlan = prevRoom ? room.ratePlans?.find(rp => rp.id === previousSelection.selectedRatePlan?.id) : null;
+          if (prevPlan) setSelectedRatePlan(prevPlan);
+          else if (room.ratePlans?.length > 0) setSelectedRatePlan(room.ratePlans[0]);
         }
         
         // Analytics
@@ -244,6 +259,10 @@ const Detail = () => {
     </div>
   );
 
+  const photos = [...(hotel.media || [])]
+    .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
+    .map(m => m.url)
+    .filter(Boolean);
   const nights    = getNights(checkIn, checkOut);
   const nightsN   = rooms || 1;
   const pricePerNight = selectedRatePlan?.basePrice || 0;
@@ -254,24 +273,27 @@ const Detail = () => {
 
   return (
     <div className="pt-20 pb-20 bg-gray-50">
-      {/* Image Gallery */}
+      {/* Image Gallery: the property's own photos (primary first). It used to read fields the API
+          doesn't send, so the main photo was blank and the rest were stock pictures, some broken. */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[40vh] md:h-[60vh] rounded-2xl overflow-hidden">
-          <div className="md:col-span-2 h-full">
-            <img src={getImageUrl(hotel.images?.[0]?.url || hotel.image)} alt={hotel.name}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        {photos.length === 0 ? (
+          <div className="h-[30vh] rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Photos coming soon</div>
+        ) : (
+          <div className={`grid grid-cols-1 ${photos.length > 1 ? 'md:grid-cols-4' : ''} gap-4 h-[40vh] md:h-[60vh] rounded-2xl overflow-hidden`}>
+            <div className={`${photos.length > 1 ? 'md:col-span-2' : ''} h-full bg-gray-100`}>
+              <GalleryImage src={photos[0]} alt={hotel.name} />
+            </div>
+            {photos.length > 1 && (
+              <div className={`hidden md:grid col-span-2 ${photos.length > 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 h-full`}>
+                {photos.slice(1, 5).map((src, i) => (
+                  <div key={src + i} className={`bg-gray-100 ${photos.length === 3 ? 'row-span-2' : ''}`}>
+                    <GalleryImage src={src} alt={`${hotel.name} photo ${i + 2}`} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="hidden md:grid col-span-2 grid-cols-2 gap-4 h-full">
-            {[
-              hotel.images?.[1]?.url || 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
-              hotel.images?.[2]?.url || 'https://images.unsplash.com/photo-1542314831-c6a4d14d8c53?w=800',
-              'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800',
-              'https://images.unsplash.com/photo-1414235077428-33898ed1e814?w=800',
-            ].map((src, i) => (
-              <img key={i} src={getImageUrl(src)} alt="Hotel" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

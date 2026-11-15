@@ -1,3 +1,6 @@
+import { escapeHtml as h } from '../utils/html.js';
+import { toMoney } from '../utils/money.js';
+
 /**
  * Invoice Domain (Pure Logic)
  * 
@@ -35,11 +38,20 @@ export const invoiceDomain = {
       ...timeZoneOptions, year: 'numeric', month: 'short', day: 'numeric'
     }).format(new Date(booking.checkOut));
 
-    const formatCurrency = (amount) => `₹${amount.toFixed(2)}`;
-    
-    // Default GST details if not explicitly set on hotel model yet
-    const hotelGstIn = hotel.gstIn || '27XXXXX0000X1Z5';
-    const hotelState = hotel.state || hotel.city || 'Maharashtra';
+    const formatCurrency = (amount) => `₹${(toMoney(amount) || 0).toFixed(2)}`;
+
+    // The hotel's own GSTIN (the old code read a non-existent field and printed a made-up one)
+    const hotelGstIn = hotel.gstin ? h(hotel.gstin) : 'Not GST-registered';
+    const hotelState = h(hotel.integrationSettings?.addressDetails?.state || hotel.state || hotel.city || '');
+    const total = toMoney(booking.totalAmount) || 0;
+    const paid = toMoney(booking.paidAmount) || 0;
+    const status = paid >= total && total > 0
+      ? { text: 'PAID', color: '#10b981' }
+      : paid > 0 ? { text: 'PART-PAID', color: '#d97706' } : { text: 'PAYABLE AT HOTEL', color: '#d97706' };
+    const discount = toMoney(booking.metadata?.discountAmount) || 0;
+    const taxPct = booking.metadata?.taxPercentage;
+    // Accommodation is supplied where the property is, so GST is intra-state: half CGST, half SGST
+    const gstLabel = taxPct != null ? `GST @ ${taxPct}% (CGST ${taxPct / 2}% + SGST ${taxPct / 2}%)` : 'GST'; 
     const hsnCode = '996311'; // Standard HSN/SAC for Hotel accommodation
 
     return `
@@ -80,21 +92,27 @@ export const invoiceDomain = {
             <h2>INVOICE</h2>
             <p style="margin: 5px 0 0;"><strong>Ref:</strong> ${invoiceRef}<br>
             <strong>Date:</strong> ${formattedDate}<br>
-            <strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">PAID</span></p>
+            <strong>Status:</strong> <span style="color: ${status.color}; font-weight: bold;">${status.text}</span></p>
           </div>
         </div>
 
         <div class="billing-row">
           <div class="billing-col">
+            ${booking.guestCompanyName ? `
+            <h3>Billed To</h3>
+            <strong>${h(booking.guestCompanyName)}</strong><br>
+            ${booking.guestCompanyGstin ? `<strong>GSTIN:</strong> ${h(booking.guestCompanyGstin)}<br>` : ''}
+            ${booking.guestCompanyAddress ? `${h(booking.guestCompanyAddress)}<br>` : ''}
+            Guest: ${h(booking.guestName)}` : `
             <h3>Billed To (Guest)</h3>
-            <strong>${booking.guestName}</strong><br>
-            Email: ${booking.guestEmail}<br>
-            Phone: ${booking.guestPhone}
+            <strong>${h(booking.guestName)}</strong><br>
+            Email: ${h(booking.guestEmail)}<br>
+            Phone: ${h(booking.guestPhone)}`}
           </div>
           <div class="billing-col">
             <h3>Property Details</h3>
-            <strong>${hotel.name}</strong><br>
-            ${hotel.location}, ${hotel.city}<br>
+            <strong>${h(hotel.name)}</strong><br>
+            ${h(hotel.location)}, ${h(hotel.city)}<br>
             <strong>GSTIN:</strong> ${hotelGstIn}<br>
             <strong>Place of Supply (State):</strong> ${hotelState}
           </div>
@@ -138,6 +156,12 @@ export const invoiceDomain = {
               <td>${hsnCode}</td>
               <td class="text-right">${formatCurrency(booking.mealCharges)}</td>
             </tr>` : ''}
+            ${discount > 0 ? `
+            <tr>
+              <td>Discount</td>
+              <td></td>
+              <td class="text-right">− ${formatCurrency(discount)}</td>
+            </tr>` : ''}
           </tbody>
         </table>
 
@@ -147,13 +171,16 @@ export const invoiceDomain = {
             <span>${formatCurrency(booking.subtotal || booking.baseAmount || 0)}</span>
           </div>
           <div class="summary-row">
-            <span>Taxes & GST</span>
+            <span>${gstLabel}</span>
             <span>${formatCurrency(booking.taxAmount || 0)}</span>
           </div>
           <div class="summary-row total">
             <span>Total Amount</span>
             <span>${formatCurrency(booking.totalAmount || 0)}</span>
           </div>
+          ${paid < total ? `
+          <div class="summary-row"><span>Paid online</span><span>${formatCurrency(paid)}</span></div>
+          <div class="summary-row"><span>Payable at hotel</span><span>${formatCurrency(total - paid)}</span></div>` : ''}
         </div>
         <div class="clear"></div>
 

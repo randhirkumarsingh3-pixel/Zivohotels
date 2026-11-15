@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
-import { createBooking, cancelBooking, createPaymentOrder, verifyPaymentApi, previewBookingApi, getPublicConfig, trackEvent } from '../services/api.js';
+import { createBooking, cancelBooking, createPaymentOrder, verifyPaymentApi, previewBookingApi, getPublicConfig, trackEvent, getMyProfile } from '../services/api.js';
+import { useAuth } from '../context/AuthContext';
+import { saveVoucher } from '../utils/voucher';
 import { 
   CheckCircle2, ShieldCheck, CreditCard, Building, 
   PieChart, Clock, AlertTriangle, User, Mail, 
-  Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight 
+  Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight,
+  ArrowLeft, Briefcase, Download
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
@@ -44,6 +47,36 @@ const Checkout = () => {
 
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const handleForm = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  // Logged-in users choose whether they are the guest (details filled from their profile) or are
+  // booking for someone else (details entered for that guest)
+  const { user } = useAuth();
+  const [travellerType, setTravellerType] = useState('self');
+  const [profile, setProfile] = useState(null);
+  const fillFromProfile = useCallback((p) => {
+    if (!p) return;
+    const [first, ...rest] = String(p.name || '').trim().split(/\s+/);
+    setForm({ firstName: first || '', lastName: rest.join(' '), email: p.email || '', phone: p.phone || '' });
+  }, []);
+  useEffect(() => {
+    if (!user) return;
+    getMyProfile()
+      .then(p => { setProfile(p); fillFromProfile(p); })
+      .catch(() => fillFromProfile(user));
+  }, [user, fillFromProfile]);
+  const chooseTraveller = (type) => {
+    setTravellerType(type);
+    if (type === 'self') fillFromProfile(profile || user);
+    else setForm({ firstName: '', lastName: '', email: '', phone: '' });
+  };
+
+  // Optional company details for a GST invoice
+  const [withCompany, setWithCompany] = useState(false);
+  const [company, setCompany] = useState({ name: '', gstin: '', address: '' });
+  const handleCompany = (e) => setCompany(c => ({ ...c, [e.target.name]: e.target.name === 'gstin' ? e.target.value.toUpperCase() : e.target.value }));
+  const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+  const [confirmedBookingId, setConfirmedBookingId] = useState(null);
+  const [voucherBusy, setVoucherBusy] = useState(false);
 
   const pendingBookingRef = useRef(null);
   const [expiresAt, setExpiresAt] = useState(null);
@@ -135,6 +168,10 @@ const Checkout = () => {
       setError('Please agree to the Terms & Conditions and Cancellation Policy.');
       return;
     }
+    if (withCompany) {
+      if (!company.name.trim()) { setError('Enter the company name for the GST invoice, or untick "Add company / GST details".'); return; }
+      if (company.gstin && !GSTIN_RE.test(company.gstin.trim())) { setError('Enter a valid 15-character GSTIN (for example 27ABCDE1234F1Z5).'); return; }
+    }
     setLoading(true);
     setError('');
     
@@ -154,7 +191,12 @@ const Checkout = () => {
         children: searchParams.children || 0,
         extraBeds: searchParams.extraBeds || 0,
         rooms: searchParams.rooms || 1,
-        paymentType
+        paymentType,
+        ...(withCompany && company.name.trim() ? {
+          companyName: company.name.trim(),
+          ...(company.gstin.trim() ? { companyGstin: company.gstin.trim() } : {}),
+          ...(company.address.trim() ? { companyAddress: company.address.trim() } : {}),
+        } : {})
       };
       
       const bookingRes = await createBooking(bookingPayload);
@@ -167,6 +209,7 @@ const Checkout = () => {
       
       if (paymentType === 'PAY_AT_HOTEL') {
         pendingBookingRef.current = null;
+        setConfirmedBookingId(bookingId);
         setSuccess(true);
         setBookingRef(ref);
         setLoading(false);
@@ -198,6 +241,7 @@ const Checkout = () => {
               bookingId
             });
             pendingBookingRef.current = null;
+            setConfirmedBookingId(bookingId);
             setSuccess(true);
             setBookingRef(ref);
             trackEvent('BOOKING_COMPLETED', { bookingId, paymentType }, selectedHotel.id, selectedHotel.city, allExperiments);
@@ -259,6 +303,29 @@ const Checkout = () => {
             <p className="text-4xl font-mono font-black text-brand-700">{bookingRef}</p>
           </div>
           
+          {confirmedBookingId && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={async () => {
+                  setVoucherBusy(true);
+                  try { await saveVoucher(confirmedBookingId, bookingRef, 'guest'); }
+                  catch (err) { setError(err.message || 'Could not download the voucher.'); }
+                  finally { setVoucherBusy(false); }
+                }}
+                disabled={voucherBusy}
+                className="flex items-center justify-center gap-2 border-2 border-gray-900 text-gray-900 font-bold py-4 rounded-2xl hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Download size={18} /> {voucherBusy ? 'Preparing…' : 'Download voucher'}
+              </button>
+              <button
+                onClick={() => { clearBooking(); navigate('/my-bookings'); }}
+                className="flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-bold py-4 rounded-2xl hover:bg-gray-50"
+              >
+                My Bookings
+              </button>
+            </div>
+          )}
+          {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
           <button 
             onClick={() => { clearBooking(); navigate('/'); }}
             className="group relative w-full bg-gray-900 text-white font-bold py-5 rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
@@ -284,6 +351,16 @@ const Checkout = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10">
+          <button
+            type="button"
+            onClick={() => {
+              const q = new URLSearchParams({ checkin: searchParams.checkIn || '', checkout: searchParams.checkOut || '', guests: String(searchParams.guests || 2), rooms: String(searchParams.rooms || 1) });
+              navigate(`/hotel/${selectedHotel.id}?${q}`);
+            }}
+            className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-brand-700"
+          >
+            <ArrowLeft size={16} /> Change room or meal plan
+          </button>
           <div className="flex items-center gap-2 text-brand-700 font-bold text-sm uppercase tracking-widest mb-2">
             <Lock size={14} /> Secure Encryption Active
           </div>
@@ -310,6 +387,25 @@ const Checkout = () => {
                 <div className="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-xl">1</div>
                 <h2 className="text-2xl font-black text-gray-900">Guest Information</h2>
               </div>
+
+              {user && (
+                <div className="grid grid-cols-2 gap-3 mb-6" role="radiogroup" aria-label="Who is travelling?">
+                  {[
+                    { id: 'self', title: "I'm the guest", desc: 'Use my profile details' },
+                    { id: 'other', title: 'Someone else', desc: "Enter the guest's details" },
+                  ].map(opt => (
+                    <button key={opt.id} type="button" role="radio" aria-checked={travellerType === opt.id}
+                      onClick={() => chooseTraveller(opt.id)}
+                      className={`text-left p-4 rounded-2xl border-2 transition-all ${travellerType === opt.id ? 'border-brand-700 bg-brand-50/40' : 'border-gray-100 hover:border-gray-200'}`}>
+                      <p className="font-black text-gray-900 text-sm">{opt.title}</p>
+                      <p className="text-xs text-gray-500">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {user && travellerType === 'self' && !form.phone && (
+                <p className="text-xs text-amber-700 mb-4">Your profile has no phone number. Add it below so the hotel can reach you.</p>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative group">
@@ -333,6 +429,23 @@ const Checkout = () => {
                     className="w-full bg-gray-50 border-transparent border-b-2 border-b-gray-200 rounded-t-xl px-12 py-4 focus:bg-white focus:border-b-brand-700 outline-none transition-all font-medium" placeholder="Phone Number" />
                 </div>
               </div>
+
+              {/* Optional: GST invoice in a company's name */}
+              <label className="mt-6 flex items-center gap-3 cursor-pointer select-none">
+                <input type="checkbox" checked={withCompany} onChange={e => setWithCompany(e.target.checked)} className="w-4 h-4 accent-brand-700" />
+                <span className="text-sm font-bold text-gray-800 flex items-center gap-2"><Briefcase size={16} className="text-gray-500" /> Add company / GST details <span className="font-medium text-gray-400">(optional)</span></span>
+              </label>
+              {withCompany && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" name="name" value={company.name} onChange={handleCompany} placeholder="Company name"
+                    className="w-full bg-gray-50 border-b-2 border-b-gray-200 rounded-t-xl px-4 py-3 focus:bg-white focus:border-b-brand-700 outline-none font-medium" />
+                  <input type="text" name="gstin" value={company.gstin} onChange={handleCompany} placeholder="GSTIN (15 characters)" maxLength={15}
+                    className="w-full bg-gray-50 border-b-2 border-b-gray-200 rounded-t-xl px-4 py-3 focus:bg-white focus:border-b-brand-700 outline-none font-medium uppercase" />
+                  <input type="text" name="address" value={company.address} onChange={handleCompany} placeholder="Company address (as registered for GST)"
+                    className="md:col-span-2 w-full bg-gray-50 border-b-2 border-b-gray-200 rounded-t-xl px-4 py-3 focus:bg-white focus:border-b-brand-700 outline-none font-medium" />
+                  <p className="md:col-span-2 text-xs text-gray-500">The property issues the tax invoice in this company&apos;s name and GSTIN.</p>
+                </div>
+              )}
             </section>
 
             {/* Step 2: Payment Strategy */}
@@ -394,7 +507,11 @@ const Checkout = () => {
               <div className="p-8 bg-gray-900 text-white">
                 <div className="flex justify-between items-start mb-6">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/10 border border-white/10">
-                    <img src={getImageUrl(selectedHotel.image)} alt="Hotel" className="w-full h-full object-cover opacity-80" />
+                    {(selectedHotel.media?.[0]?.url || selectedHotel.image) ? (
+                      <img src={getImageUrl(selectedHotel.media?.[0]?.url || selectedHotel.image)} alt={selectedHotel.name}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        className="w-full h-full object-cover opacity-80" />
+                    ) : <Building className="w-full h-full p-4 text-white/40" />}
                   </div>
                   {countdown && (
                     <div className={`px-4 py-2 rounded-xl flex items-center gap-2 border ${countdown.expired ? 'bg-red-500/20 border-red-500 text-red-100' : 'bg-white/10 border-white/20 text-white'}`}>

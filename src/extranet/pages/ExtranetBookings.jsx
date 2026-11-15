@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { fetchBookings, transitionBookingStatus } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
+import { saveVoucher } from '../../utils/voucher';
 
 const statusConfig = {
   PENDING: { color: 'bg-yellow-50 text-yellow-600 border-yellow-100', icon: Clock },
@@ -216,6 +217,16 @@ const ExtranetBookings = () => {
                       </button>
                     )}
                     
+                    {/* Hotelier voucher: stay, guest and the payment / commission / TCS / TDS breakup */}
+                    <button
+                      onClick={async () => {
+                        try { await saveVoucher(booking.id, booking.bookingRef, 'hotelier'); }
+                        catch (err) { addToast(err.message || 'Could not download the voucher.', 'error'); }
+                      }}
+                      className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-700 hover:bg-gray-50 transition-all"
+                    >
+                      <Download size={14} /> Hotelier voucher
+                    </button>
                     {['PENDING', 'CONFIRMED'].includes(booking.status) && (
                       <button 
                         onClick={() => handleTransition(booking.id, 'CANCELLED')}
