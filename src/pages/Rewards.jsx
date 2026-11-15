@@ -14,7 +14,7 @@ const TIER_STYLE = {
   SILVER: 'from-slate-500 to-slate-700',
   GOLD: 'from-amber-500 to-orange-600',
 };
-const TYPE_LABEL = { EARN: 'Stay', REDEEM: 'Used', BONUS: 'Bonus', ADJUST: 'Adjustment' };
+const TYPE_LABEL = { EARN: 'Stay', REDEEM: 'Used', BONUS: 'Bonus', ADJUST: 'Adjustment', EXPIRE: 'Expired' };
 
 const Rewards = () => {
   const { isAuthenticated, user } = useAuth();
@@ -64,6 +64,11 @@ const Rewards = () => {
                 <div><p className="opacity-70 text-xs">Earned so far</p><p className="font-bold">{me.lifetimeEarned.toLocaleString('en-IN')} pts</p></div>
                 <div><p className="opacity-70 text-xs">Used so far</p><p className="font-bold">{me.lifetimeUsed.toLocaleString('en-IN')} pts</p></div>
               </div>
+              {me.expiringSoon && (
+                <p className="mt-5 inline-flex items-center gap-2 bg-white/15 rounded-full px-3 py-1.5 text-xs font-semibold">
+                  <Clock size={13} /> {me.expiringSoon.points.toLocaleString('en-IN')} points expire on {new Date(me.expiringSoon.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Use them at checkout.
+                </p>
+              )}
             </div>
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-3">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Your tier</p>
@@ -102,7 +107,7 @@ const Rewards = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { icon: BedDouble, title: 'Earn on stays', text: `${p.earnPointsPer100} point${p.earnPointsPer100 === 1 ? '' : 's'} per ₹100 of the room price (before GST), more at higher tiers. Points show as pending until you check out.` },
-              { icon: Gift, title: 'Use at checkout', text: `Tick "Use my points" when you book. ${p.minRedeemPoints} points minimum, up to ${p.maxRedeemPercent}% of the room price. Cancel the booking and your points come back.` },
+              { icon: Gift, title: 'Use at checkout', text: `Tick "Use my points" when you book. ${p.minRedeemPoints} points minimum, up to ${p.maxRedeemPercent}% of the room price. Cancel the booking and your points come back.${p.expiryMonths ? ` Points expire ${p.expiryMonths} months after they're added; we use your oldest points first and remind you 30 days before.` : ' Points don\'t expire.'}` },
               { icon: Star, title: 'Bonus points', text: p.reviewBonusPoints ? `${p.reviewBonusPoints} points when your review of a stay is published.` : 'Watch for bonus offers.' },
             ].map((c) => (
               <div key={c.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -149,7 +154,7 @@ const Rewards = () => {
               <ul className="divide-y divide-gray-100">
                 {history.map((h) => (
                   <li key={h.id} className="px-6 py-4 flex items-center gap-4">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${h.points > 0 ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${h.points > 0 ? 'bg-green-50 text-green-600' : h.type === 'EXPIRE' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
                       {h.points > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                     </div>
                     <div className="flex-1 min-w-0">

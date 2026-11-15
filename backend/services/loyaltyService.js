@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../config/db.js';
+import { queueService } from './queueService.js';
+import { escapeHtml } from '../utils/html.js';
 
 /**
  * Zivo Rewards: the guest loyalty program.
@@ -11,6 +13,9 @@ import prisma from '../config/db.js';
  * Spending  At checkout points become a discount (1 point = pointValue rupees), up to a share of
  *           the stay's pre-GST amount. Zivo pays for it: the hotel's settlement is on the full
  *           price. Points used on a booking that is cancelled come back.
+ * Expiry    Each batch of points expires expiryMonths after it became usable (0 = never). Points
+ *           are used oldest first, so what expires is whatever is left of old batches. Guests
+ *           are emailed 30 days before.
  * Ledger    LoyaltyPoint rows; balance = sum of AVAILABLE rows. A reconcile job settles points as
  *           bookings complete or get cancelled, and backfills completed stays.
  * Settings  LoyaltySetting (Admin -> Loyalty).
@@ -25,6 +30,7 @@ export const DEFAULT_CONFIG = {
   reviewBonusPoints: 50,
   signupBonusPoints: 0,
   tierWindowMonths: 12,
+  expiryMonths: 24,         // points expire this long after they became usable (0 = never)
   tiers: [
     { id: 'BLUE', name: 'Blue', minNights: 0, minSpend: 0, multiplier: 1 },
     { id: 'SILVER', name: 'Silver', minNights: 5, minSpend: 25000, multiplier: 1.25 },
@@ -57,6 +63,8 @@ export const updateConfig = async (patch, adminId) => {
   num('reviewBonusPoints', 0, 100000);
   num('signupBonusPoints', 0, 100000);
   num('tierWindowMonths', 1, 36);
+  num('expiryMonths', 0, 120);
+  next.expiryMonths = Math.round(next.expiryMonths);
   next.enabled = Boolean(next.enabled);
   if (!Array.isArray(next.tiers) || next.tiers.length < 1 || next.tiers.length > 5) throw fail('Set up 1 to 5 tiers');
   next.tiers = next.tiers.map((t, i) => ({
@@ -107,22 +115,26 @@ export const pointsForAmount = (preTaxAmount, cfg, multiplier = 1) =>
 
 export const memberSummary = async (userId) => {
   const cfg = await getConfig();
-  const [available, pending, earned, redeemed, tier] = await Promise.all([
+  const [available, pending, earned, redeemed, expired, tier, expiring] = await Promise.all([
     availablePoints(userId),
     sumPoints({ userId, status: 'PENDING' }),
     sumPoints({ userId, status: 'AVAILABLE', points: { gt: 0 } }),
     sumPoints({ userId, status: 'AVAILABLE', type: 'REDEEM' }),
+    sumPoints({ userId, status: 'AVAILABLE', type: 'EXPIRE' }),
     tierFor(userId, cfg),
+    expiringSoon(userId, cfg, 60),
   ]);
   return {
     enabled: cfg.enabled,
     available, pending,
     value: Math.round(available * cfg.pointValue * 100) / 100,
-    lifetimeEarned: earned, lifetimeUsed: Math.abs(redeemed),
+    lifetimeEarned: earned, lifetimeUsed: Math.abs(redeemed), lifetimeExpired: Math.abs(expired),
+    expiringSoon: expiring,
     ...tier,
     program: {
       earnPointsPer100: cfg.earnPointsPer100, pointValue: cfg.pointValue, minRedeemPoints: cfg.minRedeemPoints,
       maxRedeemPercent: cfg.maxRedeemPercent, reviewBonusPoints: cfg.reviewBonusPoints, tierWindowMonths: cfg.tierWindowMonths, tiers: cfg.tiers,
+      expiryMonths: cfg.expiryMonths,
     },
   };
 };
@@ -206,7 +218,7 @@ export const syncBooking = async (bookingId, db = prisma) => {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true } });
   if (!booking) return;
   if (booking.status === 'COMPLETED') {
-    await db.loyaltyPoint.updateMany({ where: { bookingId, type: 'EARN', status: 'PENDING' }, data: { status: 'AVAILABLE' } });
+    await db.loyaltyPoint.updateMany({ where: { bookingId, type: 'EARN', status: 'PENDING' }, data: { status: 'AVAILABLE', availableAt: new Date() } });
   } else if (booking.status === 'CANCELLED') {
     await db.loyaltyPoint.updateMany({ where: { bookingId, type: 'EARN', status: { in: ['PENDING', 'AVAILABLE'] } }, data: { status: 'REVERSED' } });
     await db.loyaltyPoint.updateMany({ where: { bookingId, type: 'REDEEM', status: 'AVAILABLE' }, data: { status: 'REVERSED', description: 'Returned: booking cancelled' } });
@@ -239,24 +251,125 @@ export const reconcile = async () => {
     for (const b of missing) {
       const points = pointsForAmount(b.baseAmount, cfg, 1);
       if (points > 0) {
-        await prisma.loyaltyPoint.create({ data: { userId: b.userId, bookingId: b.id, points, type: 'EARN', status: b.status === 'COMPLETED' ? 'AVAILABLE' : 'PENDING', source: 'BOOKING', description: `Stay ${b.bookingRef}` } });
+        await prisma.loyaltyPoint.create({ data: { userId: b.userId, bookingId: b.id, points, type: 'EARN', status: b.status === 'COMPLETED' ? 'AVAILABLE' : 'PENDING', availableAt: b.status === 'COMPLETED' ? new Date() : null, source: 'BOOKING', description: `Stay ${b.bookingRef}` } });
         backfilled += 1;
       }
     }
   }
-  return { synced: toSync.length, backfilled };
+  const expired = await expirePoints();
+  const reminded = await sendExpiryReminders();
+  return { synced: toSync.length, backfilled, expired, reminded };
 };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 export const startLoyaltyJob = () => {
   const run = () => reconcile()
-    .then((r) => { if (r.synced || r.backfilled) console.log(`[ZivoRewards] settled ${r.synced} booking(s), backfilled ${r.backfilled}`); })
+    .then((r) => { if (r.synced || r.backfilled || r.expired || r.reminded) console.log(`[ZivoRewards] settled ${r.synced} booking(s), backfilled ${r.backfilled}, expired ${r.expired} pts, reminded ${r.reminded}`); })
     .catch((err) => console.error('[ZivoRewards] reconcile failed:', err.message));
   const first = setTimeout(run, 20 * 1000);
   first.unref?.();
   const timer = setInterval(run, FIVE_MINUTES);
   timer.unref?.();
   return timer;
+};
+
+// ── Expiry ──────────────────────────────────────────────────────────────────
+
+const addMonths = (d, m) => { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; };
+
+/**
+ * Oldest-first allocation (pure): batches of points (credits) are used up by the member's debits
+ * (points used, removed or expired), oldest batch first. Returns each batch with what is left.
+ * lots: [{ id, points, availableAt }] sorted oldest first; debitTotal: points taken out (>= 0).
+ */
+export const allocateLots = (lots, debitTotal) => {
+  let toCover = Math.max(0, debitTotal);
+  return lots.map((lot) => {
+    const used = Math.min(lot.points, toCover);
+    toCover -= used;
+    return { ...lot, remaining: lot.points - used };
+  });
+};
+
+/** The member's batches of usable points with what is left of each and when it expires. */
+export const pointLots = async (userId, cfg, db = prisma) => {
+  const rows = await db.loyaltyPoint.findMany({ where: { userId, status: 'AVAILABLE' }, select: { id: true, points: true, availableAt: true, createdAt: true, expiryNoticeAt: true } });
+  const credits = rows.filter((r) => r.points > 0)
+    .map((r) => ({ id: r.id, points: r.points, availableAt: r.availableAt || r.createdAt, expiryNoticeAt: r.expiryNoticeAt }))
+    .sort((a, b) => a.availableAt - b.availableAt);
+  const debits = -rows.filter((r) => r.points < 0).reduce((s, r) => s + r.points, 0);
+  return allocateLots(credits, debits).map((l) => ({ ...l, expiresAt: cfg.expiryMonths > 0 ? addMonths(l.availableAt, cfg.expiryMonths) : null }));
+};
+
+/** Points expiring soonest (within `days`): { points, date } or null. */
+export const expiringSoon = async (userId, cfg, days = 60, db = prisma) => {
+  if (!(cfg.expiryMonths > 0)) return null;
+  const until = new Date(Date.now() + days * DAY);
+  const lots = (await pointLots(userId, cfg, db)).filter((l) => l.remaining > 0 && l.expiresAt <= until);
+  if (!lots.length) return null;
+  return { points: lots.reduce((s, l) => s + l.remaining, 0), date: lots[0].expiresAt };
+};
+
+/** Expires what is left of each member's batches that reached their expiry date. */
+export const expirePoints = async () => {
+  const cfg = await getConfig();
+  if (!(cfg.expiryMonths > 0)) return 0;
+  const cutoff = addMonths(new Date(), -cfg.expiryMonths);
+  const candidates = await prisma.loyaltyPoint.findMany({
+    where: { status: 'AVAILABLE', points: { gt: 0 }, OR: [{ availableAt: { lte: cutoff } }, { availableAt: null, createdAt: { lte: cutoff } }] },
+    distinct: ['userId'], select: { userId: true },
+  });
+  let expired = 0;
+  for (const { userId } of candidates) {
+    await prisma.$transaction(async (tx) => {
+      await lockMember(tx, userId);
+      const now = new Date();
+      const due = (await pointLots(userId, cfg, tx)).filter((l) => l.remaining > 0 && l.expiresAt && l.expiresAt <= now);
+      const points = due.reduce((sum, l) => sum + l.remaining, 0);
+      if (points > 0) {
+        const oldest = due[0].availableAt;
+        await tx.loyaltyPoint.create({ data: {
+          userId, points: -points, type: 'EXPIRE', status: 'AVAILABLE', source: 'EXPIRY',
+          description: `${points.toLocaleString('en-IN')} points expired (added ${new Date(oldest).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})`,
+        } });
+        expired += points;
+      }
+    });
+  }
+  return expired;
+};
+
+/** Emails members whose points expire within 30 days (once per batch). */
+export const sendExpiryReminders = async () => {
+  const cfg = await getConfig();
+  if (!(cfg.expiryMonths > 0) || !cfg.enabled) return 0;
+  const cutoff = addMonths(new Date(Date.now() + 30 * DAY), -cfg.expiryMonths);
+  const candidates = await prisma.loyaltyPoint.findMany({
+    where: { status: 'AVAILABLE', points: { gt: 0 }, expiryNoticeAt: null, OR: [{ availableAt: { lte: cutoff } }, { availableAt: null, createdAt: { lte: cutoff } }] },
+    distinct: ['userId'], select: { userId: true },
+  });
+  let sent = 0;
+  for (const { userId } of candidates) {
+    const soon = (await pointLots(userId, cfg)).filter((l) => l.remaining > 0 && l.expiresAt <= new Date(Date.now() + 30 * DAY) && !l.expiryNoticeAt);
+    const points = soon.reduce((s, l) => s + l.remaining, 0);
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+    if (points > 0 && user?.email) {
+      const date = soon[0].expiresAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      await queueService.enqueue('email', 'REWARDS_EXPIRY_REMINDER', {
+        to: user.email,
+        subject: `${points.toLocaleString('en-IN')} Zivo Rewards points expire on ${date}`,
+        html: `<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:20px">
+          <h2 style="margin:0 0 12px">Use your points before they expire</h2>
+          <p>Hi ${escapeHtml((user.name || '').split(' ')[0] || 'there')},</p>
+          <p><strong>${points.toLocaleString('en-IN')} points</strong> (worth ₹${Math.round(points * cfg.pointValue).toLocaleString('en-IN')}) expire on <strong>${date}</strong>.
+          Use them on your next booking: tick "Use my points" at checkout.</p>
+          <p style="color:#888;font-size:13px">Zivo Rewards points expire ${cfg.expiryMonths} months after they are added. See your points at ZivoHotels → Zivo Rewards.</p></div>`,
+      }, { priority: 4 }).catch(() => {});
+      sent += 1;
+    }
+    await prisma.loyaltyPoint.updateMany({ where: { id: { in: soon.map((l) => l.id) } }, data: { expiryNoticeAt: new Date() } });
+  }
+  return sent;
 };
 
 // ── Bonuses and admin adjustments ───────────────────────────────────────────
@@ -267,13 +380,13 @@ export const awardReviewBonus = async (review) => {
   if (!cfg.enabled || !(cfg.reviewBonusPoints > 0)) return null;
   const exists = await prisma.loyaltyPoint.findFirst({ where: { reviewId: review.id, type: 'BONUS' }, select: { id: true } });
   if (exists) return null;
-  return prisma.loyaltyPoint.create({ data: { userId: review.userId, reviewId: review.id, points: cfg.reviewBonusPoints, type: 'BONUS', status: 'AVAILABLE', source: 'REVIEW', description: 'Review published' } });
+  return prisma.loyaltyPoint.create({ data: { userId: review.userId, reviewId: review.id, points: cfg.reviewBonusPoints, type: 'BONUS', status: 'AVAILABLE', availableAt: new Date(), source: 'REVIEW', description: 'Review published' } });
 };
 
 export const awardSignupBonus = async (userId) => {
   const cfg = await getConfig();
   if (!cfg.enabled || !(cfg.signupBonusPoints > 0)) return null;
-  return prisma.loyaltyPoint.create({ data: { userId, points: cfg.signupBonusPoints, type: 'BONUS', status: 'AVAILABLE', source: 'SIGNUP', description: 'Welcome to Zivo Rewards' } });
+  return prisma.loyaltyPoint.create({ data: { userId, points: cfg.signupBonusPoints, type: 'BONUS', status: 'AVAILABLE', availableAt: new Date(), source: 'SIGNUP', description: 'Welcome to Zivo Rewards' } });
 };
 
 export const adjust = async ({ userId, points, reason }, adminId) => {
@@ -285,7 +398,7 @@ export const adjust = async ({ userId, points, reason }, adminId) => {
   return prisma.$transaction(async (tx) => {
     await lockMember(tx, userId);
     if (p < 0 && (await availablePoints(userId, tx)) + p < 0) throw fail('That would make the balance negative');
-    const row = await tx.loyaltyPoint.create({ data: { userId, points: p, type: 'ADJUST', status: 'AVAILABLE', source: 'ADMIN', description: reason.trim().slice(0, 200), createdById: adminId } });
+    const row = await tx.loyaltyPoint.create({ data: { userId, points: p, type: 'ADJUST', status: 'AVAILABLE', availableAt: p > 0 ? new Date() : null, source: 'ADMIN', description: reason.trim().slice(0, 200), createdById: adminId } });
     await tx.auditLog.create({ data: { action: 'LOYALTY_ADJUST', entityType: 'USER', entityId: userId, userId: adminId, details: { points: p, reason: reason.trim() } } });
     return row;
   });
@@ -296,12 +409,13 @@ export const adjust = async ({ userId, points, reason }, adminId) => {
 export const programStats = async () => {
   const cfg = await getConfig();
   const since = new Date(Date.now() - 30 * DAY);
-  const [outstanding, pending, members, earned30, used30] = await Promise.all([
+  const [outstanding, pending, members, earned30, used30, expired30] = await Promise.all([
     sumPoints({ status: 'AVAILABLE' }),
     sumPoints({ status: 'PENDING' }),
     prisma.loyaltyPoint.groupBy({ by: ['userId'], where: { NOT: { status: 'VOID' } } }),
     sumPoints({ status: { in: ['AVAILABLE', 'PENDING'] }, points: { gt: 0 }, createdAt: { gte: since } }),
     sumPoints({ status: 'AVAILABLE', type: 'REDEEM', createdAt: { gte: since } }),
+    sumPoints({ status: 'AVAILABLE', type: 'EXPIRE', createdAt: { gte: since } }),
   ]);
   return {
     config: cfg,
@@ -311,6 +425,7 @@ export const programStats = async () => {
     pendingPoints: pending,
     earnedLast30: earned30,
     usedLast30: Math.abs(used30),
+    expiredLast30: Math.abs(expired30),
   };
 };
 
@@ -331,6 +446,7 @@ export const listMembers = async ({ search = '', page = 1, limit = 25 } = {}) =>
 
 export default {
   DEFAULT_CONFIG, getConfig, updateConfig, availablePoints, tierFor, pointsForAmount, memberSummary, history,
+  allocateLots, pointLots, expiringSoon, expirePoints, sendExpiryReminders,
   planForCheckout, redeemForBooking, recordEarnForBooking, syncBooking, reconcile, startLoyaltyJob,
   awardReviewBonus, awardSignupBonus, adjust, programStats, listMembers,
 };

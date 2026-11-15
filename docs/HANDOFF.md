@@ -314,6 +314,10 @@ settlement. Fixed along the way:
   points for customer stays that had none.
 - Points used are a Zivo-funded discount: `metadata.loyalty.discountAmount` is added to
   `zivoFundedDiscount`, so commission and the hotel payout are on the full price. Shown on vouchers.
+- Expiry: each batch of points expires `expiryMonths` (default 24, 0 = never) after it became
+  usable (`availableAt`). Points are used oldest first (`allocateLots`), so the reconcile job adds
+  an EXPIRE row for whatever is left of batches past expiry, and emails a reminder 30 days before
+  (once per batch, `expiryNoticeAt`). The Rewards page shows points expiring in the next 60 days.
 - Customer accounts only. Old LoyaltyPoint rows (awarded on booking creation, never reversed) are
   kept as VOID and not counted. The admin "Loyalty Program" tier-discount tab (never applied) now
   links to Admin -> Loyalty.
