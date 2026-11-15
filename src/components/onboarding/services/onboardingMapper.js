@@ -32,6 +32,9 @@ export const buildHotelPayload = (formData, VITE_API_URL) => {
     policies: formData.policies || [],
     checkInTime: str(formData.checkInTime),
     checkOutTime: str(formData.checkOutTime),
+    // House rules and meal rack prices (Policies step), shown to guests on the hotel page
+    policyRules: formData.policyRules && Object.keys(formData.policyRules).length ? formData.policyRules : undefined,
+    mealPrices: formData.mealPrices && Object.keys(formData.mealPrices).length ? formData.mealPrices : undefined,
 
     // Contact — send undefined (not '') for empty optional strings
     receptionPhone: str(formData.guestMobile || formData.receptionPhone),

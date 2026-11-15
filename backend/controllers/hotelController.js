@@ -42,6 +42,10 @@ const hotelSchema = z.object({
   policies: z.array(z.string()).optional().default([]),
   checkInTime: z.string().optional().default('14:00'),
   checkOutTime: z.string().optional().default('11:00'),
+  // Policies step: house rules (Yes/No answers, ID proofs, custom policy) and meal rack prices.
+  // These were collected by the wizard but never sent or saved.
+  policyRules: z.record(z.union([z.string().max(2000), z.array(z.string().max(60)).max(20), z.boolean()])).optional(),
+  mealPrices: z.record(z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0).max(100000).optional())).optional(),
   // Step 3: Contact
   receptionPhone: z.string().optional(),
   receptionEmail: z.string().optional(),
@@ -164,11 +168,12 @@ export const normalizeHotelPayload = (data) => {
     bankDetail, commissionRate, cancellationPolicy, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
     incorporationType, payoutCycle, msme, builtYear, bookingSince,
-    state, country, area, pincode, landmark
+    state, country, area, pincode, landmark, policyRules, mealPrices
   } = data;
   
   // 1. Consistent location derived from address and city
-  const finalLocation = location || (address ? `${address}, ${city}` : city);
+  // (A partial update without the city used to save "<address>, undefined")
+  const finalLocation = location || (address ? [address, city].filter(Boolean).join(', ') : city);
   
   const prismaData = {
     name,
@@ -225,8 +230,14 @@ export const normalizeHotelPayload = (data) => {
   if (builtYear !== undefined) _commercials.builtYear = builtYear;
   if (bookingSince !== undefined) _commercials.bookingSince = bookingSince;
 
+  // Guest-facing details shown on the hotel page
+  const _guestInfo = {};
+  if (policyRules) _guestInfo.policyRules = policyRules;
+  if (mealPrices) _guestInfo.mealPrices = Object.fromEntries(Object.entries(mealPrices).filter(([, v]) => v !== undefined));
+
   return {
     prismaData,
+    _guestInfo,
     _bankDetail: bankDetail,
     _commissionRate: commissionRate,
     _cancellationPolicy: cancellationPolicy,
@@ -251,7 +262,7 @@ export const createHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails } = normalized;
+  const { prismaData, _bankDetail, _commissionRate, _media, _contactInfo, _addressDetails, _commercials, _guestInfo } = normalized;
 
   // Check for existing draft with same name — return it instead of blocking
   const existing = await prisma.hotel.findFirst({
@@ -267,6 +278,8 @@ export const createHotel = asyncHandler(async (req, res) => {
     const settings = typeof base === 'object' && base ? { ...base } : {};
     if (Object.keys(_contactInfo).length > 0) settings.contactInfo = { ...(settings.contactInfo || {}), ..._contactInfo };
     if (Object.keys(_addressDetails).length > 0) settings.addressDetails = { ...(settings.addressDetails || {}), ..._addressDetails };
+    if (Object.keys(_commercials).length > 0) settings.commercials = { ...(settings.commercials || {}), ..._commercials };
+    Object.assign(settings, _guestInfo);
     return settings;
   };
 
@@ -451,7 +464,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   const normalized = normalizeHotelPayload(validation.data);
-  const { prismaData, _media, _contactInfo, _addressDetails, _commercials } = normalized;
+  const { prismaData, _media, _contactInfo, _addressDetails, _commercials, _guestInfo } = normalized;
 
   const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
 
@@ -485,8 +498,9 @@ export const updateHotel = asyncHandler(async (req, res) => {
   const hasContact = _contactInfo && Object.keys(_contactInfo).length > 0;
   const hasAddress = _addressDetails && Object.keys(_addressDetails).length > 0;
   const hasCommercials = _commercials && Object.keys(_commercials).length > 0;
-  
-  if (hasContact || hasAddress || hasCommercials) {
+  const hasGuestInfo = _guestInfo && Object.keys(_guestInfo).length > 0;
+
+  if (hasContact || hasAddress || hasCommercials || hasGuestInfo) {
     const existingSettings = existingHotel.integrationSettings && typeof existingHotel.integrationSettings === 'object' ? existingHotel.integrationSettings : {};
     newSettings = { ...existingSettings };
     if (hasContact) {
@@ -498,6 +512,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
     if (hasCommercials) {
       newSettings.commercials = { ...(existingSettings.commercials || {}), ..._commercials };
     }
+    if (hasGuestInfo) Object.assign(newSettings, _guestInfo);
   }
 
   // Field-Level Audit Logging
@@ -621,6 +636,8 @@ export const formatHotelResponse = (hotel) => {
     msme: integSettings.commercials?.msme || null,
     builtYear: integSettings.commercials?.builtYear || null,
     bookingSince: integSettings.commercials?.bookingSince || null,
+    policyRules: integSettings.policyRules || {},
+    mealPrices: integSettings.mealPrices || {},
     addressLine: addressDetails.address || null,
     area: addressDetails.area || null,
     state: addressDetails.state || null,
@@ -737,13 +754,33 @@ export const getAllHotels = asyncHandler(async (req, res) => {
 /** Fields a guest may see about a live property (no bank, legal, commercial or owner details). */
 const PUBLIC_HOTEL_FIELDS = [
   'id', 'name', 'description', 'type', 'propertyType', 'starRating', 'rating', 'reviews',
-  'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'latitude', 'longitude',
-  'amenities', 'policies', 'checkInTime', 'checkOutTime', 'media', 'images', 'image', 'roomTypes',
-  'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday'
+  'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'addressLine', 'latitude', 'longitude',
+  'amenities', 'policies', 'checkInTime', 'checkOutTime', 'images', 'image',
+  'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday', 'builtYear', 'mealPrices'
 ];
-const publicHotelView = (hotel) => Object.fromEntries(
-  PUBLIC_HOTEL_FIELDS.filter((k) => hotel[k] !== undefined).map((k) => [k, hotel[k]])
-);
+/** House-rule answers from onboarding that guests may see (the Policies step). */
+const PUBLIC_HOUSE_RULES = [
+  'unmarriedCouples', 'guestsBelow18', 'maleGroupsAllowed', 'identityProofs', 'sameCityId',
+  'smokingAllowed', 'partiesAllowed', 'alcoholAllowed', 'wheelchairAccessible', 'outsideVisitors',
+  'petsOnProperty', 'petsAllowed', 'has24HrCheckin', 'infantIncluded', 'infantFood',
+  'extraBedInRates', 'extraBedAdults', 'extraBedKids', 'customPolicy'
+];
+const publicHotelView = (hotel) => {
+  const view = Object.fromEntries(PUBLIC_HOTEL_FIELDS.filter((k) => hotel[k] !== undefined && hotel[k] !== null).map((k) => [k, hotel[k]]));
+  const rules = hotel.policyRules || {};
+  view.houseRules = Object.fromEntries(PUBLIC_HOUSE_RULES.filter((k) => rules[k] !== undefined && rules[k] !== '' && !(Array.isArray(rules[k]) && !rules[k].length)).map((k) => [k, rules[k]]));
+  // Photos: only what the page needs (no AI analysis or internal ids of other records)
+  if (Array.isArray(hotel.media)) {
+    view.media = hotel.media.map((m) => ({ id: m.id, url: m.url, tags: m.tags || [], category: m.category, isPrimary: m.isPrimary }));
+  }
+  if (Array.isArray(hotel.roomTypes)) {
+    view.roomTypes = hotel.roomTypes.map(({ images, inventories: _inv, bookings: _b, hotelId: _h, ...rt }) => ({
+      ...rt,
+      images: (images || []).filter((li) => li.image?.url).map((li) => ({ id: li.image.id, url: li.image.url, tags: li.image.tags || [], isPrimary: li.isPrimary })),
+    }));
+  }
+  return view;
+};
 
 export const getHotelById = asyncHandler(async (req, res) => {
   const { id } = req.params;
