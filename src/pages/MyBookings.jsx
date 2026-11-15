@@ -152,7 +152,9 @@ const MyBookings = () => {
   // promise a full refund, even for non-refundable stays and pay-at-hotel bookings)
   const [cancelPreview, setCancelPreview] = useState(null);
   const [cancelPreviewError, setCancelPreviewError] = useState('');
+  const [refundTo, setRefundTo] = useState('SOURCE'); // the guest's choice; never defaults to the wallet
   useEffect(() => {
+    setRefundTo('SOURCE');
     if (!cancelTarget) { setCancelPreview(null); setCancelPreviewError(''); return; }
     let active = true;
     getCancelPreview(cancelTarget.id)
@@ -213,7 +215,7 @@ const MyBookings = () => {
   const handleCancelBooking = async (id) => {
     setCancelling(true);
     try {
-      const res = await cancelBooking(id);
+      const res = await cancelBooking(id, refundTo);
       setBookings(prev => prev.map(b => b.id === id ? res.data.booking : b));
       setCancelTarget(null);
       fetchMyBookings();
@@ -778,14 +780,33 @@ const MyBookings = () => {
                     <div className="flex justify-between text-gray-700"><span>Paid online</span><span>₹{cancelPreview.paidAmount.toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between text-rose-600 font-bold"><span>Cancellation charge</span><span>- ₹{cancelPreview.retainedAmount.toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between text-emerald-600 font-black text-sm pt-2 border-t border-gray-100"><span>Refund</span><span>₹{cancelPreview.refundAmount.toLocaleString('en-IN')}</span></div>
+                    {cancelPreview.walletRefund > 0 && (
+                      <p className="text-gray-500">₹{cancelPreview.walletRefund.toLocaleString('en-IN')} you paid with Zivo Cash goes back to your Zivo Cash.</p>
+                    )}
                   </>
                 )}
               </div>
 
-              <div className="bg-amber-50 rounded-2xl p-4 text-xs flex items-start gap-2.5 mb-8 border border-amber-100">
-                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-amber-800"><p className="font-bold mb-0.5">Refund Notice</p><p>Refunds settle within 5-7 business days back to original payment method.</p></div>
-              </div>
+              {cancelPreview?.choosableRefund > 0 ? (
+                <div className="mb-8 space-y-2" role="radiogroup" aria-label="Where should the refund go">
+                  <p className="text-xs font-bold text-gray-700">Where should ₹{cancelPreview.choosableRefund.toLocaleString('en-IN')} go?</p>
+                  {[
+                    { id: 'SOURCE', title: 'Original payment method', sub: 'Card / UPI / net banking · 5-7 working days' },
+                    { id: 'WALLET', title: 'Zivo Cash', sub: 'Instant · use it on any ZivoHotels booking' },
+                  ].map((o) => (
+                    <button key={o.id} type="button" role="radio" aria-checked={refundTo === o.id} onClick={() => setRefundTo(o.id)}
+                      className={`w-full text-left rounded-2xl border p-3 text-xs ${refundTo === o.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200'}`}>
+                      <span className="font-bold text-gray-900 block">{o.title}</span>
+                      <span className="text-gray-500">{o.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-amber-50 rounded-2xl p-4 text-xs flex items-start gap-2.5 mb-8 border border-amber-100">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-amber-800"><p className="font-bold mb-0.5">Refund Notice</p><p>Refunds to your card or UPI take 5-7 working days. Zivo Cash refunds are instant.</p></div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <button onClick={() => setCancelTarget(null)} disabled={cancelling} className="px-6 py-4 border border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 text-xs">Keep Booking</button>

@@ -7,7 +7,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { z } from 'zod';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
-import { roundMoney } from '../utils/money.js';
+import { roundMoney, toMoney } from '../utils/money.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
 const razorpay = new Razorpay({
@@ -92,6 +92,11 @@ export const createOrder = asyncHandler(async (req, res) => {
     if (booking.paymentType === 'PARTIAL') {
       amountToCharge = roundMoney(booking.totalAmount * (config.partialPaymentPercent / 100)); // Dynamic upfront, to the paisa
     }
+    // The part already paid with Zivo Cash isn't charged again
+    amountToCharge = roundMoney(amountToCharge - (toMoney(booking.walletAmount) || 0));
+    if (!(amountToCharge > 0)) {
+      return res.status(400).json({ success: false, message: 'Nothing left to pay for this booking', requestId: req.id });
+    }
 
     const options = {
       amount: Math.round(amountToCharge * 100), // Razorpay operates in paise
@@ -161,7 +166,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     if (booking.status === 'CANCELLED') {
       try {
         await razorpay.payments.refund(razorpay_payment_id, {
-          amount: Math.round(booking.paidAmount * 100) || Math.round(booking.totalAmount * (booking.paymentType === 'PARTIAL' ? 0.3 : 1) * 100)
+          // Only the card / UPI part; Zivo Cash used on it is returned to the wallet automatically
+          amount: Math.round((booking.totalAmount * (booking.paymentType === 'PARTIAL' ? 0.3 : 1) - (toMoney(booking.walletAmount) || 0)) * 100)
         });
       } catch (refundErr) {
         console.error("Failed to process auto-refund for late payment", refundErr);
@@ -272,8 +278,9 @@ export const webhook = asyncHandler(async (req, res) => {
             paymentStatus,
             status: 'CONFIRMED',
             razorpayPaymentId: payment.id,
-            paidAmount: payment.amount / 100,
-            remainingAmount: roundMoney(booking.totalAmount - (payment.amount / 100))
+            // Card / UPI amount plus any Zivo Cash used on the booking
+            paidAmount: roundMoney(payment.amount / 100 + (toMoney(booking.walletAmount) || 0)),
+            remainingAmount: roundMoney(booking.totalAmount - (payment.amount / 100) - (toMoney(booking.walletAmount) || 0))
           }
         });
 
@@ -377,8 +384,9 @@ export const refundPayment = asyncHandler(async (req, res) => {
     }
 
     // Trigger Razorpay Refund
+    // Card / UPI part only; Zivo Cash used on the booking goes back to the wallet automatically
     const refund = await razorpay.payments.refund(booking.razorpayPaymentId, {
-      amount: Math.round(booking.paidAmount * 100)
+      amount: Math.round(((toMoney(booking.paidAmount) || 0) - (toMoney(booking.walletAmount) || 0)) * 100)
     });
 
     await prisma.$transaction(async (tx) => {

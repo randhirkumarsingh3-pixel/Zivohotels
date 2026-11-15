@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
-import { createBooking, cancelBooking, createPaymentOrder, verifyPaymentApi, previewBookingApi, getPublicConfig, trackEvent, getMyProfile } from '../services/api.js';
+import { createBooking, cancelBooking, createPaymentOrder, verifyPaymentApi, previewBookingApi, getPublicConfig, trackEvent, getMyProfile, getMyWallet } from '../services/api.js';
 import { useAuth } from '../context/AuthContext';
 import { saveVoucher } from '../utils/voucher';
 import { 
   CheckCircle2, ShieldCheck, CreditCard, Building, 
   PieChart, Clock, AlertTriangle, User, Mail, 
   Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight,
-  ArrowLeft, Briefcase, Download, Tag, Award
+  ArrowLeft, Briefcase, Download, Tag, Award, Wallet
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
@@ -91,6 +91,12 @@ const Checkout = () => {
   const [promoCode, setPromoCode] = useState('');
   // Zivo Rewards: points the guest chose to use (0 = not using)
   const [usePoints, setUsePoints] = useState(0);
+  // Zivo Cash: pay what's due now (or part of it) from the guest's wallet
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+  useEffect(() => {
+    if (user?.role === 'CUSTOMER') getMyWallet().then((w) => setWalletBalance(w?.balance || 0)).catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     getPublicConfig().then(res => setConfig(res.data)).catch(console.error);
@@ -165,7 +171,9 @@ const Checkout = () => {
 
   let payableNow = total;
   if (paymentType === 'PAY_AT_HOTEL') payableNow = 0;
-  if (paymentType === 'PARTIAL') payableNow = total * (config.partialPaymentPercent / 100);
+  if (paymentType === 'PARTIAL') payableNow = Math.round(total * (config.partialPaymentPercent / 100) * 100) / 100;
+  const walletUse = useWallet && paymentType !== 'PAY_AT_HOTEL' ? Math.min(walletBalance, payableNow) : 0;
+  const payOnline = Math.round((payableNow - walletUse) * 100) / 100;
 
   const loadRazorpay = () => new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
@@ -208,6 +216,7 @@ const Checkout = () => {
         paymentType,
         ...(promoCode && promoStatus?.ok ? { promoCode } : {}),
         ...(rewards?.pointsApplied ? { usePoints: rewards.pointsApplied } : {}),
+        ...(walletUse > 0 ? { useWallet: true } : {}),
         ...(withCompany && company.name.trim() ? {
           companyName: company.name.trim(),
           ...(company.gstin.trim() ? { companyGstin: company.gstin.trim() } : {}),
@@ -223,7 +232,8 @@ const Checkout = () => {
       pendingBookingRef.current = bookingId;
       if (booking?.expiresAt) setExpiresAt(booking.expiresAt);
       
-      if (paymentType === 'PAY_AT_HOTEL') {
+      // Pay at hotel, or fully paid with Zivo Cash: confirmed without an online payment
+      if (paymentType === 'PAY_AT_HOTEL' || booking.status === 'CONFIRMED') {
         pendingBookingRef.current = null;
         setConfirmedBookingId(bookingId);
         setSuccess(true);
@@ -513,7 +523,7 @@ const Checkout = () => {
               disabled={loading || (countdown && countdown.expired) || fetchingPreview || !preview}
               className="w-full bg-brand-700 hover:bg-brand-800 text-white font-black py-6 rounded-2xl shadow-xl shadow-brand-500/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xl disabled:opacity-50 disabled:grayscale disabled:transform-none"
             >
-              {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Confirm Reservation' : `Secure Payment: ₹${payableNow.toLocaleString()}`}
+              {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Confirm Reservation' : payOnline <= 0 ? `Pay ₹${walletUse.toLocaleString('en-IN')} with Zivo Cash` : `Secure Payment: ₹${payOnline.toLocaleString('en-IN')}${walletUse > 0 ? ` + ₹${walletUse.toLocaleString('en-IN')} Zivo Cash` : ''}`}
             </button>
           </div>
 
@@ -658,6 +668,17 @@ const Checkout = () => {
                       {rewards.reason && <p role="alert" className="text-[11px] text-red-600">{rewards.reason}</p>}
                       {rewards.earn > 0 && <p className="text-[11px] text-green-700 font-semibold">You&apos;ll earn {rewards.earn.toLocaleString('en-IN')} points after this stay</p>}
                     </div>
+                  )}
+
+                  {/* Zivo Cash */}
+                  {walletBalance > 0 && paymentType !== 'PAY_AT_HOTEL' && (
+                    <label className="flex items-start gap-2 rounded-xl border border-gray-200 p-3 cursor-pointer">
+                      <input type="checkbox" className="mt-0.5 rounded border-gray-300" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
+                      <span className="text-sm text-gray-700 flex-1">
+                        <span className="font-bold text-gray-900 flex items-center gap-1"><Wallet size={14} className="text-brand-600" /> Pay with Zivo Cash</span>
+                        <span className="text-xs text-gray-500">₹{walletBalance.toLocaleString('en-IN')} available{useWallet ? ` · ₹${walletUse.toLocaleString('en-IN')} will be used` : ''}</span>
+                      </span>
+                    </label>
                   )}
 
                   {/* Promo code */}

@@ -14,7 +14,7 @@ export const MONEY_FIELDS = {
   occupancyPricing: ['price'],
   booking: [
     'totalAmount', 'paidAmount', 'remainingAmount', 'taxAmount', 'baseAmount', 'refundAmount',
-    'extraBedCharges', 'extraGuestCharges', 'mealCharges', 'roomPrice',
+    'extraBedCharges', 'extraGuestCharges', 'mealCharges', 'roomPrice', 'walletAmount',
   ],
   taxRule: ['minThreshold', 'maxThreshold'],
   refund: ['amount'],

@@ -1,198 +1,199 @@
-import { useState } from 'react';
-import { ArrowUpRight, ArrowDownLeft,
-  Search, Filter, Download, RefreshCw,
-  Lock, Building2, Gift, Shield, Zap
-} from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Wallet, Users, Building2, Search, X, Plus, Minus, Loader2, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
-const walletAccounts = [
-  { 
-    id: 'W-001', name: 'Master Escrow', type: 'ESCROW', 
-    balance: 4850000, currency: 'INR', status: 'ACTIVE',
-    lastTransaction: '2 min ago', transactions: 1247
-  },
-  { 
-    id: 'W-002', name: 'Hotel Payouts Pool', type: 'PAYOUT', 
-    balance: 1420000, currency: 'INR', status: 'ACTIVE',
-    lastTransaction: '15 min ago', transactions: 842
-  },
-  { 
-    id: 'W-003', name: 'Customer Refunds', type: 'REFUND', 
-    balance: 328000, currency: 'INR', status: 'ACTIVE',
-    lastTransaction: '1 hr ago', transactions: 156
-  },
-  { 
-    id: 'W-004', name: 'Promo & Cashback', type: 'PROMO', 
-    balance: 180000, currency: 'INR', status: 'ACTIVE',
-    lastTransaction: '3 hrs ago', transactions: 2104
-  },
-  { 
-    id: 'W-005', name: 'Dispute Hold', type: 'HOLD', 
-    balance: 95000, currency: 'INR', status: 'LOCKED',
-    lastTransaction: '6 hrs ago', transactions: 28
-  },
-];
+/**
+ * Admin -> Wallet Control. (This page showed made-up accounts and balances.)
+ *  - Guest wallets (Zivo Cash): total owed to guests, credits and spending, each guest's history,
+ *    and credits / debits with a reason (shown to the guest, audited).
+ *  - Hotel wallets: each property's balance from its settlements and payouts (on hold, ready,
+ *    owed to Zivo, paid out) with its statement.
+ */
+const API = `${import.meta.env.VITE_API_URL || '/api/v1'}/admin/wallets`;
+const headers = () => {
+  const token = localStorage.getItem('jwt_token');
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+};
+const call = async (path, method = 'GET', body) => {
+  const res = await fetch(`${API}${path}`, { method, headers: headers(), ...(body ? { body: JSON.stringify(body) } : {}) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.success === false) throw new Error(json.message || 'Something went wrong');
+  return json.data;
+};
+const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
-const recentTransactions = [
-  { id: 'TXN-89421', type: 'CREDIT', desc: 'Booking #ZIVO-92841 — Prepaid Collection', amount: 24000, wallet: 'Master Escrow', time: '2 min ago', status: 'SUCCESS' },
-  { id: 'TXN-89420', type: 'DEBIT', desc: 'Payout to Grand Zivo Palace (#PAY-4821)', amount: 42500, wallet: 'Hotel Payouts Pool', time: '15 min ago', status: 'SUCCESS' },
-  { id: 'TXN-89419', type: 'DEBIT', desc: 'Refund to Neha Kapoor (#REF-1123)', amount: 5200, wallet: 'Customer Refunds', time: '1 hr ago', status: 'PROCESSING' },
-  { id: 'TXN-89418', type: 'CREDIT', desc: 'Booking #ZIVO-92837 — Prepaid Collection', amount: 9000, wallet: 'Master Escrow', time: '2 hrs ago', status: 'SUCCESS' },
-  { id: 'TXN-89417', type: 'DEBIT', desc: 'Cashback Credit: EARLYBIRD20 promo', amount: 900, wallet: 'Promo & Cashback', time: '3 hrs ago', status: 'SUCCESS' },
-  { id: 'TXN-89416', type: 'DEBIT', desc: 'Dispute Hold: Double Charge #D-8271', amount: 8420, wallet: 'Dispute Hold', time: '6 hrs ago', status: 'HELD' },
-];
+const Drawer = ({ title, sub, onClose, children }) => (
+  <div className="fixed inset-0 z-[200] bg-black/30 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="bg-white w-full max-w-xl h-full overflow-y-auto p-6 space-y-5">
+      <div className="flex items-start justify-between">
+        <div><h3 className="text-lg font-bold text-gray-900">{title}</h3>{sub && <p className="text-sm text-gray-500">{sub}</p>}</div>
+        <button type="button" aria-label="Close" onClick={onClose} className="text-gray-400"><X size={20} /></button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
 
-const walletTypeStyles = {
-  ESCROW: { bg: 'bg-blue-600', icon: Shield },
-  PAYOUT: { bg: 'bg-green-600', icon: Building2 },
-  REFUND: { bg: 'bg-orange-600', icon: ArrowDownLeft },
-  PROMO: { bg: 'bg-purple-600', icon: Gift },
-  HOLD: { bg: 'bg-red-600', icon: Lock },
+const GuestDrawer = ({ guest, onClose, onChanged }) => {
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({ amount: '', reason: '' });
+  const [err, setErr] = useState('');
+  const load = useCallback(() => { call(`/guests/${guest.id}`).then(setData).catch((e) => setErr(e.message)); }, [guest.id]);
+  useEffect(() => { load(); }, [load]);
+  const adjust = async (direction) => {
+    setErr('');
+    try { await call(`/guests/${guest.id}/adjust`, 'POST', { ...form, direction }); setForm({ amount: '', reason: '' }); load(); onChanged(); } catch (e) { setErr(e.message); }
+  };
+  return (
+    <Drawer title={guest.name} sub={guest.email} onClose={onClose}>
+      {!data ? <Loader2 className="animate-spin text-brand-600" /> : (
+        <>
+          <div className="rounded-xl bg-gray-900 text-white p-4"><p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Zivo Cash balance</p><p className="text-3xl font-black">{inr(data.balance)}</p></div>
+          <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+            <p className="text-sm font-bold text-gray-800">Credit or debit</p>
+            <div className="flex gap-2">
+              <input type="number" min="1" step="0.01" aria-label="Amount" placeholder="₹ amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              <input aria-label="Reason" placeholder="Reason (the guest sees it)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => adjust('CREDIT')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-green-600 text-white"><Plus size={14} /> Credit</button>
+              <button type="button" onClick={() => adjust('DEBIT')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-300"><Minus size={14} /> Debit</button>
+            </div>
+            {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
+            <p className="text-[11px] text-gray-400">Zivo Cash can only be spent on bookings. Use credits for goodwill or to correct a refund.</p>
+          </div>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {data.transactions.length === 0 && <li className="py-3 text-gray-500">No transactions.</li>}
+            {data.transactions.map((t) => (
+              <li key={t.id} className="py-2.5 flex justify-between gap-3">
+                <div className="flex gap-2">
+                  {t.type === 'CREDIT' ? <ArrowDownLeft size={15} className="text-green-600 mt-0.5" /> : <ArrowUpRight size={15} className="text-gray-400 mt-0.5" />}
+                  <div><p className="text-gray-900">{t.description || t.label}</p><p className="text-xs text-gray-500">{new Date(t.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · {t.label}</p></div>
+                </div>
+                <div className="text-right"><p className={`font-bold ${t.type === 'CREDIT' ? 'text-green-700' : ''}`}>{t.type === 'CREDIT' ? '+' : '−'}{inr(t.amount)}</p>{t.balanceAfter != null && <p className="text-[11px] text-gray-400">{inr(t.balanceAfter)}</p>}</div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Drawer>
+  );
 };
 
-const statusStyles = {
-  SUCCESS: 'bg-green-50 text-green-600 border-green-100',
-  PROCESSING: 'bg-blue-50 text-blue-600 border-blue-100',
-  HELD: 'bg-orange-50 text-orange-600 border-orange-100',
-  FAILED: 'bg-red-50 text-red-600 border-red-100',
+const HotelDrawer = ({ hotel, onClose }) => {
+  const [data, setData] = useState(null);
+  useEffect(() => { call(`/hotels/${hotel.id}`).then(setData).catch(() => setData({ statement: [] })); }, [hotel.id]);
+  return (
+    <Drawer title={hotel.name} sub={`${hotel.city} · statement`} onClose={onClose}>
+      {!data ? <Loader2 className="animate-spin text-brand-600" /> : (
+        <>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {[['On hold', data.onHold], ['Ready', data.ready], ['Owed to Zivo', data.owed], ['Paid out', data.paidOut]].map(([k, v]) => (
+              <div key={k} className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{k}</p><p className="text-lg font-black">{inr(v)}</p></div>
+            ))}
+          </div>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {(data.statement || []).length === 0 && <li className="py-3 text-gray-500">No settlements yet.</li>}
+            {(data.statement || []).map((e) => (
+              <li key={`${e.kind}-${e.id}`} className="py-2.5 flex justify-between gap-3">
+                <div><p className="text-gray-900">{e.title}</p><p className="text-xs text-gray-500">{new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{e.detail ? ` · ${e.detail}` : ''} · {e.status}</p></div>
+                <div className="text-right"><p className={`font-bold ${e.amount >= 0 ? 'text-green-700' : ''}`}>{e.amount >= 0 ? '+' : '−'}{inr(Math.abs(e.amount))}</p><p className="text-[11px] text-gray-400">{inr(e.balance)}</p></div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Drawer>
+  );
 };
 
 const WalletControl = () => {
-  const [activeWallet, setActiveWallet] = useState('ALL');
-  const totalBalance = walletAccounts.reduce((s, w) => s + w.balance, 0);
+  const [tab, setTab] = useState('guests');
+  const [overview, setOverview] = useState(null);
+  const [guests, setGuests] = useState([]);
+  const [search, setSearch] = useState('');
+  const [guest, setGuest] = useState(null);
+  const [hotel, setHotel] = useState(null);
+  const [error, setError] = useState('');
 
-  const formatAmount = (amount) => {
-    if (amount >= 10000000) return `₹ ${(amount / 10000000).toFixed(2)} Cr`;
-    if (amount >= 100000) return `₹ ${(amount / 100000).toFixed(1)}L`;
-    return `₹ ${amount.toLocaleString()}`;
-  };
+  const loadOverview = useCallback(() => { call('/overview').then(setOverview).catch((e) => setError(e.message)); }, []);
+  const loadGuests = useCallback(() => { call(`/guests?search=${encodeURIComponent(search)}`).then(setGuests).catch((e) => setError(e.message)); }, [search]);
+  useEffect(() => { loadOverview(); }, [loadOverview]);
+  useEffect(() => { const t = setTimeout(loadGuests, 300); return () => clearTimeout(t); }, [loadGuests]);
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Wallet Control Center</h1>
-          <p className="text-gray-500 font-medium mt-1">Manage all internal wallets, fund flows, and dispute holds.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 transition-all">
-            <RefreshCw size={14} /> Reconcile
-          </button>
-          <button className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all">
-            <Download size={16} /> Export Ledger
-          </button>
-        </div>
+    <div className="space-y-6">
+      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Wallet className="text-brand-600" size={22} /> Wallet Control</h1>
+        <p className="text-gray-500 mt-1">Guests&apos; Zivo Cash and what each property is owed or owes.</p>
       </div>
+      {error && <p className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</p>}
 
-      {/* Master Balance */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-60 h-60 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="relative z-10">
-          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Total Platform Balance</p>
-          <h2 className="text-5xl font-black mb-6">{formatAmount(totalBalance)}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {walletAccounts.map(w => {
-              const style = walletTypeStyles[w.type];
-              const WalletIcon = style.icon;
-              return (
-                <div key={w.id} className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all cursor-pointer">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-8 h-8 ${style.bg} rounded-lg flex items-center justify-center`}>
-                      <WalletIcon size={14} className="text-white" />
-                    </div>
-                    {w.status === 'LOCKED' && <Lock size={10} className="text-red-400" />}
-                  </div>
-                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{w.name}</p>
-                  <p className="text-lg font-black">{formatAmount(w.balance)}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Wallet Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <button 
-          onClick={() => setActiveWallet('ALL')}
-          className={`p-4 rounded-2xl border text-left transition-all ${activeWallet === 'ALL' ? 'bg-brand-50 border-brand-200' : 'bg-white border-gray-100 hover:border-gray-200'}`}
-        >
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">All Wallets</p>
-          <p className="text-lg font-black text-gray-900">{recentTransactions.length} txns</p>
-        </button>
-        {walletAccounts.map(w => (
-          <button 
-            key={w.id}
-            onClick={() => setActiveWallet(w.name)}
-            className={`p-4 rounded-2xl border text-left transition-all ${activeWallet === w.name ? 'bg-brand-50 border-brand-200' : 'bg-white border-gray-100 hover:border-gray-200'}`}
-          >
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{w.name}</p>
-            <p className="text-lg font-black text-gray-900">{w.transactions} txns</p>
-          </button>
-        ))}
-      </div>
-
-      {/* Transaction Log */}
-      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
-            <Zap className="text-brand-600" size={20} />
-            Live Transaction Feed
-          </h3>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search transactions..."
-                className="bg-white border-gray-200 border rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-brand-500/20 outline-none transition-all w-64"
-              />
-            </div>
-            <button className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all text-gray-500">
-              <Filter size={18} />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4">
-          {recentTransactions
-            .filter(t => activeWallet === 'ALL' || t.wallet === activeWallet)
-            .map((txn, i) => (
-            <div key={i} className="flex items-center justify-between p-5 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${txn.type === 'CREDIT' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                  {txn.type === 'CREDIT' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">{txn.desc}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-[10px] font-bold text-gray-400">{txn.id}</span>
-                    <span className="text-[10px] text-gray-300">•</span>
-                    <span className="text-[10px] font-bold text-brand-600">{txn.wallet}</span>
-                    <span className="text-[10px] text-gray-300">•</span>
-                    <span className="text-[10px] text-gray-400">{txn.time}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-5">
-                <p className={`text-lg font-black ${txn.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                  {txn.type === 'CREDIT' ? '+' : '-'} ₹ {txn.amount.toLocaleString()}
-                </p>
-                <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${statusStyles[txn.status]}`}>
-                  {txn.status}
-                </span>
-              </div>
+      {overview && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { k: 'Zivo Cash owed to guests', v: inr(overview.guest.liability), sub: `${overview.guest.walletsWithBalance} guest${overview.guest.walletsWithBalance === 1 ? '' : 's'} with a balance` },
+            { k: 'Credited (30 days)', v: inr(overview.guest.creditedLast30), sub: `${inr(overview.guest.spentLast30)} spent on bookings` },
+            { k: 'Hotels: on hold + ready', v: inr(overview.hotelTotals.onHold + overview.hotelTotals.ready), sub: `${inr(overview.hotelTotals.ready)} ready to pay` },
+            { k: 'Owed by hotels', v: inr(overview.hotelTotals.owed), sub: 'Commission on pay-at-hotel stays' },
+          ].map((c) => (
+            <div key={c.k} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{c.k}</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{c.v}</p>
+              <p className="text-xs text-gray-500">{c.sub}</p>
             </div>
           ))}
         </div>
+      )}
 
-        <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
-          <button className="text-xs font-black text-brand-600 uppercase tracking-widest hover:underline flex items-center gap-2 mx-auto">
-            View Full Transaction History <ArrowDownLeft size={14} className="rotate-180" />
-          </button>
-        </div>
+      <div className="flex gap-2" role="tablist">
+        {[['guests', 'Guest wallets', Users], ['hotels', 'Hotel wallets', Building2]].map(([id, label, Icon]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold ${tab === id ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}><Icon size={15} /> {label}</button>
+        ))}
       </div>
+
+      {tab === 'guests' ? (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="p-4 border-b border-gray-100 flex justify-end">
+            <div className="relative w-64"><Search size={15} className="absolute left-3 top-2.5 text-gray-400" /><input aria-label="Search guests" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or email" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm" /></div>
+          </div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs text-gray-500 bg-gray-50"><th className="px-4 py-2">Guest</th><th className="px-4 py-2 text-right">Zivo Cash</th><th className="px-4 py-2">Last movement</th><th /></tr></thead>
+            <tbody>
+              {guests.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">No guests found.</td></tr>}
+              {guests.map((g) => (
+                <tr key={g.id} className="border-t border-gray-100">
+                  <td className="px-4 py-2.5"><p className="font-semibold text-gray-900">{g.name}</p><p className="text-xs text-gray-500">{g.email}</p></td>
+                  <td className="px-4 py-2.5 text-right font-bold">{inr(g.balance)}</td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500">{g.updatedAt ? new Date(g.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+                  <td className="px-4 py-2.5 text-right"><button type="button" onClick={() => setGuest(g)} className="px-3 py-1 rounded-lg text-xs font-bold bg-brand-50 text-brand-700">Manage</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs text-gray-500 bg-gray-50"><th className="px-4 py-2">Property</th><th className="px-4 py-2 text-right">On hold</th><th className="px-4 py-2 text-right">Ready</th><th className="px-4 py-2 text-right">Owed to Zivo</th><th className="px-4 py-2 text-right">Balance</th><th className="px-4 py-2 text-right">Paid out</th><th /></tr></thead>
+            <tbody>
+              {(overview?.hotels || []).map((h) => (
+                <tr key={h.id} className="border-t border-gray-100">
+                  <td className="px-4 py-2.5"><p className="font-semibold text-gray-900">{h.name}</p><p className="text-xs text-gray-500">{h.city}{h.nextPayoutDate ? ` · next payout ${new Date(h.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}</p></td>
+                  <td className="px-4 py-2.5 text-right">{inr(h.onHold)}</td>
+                  <td className="px-4 py-2.5 text-right">{inr(h.ready)}</td>
+                  <td className={`px-4 py-2.5 text-right ${h.owed > 0 ? 'text-red-600 font-semibold' : ''}`}>{inr(h.owed)}</td>
+                  <td className="px-4 py-2.5 text-right font-bold">{h.balance < 0 ? '−' : ''}{inr(Math.abs(h.balance))}</td>
+                  <td className="px-4 py-2.5 text-right text-gray-500">{inr(h.paidOut)}</td>
+                  <td className="px-4 py-2.5 text-right"><button type="button" onClick={() => setHotel(h)} className="px-3 py-1 rounded-lg text-xs font-bold bg-brand-50 text-brand-700">Statement</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {guest && <GuestDrawer guest={guest} onClose={() => setGuest(null)} onChanged={() => { loadGuests(); loadOverview(); }} />}
+      {hotel && <HotelDrawer hotel={hotel} onClose={() => setHotel(null)} />}
     </div>
   );
 };

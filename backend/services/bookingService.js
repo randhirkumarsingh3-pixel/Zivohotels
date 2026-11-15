@@ -7,6 +7,8 @@ import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import { bookingRepository } from '../repositories/bookingRepository.js';
 import { resolveBest, redeem } from './promotionService.js';
 import { planForCheckout, redeemForBooking, recordEarnForBooking } from './loyaltyService.js';
+import { payForBooking } from './finance/walletService.js';
+import { roundMoney } from '../utils/money.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
@@ -246,7 +248,33 @@ export const bookingService = {
         }
       };
 
-      const booking = await bookingRepository.create(tx, bookingData);
+      let booking = await bookingRepository.create(tx, bookingData);
+
+      // Zivo Cash: pay what is due now (full amount, or the part-payment) from the guest's wallet.
+      // If it covers all of it the booking is confirmed straight away; otherwise the rest is paid
+      // online and the wallet part is returned if that never happens.
+      let walletPaidInFull = false;
+      if (context.useWallet && userId && paymentType !== 'PAY_AT_HOTEL') {
+        const dueNow = paymentType === 'PARTIAL'
+          ? roundMoney(pricing.finalAmount * ((systemConfig.partialPaymentPercent ?? 30) / 100))
+          : pricing.finalAmount;
+        const used = await payForBooking(tx, { userId, bookingId: booking.id, bookingRef: booking.bookingRef, amountDue: dueNow });
+        if (used > 0) {
+          walletPaidInFull = used >= dueNow;
+          booking = await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              walletAmount: used,
+              ...(walletPaidInFull ? {
+                status: 'CONFIRMED',
+                paymentStatus: paymentType === 'PARTIAL' ? 'PARTIAL_PAID' : 'PAID',
+                paidAmount: used,
+                remainingAmount: roundMoney(pricing.finalAmount - used),
+              } : {}),
+            }
+          });
+        }
+      }
 
       // Zivo Rewards: spend the points chosen (checked again under a lock) and record what the stay
       // earns (pending until check-out)
@@ -279,6 +307,15 @@ export const bookingService = {
             status: 'CONFIRMED',
             title: 'Booking Confirmed',
             message: 'Your stay is confirmed. Payment will be collected at the hotel.'
+          }
+        });
+      } else if (walletPaidInFull) {
+        await tx.bookingTimelineEvent.create({
+          data: {
+            bookingId: booking.id,
+            status: 'CONFIRMED',
+            title: 'Booking Confirmed',
+            message: `Paid ₹${Number(booking.walletAmount).toLocaleString('en-IN')} with Zivo Cash. Your stay is confirmed.`
           }
         });
       } else {
@@ -370,7 +407,7 @@ export const bookingService = {
 
     // 8. Loyalty points are recorded inside the transaction above (Zivo Rewards).
 
-    if (paymentType === 'PAY_AT_HOTEL') {
+    if (paymentType === 'PAY_AT_HOTEL' || bookingResult.status === 'CONFIRMED') {
       sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
     }
 

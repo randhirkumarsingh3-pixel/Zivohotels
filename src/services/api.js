@@ -306,6 +306,9 @@ export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/profile/passwor
 export const getNotifications = () => apiFetch(`${PUBLIC_BASE}/profile/notifications`).then(res => res?.data);
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
+// Zivo Cash (guest wallet)
+export const getMyWallet = () => apiFetch(`${PUBLIC_BASE}/wallet`).then(res => res?.data);
+
 // Zivo Rewards (loyalty)
 export const getRewardsProgram = () => apiFetch(`${PUBLIC_BASE}/loyalty/program`).then(res => res?.data);
 export const getMyRewards = () => apiFetch(`${PUBLIC_BASE}/loyalty/me`).then(res => res?.data);
@@ -354,7 +357,8 @@ export const getExperiments = async () => {
 // ─── BOOKINGS ─────────────────────────────────────────────────────────────────
 export const createBooking = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings`, { method: 'POST', body: JSON.stringify(bookingData) });
 export const previewBookingApi = (bookingData) => apiFetch(`${PUBLIC_BASE}/bookings/preview`, { method: 'POST', body: JSON.stringify(bookingData) });
-export const cancelBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel`, { method: 'POST' });
+// refundTo: 'WALLET' (Zivo Cash, instant) or 'SOURCE' (original payment method), chosen by the guest
+export const cancelBooking = (bookingId, refundTo = 'SOURCE') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel`, { method: 'POST', body: JSON.stringify({ refundTo }) });
 export const getCancelPreview = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/cancel-preview`, {}, 0);
 export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`, { method: 'PUT', body: JSON.stringify(data) });
 export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);

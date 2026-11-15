@@ -322,6 +322,28 @@ settlement. Fixed along the way:
   kept as VOID and not counted. The admin "Loyalty Program" tier-discount tab (never applied) now
   links to Admin -> Loyalty.
 
+## Wallets (Nov 2026)
+
+- Service `backend/services/finance/walletService.js`; API `/wallet` (guest), `/extranet/wallet`
+  (hotel), `/admin/wallets` (overview, guests, adjust, hotel statements). Pages: `/wallet` (Zivo
+  Cash), Extranet -> Wallet, Admin -> Wallet Control (the old page was sample data).
+- Guest wallet "Zivo Cash" (`Wallet.userId`, `WalletTransaction` with category, booking link and
+  balance after): closed-system credit, spendable only on ZivoHotels bookings (no top-up,
+  withdrawal or transfer). Credits: refunds the guest CHOSE to take as Zivo Cash (never the
+  default), Zivo Cash returned from uncompleted / cancelled bookings, admin credits with a reason.
+- Paying: checkout "Pay with Zivo Cash" covers the amount due now (full, or the part payment).
+  `Booking.walletAmount` holds it; if it covers everything the booking is confirmed without an
+  online payment, otherwise only the rest is charged online (createOrder). Wallet rows are locked
+  (FOR UPDATE) so a balance can't be spent twice.
+- Cancelling: the Zivo Cash part of a refund goes back to the wallet; the rest to the original
+  payment method or, if the guest chose it in the cancel dialog, to Zivo Cash (instant).
+  Uncompleted bookings (expired, failed, admin refund) get their Zivo Cash back from a 5-minute job
+  (`returnUnusedBookingPayments`).
+- Hotel wallet: computed from settlements and payouts (on hold, ready, owed to Zivo for pay-at-hotel
+  commission, paid out) with a running-balance statement and CSV download. No stored hotel money.
+- Razorpay is not configured locally, so the "part wallet + online" path could only be checked up
+  to the order amount; test it end to end with test keys.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.
