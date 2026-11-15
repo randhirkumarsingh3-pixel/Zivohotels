@@ -1,16 +1,24 @@
 import express from 'express';
-import { 
-  getPricingConfig, 
-  updatePricingConfig, 
-  getPricingRules, 
-  createPricingRule, 
+import {
+  getPricingConfig,
+  updatePricingConfig,
   getPricingSnapshots,
   getHolidays,
   createHoliday,
-  deleteHoliday
+  deleteHoliday,
+  getDynamicOverview,
+  getHotelDynamic,
+  updateHotelDynamicSettings,
+  createHotelRule,
+  updateHotelRule,
+  deleteHotelRule,
+  recomputeHotelPrices,
+  previewHotelPrices,
 } from '../controllers/pricingController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
+// Mounted at /api/v1/admin/pricing and /api/v1/pricing. Owners are limited to their own
+// properties by the controller; platform settings and the holiday calendar are admin-only.
 const router = express.Router();
 
 router.use(protect);
@@ -18,14 +26,19 @@ router.use(authorizeRoles('ADMIN', 'OWNER'));
 
 router.get('/config', getPricingConfig);
 router.put('/config', updatePricingConfig);
-
-router.get('/rules', getPricingRules);
-router.post('/rules', createPricingRule);
+router.get('/snapshots', getPricingSnapshots);
 
 router.get('/holidays', getHolidays);
 router.post('/holidays', createHoliday);
 router.delete('/holidays/:id', deleteHoliday);
 
-router.get('/snapshots', getPricingSnapshots);
+router.get('/dynamic', getDynamicOverview);
+router.get('/hotels/:hotelId/dynamic', getHotelDynamic);
+router.put('/hotels/:hotelId/dynamic/settings', updateHotelDynamicSettings);
+router.post('/hotels/:hotelId/dynamic/rules', createHotelRule);
+router.patch('/hotels/:hotelId/dynamic/rules/:ruleId', updateHotelRule);
+router.delete('/hotels/:hotelId/dynamic/rules/:ruleId', deleteHotelRule);
+router.post('/hotels/:hotelId/dynamic/recompute', recomputeHotelPrices);
+router.get('/hotels/:hotelId/dynamic/preview', previewHotelPrices);
 
 export default router;

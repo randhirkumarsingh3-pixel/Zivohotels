@@ -41,8 +41,12 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     
     const cleanNum = (val) => (val === "" || val === null || val === undefined) ? null : parseFloat(val);
 
@@ -63,8 +67,16 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
       mealPriceChild: cleanNum(formData.mealPriceChild),
       isActive: formData.isActive
     };
-    onSubmit(payload);
-    onClose();
+    if (!(payload.basePrice > 0)) { setFormError('Enter a base price above ₹0.'); return; }
+    // Stays open with the error when the save is rejected (it used to close straight away).
+    setSaving(true);
+    try {
+      const result = await onSubmit(payload);
+      if (result && result.ok === false) setFormError(result.message || 'Could not save the rate plan.');
+      else onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isMealPricingEnabled = formData.mealPlan !== 'NONE' && formData.mealPlan !== 'EP';
@@ -232,9 +244,10 @@ const RatePlanModal = ({ isOpen, onClose, onSubmit, initialData = null, parentRo
           )}
         </div>
 
-        <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
+        <div className="border-t border-gray-200 pt-6 flex items-center justify-end space-x-3">
+          {formError && <p role="alert" className="mr-auto text-sm font-medium text-red-600">{formError}</p>}
           <button type="button" onClick={onClose} className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm">Save Rate Plan</button>
+          <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm disabled:opacity-60">{saving ? 'Saving…' : 'Save Rate Plan'}</button>
         </div>
       </form>
     </Modal>

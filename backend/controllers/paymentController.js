@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { scheduleRecompute } from '../services/dynamicPricingService.js';
 import Razorpay from 'razorpay';
 import prisma from '../config/db.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
@@ -49,6 +50,7 @@ const refundPaymentSchema = z.object({
  * @param {object} tx - Prisma transaction client
  */
 const restoreInventory = async (booking, tx) => {
+  scheduleRecompute(booking.hotelId); // rooms freed up: refresh dynamic prices shortly
   const datesToRestore = getDatesInRange(booking.checkIn, booking.checkOut);
   
   for (const date of datesToRestore) {

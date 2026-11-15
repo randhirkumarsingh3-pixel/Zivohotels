@@ -78,7 +78,6 @@ export const updateProperty = (data) => extranetFetch('/property', { method: 'PU
 
 // --- ROOMS ---
 export const fetchRooms = () => extranetFetch('/rooms', { method: 'GET' });
-export const updateRoom = (roomId, data) => extranetFetch(`/rooms/${roomId}`, { method: 'PUT', body: JSON.stringify(data) });
 
 // --- BOOKINGS ---
 export const fetchBookings = () => extranetFetch('/bookings', { method: 'GET' });
@@ -94,8 +93,6 @@ export const fetchSettlementDetails = (settlementId) => extranetFetch(`/finance/
 export const fetchPayoutHistory = () => extranetFetch('/finance/payouts', { method: 'GET' });
 
 // --- PROMOTIONS ---
-export const fetchPromotions = () => extranetFetch('/promotions', { method: 'GET' });
-export const createPromotion = (data) => extranetFetch('/promotions', { method: 'POST', body: JSON.stringify(data) });
 
 // --- NOTIFICATIONS & ACTIVITY ---
 export const fetchNotifications = () => extranetFetch('/notifications', { method: 'GET' });

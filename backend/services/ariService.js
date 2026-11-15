@@ -108,64 +108,140 @@ export const getCalendar = async (hotelId, start, end) => {
   };
 };
 
-/**
- * Sets rooms to sell and/or stop-sell for a room type over a date range.
- * Rooms to sell can't be below rooms already booked or above the physical count.
- */
-export const updateInventory = async ({ roomTypeId, start, end, weekdays, totalRooms, stopSell }) => {
-  const roomType = await prisma.roomType.findUnique({ where: { id: roomTypeId }, select: { id: true, totalInventory: true } });
-  if (!roomType) throw Object.assign(new Error('Room type not found'), { status: 404 });
-  const days = onWeekdays(daysBetween(start, end), weekdays);
-  if (days.length === 0) return { updated: 0 };
-  const total = totalRooms === undefined || totalRooms === null || totalRooms === '' ? undefined : Number(totalRooms);
-  if (total !== undefined && (!Number.isInteger(total) || total < 0)) throw Object.assign(new Error('Rooms to sell must be a whole number, 0 or more'), { status: 400 });
-  if (total !== undefined && total > roomType.totalInventory) {
-    throw Object.assign(new Error(`Rooms to sell can't be more than the ${roomType.totalInventory} rooms of this type`), { status: 400 });
-  }
-  if (total === undefined && stopSell === undefined) throw Object.assign(new Error('Nothing to update'), { status: 400 });
-
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.inventory.findMany({ where: { roomTypeId, date: { in: days } } });
-    const byDate = new Map(existing.map((i) => [key(i.date), i]));
-    const tooLow = total !== undefined ? existing.filter((i) => (i.bookedRooms || 0) > total) : [];
-    if (tooLow.length) {
-      const first = tooLow.sort((a, b) => a.date - b.date)[0];
-      throw Object.assign(new Error(`${first.bookedRooms} room(s) are already booked on ${first.date.toDateString()}; rooms to sell can't be lower than that`), { status: 400 });
-    }
-    for (const d of days) {
-      const row = byDate.get(key(d));
-      const nextTotal = total ?? row?.totalRooms ?? roomType.totalInventory;
-      const booked = row?.bookedRooms || 0;
-      const data = {
-        totalRooms: nextTotal,
-        availableRooms: Math.max(0, nextTotal - booked),
-        ...(stopSell !== undefined ? { stopSell: Boolean(stopSell) } : {})
-      };
-      if (row) await tx.inventory.update({ where: { id: row.id }, data });
-      else await tx.inventory.create({ data: { roomTypeId, date: d, bookedRooms: 0, ...data, stopSell: Boolean(stopSell) } });
-    }
-    return { updated: days.length };
-  }, { timeout: 30000 });
+const parseRooms = (totalRooms) => {
+  const total = totalRooms === undefined || totalRooms === null || totalRooms === '' ? undefined : (totalRooms === 'ALL' ? 'ALL' : Number(totalRooms));
+  if (total !== undefined && total !== 'ALL' && (!Number.isInteger(total) || total < 0)) throw Object.assign(new Error('Rooms to sell must be a whole number, 0 or more'), { status: 400 });
+  return total;
 };
 
-/** Sets (price) or clears (price null -> back to base price) a rate plan's price over a date range. */
-export const updateRates = async ({ ratePlanId, start, end, weekdays, price, source = 'MANUAL' }) => {
-  const plan = await prisma.ratePlan.findUnique({ where: { id: ratePlanId }, select: { id: true } });
+/**
+ * Rooms to sell and/or stop-sell for one room type on the given days, inside a transaction.
+ * totalRooms 'ALL' means every room of the type. Rooms to sell can't be below rooms already booked
+ * or above the physical count.
+ */
+const applyInventory = async (tx, { roomTypeId, days, totalRooms, stopSell }) => {
+  const roomType = await tx.roomType.findUnique({ where: { id: roomTypeId }, select: { id: true, name: true, totalInventory: true } });
+  if (!roomType) throw Object.assign(new Error('Room type not found'), { status: 404 });
+  const parsed = parseRooms(totalRooms);
+  const total = parsed === 'ALL' ? roomType.totalInventory : parsed;
+  if (total !== undefined && total > roomType.totalInventory) {
+    throw Object.assign(new Error(`${roomType.name}: rooms to sell can't be more than its ${roomType.totalInventory} rooms`), { status: 400 });
+  }
+  if (total === undefined && stopSell === undefined) throw Object.assign(new Error('Nothing to update'), { status: 400 });
+  if (days.length === 0) return 0;
+
+  const existing = await tx.inventory.findMany({ where: { roomTypeId, date: { in: days } } });
+  const byDate = new Map(existing.map((i) => [key(i.date), i]));
+  const tooLow = total !== undefined ? existing.filter((i) => (i.bookedRooms || 0) > total) : [];
+  if (tooLow.length) {
+    const first = tooLow.sort((a, b) => a.date - b.date)[0];
+    throw Object.assign(new Error(`${roomType.name}: ${first.bookedRooms} room(s) are already booked on ${first.date.toDateString()}; rooms to sell can't be lower than that`), { status: 400 });
+  }
+  for (const d of days) {
+    const row = byDate.get(key(d));
+    const nextTotal = total ?? row?.totalRooms ?? roomType.totalInventory;
+    const booked = row?.bookedRooms || 0;
+    const data = {
+      totalRooms: nextTotal,
+      availableRooms: Math.max(0, nextTotal - booked),
+      ...(stopSell !== undefined ? { stopSell: Boolean(stopSell) } : {})
+    };
+    if (row) await tx.inventory.update({ where: { id: row.id }, data });
+    else await tx.inventory.create({ data: { roomTypeId, date: d, bookedRooms: 0, ...data, stopSell: Boolean(stopSell) } });
+  }
+  return days.length;
+};
+
+/**
+ * Prices for one rate plan on the given days, inside a transaction:
+ *  - price: a number sets that price; null resets to the base price (removes daily rates).
+ *  - adjustPercent: changes each day's current price (daily rate, or base) by that percentage.
+ */
+const applyRates = async (tx, { ratePlanId, days, price, adjustPercent, source = 'MANUAL' }) => {
+  const plan = await tx.ratePlan.findUnique({ where: { id: ratePlanId }, select: { id: true, name: true, basePrice: true } });
   if (!plan) throw Object.assign(new Error('Rate plan not found'), { status: 404 });
-  const days = onWeekdays(daysBetween(start, end), weekdays);
-  if (days.length === 0) return { updated: 0 };
+  if (days.length === 0) return 0;
+  if (adjustPercent !== undefined && adjustPercent !== null && adjustPercent !== '') {
+    const pct = Number(adjustPercent);
+    if (!Number.isFinite(pct) || pct <= -100 || pct > 500) throw Object.assign(new Error('Choose a change between -99% and +500%'), { status: 400 });
+    const current = await dailyRatesFor(ratePlanId, days, tx);
+    for (const d of days) {
+      const value = roundMoney((current[key(d)] ?? toMoney(plan.basePrice)) * (1 + pct / 100));
+      if (!(value > 0)) throw Object.assign(new Error(`${plan.name} has no price to change on ${d.toDateString()}`), { status: 400 });
+      await tx.dailyRate.upsert({
+        where: { ratePlanId_date: { ratePlanId, date: d } },
+        update: { price: value, source },
+        create: { ratePlanId, date: d, price: value, source }
+      });
+    }
+    return days.length;
+  }
   if (price === null || price === '') {
-    const { count } = await prisma.dailyRate.deleteMany({ where: { ratePlanId, date: { in: days } } });
-    return { updated: count, cleared: true };
+    const { count } = await tx.dailyRate.deleteMany({ where: { ratePlanId, date: { in: days } } });
+    return count;
   }
   const value = roundMoney(Number(price));
   if (!(value > 0)) throw Object.assign(new Error('Enter a price above ₹0'), { status: 400 });
-  await prisma.$transaction(days.map((d) => prisma.dailyRate.upsert({
-    where: { ratePlanId_date: { ratePlanId, date: d } },
-    update: { price: value, source },
-    create: { ratePlanId, date: d, price: value, source }
-  })));
-  return { updated: days.length };
+  for (const d of days) {
+    await tx.dailyRate.upsert({
+      where: { ratePlanId_date: { ratePlanId, date: d } },
+      update: { price: value, source },
+      create: { ratePlanId, date: d, price: value, source }
+    });
+  }
+  return days.length;
 };
 
-export default { getCalendar, updateInventory, updateRates, dailyRatesFor, stopSellNights, stayNightlyPrice, daysBetween };
+/** Sets rooms to sell and/or stop-sell for a room type over a date range. */
+export const updateInventory = async ({ roomTypeId, start, end, weekdays, totalRooms, stopSell }) => {
+  const days = onWeekdays(daysBetween(start, end), weekdays);
+  const updated = await prisma.$transaction((tx) => applyInventory(tx, { roomTypeId, days, totalRooms, stopSell }), { timeout: 30000 });
+  return { updated };
+};
+
+/** Sets (price) or clears (price null -> back to base price) a rate plan's price over a date range. */
+export const updateRates = async ({ ratePlanId, start, end, weekdays, price, adjustPercent, source = 'MANUAL' }) => {
+  const days = onWeekdays(daysBetween(start, end), weekdays);
+  const updated = await prisma.$transaction((tx) => applyRates(tx, { ratePlanId, days, price, adjustPercent, source }), { timeout: 30000 });
+  return price === null || price === '' ? { updated, cleared: true } : { updated };
+};
+
+/**
+ * Bulk update for one property: the same availability and/or price change for several room types
+ * and rate plans over a date range (optionally only some weekdays). All or nothing: if any part is
+ * refused (e.g. rooms to sell below bookings on some date) nothing is saved.
+ *   inventory: { roomTypeIds, totalRooms?: number | 'ALL', stopSell?: boolean }
+ *   rates:     { ratePlanIds, price?: number | null (reset), adjustPercent?: number }
+ */
+export const bulkUpdate = async ({ hotelId, start, end, weekdays, inventory, rates }) => {
+  const days = onWeekdays(daysBetween(start, end), weekdays);
+  const roomTypeIds = [...new Set(inventory?.roomTypeIds || [])];
+  const ratePlanIds = [...new Set(rates?.ratePlanIds || [])];
+  if (!roomTypeIds.length && !ratePlanIds.length) throw Object.assign(new Error('Choose at least one room type or rate plan'), { status: 400 });
+  if (days.length === 0) throw Object.assign(new Error('No days match the chosen weekdays in this date range'), { status: 400 });
+
+  const [rtCount, rpCount] = await Promise.all([
+    prisma.roomType.count({ where: { id: { in: roomTypeIds }, hotelId } }),
+    prisma.ratePlan.count({ where: { id: { in: ratePlanIds }, roomType: { hotelId } } }),
+  ]);
+  if (rtCount !== roomTypeIds.length || rpCount !== ratePlanIds.length) {
+    throw Object.assign(new Error('Some of the chosen rooms or rate plans are not part of this property'), { status: 400 });
+  }
+  if (ratePlanIds.length && rates.price === undefined && (rates.adjustPercent === undefined || rates.adjustPercent === '')) {
+    throw Object.assign(new Error('Enter a price, a % change, or choose reset to base price'), { status: 400 });
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let inventoryDays = 0;
+    let rateDays = 0;
+    for (const roomTypeId of roomTypeIds) {
+      inventoryDays += await applyInventory(tx, { roomTypeId, days, totalRooms: inventory.totalRooms, stopSell: inventory.stopSell });
+    }
+    for (const ratePlanId of ratePlanIds) {
+      rateDays += await applyRates(tx, { ratePlanId, days, price: rates.price, adjustPercent: rates.adjustPercent });
+    }
+    return { days: days.length, roomTypes: roomTypeIds.length, ratePlans: ratePlanIds.length, inventoryDays, rateDays };
+  }, { timeout: 120000 });
+};
+
+export default { getCalendar, updateInventory, updateRates, bulkUpdate, dailyRatesFor, stopSellNights, stayNightlyPrice, daysBetween };

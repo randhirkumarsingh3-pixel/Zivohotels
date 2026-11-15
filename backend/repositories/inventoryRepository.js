@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { scheduleRecompute } from '../services/dynamicPricingService.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 
 export const inventoryRepository = {
@@ -91,6 +92,7 @@ export const inventoryRepository = {
    */
   restoreInventory: async (tx, booking) => {
     if (booking.status === 'CANCELLED') return; // Safety check
+    scheduleRecompute(booking.hotelId); // rooms freed up: refresh dynamic prices shortly
 
     const dates = getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
     

@@ -9,6 +9,9 @@ const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
  * Generate a 6-digit numeric OTP
  */
 export const generateOTP = () => {
+  // TESTING ONLY: a fixed code (TEST_OTP, e.g. 123456) so testers can verify without email.
+  // Never used in production. Remove TEST_OTP from .env before going live.
+  if (process.env.TEST_OTP && process.env.NODE_ENV !== 'production') return String(process.env.TEST_OTP);
   // Cryptographically secure (Math.random() is predictable)
   return crypto.randomInt(100000, 1000000).toString();
 };

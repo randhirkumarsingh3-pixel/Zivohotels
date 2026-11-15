@@ -241,6 +241,35 @@ settlement. Fixed along the way:
 - Search availability reads inventory by UTC date; on a server in IST (this Mac) booked rooms aren't
   subtracted. Production runs in UTC.
 
+## Rooms, bulk ARI, dynamic pricing and promotions (Nov 2026)
+
+- **Rooms & rate plans**: Extranet -> Rooms & Rate Plans and Admin -> Room Config share
+  `src/components/rooms/RoomsManager.jsx` (API `/admin/rooms`, `/admin/rate-plans`; owners limited
+  to their own properties). Room types can be switched off and on again. Changing the number of
+  rooms updates future inventory (refused if bookings already hold more rooms on a date). Rate plan
+  fields are validated (no mass assignment); a room keeps at least one plan on sale. The old
+  extranet `PUT /extranet/rooms/:id` (saved the raw body) is removed.
+- **Bulk update**: calendar button -> `POST /admin/ari/bulk` (several room types / rate plans, date
+  range, weekdays; rooms to sell / all rooms, stop-sell, set price, change by %, reset). All or nothing.
+- **Dynamic pricing** (`services/dynamicPricingService.js`): per-property rules (weekday, occupancy,
+  last minute, early bird, date range) and limits, plus the admin holiday calendar. Results are saved
+  as `DailyRate` rows with `source = 'DYNAMIC'` for the next N nights, so the shown price is the
+  charged price. Manual and channel-manager rates are never overwritten; channel-managed properties
+  are skipped. Recomputed hourly, after bookings/cancellations and on any rule change.
+  Extranet -> Dynamic Pricing and Admin -> Pricing & RMS (the old mock page is gone). Platform
+  SAFE_MODE and holidays are admin-only now (owners could set SAFE_MODE before).
+- **Promotions** (`Promotion`, `PromotionRedemption`; `services/promotionService.js`,
+  `domains/promotionDomain.js`): property offers (owner/admin) and Zivo platform offers (admin, all
+  or chosen properties). Automatic (no code) offers show in search and on the hotel page with the
+  discounted price; codes are entered at checkout (`promoCode`). One promotion per booking, the
+  biggest the guest qualifies for; limits are re-checked under a row lock at booking. Stored on
+  `booking.metadata.promotion`. `fundedBy = ZIVO`: commission, TCS and TDS on the full price and the
+  discount is added to the hotel payout (ledger account `ZIVO_PROMOTIONS`); `HOTEL`: on the
+  discounted price. Owners' promotions are always hotel-funded. The legacy `Coupon` table is unused.
+- **TESTING ONLY, remove before going live**: `TEST_OTP=123456` in `backend/.env` makes every email
+  OTP 123456 (ignored when `NODE_ENV=production`); the property wizard's mobile OTP is a fixed
+  123456 in `BasicInfoStep.jsx` (no SMS provider yet).
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

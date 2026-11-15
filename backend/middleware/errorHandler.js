@@ -92,7 +92,8 @@ export const errorHandler = (err, req, res, next) => {  // eslint-disable-line n
   // ── Default ───────────────────────────────────────────────────────────────
   res.status(statusCode).json({
     success: false,
-    message: process.env.NODE_ENV === 'production'
+    // Client errors (4xx) carry a message meant for the user; only hide server errors.
+    message: process.env.NODE_ENV === 'production' && statusCode >= 500
       ? 'An internal server error occurred.'
       : err.message,
     code:    err.code || 'INTERNAL_ERROR',

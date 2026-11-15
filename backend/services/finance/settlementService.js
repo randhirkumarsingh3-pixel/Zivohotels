@@ -59,17 +59,22 @@ const pct = (amount, percent) => D(amount).times(percent).dividedBy(100).toDecim
  * @param {number} input.commissionPercent  the hotel's agreed rate
  * @param {boolean} input.hotelGstRegistered TCS applies only to GST-registered hotels
  * @param {boolean} input.sameState    ZivoHotels and the hotel in the same state -> CGST+SGST, else IGST
+ * @param {number} input.zivoFunded    pre-tax discount of a Zivo-funded promotion: the hotel sold the
+ *                                     room at the full price, so commission, TCS and TDS are on the
+ *                                     full value and ZivoHotels pays the discount to the hotel
  *
- * netPayable = collected - commission - GST on commission - TCS - TDS. Negative means the hotel
- * holds the money (pay-at-hotel) and owes ZivoHotels; it is netted against later payouts.
+ * netPayable = collected + zivoFunded - commission - GST on commission - TCS - TDS. Negative means
+ * the hotel holds the money (pay-at-hotel) and owes ZivoHotels; it is netted against later payouts.
  */
-export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState }) => {
+export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0 }) => {
   const gross = D(grossAmount);
   const tax = D(taxAmount);
+  const funded = Prisma.Decimal.max(0, D(zivoFunded));
   const preTax = gross.minus(tax);
+  const saleValue = preTax.plus(funded);
   const collectedOnline = Prisma.Decimal.min(gross, Prisma.Decimal.max(0, D(collected)));
 
-  const commission = pct(preTax, commissionPercent);
+  const commission = pct(saleValue, commissionPercent);
   let cgst = D(0), sgst = D(0), igst = D(0);
   if (sameState) {
     cgst = pct(commission, COMMISSION_GST_PERCENT / 2);
@@ -80,12 +85,18 @@ export const computeSettlement = ({ grossAmount, taxAmount, collected, commissio
   const commissionGst = cgst.plus(sgst).plus(igst);
 
   // TCS on the pre-GST value of what was collected online (proportionally), registered hotels only
-  const collectedPreTax = gross.isZero() ? D(0) : preTax.times(collectedOnline).dividedBy(gross);
+  const collectedPreTax = (gross.isZero() ? D(0) : preTax.times(collectedOnline).dividedBy(gross)).plus(funded);
   const tcs = hotelGstRegistered ? pct(collectedPreTax, TCS_PERCENT) : D(0);
-  const tds = pct(preTax, TDS_PERCENT);
+  const tds = pct(saleValue, TDS_PERCENT);
 
-  const netPayable = collectedOnline.minus(commission).minus(commissionGst).minus(tcs).minus(tds);
-  return { gross, preTax, tax, collected: collectedOnline, commission, cgst, sgst, igst, commissionGst, tcs, tds, netPayable };
+  const netPayable = collectedOnline.plus(funded).minus(commission).minus(commissionGst).minus(tcs).minus(tds);
+  return { gross, preTax, tax, collected: collectedOnline, zivoFunded: funded, commission, cgst, sgst, igst, commissionGst, tcs, tds, netPayable };
+};
+
+/** Pre-tax discount of a Zivo-funded promotion on the booking (0 if none or hotel-funded). */
+export const zivoFundedDiscount = (booking) => {
+  const promo = booking?.metadata?.promotion;
+  return promo && promo.fundedBy === 'ZIVO' ? D(promo.discountAmount || 0) : D(0);
 };
 
 /** A checked-out stay: the whole booking value; collected = paid minus refunded. */
@@ -96,6 +107,7 @@ export const staySettlementInput = (booking) => {
     grossAmount: total,
     taxAmount: tax,
     collected: D(booking.paidAmount).minus(D(booking.refundAmount)),
+    zivoFunded: zivoFundedDiscount(booking),
   };
 };
 
@@ -182,6 +194,7 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
       ? { referenceId: ref, account: 'HOTEL', type: 'DEBIT', amount: m.netPayable.abs(), description: `Owed by hotel (collected at hotel), ${what}` }
       : { referenceId: ref, account: 'HOTEL', type: 'CREDIT', amount: m.netPayable, description: `Net payable, ${what}` },
     { referenceId: ref, account: 'USER', type: 'DEBIT', amount: m.collected, description: `Collected online, ${what}` },
+    { referenceId: ref, account: 'ZIVO_PROMOTIONS', type: 'DEBIT', amount: m.zivoFunded, description: `Zivo-funded promotion paid to the hotel, ${what}` },
   ];
   await ledgerService.record(entries.filter((e) => !D(e.amount).isZero()), tx);
 

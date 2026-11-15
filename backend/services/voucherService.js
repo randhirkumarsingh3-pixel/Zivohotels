@@ -4,7 +4,7 @@ import { escapeHtml as h } from '../utils/html.js';
 import { toMoney, roundMoney } from '../utils/money.js';
 import { policyFieldsForCode } from '../utils/refundCalculator.js';
 import {
-  computeSettlement, staySettlementInput, settlementTermsForHotel, nextPayoutDate,
+  computeSettlement, staySettlementInput, settlementTermsForHotel, nextPayoutDate, zivoFundedDiscount,
 } from './finance/settlementService.js';
 import { COMMISSION_GST_PERCENT, TCS_PERCENT, TDS_PERCENT } from '../constants/finance.js';
 
@@ -240,7 +240,13 @@ export const guestVoucherHtml = (d) => {
         <div class="rows">
           <div><span>Room charges</span><span>${inr(roomCharges)}</span></div>
           ${extras ? `<div><span>Extra guest / bed / meals</span><span>${inr(extras)}</span></div>` : ''}
-          ${discount ? `<div><span>Discount</span><span>− ${inr(discount)}</span></div>` : ''}
+          ${(() => {
+            const promo = booking.metadata?.promotion;
+            const promoAmt = toMoney(promo?.discountAmount) || 0;
+            const other = roundMoney(discount - promoAmt);
+            return (promoAmt ? `<div><span>Offer: ${h(promo.name)}${promo.code ? ` (${h(promo.code)})` : ''}</span><span>− ${inr(promoAmt)}</span></div>` : '')
+              + (other > 0 ? `<div><span>${booking.metadata?.prepaidDiscountAmount ? 'Pay-now discount' : 'Discount'}</span><span>− ${inr(other)}</span></div>` : '');
+          })()}
           <div><span>GST${taxPct != null ? ` @ ${h(taxPct)}%` : ''}</span><span>${inr(booking.taxAmount)}</span></div>
           <div class="grand"><span>Total</span><span>${inr(pay.total)}</span></div>
         </div>
@@ -290,7 +296,8 @@ export const hotelierFigures = async (d) => {
       commissionGst: n(settlement.commissionGstAmount), tcs: n(settlement.tcsAmount), tds: n(settlement.tdsAmount),
       netPayable: n(settlement.netPayable), igst: n(settlement.igstAmount),
     };
-    m.collected = roundMoney(m.netPayable + m.commission + m.commissionGst + m.tcs + m.tds);
+    m.zivoFunded = toMoney(zivoFundedDiscount(booking)) || 0;
+    m.collected = roundMoney(m.netPayable + m.commission + m.commissionGst + m.tcs + m.tds - m.zivoFunded);
   } else {
     const c = computeSettlement({ ...staySettlementInput(booking), ...terms });
     m = Object.fromEntries(Object.entries(c).map(([k, v]) => [k, toMoney(v)]));
@@ -372,6 +379,7 @@ export const hotelierVoucherHtml = (d, f) => {
         <div><span>2. Extra guest / bed / meal charges</span><span>${inr(f.extras)}</span></div>
         <div><span>3. GST charged to the guest</span><span>${inr(f.tax)}</span></div>
         <div class="sub"><span>(A) Property gross charges (1+2+3)</span><span>${inr(f.gross)}</span></div>
+        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded promotion (paid by ZivoHotels; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
         ${collectedAtHotel ? `<div><span>Less: collected by the property from the guest</span><span>− ${inr(collectedAtHotel)}</span></div>
         <div class="sub"><span>(A′) Collected online by ZivoHotels</span><span>${inr(f.collected)}</span></div>` : ''}
         <div><span>4. ZivoHotels commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>
@@ -380,7 +388,7 @@ export const hotelierVoucherHtml = (d, f) => {
         <div><span>6. TCS @ ${TCS_PERCENT}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', not applicable: property not GST-registered'}</span><span>${inr(f.tcs)}</span></div>
         <div><span>7. TDS @ ${TDS_PERCENT}% (Income-tax s.194-O)</span><span>${inr(f.tds)}</span></div>
         <div class="sub"><span>(C) Tax deductions (6+7)</span><span>${inr(deductions)}</span></div>
-        <div class="grand"><span>${owed ? 'Payable by property' : 'Payable to property'} (${collectedAtHotel ? 'A′' : 'A'} − B − C)</span><span>${inr(Math.abs(f.netPayable))}</span></div>
+        <div class="grand"><span>${owed ? 'Payable by property' : 'Payable to property'} (${collectedAtHotel ? 'A′' : 'A'}${f.zivoFunded > 0 ? ' + promotion' : ''} − B − C)</span><span>${inr(Math.abs(f.netPayable))}</span></div>
       </div></div>
       <div class="muted" style="margin-top:6px">${f.final ? 'Final figures from the settlement created at check-out.' : 'Provisional: the settlement is created at check-out and reflects any changes or cancellations.'}</div>
     </div>

@@ -203,7 +203,7 @@ model DailyRate {
   ratePlanId String
   date       DateTime
   price      Decimal  @db.Decimal(12, 2)
-  source     String   @default("MANUAL") // MANUAL | CHANNEL_MANAGER
+  source     String   @default("MANUAL") // MANUAL | CHANNEL_MANAGER | DYNAMIC
   updatedAt  DateTime @updatedAt
   ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
 
@@ -586,16 +586,102 @@ model ExperimentInsight {
   version        Int      @default(1)
 }
 
+/// Dynamic pricing rule of a property (set by the owner in the extranet or by an admin).
+/// type: WEEKDAY | OCCUPANCY | LAST_MINUTE | EARLY_BIRD | DATE_RANGE. adjustment is a percentage
+/// (+15 = 15% up, -10 = 10% down) on the rate plan's base price; matching rules add up and the
+/// total is held within the property's DynamicPricingSetting limits.
 model PricingRule {
-  id         String   @id @default(uuid())
-  hotelId    String?
-  roomTypeId String?
-  type       String
-  condition  Json
-  adjustment Float
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  hotelId     String?
+  roomTypeId  String?
+  ratePlanId  String?
+  name        String   @default("")
+  type        String
+  condition   Json
+  adjustment  Float
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([hotelId])
+}
+
+/// A promotion (discount) a guest gets at checkout.
+///  - hotelId set: the property's own promotion (owner or admin), on its room types / rate plans.
+///  - hotelId null: a Zivo platform promotion (admin), for all properties or those in hotelIds.
+/// No code = applied automatically to every eligible booking and shown in search and on the hotel
+/// page; with a code = only when the guest enters it. One promotion per booking: the biggest
+/// discount the guest is eligible for. fundedBy decides who bears the discount in the settlement:
+/// HOTEL (lower payout) or ZIVO (the hotel is paid as if there were no discount).
+model Promotion {
+  id               String                @id @default(uuid())
+  hotelId          String?
+  hotelIds         String[]              @default([])
+  name             String
+  description      String?
+  code             String?               @unique
+  discountType     String                @default("PERCENT") // PERCENT | FLAT
+  value            Decimal               @db.Decimal(12, 2)
+  maxDiscount      Decimal?              @db.Decimal(12, 2)
+  minBookingAmount Decimal?              @db.Decimal(12, 2)
+  roomTypeIds      String[]              @default([])
+  ratePlanIds      String[]              @default([])
+  stayStart        DateTime?
+  stayEnd          DateTime?
+  bookStart        DateTime?
+  bookEnd          DateTime?
+  minNights        Int                   @default(1)
+  minAdvanceDays   Int?
+  maxAdvanceDays   Int?
+  usageLimit       Int?
+  perUserLimit     Int?
+  firstBookingOnly Boolean               @default(false)
+  fundedBy         String                @default("HOTEL") // HOTEL | ZIVO
+  isActive         Boolean               @default(true)
+  createdById      String?
+  createdByRole    String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  redemptions      PromotionRedemption[]
+
+  @@index([hotelId])
+  @@index([isActive])
+}
+
+/// A promotion used on a booking (one per booking). Counts towards the promotion's limits unless
+/// the booking was cancelled.
+model PromotionRedemption {
+  id             String    @id @default(uuid())
+  promotionId    String
+  bookingId      String    @unique
+  userId         String?
+  hotelId        String
+  discountAmount Decimal   @db.Decimal(12, 2)
+  fundedBy       String
+  createdAt      DateTime  @default(now())
+  promotion      Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@index([promotionId])
+  @@index([userId])
+}
+
+/// Dynamic pricing switch and limits per property. Prices it works out are saved as daily rates
+/// (source DYNAMIC) so search, the hotel page and checkout all charge the same price; manual and
+/// channel-manager rates are never overwritten.
+model DynamicPricingSetting {
+  hotelId        String    @id
+  enabled        Boolean   @default(false)
+  minPercent     Float     @default(-30)
+  maxPercent     Float     @default(50)
+  minPrice       Decimal?  @db.Decimal(12, 2)
+  maxPrice       Decimal?  @db.Decimal(12, 2)
+  applyHolidays  Boolean   @default(true)
+  horizonDays    Int       @default(90)
+  lastRunAt      DateTime?
+  lastRunSummary Json?
+  updatedById    String?
+  updatedAt      DateTime  @updatedAt
 }
 
 model DemandSignal {

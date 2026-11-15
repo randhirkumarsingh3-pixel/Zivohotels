@@ -14,6 +14,8 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
 
   const [formData, setFormData] = useState(initialData ? {
     ...initialData,
+    code: initialData.code || '',
+    description: initialData.description || '',
     size: initialData.roomSize || '',
     view: initialData.viewType || '',
     maxOccupancy: initialData.maxOccupancy || 2,
@@ -31,7 +33,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
     extraBedAllowed: initialData.extraBedAllowed || false,
     maxExtraBeds: initialData.maxExtraBeds || 1
   } : {
-    name: '', code: '', description: '', size: '', view: '',
+    name: '', code: '', description: '', size: '', view: '', basePrice: '',
     maxOccupancy: 2, baseOccupancy: 2, 
     bedType: 'King',
     amenities: [], totalRooms: 10, isActive: true,
@@ -129,29 +131,46 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
     }));
   };
 
-  const handleSubmit = (e) => {
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  // The parent saves and returns { ok, message }; the form stays open (with what was typed) when
+  // the save fails. It used to close straight away, so a rejected save lost everything.
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    const toInt = (v, fallback) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : fallback; };
     const primary = formData.roomImages.find(img => img.isPrimary);
     const payload = {
       name: formData.name,
       code: formData.code,
       description: formData.description,
-      maxOccupancy: parseInt(formData.maxOccupancy),
-      baseOccupancy: formData.baseOccupancy ? parseInt(formData.baseOccupancy) : null,
+      maxOccupancy: toInt(formData.maxOccupancy, 2),
+      baseOccupancy: formData.baseOccupancy ? toInt(formData.baseOccupancy, null) : null,
       bedType: formData.bedType,
-      totalRooms: parseInt(formData.totalRooms),
+      totalRooms: toInt(formData.totalRooms, 0),
       amenities: formData.amenities,
       roomSize: formData.size,
       viewType: formData.view,
       isActive: formData.isActive,
       extraBedAllowed: formData.extraBedAllowed,
-      maxExtraBeds: parseInt(formData.maxExtraBeds),
+      maxExtraBeds: formData.extraBedAllowed ? toInt(formData.maxExtraBeds, 1) : 0,
       imageIds: formData.roomImages.map(img => img.id),
-      primaryImageId: primary?.id,
-      hotelId: formData.hotelId
+      ...(primary?.id ? { primaryImageId: primary.id } : {}),
+      ...(!initialData && formData.basePrice !== '' && formData.basePrice !== undefined ? { basePrice: Number(formData.basePrice) } : {}),
     };
-    onSubmit(payload);
-    onClose();
+    if (payload.baseOccupancy && payload.baseOccupancy > payload.maxOccupancy) {
+      setFormError('Base occupancy can\'t be more than max occupancy.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await onSubmit(payload);
+      if (result && result.ok === false) setFormError(result.message || 'Could not save the room type.');
+      else onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -174,6 +193,15 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
               <textarea value={formData.description} onChange={e => updateForm('description', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none" rows="3" placeholder="Describe the room's unique features..." />
             </div>
+            {!initialData && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Starting price / night (₹)</label>
+                  <input type="number" min="1" step="0.01" value={formData.basePrice} onChange={e => updateForm('basePrice', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none" required placeholder="e.g. 4500" />
+                  <p className="text-[11px] text-gray-400 mt-1">Base price of the first rate plan (room only), before tax. Add breakfast or meal plans as more rate plans. Change prices per date in Inventory &amp; Rates.</p>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -344,9 +372,10 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
           </section>
         </div>
 
-        <div className="border-t border-gray-200 pt-8 flex justify-end gap-3 sticky bottom-0 bg-white">
+        <div className="border-t border-gray-200 pt-8 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+          {formError && <p role="alert" className="mr-auto text-sm font-medium text-red-600">{formError}</p>}
           <button type="button" onClick={onClose} className="px-8 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
-          <button type="submit" className="px-10 py-3 text-sm font-black text-white bg-brand-600 rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-200 transition-all">Save Changes</button>
+          <button type="submit" disabled={saving} className="px-10 py-3 text-sm font-black text-white bg-brand-600 rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-200 transition-all disabled:opacity-60">{saving ? 'Saving…' : initialData ? 'Save Changes' : 'Create Room Type'}</button>
         </div>
       </form>
     </Modal>

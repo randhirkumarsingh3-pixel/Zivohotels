@@ -1,14 +1,27 @@
 import prisma from '../config/db.js';
+import { scheduleRecompute } from './dynamicPricingService.js';
 import { pricingDomain } from '../domains/pricingDomain.js';
 import { dailyRatesFor, stopSellNights } from './ariService.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import { bookingRepository } from '../repositories/bookingRepository.js';
-import { couponService } from './couponService.js';
+import { resolveBest, redeem } from './promotionService.js';
 import loyaltyService from './finance/loyaltyService.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
+
+/**
+ * Prices a stay and applies the best promotion it qualifies for: price it once to get the pre-tax
+ * subtotal (promotion conditions like minimum amount use it), choose the promotion, then price it
+ * again with that promotion. Used by preview and booking so both give the same result.
+ */
+const priceWithPromotion = async (calculationInput, ctx) => {
+  const base = pricingDomain.calculate(calculationInput);
+  const { promotion, codeStatus } = await resolveBest({ ...ctx, subtotal: base.subtotal });
+  if (!promotion) return { pricing: base, promotion: null, codeStatus };
+  return { pricing: pricingDomain.calculate({ ...calculationInput, appliedPromotion: promotion.raw }), promotion, codeStatus };
+};
 
 export const bookingService = {
 
@@ -42,20 +55,8 @@ export const bookingService = {
     const systemConfig = await getSystemConfig();
     const prepaidDiscountPercent = systemConfig.prepaidDiscountPercent ?? 5;
 
-    let appliedCoupon = null;
-    if (couponCode) {
-      appliedCoupon = await prisma.coupon.findUnique({
-        where: { code: couponCode, isActive: true }
-      });
-      if (appliedCoupon && new Date(appliedCoupon.expiry) < new Date()) {
-         appliedCoupon = null;
-      }
-    }
-
-    // 2. Pricing Preview (Safe Mode - no dynamic pricing adjustments)
-    // Preview always shows stable base-rate pricing so the checkout matches
-    // what the user saw on the hotel detail page. Dynamic pricing is applied
-    // only when the actual booking is confirmed (createBooking).
+    // 2. Pricing preview. Dynamic prices reach checkout as daily rates (dynamicPricingService), so
+    // safe mode here keeps the price exactly what the hotel page showed.
     const dynamicContext = {
       safeMode: true,
       availableRooms: roomType.totalInventory,
@@ -83,12 +84,15 @@ export const bookingService = {
       children,
       extraBeds,
       paymentType,
-      appliedCoupon,
       dynamicContext,
       dailyRates
     };
 
-    return pricingDomain.calculate(calculationInput);
+    const { pricing, promotion, codeStatus } = await priceWithPromotion(calculationInput, {
+      hotelId: roomType.hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId: params.userId, code: couponCode
+    });
+    const { raw: _raw, ...promotionSummary } = promotion || {};
+    return { ...pricing, promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus };
   },
 
   /**
@@ -130,20 +134,10 @@ export const bookingService = {
     const systemConfig = await getSystemConfig();
     const prepaidDiscountPercent = systemConfig.prepaidDiscountPercent ?? 5;
 
-    let appliedCoupon = null;
-    if (couponCode) {
-      appliedCoupon = await prisma.coupon.findUnique({
-        where: { code: couponCode, isActive: true }
-      });
-      if (appliedCoupon && new Date(appliedCoupon.expiry) < new Date()) {
-         appliedCoupon = null;
-      }
-    }
-
     // 2. Pricing Validation (Double Check)
     // Customers pay exactly the price shown on the hotel page and in the checkout preview, so
-    // booking uses the same safe-mode (no dynamic surcharges) pricing as previewBooking. If dynamic
-    // pricing is brought back, it must be applied to search, detail and preview at the same time.
+    // booking prices the stay the same way as previewBooking: daily rates (manual, channel manager
+    // or dynamic pricing) plus the same promotion choice.
     const dynamicContext = {
       safeMode: true,
       availableRooms: roomType.totalInventory,
@@ -171,12 +165,16 @@ export const bookingService = {
       children,
       extraBeds,
       paymentType,
-      appliedCoupon,
       dynamicContext,
       dailyRates
     };
 
-    const pricing = pricingDomain.calculate(calculationInput);
+    const { pricing, promotion, codeStatus } = await priceWithPromotion(calculationInput, {
+      hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode
+    });
+    if (couponCode && codeStatus && !codeStatus.ok && !promotion) {
+      throw Object.assign(new Error(codeStatus.message), { statusCode: 400 });
+    }
     Object.freeze(pricing);
 
     // 3. B2B Agent Authorization (Phase 8.7)
@@ -192,11 +190,6 @@ export const bookingService = {
         roomTypeId, checkInDate, checkOutDate, rooms
       });
 
-      // B. Optional: Consume Coupon
-      let _appliedCoupon = null;
-      if (couponCode) {
-        _appliedCoupon = await couponService.consumeCoupon(tx, couponCode, userId);
-      }
 
       // C. Create Booking
       const expiresAt = new Date(Date.now() + (paymentType === 'PAY_AT_HOTEL' ? 24 * 60 : 30) * 60 * 1000);
@@ -222,7 +215,7 @@ export const bookingService = {
         roomTypeId,
         ratePlanId,
         paymentType,
-        couponCode,
+        couponCode: promotion?.code || null,
         status: paymentType === 'PAY_AT_HOTEL' ? 'CONFIRMED' : 'PENDING',
         expiresAt,
         requestId,
@@ -233,11 +226,21 @@ export const bookingService = {
            ratePlanName: ratePlan.name,
            discountAmount: pricing.discountAmount,
            couponDiscountAmount: pricing.couponDiscountAmount,
+           prepaidDiscountAmount: pricing.prepaidDiscountAmount,
+           promotion: promotion ? {
+             id: promotion.id, name: promotion.name, code: promotion.code, label: promotion.label,
+             discountAmount: pricing.promotionDiscountAmount, fundedBy: promotion.fundedBy, platform: promotion.platform
+           } : null,
            taxPercentage: pricing.taxPercentage
         }
       };
 
       const booking = await bookingRepository.create(tx, bookingData);
+
+      // B. Promotion: recorded with its limits checked again under a lock
+      if (promotion && pricing.promotionDiscountAmount > 0) {
+        await redeem(tx, { promotionId: promotion.id, bookingId: booking.id, userId, hotelId, discountAmount: pricing.promotionDiscountAmount });
+      }
 
       // Initialize operational timeline
       await tx.bookingTimelineEvent.create({
@@ -355,6 +358,9 @@ export const bookingService = {
     if (paymentType === 'PAY_AT_HOTEL') {
       sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
     }
+
+    // Occupancy changed: refresh this property's dynamic prices (debounced, in the background).
+    scheduleRecompute(hotelId);
 
     return { booking: bookingResult, isIdempotent: false };
   },

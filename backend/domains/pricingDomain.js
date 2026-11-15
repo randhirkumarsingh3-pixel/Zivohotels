@@ -1,6 +1,7 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import revenueDomain from './revenueDomain.js';
 import dynamicPricingDomain from './dynamicPricingDomain.js';
+import { discountFor } from './promotionDomain.js';
 
 /**
  * Pricing Domain (Pure Business Logic)
@@ -35,6 +36,7 @@ export const pricingDomain = {
       roomType, ratePlan, taxRules, prepaidDiscountPercent,
       checkInDate, checkOutDate, rooms, adults, children, 
       extraBeds, paymentType, appliedCoupon = null,
+      appliedPromotion = null, // promotion chosen by promotionService (one per booking)
       dynamicContext = null,
       dailyRates = {} // { [night ISO string]: price } from Inventory & Rates / the channel manager
     } = input;
@@ -182,8 +184,11 @@ export const pricingDomain = {
       couponDiscountAmount = revenueDomain.calculateDiscountValue(appliedCoupon, rawSubtotal);
     }
     
-    // Total discount is prepaid discount + coupon discount
-    const totalDiscountAmount = discountAmount + couponDiscountAmount;
+    // Promotion (Admin or property offer) on the same pre-tax subtotal
+    const promotionDiscountAmount = appliedPromotion ? discountFor(appliedPromotion, rawSubtotal) : 0;
+
+    // Total discount is prepaid discount + coupon discount + promotion
+    const totalDiscountAmount = discountAmount + couponDiscountAmount + promotionDiscountAmount;
     const baseAmountAfterDiscount = Math.max(0, rawSubtotal - totalDiscountAmount);
 
     // Step 5: Determine Tax Slab based on post-discount per-night rate
@@ -211,7 +216,9 @@ export const pricingDomain = {
       rawBaseAmount,
       roomPrice: rawBaseAmount, 
       discountAmount: totalDiscountAmount,
+      prepaidDiscountAmount: discountAmount,
       couponDiscountAmount,
+      promotionDiscountAmount,
       baseAmount: baseAmountAfterDiscount, 
       taxAmount,
       totalAmount,

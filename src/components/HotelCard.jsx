@@ -13,10 +13,13 @@ const HotelCard = ({ hotel }) => {
     : '';
 
   // Use startingPrice or price from backend (lowest configured rate plan)
-  const displayPrice = hotel.startingPrice || hotel.price || 0;
+  // An automatic offer (promotion) lowers the price shown; checkout gives the same discount.
+  const offer = hotel.offer || null;
+  const listPrice = hotel.startingPrice || hotel.price || 0;
+  const displayPrice = offer ? offer.nightlyPriceAfter : listPrice;
   // Only show a struck-through price when there really was a higher one. (It used to invent one at
   // +20%, which advertises a discount that never existed.)
-  const originalPrice = hotel.originalPrice > displayPrice ? hotel.originalPrice : null;
+  const originalPrice = offer ? offer.nightlyPriceBefore : (hotel.originalPrice > displayPrice ? hotel.originalPrice : null);
   
   const fallbackImg = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80";
 
@@ -84,6 +87,9 @@ const HotelCard = ({ hotel }) => {
           )}
           {hotel.badges?.isFreeCancellation && (
             <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-100">Free Cancellation</span>
+          )}
+          {offer && (
+            <span className="bg-green-600 text-white px-2 py-1 rounded-md font-bold" title={offer.name}>{offer.label}</span>
           )}
         </div>
         

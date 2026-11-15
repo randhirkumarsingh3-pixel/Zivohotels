@@ -33,6 +33,7 @@ import publicAnalyticsRoutes from './routes/publicAnalyticsRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import experimentRoutes from './routes/experimentRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
+import promotionRoutes from './routes/promotionRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 // Worker initialization has been moved to dedicated standalone processes.
 import masterAdminRoutes from './routes/masterAdminRoutes.js';
@@ -42,6 +43,7 @@ import socketService from './services/socketService.js';
 import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import { startBookingExpiryJob } from './services/bookingExpiryService.js';
+import { startDynamicPricingJob } from './services/dynamicPricingService.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
@@ -237,6 +239,7 @@ app.use('/api/v1/admin/properties', propertyReviewRoutes);
 app.use('/api/v1/admin/system',     systemRoutes);
 app.use('/api/v1/admin/images',     imageRoutes);
 app.use('/api/v1/admin/pricing',    pricingRoutes);
+app.use('/api/v1/admin/promotions', promotionRoutes);
 app.use('/api/v1/pricing', pricingRoutes);
 app.use('/api/v1/finance', financeRoutes);
 
@@ -263,5 +266,6 @@ server.listen(PORT, '0.0.0.0', () => {
 
   // Release unpaid bookings whose payment window has passed (every 5 minutes)
   startBookingExpiryJob();
+  startDynamicPricingJob();
   console.log('✉️  Email worker started in-process');
 });
