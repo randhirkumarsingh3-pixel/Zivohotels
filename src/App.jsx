@@ -34,6 +34,7 @@ const PlatformSettings = lazy(() => import('./admin/pages/Settings'));
 const SystemControlCenter = lazy(() => import('./admin/pages/SystemControlCenter'));
 const PricingRMS = lazy(() => import('./admin/pages/PricingRMS'));
 const AdminPromotions = lazy(() => import('./admin/pages/Promotions'));
+const ReviewModeration = lazy(() => import('./admin/pages/ReviewModeration'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -128,6 +129,7 @@ function App() {
               {/* Pricing & RMS */}
               <Route path="pricing-rms" element={<PricingRMS />} />
               <Route path="promotions" element={<AdminPromotions />} />
+              <Route path="reviews" element={<ReviewModeration />} />
               <Route path="forecasting" element={<DemandForecasting />} />
 
               {/* Analytics */}

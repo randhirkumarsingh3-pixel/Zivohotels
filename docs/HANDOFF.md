@@ -281,6 +281,24 @@ settlement. Fixed along the way:
   saved; they are now stored in `integrationSettings` and exposed to guests as `houseRules` /
   `mealPrices` through an allow list (`PUBLIC_HOUSE_RULES` in hotelController).
 
+## Guest reviews (Nov 2026)
+
+- Engine: `backend/services/reviewService.js`; API `controllers/reviewController.js`
+  (`/reviews` guest, `/hotels/:id/reviews` public, `/extranet/reviews` hotel, `/admin/reviews` admin).
+- Guest (My Bookings -> Rate & Review): one verified review per stay, from the day after check-in to
+  90 days after check-out; rating, aspect ratings, tags, title, text, trip type, up to 5 photos
+  (shrunk in the browser); editable for 48 hours; sees status, rejection reason and hotel reply.
+- Automatic check: reviews with phone numbers, emails, links or abusive words are held (PENDING)
+  for a moderator; others publish immediately (APPROVED). Hotel replies with those are refused.
+- Hotel (Extranet -> Guest Reviews): score, aspect breakdown, reply rate, filters, public reply
+  (guest emailed), edit/delete reply, report to Zivo with a reason. In-app notification on new reviews.
+- Admin (Admin -> Guest Reviews): held / reported / published / not published queues; publish,
+  don't publish (reason required, shown to the guest), keep a reported review, remove a reply.
+- `Hotel.reviewScore` / `reviewCount` / `reviewAspects` are recomputed from published reviews on
+  every change. `Hotel.rating` is the star category; `Hotel.reviews` holds old seed counts and is
+  no longer shown. The review form's "Zivo Points" promises and the fake points balance were
+  removed (no points system exists yet).
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

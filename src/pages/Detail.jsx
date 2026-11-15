@@ -10,6 +10,7 @@ import {
 import { useExperiment, useAllExperiments } from '../context/ExperimentContext';
 import PhotoGallery from '../components/hotel/PhotoGallery';
 import { galleryPhotos } from '../components/hotel/galleryPhotos';
+import ReviewsSection from '../components/hotel/ReviewsSection';
 import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection, RoomFeatures } from '../components/hotel/HotelSections';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -318,7 +319,7 @@ const Detail = () => {
       {/* Section tabs */}
       <nav aria-label="Hotel sections" className="sticky top-16 z-30 bg-gray-50/95 backdrop-blur border-b border-gray-200 mb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-6 overflow-x-auto text-sm font-semibold text-gray-600">
-          {[['overview', 'Overview'], ['rooms', 'Rooms'], ['amenities', 'Amenities'], ['policies', 'Policies'], ['location', 'Location']].map(([sid, label]) => (
+          {[['overview', 'Overview'], ['rooms', 'Rooms'], ['amenities', 'Amenities'], ['reviews', 'Reviews'], ['policies', 'Policies'], ['location', 'Location']].map(([sid, label]) => (
             <a key={sid} href={`#${sid}`} className="py-3 border-b-2 border-transparent hover:border-brand-600 hover:text-gray-900 whitespace-nowrap">{label}</a>
           ))}
         </div>
@@ -343,11 +344,10 @@ const Detail = () => {
                     {Array.from({ length: stars }, (_, i) => <Star key={i} size={14} className="text-amber-400 fill-current" />)}
                   </span>
                 )}
-                {!stars && ratingNum > 0 && (
-                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-md text-xs font-bold"><Star size={12} className="fill-current" /> {ratingNum}</span>
+                {hotel.reviewCount > 0 && (
+                  <a href="#reviews" className="inline-flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded-md text-xs font-bold"><Star size={12} className="fill-current" /> {hotel.reviewScore} · {hotel.reviewCount} review{hotel.reviewCount === 1 ? '' : 's'}</a>
                 )}
                 {hotel.type && <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{hotel.type}</span>}
-                {hotel.reviews > 0 && <span className="text-xs text-gray-500">· {hotel.reviews} reviews</span>}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
               <a href="#location" className="inline-flex items-start text-gray-500 hover:text-gray-800 mb-4 text-sm">
@@ -409,6 +409,10 @@ const Detail = () => {
 
             <Section id="amenities" title="Amenities">
               <AmenitiesSection amenities={hotel.amenities} />
+            </Section>
+
+            <Section id="reviews" title="Guest reviews" subtitle="From guests who stayed here">
+              <ReviewsSection hotelId={hotel.id} />
             </Section>
 
             <Section id="policies" title="Policies & house rules" subtitle="Set by the property. Please read before you book.">

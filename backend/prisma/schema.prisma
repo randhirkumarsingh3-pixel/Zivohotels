@@ -39,6 +39,10 @@ model Hotel {
   city            String
   rating          Float           @default(0)
   reviews         Int             @default(0)
+  /// Guest review score (average of published reviews, 1-5) and count; rating is the star category
+  reviewScore     Float?
+  reviewCount     Int             @default(0)
+  reviewAspects   Json?
   amenities       Json            @default("[]")
   description     String?         @default("")
   createdAt       DateTime        @default(now())
@@ -456,21 +460,43 @@ model Invoice {
   booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
 
+/// A verified guest review of a stay (one per booking). Published reviews (APPROVED) count towards
+/// the hotel's review score; clean reviews are published straight away, others wait for a Zivo
+/// moderator. The hotel can reply publicly and report a review to Zivo.
 model Review {
-  id            String       @id @default(uuid())
-  rating        Float
-  comment       String?
-  bookingId     String       @unique
-  userId        String
-  hotelId       String
-  createdAt     DateTime     @default(now())
-  isVerified    Boolean      @default(true)
-  editableUntil DateTime?
-  status        ReviewStatus @default(PENDING)
-  updatedAt     DateTime     @updatedAt
-  booking       Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  hotel         Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  rating         Float
+  title          String?
+  comment        String?
+  aspectRatings  Json         @default("{}") // { cleanliness, staff, comfort, location, value }: 1-5
+  tags           String[]     @default([])
+  photos         Json         @default("[]") // [{ url }]
+  tripType       String? // BUSINESS | COUPLE | FAMILY | FRIENDS | SOLO
+  bookingId      String       @unique
+  userId         String
+  hotelId        String
+  createdAt      DateTime     @default(now())
+  isVerified     Boolean      @default(true)
+  editableUntil  DateTime?
+  status         ReviewStatus @default(PENDING)
+  publishedAt    DateTime?
+  moderationNote String? // why it was held or rejected (shown to the guest when rejected)
+  moderatedById  String?
+  moderatedAt    DateTime?
+  reply          String?
+  replyAt        DateTime?
+  replyById      String?
+  reportedAt     DateTime?
+  reportReason   String?
+  reportedById   String?
+  reportResolved Boolean      @default(false)
+  updatedAt      DateTime     @updatedAt
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotel          Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, status])
+  @@index([status])
 }
 
 model Coupon {

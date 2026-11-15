@@ -786,7 +786,8 @@ const PUBLIC_HOTEL_FIELDS = [
   'id', 'name', 'description', 'type', 'propertyType', 'starRating', 'rating', 'reviews',
   'city', 'location', 'landmark', 'state', 'country', 'pincode', 'area', 'addressLine', 'latitude', 'longitude',
   'amenities', 'policies', 'checkInTime', 'checkOutTime', 'images', 'image',
-  'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday', 'builtYear', 'mealPrices'
+  'status', 'cancellationPolicy', 'viewsToday', 'bookingsToday', 'builtYear', 'mealPrices',
+  'reviewScore', 'reviewCount', 'reviewAspects'
 ];
 /** House-rule answers from onboarding that guests may see (the Policies step). */
 const PUBLIC_HOUSE_RULES = [
@@ -1025,8 +1026,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
         name: hotel.name,
         price: hotelMinPrice === Infinity ? 0 : hotelMinPrice,
         startingPrice: hotelMinPrice === Infinity ? 0 : hotelMinPrice,
-        rating: hotel.rating || 0,
-        reviewCount: hotel.reviews || 0,
+        // Guest review score from published reviews (Hotel.rating is the star category)
+        rating: hotel.reviewScore || 0,
+        reviewCount: hotel.reviewCount || 0,
+        starRating: Number.isInteger(hotel.rating) ? hotel.rating : null,
         commission: agreementMap[hotel.id]?.commissionRate || 15,
         totalRooms: totalRooms || 1,
         availableRooms: availableRooms || 0,

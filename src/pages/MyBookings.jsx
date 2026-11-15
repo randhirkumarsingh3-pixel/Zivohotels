@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
   RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
-  User, Sparkles, Gift, ArrowRightLeft, Clock, Printer, Download,
+  User, Sparkles, ArrowRightLeft, Clock, Printer, Download,
   ExternalLink, Wifi, ShieldAlert, Award, ArrowRight, Star, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview } from '../services/api';
+import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview, updateReview, getMyReviews } from '../services/api';
 import { saveVoucher } from '../utils/voucher';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
@@ -37,8 +37,30 @@ const isReviewUnlocked = (booking) => {
   const dayAfterCheckIn = new Date(booking.checkIn);
   dayAfterCheckIn.setDate(dayAfterCheckIn.getDate() + 1);
   dayAfterCheckIn.setHours(0, 0, 0, 0);
-  return today() >= dayAfterCheckIn;
+  // Same window as the server: up to 90 days after check-out
+  const closes = new Date(new Date(booking.checkOut).getTime() + 90 * 24 * 60 * 60 * 1000);
+  return today() >= dayAfterCheckIn && today() <= closes;
 };
+
+/** Shrinks a photo in the browser (longest side 1600px, JPEG) so uploads stay small. */
+const shrinkPhoto = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => reject(new Error('That file is not an image we can read'));
+    img.src = reader.result;
+  };
+  reader.onerror = () => reject(new Error('Could not read the photo'));
+  reader.readAsDataURL(file);
+});
 
 /* ─── Premium Star Rating Widget ─────────────────────────────────────── */
 const RATING_META = [
@@ -150,6 +172,15 @@ const MyBookings = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [reviewPhotos, setReviewPhotos] = useState([]);
   const [photoDragOver, setPhotoDragOver] = useState(false);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [tripType, setTripType] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [myReviews, setMyReviews] = useState({}); // bookingId -> the guest's review
+  const [editingReview, setEditingReview] = useState(false);
+  const loadMyReviews = useCallback(() => {
+    getMyReviews().then((list) => setMyReviews(Object.fromEntries(list.map((r) => [r.bookingId, r])))).catch(() => {});
+  }, []);
+  useEffect(() => { loadMyReviews(); }, [loadMyReviews]);
 
   /* ── Data fetching ── */
   const fetchMyBookings = useCallback(async () => {
@@ -215,18 +246,47 @@ const MyBookings = () => {
     }, 1500);
   };
 
+  const resetReviewForm = () => {
+    setReviewRating(0); setReviewComment(''); setReviewTitle(''); setTripType('');
+    setAspectRatings({ cleanliness: 0, staff: 0, comfort: 0, location: 0, value: 0 });
+    setSelectedTags([]); setReviewPhotos([]); setReviewError(''); setReviewSuccess(false); setEditingReview(false);
+  };
+
+  const startEditReview = (review) => {
+    setReviewRating(review.rating);
+    setReviewComment(review.comment || '');
+    setReviewTitle(review.title || '');
+    setTripType(review.tripType || '');
+    setAspectRatings({ cleanliness: 0, staff: 0, comfort: 0, location: 0, value: 0, ...(review.aspectRatings || {}) });
+    setSelectedTags(review.tags || []);
+    setReviewPhotos((review.photos || []).map((p) => ({ url: p.url, saved: true })));
+    setReviewError('');
+    setReviewSuccess(false);
+    setEditingReview(true);
+  };
+
   const handleSubmitReview = async () => {
-    if (reviewRating === 0) { setError('Please select a rating before submitting.'); return; }
+    if (reviewRating === 0) { setReviewError('Please choose an overall rating first.'); return; }
     setReviewSubmitting(true);
+    setReviewError('');
+    const existing = myReviews[activeBooking.id];
+    const payload = {
+      rating: reviewRating,
+      title: reviewTitle.trim() || null,
+      comment: reviewComment.trim() || null,
+      aspectRatings: Object.fromEntries(Object.entries(aspectRatings).filter(([, v]) => v > 0)),
+      tags: selectedTags,
+      tripType: tripType || null,
+      photos: reviewPhotos.map((p) => p.url),
+    };
     try {
-      await submitReview(activeBooking.hotelId, {
-        bookingId: activeBooking.id,
-        rating: reviewRating,
-        comment: reviewComment
-      });
+      if (existing) await updateReview(existing.id, payload);
+      else await submitReview({ bookingId: activeBooking.id, ...payload });
       setReviewSuccess(true);
+      setEditingReview(false);
+      loadMyReviews();
     } catch (err) {
-      setError(err.message);
+      setReviewError(err.message || 'Your review could not be saved. Please try again.');
     } finally {
       setReviewSubmitting(false);
     }
@@ -240,6 +300,9 @@ const MyBookings = () => {
   const handleRateStay = useCallback((booking) => {
     setActiveBooking(booking);
     setActiveTab('review');
+    setReviewRating(0); setReviewComment(''); setReviewTitle(''); setTripType('');
+    setAspectRatings({ cleanliness: 0, staff: 0, comfort: 0, location: 0, value: 0 });
+    setSelectedTags([]); setReviewPhotos([]); setReviewError(''); setReviewSuccess(false); setEditingReview(false);
   }, []);
 
   /* ── Loading screen ── */
@@ -264,18 +327,15 @@ const MyBookings = () => {
           <p className="text-gray-500 mt-2 text-lg">Manage stay parameters, access digital invoices, and coordinate trip assistance.</p>
         </div>
 
-        {/* Loyalty Card */}
+        {/* Reviews written (this showed a made-up "240 Zivo Points" balance) */}
         <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-brand-950 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0">
           <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-amber-400">
             <Award size={28} />
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Points Balance</p>
-            <p className="text-2xl font-black text-white mt-0.5">240 Zivo Points</p>
-            <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1 mt-1">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
-              Wallet cashback credited
-            </p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Your reviews</p>
+            <p className="text-2xl font-black text-white mt-0.5">{Object.keys(myReviews).length} written</p>
+            <p className="text-[10px] text-gray-400 font-medium mt-1">Rate a stay from the day after check-in</p>
           </div>
         </div>
       </div>
@@ -647,6 +707,15 @@ const MyBookings = () => {
                   reviewSubmitting={reviewSubmitting}
                   reviewSuccess={reviewSuccess}
                   onSubmit={handleSubmitReview}
+                  reviewTitle={reviewTitle}
+                  setReviewTitle={setReviewTitle}
+                  tripType={tripType}
+                  setTripType={setTripType}
+                  reviewError={reviewError}
+                  existingReview={myReviews[activeBooking.id]}
+                  editing={editingReview}
+                  onEdit={startEditReview}
+                  onWriteAnother={resetReviewForm}
                 />
               )}
 
@@ -882,8 +951,64 @@ const ReviewTab = ({
   setPhotoDragOver,
   reviewSubmitting,
   reviewSuccess,
-  onSubmit
+  onSubmit,
+  reviewTitle,
+  setReviewTitle,
+  tripType,
+  setTripType,
+  reviewError,
+  existingReview,
+  editing,
+  onEdit,
 }) => {
+  // Already reviewed: show the review, its status and the hotel's reply (editable for 48 hours)
+  if (existingReview && !editing && !reviewSuccess) {
+    const status = {
+      APPROVED: { label: 'Published', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', note: 'Visible on the hotel page.' },
+      PENDING: { label: 'Being checked', cls: 'bg-amber-50 text-amber-700 border-amber-200', note: 'Our team checks reviews that mention contact details, links or strong language. This usually takes under 24 hours.' },
+      REJECTED: { label: 'Not published', cls: 'bg-rose-50 text-rose-700 border-rose-200', note: existingReview.rejectionReason ? `Reason: ${existingReview.rejectionReason}` : 'It did not meet our review guidelines.' },
+    }[existingReview.status] || { label: existingReview.status, cls: 'bg-gray-50 text-gray-600 border-gray-200', note: '' };
+    return (
+      <div className="space-y-5 pb-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your review</p>
+            <h4 className="font-black text-gray-900 text-lg">{activeBooking.hotel?.name}</h4>
+          </div>
+          <span className={`px-3 py-1 rounded-full border text-xs font-bold ${status.cls}`}>{status.label}</span>
+        </div>
+        <p className="text-xs text-gray-500">{status.note}</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={20} className={n <= existingReview.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />)}
+          </div>
+          {existingReview.title && <p className="font-black text-gray-900">{existingReview.title}</p>}
+          {existingReview.comment && <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{existingReview.comment}</p>}
+          {existingReview.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">{existingReview.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600">{t}</span>)}</div>
+          )}
+          {existingReview.photos?.length > 0 && (
+            <div className="flex gap-2 flex-wrap">{existingReview.photos.map((p) => <img key={p.url} src={getImageUrl(p.url)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />)}</div>
+          )}
+        </div>
+        {existingReview.reply && (
+          <div className="bg-brand-50/60 border border-brand-100 rounded-2xl p-4">
+            <p className="text-[10px] font-black text-brand-700 uppercase tracking-widest mb-1">Response from the property</p>
+            <p className="text-sm text-gray-800 whitespace-pre-line">{existingReview.reply.text}</p>
+          </div>
+        )}
+        {existingReview.canEdit ? (
+          <button type="button" onClick={() => onEdit(existingReview)} className="w-full border-2 border-gray-200 hover:border-brand-400 text-gray-800 font-black py-3 rounded-2xl text-sm">
+            Edit my review
+            <span className="block text-[10px] font-semibold text-gray-400">until {new Date(existingReview.editableUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+          </button>
+        ) : (
+          <p className="text-center text-[11px] text-gray-400">Reviews can be edited for 48 hours after posting.</p>
+        )}
+      </div>
+    );
+  }
+
   if (!isReviewUnlocked(activeBooking)) {
     const dayAfterCheckIn = new Date(activeBooking.checkIn);
     dayAfterCheckIn.setDate(dayAfterCheckIn.getDate() + 1);
@@ -899,21 +1024,28 @@ const ReviewTab = ({
           </div>
         </div>
         <div>
-          <h4 className="text-xl font-black text-gray-900 mb-2">Review Unlocks Soon</h4>
-          <p className="text-sm text-gray-500 leading-relaxed max-w-[260px] mx-auto">
-            Your verified review becomes available on{' '}
-            <span className="font-black text-brand-600">
-              {dayAfterCheckIn.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>{' '}— the day after check-in.
-          </p>
+          {today() > dayAfterCheckIn ? (
+            <>
+              <h4 className="text-xl font-black text-gray-900 mb-2">Reviews are closed for this stay</h4>
+              <p className="text-sm text-gray-500 leading-relaxed max-w-[260px] mx-auto">
+                {['CANCELLED', 'NO_SHOW', 'PENDING'].includes(activeBooking.status) ? 'Only completed stays can be reviewed.' : 'Stays can be reviewed up to 90 days after check-out.'}
+              </p>
+            </>
+          ) : (
+            <>
+              <h4 className="text-xl font-black text-gray-900 mb-2">Review Unlocks Soon</h4>
+              <p className="text-sm text-gray-500 leading-relaxed max-w-[260px] mx-auto">
+                Your verified review becomes available on{' '}
+                <span className="font-black text-brand-600">
+                  {dayAfterCheckIn.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>{' '}— the day after check-in.
+              </p>
+            </>
+          )}
         </div>
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 max-w-[280px] w-full flex items-start gap-2.5">
           <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-500" />
           <p className="leading-relaxed">Only checked-in guests can post verified reviews — this keeps our community trustworthy.</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-4 py-2">
-          <Gift size={13} className="text-emerald-500" />
-          <span className="font-bold">{"You'll earn 50 Zivo Points on submission"}</span>
         </div>
       </div>
     );
@@ -931,7 +1063,7 @@ const ReviewTab = ({
           </div>
         </div>
         <div>
-          <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Review Submitted</p>
+          <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">{existingReview ? 'Review Saved' : 'Review Submitted'}</p>
           <h4 className="text-2xl font-black text-gray-900 mb-2">Thank You!</h4>
           <p className="text-sm text-gray-500 max-w-[260px] mx-auto leading-relaxed">
             Your review helps the ZivoHotels community make smarter travel decisions.
@@ -942,14 +1074,7 @@ const ReviewTab = ({
             <Star key={s} size={26} className={s <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
           ))}
         </div>
-        <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-2xl px-6 py-4 flex items-center gap-3 shadow-lg shadow-amber-300/30 w-full max-w-[280px]">
-          <Award size={28} className="shrink-0" />
-          <div className="text-left">
-            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Points Earned</p>
-            <p className="text-xl font-black">+50 Zivo Points</p>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400">Your review will appear after moderation · usually within 24 hours</p>
+        <p className="text-xs text-gray-400">Most reviews appear on the hotel page right away. You can edit yours for 48 hours from My Bookings.</p>
       </div>
     );
   }
@@ -961,17 +1086,16 @@ const ReviewTab = ({
     { key: 'location',    icon: '📍',  title: 'Location',         hint: 'How convenient was the property location?' },
     { key: 'value',       icon: '💰',  title: 'Value for Money',  hint: 'Was the stay worth the amount paid?' },
   ];
-  const POS_TAGS = ['Clean Rooms','Friendly Staff','Great Location','Comfortable Stay','Fast Check-in'];
-  const NEG_TAGS = ['Noise Issue','Slow Service','Poor Cleanliness','AC Issue','Maintenance Issue'];
+  const POS_TAGS = ['Clean Rooms','Friendly Staff','Great Location','Comfortable Stay','Fast Check-in','Good Food','Value for Money'];
+  const NEG_TAGS = ['Noise Issue','Slow Service','Poor Cleanliness','AC Issue','Maintenance Issue','Check-in Delay'];
+  const TRIP_TYPES = [['BUSINESS', 'Business'], ['COUPLE', 'Couple'], ['FAMILY', 'Family'], ['FRIENDS', 'Friends'], ['SOLO', 'Solo']];
   const toggleTag = (t) => setSelectedTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   const hotelImg = getImageUrl(activeBooking.hotel?.media?.[0]?.url) || null;
 
   const handlePhotoFiles = (files) => {
-    const arr = Array.from(files).slice(0, 6 - reviewPhotos.length);
-    arr.forEach(f => {
-      const reader = new FileReader();
-      reader.onload = e => setReviewPhotos(prev => [...prev, { url: e.target.result, name: f.name }]);
-      reader.readAsDataURL(f);
+    const arr = Array.from(files).filter((f) => f.type.startsWith('image/')).slice(0, 5 - reviewPhotos.length);
+    arr.forEach((f) => {
+      shrinkPhoto(f).then((url) => setReviewPhotos((prev) => (prev.length >= 5 ? prev : [...prev, { url, name: f.name }]))).catch(() => {});
     });
   };
 
@@ -1095,13 +1219,29 @@ const ReviewTab = ({
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 4 · Optional</p>
           <h4 className="font-black text-gray-900 text-base">Share Your Story</h4>
         </div>
+        <input
+          value={reviewTitle}
+          maxLength={100}
+          onChange={(e) => setReviewTitle(e.target.value)}
+          placeholder="Give your review a title, e.g. Great stay for a work trip"
+          aria-label="Review title"
+          className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-800 focus:outline-none focus:border-brand-400"
+        />
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Type of trip">
+          {TRIP_TYPES.map(([id, label]) => (
+            <button key={id} type="button" role="radio" aria-checked={tripType === id} onClick={() => setTripType(tripType === id ? '' : id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${tripType === id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+              {label} trip
+            </button>
+          ))}
+        </div>
         <div className={`relative border rounded-2xl transition-all ${
           reviewComment.length > 0 ? 'border-brand-400 shadow-sm shadow-brand-100' : 'border-gray-200'
         }`}>
           <textarea
             rows={5}
             value={reviewComment}
-            maxLength={500}
+            maxLength={2000}
             onChange={e => setReviewComment(e.target.value)}
             placeholder="What did you enjoy most during your stay? Share details about the service, ambience, room, or location..."
             className="w-full bg-transparent p-4 text-sm text-gray-800 resize-none focus:outline-none placeholder-gray-400 leading-relaxed rounded-2xl"
@@ -1110,11 +1250,11 @@ const ReviewTab = ({
             <p className="text-[10px] text-gray-400">
               {reviewComment.length >= 50
                 ? <span className="text-emerald-600 font-bold">✓ Great detail!</span>
-                : <span>Add at least 50 chars for a featured review</span>}
+                : <span>A few sentences help other travellers most</span>}
             </p>
             <p className={`text-[10px] font-bold ${
-              reviewComment.length > 450 ? 'text-rose-500' : 'text-gray-400'
-            }`}>{reviewComment.length}/500</p>
+              reviewComment.length > 1900 ? 'text-rose-500' : 'text-gray-400'
+            }`}>{reviewComment.length}/2000</p>
           </div>
         </div>
       </div>
@@ -1124,13 +1264,13 @@ const ReviewTab = ({
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Step 5 · Optional</p>
           <h4 className="font-black text-gray-900 text-base">Add Photos</h4>
-          <p className="text-xs text-gray-500 mt-0.5">Reviews with photos get 3× more helpful votes</p>
+          <p className="text-xs text-gray-500 mt-0.5">Show other travellers your room and the property</p>
         </div>
         {reviewPhotos.length > 0 && (
           <div className="grid grid-cols-3 gap-2">
             {reviewPhotos.map((ph, i) => (
               <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">
-                <img src={ph.url} alt={ph.name} className="w-full h-full object-cover" />
+                <img src={ph.saved ? getImageUrl(ph.url) : ph.url} alt={ph.name || 'Review photo'} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => setReviewPhotos(prev => prev.filter((_,j) => j !== i))}
@@ -1138,7 +1278,7 @@ const ReviewTab = ({
                 >✕</button>
               </div>
             ))}
-            {reviewPhotos.length < 6 && (
+            {reviewPhotos.length < 5 && (
               <label className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-400 transition-colors bg-gray-50">
                 <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoFiles(e.target.files)} />
                 <span className="text-2xl text-gray-300">+</span>
@@ -1160,7 +1300,7 @@ const ReviewTab = ({
             <div className="w-12 h-12 bg-white rounded-xl border border-gray-200 flex items-center justify-center shadow-sm text-xl">📷</div>
             <div className="text-center">
               <p className="text-sm font-bold text-gray-700">Drag photos here or tap to upload</p>
-              <p className="text-xs text-gray-400 mt-0.5">Up to 6 photos · JPG, PNG · Max 5MB each</p>
+              <p className="text-xs text-gray-400 mt-0.5">Up to 5 photos · JPG or PNG</p>
             </div>
           </label>
         )}
@@ -1170,16 +1310,8 @@ const ReviewTab = ({
         </p>
       </div>
 
-      {/* Loyalty notice */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-11 h-11 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-          <Award size={22} className="text-white" />
-        </div>
-        <div className="text-xs">
-          <p className="font-black text-amber-900">Earn 50 Zivo Points instantly</p>
-          <p className="text-amber-700 leading-relaxed mt-0.5">Submitting a verified review credits your loyalty wallet immediately upon publication.</p>
-        </div>
-      </div>
+      {reviewError && <p role="alert" className="text-sm font-semibold text-rose-600 text-center">{reviewError}</p>}
+      <p className="text-[11px] text-gray-400 text-center">Your first name and last initial are shown with your review. Please don&apos;t include phone numbers, emails or links.</p>
 
       {/* Submit button */}
       <button
@@ -1189,7 +1321,7 @@ const ReviewTab = ({
       >
         {reviewSubmitting
           ? <><RefreshCw size={18} className="animate-spin" />Submitting...</>
-          : <><Star size={18} className="fill-white" />Submit My Review</>}
+          : <><Star size={18} className="fill-white" />{existingReview ? 'Save Changes' : 'Submit My Review'}</>}
       </button>
       {reviewRating === 0 && (
         <p className="text-center text-xs text-gray-400">Please rate your overall experience to continue</p>

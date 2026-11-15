@@ -7,7 +7,7 @@ import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 import { getProperty, updateProperty } from '../controllers/extranet/propertyController.js';
 import { getRooms } from '../controllers/extranet/roomController.js';
 import { getBookings, updateBookingStatus } from '../controllers/extranet/bookingController.js';
-import { getReviews, replyToReview } from '../controllers/extranet/reviewController.js';
+import { listHotelReviews, replyToReview, deleteReply, reportReview } from '../controllers/reviewController.js';
 import { fetchNotifications, markNotificationsRead } from '../controllers/extranet/notificationController.js';
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
 import { getFinancialOverview, getSettlementDetails, getPayoutHistory } from '../controllers/extranet/financeController.js';
@@ -65,8 +65,10 @@ router.get('/bookings', getBookings);
 router.put('/bookings/:bookingId/status', updateBookingStatus);
 
 // Reviews
-router.get('/reviews', getReviews);
+router.get('/reviews', listHotelReviews);
 router.post('/reviews/:reviewId/reply', replyToReview);
+router.delete('/reviews/:reviewId/reply', deleteReply);
+router.post('/reviews/:reviewId/report', reportReview);
 
 // Promotions
 // Promotions are managed through /admin/promotions (owners: their own properties).
