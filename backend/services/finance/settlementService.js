@@ -117,27 +117,37 @@ const KIND_LABEL = { STAY: 'stay', CANCELLATION: 'cancellation fee', NO_SHOW: 'n
  * else its own rate, else 15%. Paid on the hotel's next payout-cycle date after the (scheduled)
  * check-out. Idempotent per booking.
  */
+/**
+ * The hotel-specific inputs to computeSettlement: agreed commission (agreement, else the hotel's
+ * rate, else 15%), whether ZivoHotels and the hotel are in the same GST state, GST registration and
+ * payout cycle. Shared by settlements and the hotelier voucher so both show the same numbers.
+ */
+export const settlementTermsForHotel = async (tx, hotelId) => {
+  const [agreement, hotel] = await Promise.all([
+    tx.agreement.findUnique({ where: { hotelId } }),
+    tx.hotel.findUnique({
+      where: { id: hotelId },
+      select: { payoutCycle: true, dynamicCommissionRate: true, gstin: true, state: true, integrationSettings: true }
+    }),
+  ]);
+  const zivoState = zivoGstStateCode();
+  const hotelState = hotelGstStateCode({ gstin: hotel?.gstin, state: hotel?.state || hotel?.integrationSettings?.addressDetails?.state });
+  return {
+    commissionPercent: agreement?.commissionRate ?? hotel?.dynamicCommissionRate ?? DEFAULT_COMMISSION_PERCENT,
+    sameState: Boolean(zivoState && hotelState && zivoState === hotelState),
+    hotelGstRegistered: Boolean(hotel?.gstin && String(hotel.gstin).trim()),
+    hotelState,
+    payoutCycle: hotel?.payoutCycle,
+  };
+};
+
 const createSettlementRecord = async (tx, booking, kind, input) => {
   const existing = await tx.settlement.findUnique({ where: { bookingId: booking.id } });
   if (existing) return existing;
 
-  const [agreement, hotel] = await Promise.all([
-    tx.agreement.findUnique({ where: { hotelId: booking.hotelId } }),
-    tx.hotel.findUnique({
-      where: { id: booking.hotelId },
-      select: { payoutCycle: true, dynamicCommissionRate: true, gstin: true, state: true }
-    }),
-  ]);
-  const commissionPercent = agreement?.commissionRate ?? hotel?.dynamicCommissionRate ?? DEFAULT_COMMISSION_PERCENT;
-  const zivoState = zivoGstStateCode();
-  const hotelState = hotelGstStateCode(hotel);
-  const sameState = Boolean(zivoState && hotelState && zivoState === hotelState);
-  const m = computeSettlement({
-    ...input,
-    commissionPercent,
-    hotelGstRegistered: Boolean(hotel?.gstin && String(hotel.gstin).trim()),
-    sameState,
-  });
+  const terms = await settlementTermsForHotel(tx, booking.hotelId);
+  const { commissionPercent, sameState, hotelState } = terms;
+  const m = computeSettlement({ ...input, ...terms });
 
   const settlement = await tx.settlement.create({
     data: {
@@ -156,7 +166,7 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
       placeOfSupply: hotelState,
       netPayable: m.netPayable,
       status: 'PENDING',
-      holdUntil: nextPayoutDate(hotel?.payoutCycle, booking.checkOut),
+      holdUntil: nextPayoutDate(terms.payoutCycle, booking.checkOut),
     }
   });
 

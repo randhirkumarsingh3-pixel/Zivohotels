@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
 import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview } from '../services/api';
+import { saveVoucher } from '../utils/voucher';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 const today = () => {
@@ -486,10 +487,15 @@ const MyBookings = () => {
                       <Printer size={20} />
                     </div>
                     <div className="text-xs">
-                      <h4 className="font-bold text-emerald-900 mb-1">Offline Travel Voucher</h4>
-                      <p className="text-emerald-700 leading-relaxed mb-3">Save booking details locally for low-reception travel.</p>
-                      <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
-                        Print/Save Voucher<ExternalLink size={12} />
+                      <h4 className="font-bold text-emerald-900 mb-1">Booking Voucher</h4>
+                      <p className="text-emerald-700 leading-relaxed mb-3">Download the PDF to show at check-in, even without internet.</p>
+                      <button
+                        onClick={async () => {
+                          try { await saveVoucher(activeBooking.id, activeBooking.bookingRef, 'guest'); }
+                          catch (err) { setError(err.message || 'Could not download the voucher.'); }
+                        }}
+                        className="inline-flex items-center gap-1.5 bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                        Download voucher (PDF)<ExternalLink size={12} />
                       </button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import prisma from '../config/db.js';
 import { z } from 'zod';
 import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation } from '../services/cancellationService.js';
 import { expireStaleBookings } from '../services/bookingExpiryService.js';
+import voucherService from '../services/voucherService.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -32,8 +33,14 @@ const createBookingSchema = z.object({
   adults: z.number().int().min(1).optional().default(2),
   children: z.number().int().min(0).optional().default(0),
   extraBeds: z.number().int().min(0).optional().default(0),
-  paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL'])
-});
+  paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
+  // Optional: GST invoice in a company's name (business travel)
+  companyName: z.string().trim().max(200).optional(),
+  companyGstin: z.string().trim().toUpperCase()
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, 'Enter a valid 15-character GSTIN')
+    .optional(),
+  companyAddress: z.string().trim().max(500).optional()
+}).refine(d => !d.companyGstin || d.companyName, { message: 'Company name is required with a GSTIN', path: ['companyName'] });
 
 const getBookingsSchema = z.object({
   hotelId: z.string().uuid().optional(),
@@ -88,7 +95,8 @@ export const createBooking = async (req, res, next) => {
     const {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
       rooms, adults, children, extraBeds, paymentType,
-      guestName, guestEmail, guestPhone, couponCode, agentId
+      guestName, guestEmail, guestPhone, couponCode, agentId,
+      companyName, companyGstin, companyAddress
     } = validation.data;
 
     const dates = getDatesInRange(checkIn, checkOut);
@@ -99,6 +107,7 @@ export const createBooking = async (req, res, next) => {
 
     const serviceContext = {
       guestName, guestEmail, guestPhone,
+      company: companyName ? { name: companyName, gstin: companyGstin || null, address: companyAddress || null } : null,
       ratePlanId, paymentType, couponCode,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,
@@ -314,6 +323,31 @@ export const cancelPreview = async (req, res, next) => {
       if (hotel?.ownerId !== req.user.id) return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
     }
     res.json({ success: true, data: await previewGuestCancellation(booking), requestId: req.id });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /bookings/:id/voucher?type=guest|hotelier -> PDF.
+ * guest: the guest who booked, the hotel's owner or an admin. hotelier: the owner or an admin.
+ */
+export const downloadVoucher = async (req, res, next) => {
+  try {
+    const type = req.query.type === 'hotelier' ? 'hotelier' : 'guest';
+    const data = await voucherService.loadVoucherData(req.params.id);
+    if (!data || !voucherService.canDownloadVoucher(data.booking, data.hotel, req.user, type)) {
+      return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+    }
+    const html = type === 'hotelier'
+      ? voucherService.hotelierVoucherHtml(data, await voucherService.hotelierFigures(data))
+      : voucherService.guestVoucherHtml(data);
+    const pdf = await voucherService.renderPdf(html);
+    const file = `${type === 'hotelier' ? 'Hotelier-Voucher' : 'Booking-Voucher'}-${data.booking.bookingRef}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(Buffer.from(pdf));
   } catch (error) {
     next(error);
   }

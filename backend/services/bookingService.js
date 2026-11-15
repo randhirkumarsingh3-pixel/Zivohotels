@@ -88,7 +88,7 @@ export const bookingService = {
     const { 
       guestName, guestEmail, guestPhone, 
       ratePlanId, paymentType, couponCode, 
-      requestId, sessionId, agentId 
+      requestId, sessionId, agentId, company
     } = context;
 
     // 1. Fetch Dependencies (Pre-Transaction)
@@ -184,6 +184,9 @@ export const bookingService = {
       const bookingData = {
         bookingRef: `ZIVO-${Math.floor(100000 + Math.random() * 900000)}`,
         guestName, guestEmail, guestPhone,
+        guestCompanyName: company?.name || null,
+        guestCompanyGstin: company?.gstin || null,
+        guestCompanyAddress: company?.address || null,
         checkIn: checkInDate,
         checkOut: checkOutDate,
         guests: adults + children,

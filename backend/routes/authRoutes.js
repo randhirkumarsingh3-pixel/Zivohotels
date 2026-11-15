@@ -10,13 +10,11 @@ router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 
 // Example of a protected route using RBAC
+// The signed-in user's own profile (checkout uses it to fill in "I'm the guest"). Only profile
+// fields: it used to return internal ones too (invite token, token version...).
 router.get('/me', protect, (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user: req.user
-    }
-  });
+  const { id, name, email, phone, role } = req.user;
+  res.status(200).json({ success: true, data: { user: { id, name, email, phone: phone || '', role } } });
 });
 
 // Example of an Admin/Owner only route

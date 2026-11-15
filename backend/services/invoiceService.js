@@ -1,28 +1,12 @@
-import puppeteer from 'puppeteer';
+import { getBrowser, closeBrowser } from '../utils/browser.js';
 import fs from 'fs/promises';
 import path from 'path';
 import prisma from '../config/db.js';
 import invoiceDomain from '../domains/invoiceDomain.js';
 
-let browserInstance = null;
-
-/**
- * Singleton Browser instance for Puppeteer
- */
-const getBrowser = async () => {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-  }
-  return browserInstance;
-};
-
+// Shared browser (falls back to an installed Chrome where the bundled one can't run)
 process.on('SIGINT', async () => {
-  if (browserInstance) {
-    await browserInstance.close();
-  }
+  await closeBrowser();
   process.exit(0);
 });
 

@@ -184,6 +184,24 @@ settlement. Fixed along the way:
   (`GET /bookings/:id/cancel-preview`), real property status on the owner dashboard.
 - **Rules:** owners can't mark check-in / check-out / no-show before the check-in date (admins can).
 
+### Checkout and vouchers (Nov 2026)
+- **Guest details:** logged-in users pick "I'm the guest" (filled from `GET /auth/me`, now profile
+  fields only) or "Someone else". Optional **company name / GSTIN / address** are stored on the
+  booking (`guestCompany*`), validated (GSTIN format) and used on the invoice and vouchers.
+- **Back to the hotel** from checkout keeps the dates and the chosen room / rate plan.
+- **Photos:** hotel page and checkout use the hotel's `media` (they read non-existent fields and
+  showed stock or broken images).
+- **Vouchers:** `GET /bookings/:id/voucher?type=guest|hotelier` renders a PDF
+  (`services/voucherService.js`). Guest voucher: stay, price, payment, cancellation deadline,
+  company billing. Hotelier voucher (owner/admin only): night-wise breakup and the settlement
+  calculation (commission, GST on commission, TCS, TDS, payable), provisional until check-out.
+  Download from the confirmation screen, My Bookings and the extranet bookings list.
+  ZivoHotels' legal/support lines come from `ZIVO_*` settings (shown only when set).
+- **PDFs on this Mac:** Puppeteer's bundled Chrome can't run on macOS 12, so `utils/browser.js`
+  falls back to the installed Chrome (invoices failed locally before for the same reason).
+- **Invoice:** shows the hotel's real GSTIN (it printed a made-up one), the true payment status, the
+  discount, CGST/SGST split and the company as "Billed to"; user text is HTML-escaped.
+
 ### Not covered / not fixed
 - **Online payment wasn't completed end to end:** the local Razorpay keys in `backend/.env` are
   placeholders (Razorpay answers "Authentication failed"). Put real test keys in

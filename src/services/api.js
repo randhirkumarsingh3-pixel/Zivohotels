@@ -348,6 +348,10 @@ export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/booki
 export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);
 export const downloadInvoice = (invoiceId) => apiFetch(`${PUBLIC_BASE}/invoices/${invoiceId}/download`, { responseType: 'blob' });
+// Booking voucher PDF: type 'guest' (booking confirmation) or 'hotelier' (owner/admin only)
+export const downloadVoucher = (bookingId, type = 'guest') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/voucher?type=${type}`, { responseType: 'blob' }, 0);
+// The signed-in user's profile (name, email, phone)
+export const getMyProfile = () => apiFetch(`${PUBLIC_BASE}/auth/me`, {}, 0).then(res => res?.data?.user);
 
 // ─── PAYMENTS ─────────────────────────────────────────────────────────────────
 export const createPaymentOrder = (bookingId) => apiFetch(`${PUBLIC_BASE}/payments/create-order`, { method: 'POST', body: JSON.stringify({ bookingId }) });
