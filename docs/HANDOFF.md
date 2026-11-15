@@ -383,6 +383,35 @@ settlement. Fixed along the way:
   in the background and notifies the owner to review them (on save, and a job every 6 hours). Once
   the owner edits the list, it is never auto-filled again, even if they clear it.
 
+## Brand theme and week-1 UI fixes (Nov 2026)
+- Theme comes from the logo (`public/brand/zivo-mark.png`): navy `#013A67` for structure (header
+  links, sidebars, hero and footer bands, selected states) and red `#E7194A` only for actions (Search,
+  Book, Pay, Sign up, deal badges). Full 50–950 scales are in `tailwind.config.js` (`brand` = red,
+  `navy`). Tailwind's `blue`/`indigo`/`sky` and `gray`/`slate` are remapped to the navy and a
+  navy-tinted neutral scale, so older screens follow the brand without edits. Headings use Plus
+  Jakarta Sans, body Inter.
+- **Restart `npm run dev` after pulling**: a running Vite keeps the old Tailwind config cached.
+- `src/components/brand/Logo.jsx` (`Logo`, `LogoMark`) is used in the guest header and footer, both
+  sidebars, the logins and the property wizard. On dark backgrounds pass `onDark`: the mark sits on a
+  white tile, because its white Z is open to the edge and would take the background colour.
+  Favicons and the Apple touch icon are in `public/brand/`.
+- Extranet and admin sidebars are navy, and below 1024px they become a slide-in drawer (menu button
+  in the top bar). The Live Ops feed moved from a floating panel into the extranet bell menu.
+- Admin home is `admin/pages/Dashboard.jsx` (live figures). Pages that still show sample data carry a
+  "Preview with sample data" notice (`components/shared/SampleDataNotice.jsx`) and a Preview tag in
+  the admin menu: Finance ledger and payouts, Fraud, Forecasting, Revenue per search, Reports,
+  Experiments, System control, System health, Command center, and the extranet's Performance page.
+  The hard-coded status strip, "Production" button and fake menu badges were removed.
+- Extranet Finance shows real totals, next payout date and the payout account's last 4 digits
+  (`bankAccount` on `GET /extranet/property`). Extranet Settings was a mock-up (a made-up owner,
+  GSTIN and phone; nothing saved) and now shows the real account and property details read-only.
+- The hotel page asks `POST /bookings/preview` (now optional login) for the price, so its total is
+  the checkout total. The local estimate only shows while it loads.
+- New `/help` page (cancellations, payments, Zivo Cash, contact). Footer links all go somewhere real.
+- Still open: no Privacy Policy or Terms pages yet (they need legal text); no password change or reset
+  endpoint (the extranet points owners to partner support); the remaining contrast fixes and the
+  weeks 2–6 items in the UI audit.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

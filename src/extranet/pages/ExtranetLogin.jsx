@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, Mail, ArrowRight, AlertCircle, Building2, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import Logo from '../../components/brand/Logo';
 
 const ExtranetLogin = () => {
   const [email, setEmail] = useState('');
@@ -32,23 +33,17 @@ const ExtranetLogin = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center p-4">
-      {/* MMT Style Header/Logo area */}
+      
       <div className="mb-10 text-center">
-         <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-               <Building2 className="text-white" size={28} />
-            </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-               Zivo<span className="text-blue-600">Extranet</span>
-            </h1>
+         <div className="flex justify-center mb-4">
+            <h1><Logo size="lg" label="Extranet" /></h1>
          </div>
          <p className="text-gray-500 font-medium">Manage your property, inventory, and bookings.</p>
       </div>
 
       <div className="w-full max-w-[450px]">
         <div className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
-          {/* Top blue bar */}
-          <div className="h-2 bg-blue-600"></div>
+          <div className="h-1.5 bg-navy-800"></div>
           
           <div className="p-10">
             <div className="mb-8">
@@ -84,7 +79,7 @@ const ExtranetLogin = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Password</label>
-                   <a href="#" className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline">Forgot?</a>
+                   <a href="/help#contact" className="text-xs font-semibold text-navy-700 hover:underline">Forgot password?</a>
                 </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-600">

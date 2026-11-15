@@ -4,6 +4,7 @@ import {
   Filter, Download, Lock, Unlock, ShieldAlert,
   BarChart3, RefreshCw
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -26,6 +27,7 @@ const FinanceOS = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      <SampleDataNotice what="The finance ledger" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

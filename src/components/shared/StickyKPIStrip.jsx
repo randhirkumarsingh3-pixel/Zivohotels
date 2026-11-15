@@ -1,5 +1,3 @@
-import { RefreshCw } from 'lucide-react';
-
 const KPIMetric = ({ label, value, delta, deltaType, _color = 'gray' }) => {
   const colorMap = {
     green: 'text-green-600 bg-green-50',
@@ -35,18 +33,6 @@ const StickyKPIStrip = ({ metrics }) => {
         ))}
       </div>
       
-      <div className="ml-auto px-8 flex items-center gap-4">
-         <div className="flex flex-col items-end">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Global Sync</span>
-            <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-               <span className="text-[10px] font-black text-gray-900">REAL-TIME</span>
-            </div>
-         </div>
-         <button className="p-2.5 text-gray-400 hover:bg-gray-100 rounded-xl transition-all group">
-            <RefreshCw size={18} className="group-active:rotate-180 transition-transform duration-500" />
-         </button>
-      </div>
     </div>
   );
 };

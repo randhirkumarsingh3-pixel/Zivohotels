@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import ExtranetSidebar from '../extranet/components/ExtranetSidebar';
-import { Bell, HelpCircle, Building, ChevronDown, AlertTriangle, Check } from 'lucide-react';
+import { HelpCircle, Building, ChevronDown, AlertTriangle, Check, Menu } from 'lucide-react';
+import { LogoMark } from '../components/brand/Logo';
 import { ExtranetProvider, useExtranet } from '../extranet/context/ExtranetContext';
 import { useSocketEvent } from '../context/SocketContext';
 import LiveActivityFeed from '../extranet/components/LiveActivityFeed';
@@ -29,6 +30,11 @@ const LayoutContent = () => {
   };
   const canSwitch = properties.length > 1;
 
+  // Phones and tablets: the menu is a slide-in drawer, closed after each page change
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => { setNavOpen(false); }, [location.pathname]);
+
   // Listen for real-time incident broadcasts
   useSocketEvent('SAFE_MODE_TOGGLED', (event) => {
     const newStatus = event.data.isSafeMode ? 'CRITICAL: System in SAFE_MODE' : null;
@@ -36,9 +42,9 @@ const LayoutContent = () => {
   });
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFF]">
-      <ExtranetSidebar />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+    <div className="flex min-h-screen bg-gray-50">
+      <ExtranetSidebar open={navOpen} onClose={() => setNavOpen(false)} />
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         
         {/* System Status Strip */}
         {systemStatus && (
@@ -60,21 +66,23 @@ const LayoutContent = () => {
           </div>
         )}
         {/* Partner Header */}
-        <header className="relative h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0 z-40 shadow-sm">
-          <div className="flex items-center gap-8">
-            <PresenceAvatarStack />
+        <header className="relative h-16 bg-white border-b border-gray-200 flex items-center justify-between gap-3 px-4 lg:px-8 shrink-0 z-40">
+          <div className="flex items-center gap-3 lg:gap-8 min-w-0">
+            <button type="button" onClick={() => setNavOpen(true)} aria-label="Open menu" className="lg:hidden p-2 -ml-1 rounded-lg text-gray-700 hover:bg-gray-100"><Menu size={22} /></button>
+            <LogoMark size="sm" className="lg:hidden" />
+            <span className="hidden lg:block"><PresenceAvatarStack /></span>
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => canSwitch && setMenuOpen(o => !o)}
                 aria-haspopup="listbox"
                 aria-expanded={menuOpen}
-                className={`flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100 transition-all text-left ${canSwitch ? 'cursor-pointer hover:bg-gray-100' : 'cursor-default'}`}
+                className={`flex items-center gap-3 px-3 lg:px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 transition-all text-left min-w-0 ${canSwitch ? 'cursor-pointer hover:bg-gray-100' : 'cursor-default'}`}
               >
-                <Building className="text-gray-400" size={18} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-black text-gray-900 uppercase tracking-tight">Active Property</span>
-                  <span className="text-sm font-medium text-gray-500">{property?.name || 'Loading...'}</span>
+                <Building className="text-navy-700 shrink-0 hidden sm:block" size={18} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-gray-500">Property</span>
+                  <span className="text-sm font-semibold text-gray-900 truncate max-w-[40vw] sm:max-w-none">{property?.name || 'Loading...'}</span>
                 </div>
                 {canSwitch && <ChevronDown className={`text-gray-400 ml-2 transition-transform ${menuOpen ? 'rotate-180' : ''}`} size={14} />}
               </button>
@@ -104,27 +112,20 @@ const LayoutContent = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-brand-600 font-bold text-xs uppercase tracking-widest transition-all">
+          <div className="flex items-center gap-1 lg:gap-3 shrink-0">
+            <a href="mailto:partners@zivohotels.com" className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-navy-800 font-semibold text-sm rounded-lg hover:bg-gray-100 transition-colors">
               <HelpCircle size={18} />
               Support
-            </button>
-            <div className="h-6 w-[1px] bg-gray-100 mx-2"></div>
-            <button className="p-2 text-gray-400 hover:bg-gray-50 hover:text-brand-600 rounded-xl transition-all relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
-            </button>
+            </a>
+            {hotelId && <LiveActivityFeed hotelId={hotelId} />}
           </div>
         </header>
         
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-8 relative">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
-          
-          {/* Live Ops Nervous System */}
-          {hotelId && <LiveActivityFeed hotelId={hotelId} />}
         </main>
       </div>
     </div>

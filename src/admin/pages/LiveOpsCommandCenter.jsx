@@ -4,6 +4,7 @@ import { Activity, ShieldAlert, Radio, Loader2, Play, Pause,
 } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
 import IncidentForensicTimeline from '../components/IncidentForensicTimeline';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const LiveOpsCommandCenter = () => {
   const { socket } = useSocket();
@@ -45,7 +46,8 @@ const LiveOpsCommandCenter = () => {
   }, [socket, isPaused]);
 
   return (
-    <div className="space-y-8 bg-slate-950 min-h-screen -m-8 p-12 text-white">
+    <div className="space-y-8 bg-slate-950 min-h-screen -m-4 sm:-m-6 lg:-m-8 p-6 lg:p-12 text-white">
+      <SampleDataNotice what="The command center" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div>

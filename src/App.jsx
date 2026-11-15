@@ -16,13 +16,14 @@ import MyBookings from './pages/MyBookings';
 import Rewards from './pages/Rewards';
 import Wallet from './pages/Wallet';
 import Membership from './pages/Membership';
+const Help = lazy(() => import('./pages/Help'));
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
 const ExtranetLayout = lazy(() => import('./layouts/ExtranetLayout'));
 
 // Zivo Master Admin Pages (LAZY)
-const ExecutiveDashboard = lazy(() => import('./admin/pages/ExecutiveDashboard'));
+const AdminDashboard = lazy(() => import('./admin/pages/Dashboard')); // live figures (the old Executive Dashboard was sample data)
 const Properties = lazy(() => import('./admin/pages/Properties'));
 const PropertyReview = lazy(() => import('./admin/pages/PropertyReview'));
 const PropertyWizard = lazy(() => import('./admin/pages/PropertyWizard'));
@@ -87,6 +88,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/hotels" element={<Listing />} />
               <Route path="/hotel/:id" element={<Detail />} />
+              <Route path="/help" element={<Help />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<Login />} />
               <Route path="/owner/login" element={<Login />} />
@@ -123,7 +125,7 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<ExecutiveDashboard />} />
+              <Route index element={<AdminDashboard />} />
               
               {/* Supply */}
               <Route path="properties" element={<Properties />} />

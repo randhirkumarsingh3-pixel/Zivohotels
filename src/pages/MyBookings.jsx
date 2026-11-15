@@ -332,7 +332,7 @@ const MyBookings = () => {
         </div>
 
         {/* Zivo Rewards balance (this showed a made-up "240 Zivo Points") */}
-        <Link to="/rewards" className="bg-gradient-to-r from-gray-900 via-gray-800 to-brand-950 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0 hover:border-brand-500 transition-colors">
+        <Link to="/rewards" className="bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0 hover:border-brand-500 transition-colors">
           <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-amber-400">
             <Award size={28} />
           </div>
@@ -470,7 +470,7 @@ const MyBookings = () => {
             </div>
 
             {/* Rebook card */}
-            <div className="bg-gradient-to-br from-brand-900 to-brand-950 text-white rounded-3xl p-6 shadow-lg border border-brand-800/50 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-navy-800 to-navy-950 text-white rounded-3xl p-6 shadow-lg border border-navy-700/50 relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 opacity-10"><ArrowRightLeft size={200} /></div>
               <span className="bg-white/10 text-white/90 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-white/10">Loyalty Perk</span>
               <h3 className="text-xl font-bold text-white mt-4 mb-2">Ready for your next stay?</h3>
@@ -746,7 +746,7 @@ const MyBookings = () => {
                       </a>
                     </div>
                   </div>
-                  <div className="bg-brand-900 text-white rounded-2xl p-5 space-y-3">
+                  <div className="bg-navy-900 text-white rounded-2xl p-5 space-y-3">
                     <h4 className="font-bold text-white text-sm">Recommended Stays Nearby</h4>
                     <p className="text-xs text-brand-200 leading-relaxed">Loved {activeBooking.hotel?.name}? Book similar stays with loyalty perks.</p>
                     <Link to="/hotels" className="inline-flex items-center gap-1.5 text-xs text-white bg-white/10 border border-white/10 font-bold px-4 py-2.5 rounded-xl hover:bg-white/20 transition-all">
@@ -1134,7 +1134,7 @@ const ReviewTab = ({
         {hotelImg ? (
           <img src={hotelImg} alt="Hotel" className="w-full h-32 object-cover" />
         ) : (
-          <div className="w-full h-32 bg-gradient-to-r from-brand-600 to-brand-800" />
+          <div className="w-full h-32 bg-gradient-to-r from-navy-700 to-navy-900" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 p-4">

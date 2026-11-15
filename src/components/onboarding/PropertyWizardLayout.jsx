@@ -1,4 +1,5 @@
-import { Save, Loader2, ArrowLeft, Building } from 'lucide-react';
+import { Save, Loader2, ArrowLeft } from 'lucide-react';
+import { LogoMark } from '../brand/Logo';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const STEPS = [
@@ -30,7 +31,7 @@ const PropertyWizardLayout = ({
     if (location.pathname.startsWith('/admin')) {
       navigate('/admin/properties');
     } else {
-      navigate('/extranet/dashboard');
+      navigate('/extranet');
     }
   };
 
@@ -51,12 +52,12 @@ const PropertyWizardLayout = ({
               <ArrowLeft size={20} />
             </button>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Building size={18} className="text-blue-600" />
-                ZivoHotels <span className="font-normal text-slate-400 mx-2">|</span> {title}
+              <h1 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                <LogoMark size="sm" />
+                ZivoHotels <span className="font-normal text-slate-400 mx-1" aria-hidden="true">|</span> <span className="font-semibold text-slate-700">{title}</span>
               </h1>
             </div>
-            <div className="sm:hidden font-bold text-slate-900">ZivoHotels</div>
+            <div className="sm:hidden flex items-center gap-2 font-bold text-navy-900"><LogoMark size="sm" /> {title}</div>
           </div>
           
           <div className="flex items-center gap-6">
@@ -66,6 +67,7 @@ const PropertyWizardLayout = ({
             <button 
               onClick={onSaveDraft || onSave}
               disabled={isSubmitting}
+              aria-label="Save draft"
               className="text-slate-600 hover:text-blue-600 px-3 py-2 font-semibold text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

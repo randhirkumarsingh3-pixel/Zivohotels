@@ -211,7 +211,7 @@ const Listing = () => {
   return (
     <div className="pt-24 pb-20 bg-gray-50 min-h-screen">
       {/* Search Header */}
-      <div className="bg-brand-900 pb-12 pt-8 px-4 sm:px-6 lg:px-8 mb-8">
+      <div className="bg-navy-900 pb-12 pt-8 px-4 sm:px-6 lg:px-8 mb-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-6">
             {activeSearchParams.destination ? `Hotels in ${activeSearchParams.destination}` : 'Explore All Hotels'}
@@ -234,7 +234,7 @@ const Listing = () => {
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold text-gray-900">
-                {loading ? 'Searching...' : `${hotels.length} Properties Found`}
+                {loading ? 'Searching…' : `${hotels.length} ${hotels.length === 1 ? 'hotel' : 'hotels'} found`}
               </h2>
               {/* Mobile Filter Toggle */}
               <button
@@ -253,7 +253,7 @@ const Listing = () => {
 
             {/* Sort Dropdown */}
             <div className="relative">
-              <select
+              <select aria-label="Sort hotels"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
                 className="appearance-none bg-white px-4 pr-8 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 outline-none focus:border-brand-400 cursor-pointer"

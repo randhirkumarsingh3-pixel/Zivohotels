@@ -389,9 +389,9 @@ const Checkout = () => {
             <ArrowLeft size={16} /> Change room or meal plan
           </button>
           <div className="flex items-center gap-2 text-brand-700 font-bold text-sm uppercase tracking-widest mb-2">
-            <Lock size={14} /> Secure Encryption Active
+            <Lock size={14} /> Secure payment
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900">Review & Payout</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-navy-900">Confirm and pay</h1>
         </header>
 
         {previewError && !fetchingPreview && (
@@ -475,11 +475,11 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* Step 2: Payment Strategy */}
+            {/* Step 2: Payment option */}
             <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-xl">2</div>
-                <h2 className="text-2xl font-black text-gray-900">Payment Strategy</h2>
+                <h2 className="text-2xl font-bold text-navy-900">How would you like to pay?</h2>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -514,7 +514,7 @@ const Checkout = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  I agree to the <span className="text-brand-700 font-bold hover:underline">Terms of Service</span>, <span className="text-brand-700 font-bold hover:underline">Privacy Policy</span>, and <span className="text-brand-700 font-bold hover:underline">Cancellation Rules</span>. I understand that fraudulent bookings will be reported.
+                  I agree to the <span className="text-navy-800 font-bold">Terms of Service</span>, <span className="text-navy-800 font-bold">Privacy Policy</span> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking.
                 </p>
               </label>
             </section>
@@ -732,7 +732,7 @@ const Checkout = () => {
                     <span className="text-3xl font-black text-brand-700 tracking-tighter">₹{total.toLocaleString()}</span>
                   </div>
                   {paymentType === 'PARTIAL' && (
-                    <div className="mt-4 p-4 bg-brand-900 rounded-2xl text-white">
+                    <div className="mt-4 p-4 bg-navy-900 rounded-2xl text-white">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-bold opacity-60">Amount Payable Now</span>
                         <span className="text-xl font-black">₹{payableNow.toLocaleString()}</span>

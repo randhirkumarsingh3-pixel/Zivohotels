@@ -2,6 +2,7 @@ import {
   Search, Filter, Activity, ChevronRight,
   ArrowRight, User
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const SessionRow = ({ id, user, path, revenue, status: _status, duration }) => (
   <tr className="hover:bg-gray-50/50 transition-all cursor-pointer group">
@@ -53,6 +54,7 @@ const SessionRow = ({ id, user, path, revenue, status: _status, duration }) => (
 const SessionExplorer = () => {
   return (
     <div className="space-y-8 pb-12">
+      <SampleDataNotice what="Revenue per search" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

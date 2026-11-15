@@ -3,6 +3,7 @@ import {
   Search,
   ShieldCheck, AlertTriangle, RefreshCw, Layers
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const MetricCard = ({ title, value, status, icon: Icon, color }) => (
   <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
@@ -22,6 +23,7 @@ const MetricCard = ({ title, value, status, icon: Icon, color }) => (
 const SystemHealth = () => {
   return (
     <div className="space-y-8 pb-12">
+      <SampleDataNotice what="System health" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

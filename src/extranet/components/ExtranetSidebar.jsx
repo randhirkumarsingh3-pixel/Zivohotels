@@ -13,9 +13,11 @@ import {
   BedDouble,
   Plus,
   Wallet,
-  Crown
+  Crown,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import Logo from '../../components/brand/Logo';
 
 const NavItem = ({ name, path, icon, exact, state }) => (
   <li>
@@ -24,10 +26,10 @@ const NavItem = ({ name, path, icon, exact, state }) => (
       state={state}
       end={exact}
       className={({ isActive }) =>
-        `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-          isActive 
-            ? 'bg-brand-50 text-brand-600 font-bold' 
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+        `relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+          isActive
+            ? 'bg-white/10 text-white font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r before:bg-brand-500'
+            : 'text-navy-100 hover:bg-white/5 hover:text-white'
         }`
       }
     >
@@ -37,43 +39,35 @@ const NavItem = ({ name, path, icon, exact, state }) => (
   </li>
 );
 
-const ExtranetSidebar = () => {
+const SectionLabel = ({ children }) => (
+  <li className="pt-5 pb-2 px-3 list-none"><span className="text-xs font-semibold text-navy-300 uppercase tracking-wider">{children}</span></li>
+);
+
+/** Extranet menu: fixed column on large screens, slide-in drawer on phones and tablets. */
+const ExtranetSidebar = ({ open = false, onClose = () => {} }) => {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0">
-      <div className="p-6 border-b border-gray-100 bg-[#FBFBFF]">
-        <div className="flex items-center space-x-2">
-          <div className="bg-brand-600 p-2 rounded-lg shadow-brand-200 shadow-md">
-            <Building2 className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight leading-none text-gray-900">
-              Hotel<span className="text-brand-600">Partner</span>
-            </span>
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-              Extranet Console
-            </span>
-          </div>
-        </div>
+    <>
+    {open && <div className="fixed inset-0 bg-navy-950/50 z-40 lg:hidden" onClick={onClose} aria-hidden="true" />}
+    <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-64 bg-navy-900 text-white flex flex-col h-screen transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`} aria-label="Extranet menu">
+      <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
+        <Logo size="sm" onDark label="Extranet" />
+        <button type="button" onClick={onClose} aria-label="Close menu" className="lg:hidden p-2 rounded-lg text-navy-100 hover:bg-white/10"><X size={20} /></button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-6 px-3">
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-1">
           <NavItem name="Dashboard" path="/extranet" icon={<LayoutDashboard size={18} />} exact />
           
-          <div className="pt-4 pb-2 px-3">
-            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Management</span>
-          </div>
+          <SectionLabel>Property</SectionLabel>
           <NavItem name="Property Info" path="/extranet/property" icon={<Building2 size={18} />} />
           <NavItem name="Add New Property" path="/extranet/onboarding" state={{ resetDraft: true }} icon={<Plus size={18} />} />
           <NavItem name="Rooms & Rate Plans" path="/extranet/rooms" icon={<BedDouble size={18} />} />
           <NavItem name="Inventory Calendar" path="/extranet/inventory" icon={<CalendarDays size={18} />} />
           <NavItem name="Dynamic Pricing" path="/extranet/pricing" icon={<IndianRupee size={18} />} />
           
-          <div className="pt-4 pb-2 px-3">
-            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Operations</span>
-          </div>
+          <SectionLabel>Operations</SectionLabel>
           <NavItem name="Bookings" path="/extranet/bookings" icon={<ClipboardList size={18} />} />
           <NavItem name="Finance Hub" path="/extranet/finance" icon={<IndianRupee size={18} />} />
           <NavItem name="Wallet" path="/extranet/wallet" icon={<Wallet size={18} />} />
@@ -81,34 +75,34 @@ const ExtranetSidebar = () => {
           <NavItem name="Guest Reviews" path="/extranet/reviews" icon={<Star size={18} />} />
           <NavItem name="Promotions" path="/extranet/promotions" icon={<Tag size={18} />} />
           
-          <div className="pt-4 pb-2 px-3">
-            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Growth</span>
-          </div>
+          <SectionLabel>Growth</SectionLabel>
           <NavItem name="Performance" path="/extranet/performance" icon={<BarChart3 size={18} />} />
           <NavItem name="Settings" path="/extranet/settings" icon={<Settings size={18} />} />
         </ul>
 
       </nav>
 
-      <div className="p-4 border-t border-gray-100 bg-[#FBFBFF]">
-        <div className="flex items-center mb-4 px-2">
-          <div className="h-9 w-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-black mr-3 border border-brand-200">
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center mb-3 px-2">
+          <div className="h-9 w-9 rounded-full bg-white/10 text-white flex items-center justify-center text-sm font-bold mr-3">
             {user?.name?.charAt(0) || 'P'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-gray-800 truncate leading-none mb-1">{user?.name}</div>
-            <div className="text-[10px] text-gray-400 font-bold truncate">Partner Account</div>
+            <div className="text-sm font-semibold text-white truncate leading-none mb-1">{user?.name}</div>
+            <div className="text-xs text-navy-200 truncate">Property partner</div>
           </div>
         </div>
-        <button 
+        <button
+          type="button"
           onClick={logout}
-          className="flex items-center space-x-3 px-3 py-2 w-full rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all"
+          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-navy-100 hover:bg-white/5 hover:text-white transition-colors"
         >
           <LogOut size={18} />
           <span className="text-sm font-medium">Log out</span>
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

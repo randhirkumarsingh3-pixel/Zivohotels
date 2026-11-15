@@ -139,7 +139,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
         {/* Property Type */}
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">What type of property is this? <span className="text-red-500">*</span></label>
-          <select 
+          <select aria-label="Property type" 
             value={formData.type || 'Hotel'} 
             onChange={e => updateForm('type', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
@@ -156,7 +156,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
         {/* Star Rating */}
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">What is your property&apos;s star rating? <span className="text-red-500">*</span></label>
-          <select 
+          <select aria-label="Star rating" 
             value={formData.rating || '3'} 
             onChange={e => updateForm('rating', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
@@ -173,7 +173,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
         {/* Built Year */}
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">What year was the property built?</label>
-          <select 
+          <select aria-label="Year built" 
             value={formData.builtYear || ''} 
             onChange={e => updateForm('builtYear', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
@@ -190,7 +190,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
         <div className="flex flex-col gap-2">
           <label className="font-bold text-slate-800 text-base">Since when have you been accepting bookings?</label>
           <span className="text-sm text-slate-500">Helps us build your property&apos;s history and credibility.</span>
-          <select 
+          <select aria-label="Accepting bookings since" 
             value={formData.bookingSince || ''} 
             onChange={e => updateForm('bookingSince', e.target.value)} 
             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"
@@ -234,7 +234,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
           {formData.hasChannelManager && (
             <div className="animate-fade-in mt-2">
               <label className="block text-sm font-semibold text-slate-700 mb-2">Which channel manager do you use?</label>
-              <select 
+              <select aria-label="Channel manager" 
                 value={formData.channelManagerName || 'Axisrooms'} 
                 onChange={e => updateForm('channelManagerName', e.target.value)} 
                 className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 text-base transition-all bg-white"

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   IndianRupee, Clock, 
   AlertCircle, Filter, Download, History,
-  ShieldCheck, ArrowUpRight, Loader2, Landmark
+  ShieldCheck, Loader2, Landmark
 } from 'lucide-react';
 import { fetchFinanceOverview, fetchPayoutHistory } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
@@ -13,7 +13,7 @@ const ExtranetFinance = () => {
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSettlement, setSelectedSettlement] = useState(null);
-  const { addToast } = useExtranet();
+  const { addToast, property } = useExtranet();
 
   const loadData = useCallback(async () => {
     try {
@@ -61,25 +61,25 @@ const ExtranetFinance = () => {
             <IndianRupee size={80} />
           </div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Net Earned (Life-to-Date)</p>
-          <h2 className="text-4xl font-black mb-4">₹ {overview?.metrics?.totalEarned?.toLocaleString()}</h2>
-          <div className="flex items-center gap-2 text-green-400 text-xs font-bold">
-            <ArrowUpRight size={14} /> +12% from last month
+          <h2 className="text-4xl font-black mb-4 tabular-nums">₹{Number(overview?.metrics?.totalEarned || 0).toLocaleString('en-IN')}</h2>
+          <div className="flex items-center gap-2 text-navy-100 text-xs font-semibold">
+            From {overview?.metrics?.count || 0} settled booking{overview?.metrics?.count === 1 ? '' : 's'}
           </div>
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pending Payouts</p>
-          <h2 className="text-4xl font-black text-blue-600 mb-4">₹ {overview?.metrics?.pendingAmount?.toLocaleString()}</h2>
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
-            <Clock size={14} /> Next payout in 2 days
+          <h2 className="text-4xl font-black text-navy-800 mb-4 tabular-nums">₹{Number(overview?.metrics?.pendingAmount || 0).toLocaleString('en-IN')}</h2>
+          <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
+            <Clock size={14} /> {overview?.metrics?.nextPayoutDate ? `Next payout ${new Date(overview.metrics.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'No payout scheduled yet'}
           </div>
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payout Reliability</p>
-          <h2 className="text-4xl font-black text-slate-900 mb-4">98.2%</h2>
-          <div className="flex items-center gap-2 text-green-500 text-xs font-bold">
-            <ShieldCheck size={14} /> Elite Financial Health
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Paid Out (Life-to-Date)</p>
+          <h2 className="text-4xl font-black text-slate-900 mb-4 tabular-nums">₹{Number(overview?.metrics?.totalPayouts || 0).toLocaleString('en-IN')}</h2>
+          <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
+            <ShieldCheck size={14} /> Sent to your bank account on file
           </div>
         </div>
       </div>
@@ -158,23 +158,21 @@ const ExtranetFinance = () => {
               </div>
            </div>
 
-           <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.5rem] p-8 text-white shadow-xl">
+           <div className="bg-navy-900 rounded-[2rem] p-8 text-white shadow-xl">
               <div className="flex items-center gap-4 mb-6">
-                 <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
                     <Landmark size={24} />
                  </div>
                  <div>
-                    <h4 className="text-sm font-black">Bank Details</h4>
-                    <p className="text-[10px] text-blue-200">Linked Account • Active</p>
+                    <h4 className="text-sm font-bold">Payout account</h4>
+                    <p className="text-xs text-navy-200">{property?.bankAccount ? property.bankAccount.bankName : 'Not added yet'}</p>
                  </div>
               </div>
-              <div className="p-4 bg-white/10 rounded-2xl border border-white/10 mb-6">
-                 <p className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1">Account Ending In</p>
-                 <p className="text-lg font-mono font-bold tracking-widest">•••• 7742</p>
+              <div className="p-4 bg-white/10 rounded-2xl border border-white/10 mb-4">
+                 <p className="text-xs font-semibold text-navy-200 mb-1">Account ending in</p>
+                 <p className="text-lg font-mono font-bold tracking-widest">{property?.bankAccount ? `•••• ${property.bankAccount.last4}` : '—'}</p>
               </div>
-              <button className="w-full py-4 bg-white text-blue-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all shadow-lg">
-                 Update Bank Info
-              </button>
+              <p className="text-xs text-navy-100 leading-relaxed">To change the account your payouts go to, write to <span className="font-semibold text-white select-all">partners@zivohotels.com</span>.</p>
            </div>
         </div>
       </div>

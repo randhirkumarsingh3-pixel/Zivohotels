@@ -2,6 +2,7 @@ import {
   Zap, ShieldAlert, Activity, FlaskConical, Database, Cpu,
   Layers, HardDrive, RefreshCw, History
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const ControlCard = ({ title, status, active, onToggle, icon: Icon, color }) => (
   <div className={`bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm group hover:shadow-xl transition-all duration-500`}>
@@ -27,6 +28,7 @@ const ControlCard = ({ title, status, active, onToggle, icon: Icon, color }) => 
 const SystemControlCenter = () => {
   return (
     <div className="space-y-10 pb-12">
+      <SampleDataNotice what="System control" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
