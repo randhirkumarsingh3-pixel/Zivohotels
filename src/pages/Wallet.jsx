@@ -25,7 +25,7 @@ const Wallet = () => {
         {error && <p className="text-red-600">{error}</p>}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="md:col-span-2 rounded-3xl p-6 md:p-8 text-white bg-gradient-to-br from-gray-900 via-gray-800 to-brand-900 shadow-xl">
+          <div className="md:col-span-2 rounded-3xl p-6 md:p-8 text-white bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 shadow-xl">
             <p className="text-xs font-bold uppercase tracking-widest opacity-70">Available balance</p>
             <p className="text-5xl font-black mt-2">{data ? inr(data.balance) : '…'}</p>
             <p className="text-sm opacity-80 mt-2">Use it at checkout: tick &ldquo;Pay with Zivo Cash&rdquo;.</p>

@@ -6,6 +6,7 @@ import CancellationsReport from '../components/reports/CancellationsReport';
 import OccupancyReport from '../components/reports/OccupancyReport';
 import RevenueReport from '../components/reports/RevenueReport';
 import PayoutsReport from '../components/reports/PayoutsReport';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -22,6 +23,7 @@ const Reports = () => {
 
   return (
     <div className="space-y-6 pb-12">
+      <SampleDataNotice what="Reports" />
       {/* Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

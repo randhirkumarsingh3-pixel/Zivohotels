@@ -81,9 +81,6 @@ const SmartSearchBar = ({ isMobile }) => {
     navigate(`/hotels?${params.toString()}`);
   };
 
-  // Determine if search button should be enabled
-  const isValid = destination && checkIn && checkOut;
-
   return (
     <div className="w-full max-w-5xl mx-auto relative z-20">
       <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl md:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
@@ -124,12 +121,10 @@ const SmartSearchBar = ({ isMobile }) => {
 
           <div className="mt-2 md:mt-0 md:ml-2">
             <button 
+              type="button"
               onClick={handleSearch}
-              className={`w-full md:w-auto h-full min-h-[56px] px-8 rounded-lg md:rounded-full font-bold text-lg flex items-center justify-center transition-all ${
-                isValid 
-                  ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-500/30 transform hover:-translate-y-0.5' 
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+              // Always the brand red: a grey button looked disabled. Missing fields are pointed out on click.
+              className="w-full md:w-auto h-full min-h-[56px] px-8 rounded-lg md:rounded-full font-bold text-lg flex items-center justify-center transition-colors bg-brand-600 hover:bg-brand-700 text-white"
             >
               <Search className="h-5 w-5 mr-2" />
               Search

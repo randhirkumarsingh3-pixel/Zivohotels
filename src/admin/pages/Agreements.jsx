@@ -69,7 +69,7 @@ const CreateModal = ({ properties, onClose, onSuccess }) => {
           )}
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1">Property *</label>
-            <select required value={hotelId} onChange={e => setHotelId(e.target.value)}
+            <select aria-label="Property" required value={hotelId} onChange={e => setHotelId(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 bg-white">
               <option value="">— Select property —</option>
               {properties.map(p => <option key={p.id} value={p.id}>{p.name} ({p.city})</option>)}
@@ -283,7 +283,7 @@ const Agreements = () => {
           <p className="text-gray-500 mt-0.5 text-sm">Manage property onboarding contracts. Signing an agreement activates the property.</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={fetchAgreements} disabled={loading}
+          <button type="button" aria-label="Refresh agreements" onClick={fetchAgreements} disabled={loading}
             className="border border-gray-300 bg-white hover:bg-gray-50 px-3 py-2 rounded-lg text-sm flex items-center gap-1.5 transition-colors disabled:opacity-50">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -319,7 +319,7 @@ const Agreements = () => {
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search property or owner..."
           className="flex-1 min-w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+        <select aria-label="Filter by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-brand-500 bg-white">
           <option value="">All Statuses</option>
           {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}

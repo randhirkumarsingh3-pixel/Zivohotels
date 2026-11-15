@@ -154,7 +154,7 @@ const ExtranetProperty = () => {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Property Name</label>
                   <input 
-                    {...register('name')}
+                    aria-label="Property name" {...register('name')}
                     disabled={!isEditing}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all disabled:bg-gray-50 disabled:cursor-default"
                   />
@@ -162,7 +162,7 @@ const ExtranetProperty = () => {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Location</label>
                   <input 
-                    {...register('location')}
+                    aria-label="Address" {...register('location')}
                     disabled={!isEditing}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-bold text-gray-900 disabled:cursor-default"
                   />
@@ -170,7 +170,7 @@ const ExtranetProperty = () => {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">City</label>
                   <input 
-                    {...register('city')}
+                    aria-label="City" {...register('city')}
                     disabled={!isEditing}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-bold text-gray-900 disabled:cursor-default"
                   />
@@ -180,7 +180,7 @@ const ExtranetProperty = () => {
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Property Description</label>
                 <textarea 
-                  {...register('description')}
+                  aria-label="Description" {...register('description')}
                   rows={4} 
                   disabled={!isEditing}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium text-gray-700 leading-relaxed disabled:cursor-default resize-none"
@@ -203,7 +203,7 @@ const ExtranetProperty = () => {
                 <span className="text-xs font-bold text-gray-500">Check-in Time</span>
                 <input 
                   type="time"
-                  {...register('checkInTime')}
+                  aria-label="Check-in time" {...register('checkInTime')}
                   disabled={!isEditing}
                   className="text-xs font-black text-gray-900 bg-transparent text-right outline-none"
                 />
@@ -212,7 +212,7 @@ const ExtranetProperty = () => {
                 <span className="text-xs font-bold text-gray-500">Check-out Time</span>
                 <input 
                   type="time"
-                  {...register('checkOutTime')}
+                  aria-label="Check-out time" {...register('checkOutTime')}
                   disabled={!isEditing}
                   className="text-xs font-black text-gray-900 bg-transparent text-right outline-none"
                 />

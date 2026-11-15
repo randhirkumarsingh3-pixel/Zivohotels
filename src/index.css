@@ -4,8 +4,15 @@
 
 @layer base {
   body {
-    @apply font-sans bg-gray-50 text-gray-900;
+    @apply font-sans bg-gray-50 text-gray-800 antialiased;
   }
+  /* Headings use the display face; numbers in tables and prices line up */
+  h1, h2, h3, .font-display {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.01em;
+  }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid theme('colors.navy.500'); outline-offset: 2px; }
 }
 
 @layer components {
@@ -20,9 +27,9 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-track { background: #eef2f7; }
+::-webkit-scrollbar-thumb { background: #c3cdd9; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #8a97a8; }
 
 /* Custom animations */
 @keyframes fadeInUp {

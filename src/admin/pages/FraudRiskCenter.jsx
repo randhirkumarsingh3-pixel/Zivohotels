@@ -4,6 +4,7 @@ import {
   Search, ShieldCheck, Activity, Eye,
   Lock, Zap
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const RiskMeter = ({ score }) => {
   const color = score > 80 ? 'bg-red-500' : score > 50 ? 'bg-orange-500' : 'bg-green-500';
@@ -22,6 +23,7 @@ const FraudRiskCenter = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      <SampleDataNotice what="Fraud & Risk" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

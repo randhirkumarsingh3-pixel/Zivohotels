@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getHotelById, trackEvent, getMyMembership } from '../services/api';
+import { getHotelById, trackEvent, getMyMembership, previewBookingApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
@@ -258,6 +258,26 @@ const Detail = () => {
     return () => { stale = true; };
   }, [id, checkIn, checkOut]);
 
+  // The price shown here comes from the same server calculation as checkout (offers, member
+  // prices, pay-now saving, GST), so the total doesn't change between this page and checkout.
+  // The local estimate below is only shown until it arrives, or if it fails.
+  const [quote, setQuote] = useState(null);
+  const quoteRoomId = selectedRoomType?.id;
+  const quotePlanId = selectedRatePlan?.id;
+  useEffect(() => {
+    setQuote(null);
+    if (!hotel?.id || !quoteRoomId || !quotePlanId || !checkIn || !checkOut) return undefined;
+    let live = true;
+    const t = setTimeout(() => {
+      previewBookingApi({
+        hotelId: hotel.id, roomTypeId: quoteRoomId, ratePlanId: quotePlanId, checkIn, checkOut,
+        adults: searchParams.adults || guests || 2, children: searchParams.children || 0, extraBeds: 0,
+        rooms: rooms || 1, paymentType: 'PREPAID',
+      }).then((r) => { if (live) setQuote(r?.data || null); }).catch(() => { if (live) setQuote(null); });
+    }, 250);
+    return () => { live = false; clearTimeout(t); };
+  }, [hotel?.id, quoteRoomId, quotePlanId, checkIn, checkOut, guests, rooms, searchParams.adults, searchParams.children, isAuthenticated]);
+
   const handleRoomSelect = (roomType, ratePlan) => {
     setSelectedRoomType(roomType);
     setSelectedRatePlan(ratePlan || null);
@@ -320,7 +340,8 @@ const Detail = () => {
   const afterOffer= baseTotal - offerOff - memberHotelOff - memberZivoOff;
   const taxRate   = (nights && nightsN ? afterOffer / (nights * nightsN) : pricePerNight) <= 7500 ? 0.05 : 0.18;
   const taxes     = Math.round(afterOffer * taxRate);
-  const grandTotal= afterOffer + taxes;
+  const estimateTotal = afterOffer + taxes;
+  const grandTotal = quote?.totalAmount ?? estimateTotal;
 
   return (
     <div className="pt-20 pb-20 bg-gray-50">
@@ -492,37 +513,41 @@ const Detail = () => {
                 </div>
 
                 {/* Price Breakdown */}
-                {checkIn && checkOut && selectedRatePlan ? (
-                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2">
+                {checkIn && checkOut && selectedRatePlan && quote ? (
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 tabular-nums">
                     <div className="flex justify-between text-gray-600">
                       <span>{fmt(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''} × {nightsN} room{nightsN > 1 ? 's' : ''}</span>
-                      <span>{fmt(baseTotal)}</span>
+                      <span>{fmt((quote.roomPrice || 0) + (quote.extraGuestCharges || 0) + (quote.extraBedCharges || 0) + (quote.mealCharges || 0))}</span>
                     </div>
-                    {offerOff > 0 && (
-                      <div className="flex justify-between text-green-700 font-medium">
-                        <span>{offer.name}</span>
-                        <span>− {fmt(offerOff)}</span>
-                      </div>
+                    {quote.promotionDiscountAmount > 0 && (
+                      <div className="flex justify-between text-green-700 font-medium"><span>{quote.promotion?.name || 'Offer'}</span><span>− {fmt(quote.promotionDiscountAmount)}</span></div>
                     )}
-                    {memberHotelOff > 0 && (
-                      <div className="flex justify-between text-amber-700 font-medium"><span>Member price ({memberPct}%)</span><span>− {fmt(memberHotelOff)}</span></div>
+                    {quote.memberDiscountAmount > 0 && (
+                      <div className="flex justify-between text-green-700 font-medium"><span>Member price</span><span>− {fmt(quote.memberDiscountAmount)}</span></div>
                     )}
-                    {memberZivoOff > 0 && (
-                      <div className="flex justify-between text-amber-700 font-medium"><span>{membership.plan.name} extra</span><span>− {fmt(memberZivoOff)}</span></div>
+                    {quote.prepaidDiscountAmount > 0 && (
+                      <div className="flex justify-between text-green-700 font-medium"><span>Pay-now saving</span><span>− {fmt(quote.prepaidDiscountAmount)}</span></div>
                     )}
                     {memberPct > 0 && !membership && (
-                      <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5">
+                      <p className="text-xs text-navy-800 bg-navy-50 rounded-lg px-2 py-1.5">
                         {memberPct}% off for members. {isAuthenticated ? 'Member prices are for guest accounts.' : <><RouterLink to="/login" className="font-bold underline">Log in</RouterLink> or <RouterLink to="/signup" className="font-bold underline">sign up free</RouterLink> to get it.</>}
                       </p>
                     )}
                     <div className="flex justify-between text-gray-600">
-                      <span>Taxes &amp; Fees ({Math.round(taxRate * 100)}%)</span>
-                      <span>{fmt(taxes)}</span>
+                      <span>GST ({quote.taxPercentage ?? Math.round(taxRate * 100)}%)</span>
+                      <span>{fmt(quote.taxAmount || 0)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
-                      <span>Total</span>
-                      <span>{fmt(grandTotal)}</span>
+                      <span>Total if you pay now</span>
+                      <span>{fmt(quote.totalAmount)}</span>
                     </div>
+                    <p className="text-xs text-gray-500">Part-payment and pay-at-hotel options are at checkout.</p>
+                  </div>
+                ) : checkIn && checkOut && selectedRatePlan ? (
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2" aria-busy="true">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+                    <div className="h-5 bg-gray-200 rounded animate-pulse w-2/3" />
                   </div>
                 ) : !checkIn && (
                   <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg font-medium">
@@ -536,9 +561,9 @@ const Detail = () => {
                 disabled={!selectedRatePlan}
                 className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {checkIn && checkOut && selectedRatePlan
-                  ? `Book Now — ${fmt(grandTotal)}`
-                  : 'Book Now'}
+                {checkIn && checkOut && selectedRatePlan && quote
+                  ? `Book now · ${fmt(grandTotal)}`
+                  : 'Book now'}
               </button>
               <p className="text-center text-sm text-gray-500 mt-4">You won&apos;t be charged yet</p>
               {/* Guests should see the cancellation terms before booking */}

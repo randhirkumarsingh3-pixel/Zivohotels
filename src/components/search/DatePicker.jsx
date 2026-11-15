@@ -25,7 +25,7 @@ const DatePicker = ({ checkIn, setCheckIn, checkOut, setCheckOut, error }) => {
         <Calendar className="text-brand-500 mr-3 h-5 w-5 shrink-0" />
         
         <div className="flex items-center w-full justify-between relative">
-          <input 
+          <input aria-label="Check-in date" 
             type="date" 
             className="w-[45%] bg-transparent border-none outline-none text-gray-800 font-medium text-sm cursor-pointer" 
             value={checkIn}
@@ -34,7 +34,7 @@ const DatePicker = ({ checkIn, setCheckIn, checkOut, setCheckOut, error }) => {
             required
           />
           <span className="text-gray-300 px-2">-</span>
-          <input 
+          <input aria-label="Check-out date" 
             type="date" 
             className="w-[45%] bg-transparent border-none outline-none text-gray-800 font-medium text-sm cursor-pointer" 
             value={checkOut}

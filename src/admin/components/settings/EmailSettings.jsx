@@ -123,7 +123,7 @@ const EmailSettings = () => {
           <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
             <div className="flex items-center text-gray-700 font-medium text-sm w-full">
               <Mail size={16} className="mr-2 shrink-0" /> Subject: 
-              <input 
+              <input aria-label="Email subject" 
                 type="text" 
                 className="ml-2 border border-gray-300 rounded px-2 py-1 flex-1 outline-none focus:border-brand-500" 
                 value={currentTemplate.subject}
@@ -134,7 +134,7 @@ const EmailSettings = () => {
           </div>
           
           <div className="p-4 flex-1">
-            <textarea 
+            <textarea aria-label="Email body" 
               value={currentTemplate.content}
               onChange={(e) => updateCurrentTemplate('content', e.target.value)}
               className="w-full h-64 p-4 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 font-mono text-sm text-gray-700"

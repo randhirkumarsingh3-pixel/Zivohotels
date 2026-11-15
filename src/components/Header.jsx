@@ -1,98 +1,100 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Building2, Menu, User, LogOut } from 'lucide-react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import Logo from './brand/Logo';
 
+/**
+ * Guest site header: white bar, navy links, red for the one main action (Sign up). On phones the
+ * menu button opens a panel with the same links (it used to do nothing).
+ */
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleLogout = () => { logout(); navigate('/'); };
+
+  const links = [
+    { to: '/hotels', label: 'Hotels' },
+    { to: '/rewards', label: 'Zivo Rewards' },
+    { to: '/membership', label: 'Membership' },
+    isAuthenticated && { to: '/my-bookings', label: 'My Bookings' },
+    isAuthenticated && user?.role === 'CUSTOMER' && { to: '/wallet', label: 'Zivo Cash' },
+    isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'OWNER') && { to: user.role === 'ADMIN' ? '/admin' : '/extranet', label: user.role === 'ADMIN' ? 'Admin' : 'Extranet' },
+  ].filter(Boolean);
+  const linkCls = ({ isActive }) => `font-medium transition-colors ${isActive ? 'text-navy-800' : 'text-gray-600 hover:text-navy-800'}`;
+
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-md py-2' : 'bg-white/80 backdrop-blur-md shadow-sm py-4'}`}>
+    <nav className={`fixed w-full z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-md' : 'border-b border-gray-200'}`} aria-label="Main">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14">
-          <Link to="/" className="flex-shrink-0 flex items-center cursor-pointer group">
-            <div className="bg-brand-600 p-2 rounded-lg mr-2 group-hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/30">
-              <Building2 className="h-6 w-6 text-white" />
-            </div>
-            <span className={`text-2xl font-bold tracking-tight text-gray-900`}>
-              Zivo<span className="text-brand-600">Hotels</span>
-            </span>
+        <div className="flex justify-between items-center h-16">
+          <Link to="/" className="flex-shrink-0" aria-label="ZivoHotels home">
+            <Logo size="md" />
           </Link>
 
-          <div className="hidden md:flex items-center space-x-8">
-            <Link to="/hotels" className="font-medium transition-colors hover:text-brand-600 text-gray-600">All Hotels</Link>
-            <Link to="/rewards" className="font-medium transition-colors hover:text-brand-600 text-gray-600">Zivo Rewards</Link>
-            <Link to="/membership" className="font-medium transition-colors hover:text-brand-600 text-amber-600">Membership</Link>
-            
-            {/* Role-Based Links */}
-            {isAuthenticated && (
-              <Link to="/my-bookings" className="font-medium transition-colors hover:text-brand-600 text-gray-600">
-                My Bookings
-              </Link>
-            )}
-            {isAuthenticated && user?.role === 'CUSTOMER' && (
-              <Link to="/wallet" className="font-medium transition-colors hover:text-brand-600 text-gray-600">
-                Zivo Cash
-              </Link>
-            )}
-
-            {isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'OWNER') && (
-              <Link 
-                to={user.role === 'ADMIN' ? '/admin' : '/extranet'} 
-                className="font-bold transition-colors text-brand-600 hover:text-brand-800"
-              >
-                {user.role === 'ADMIN' ? 'Admin Panel' : 'Owner Dashboard'}
-              </Link>
-            )}
-
-            <div className={`flex items-center space-x-4 ml-4 border-l pl-4 border-gray-200`}>
+          <div className="hidden lg:flex items-center gap-7">
+            {links.map((l) => <NavLink key={l.to} to={l.to} className={linkCls}>{l.label}</NavLink>)}
+            <div className="flex items-center gap-3 ml-2 border-l pl-6 border-gray-200">
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center text-gray-700 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
-                    <User className="h-4 w-4 mr-2" />
+                <>
+                  <span className="flex items-center text-gray-700 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                    <User className="h-4 w-4 mr-2 text-navy-700" aria-hidden="true" />
                     Hi, {user?.name?.split(' ')[0]}
-                  </div>
-                  <button 
-                    onClick={handleLogout}
-                    className="flex items-center font-medium px-4 py-2 rounded-full transition-colors text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                  </span>
+                  <button type="button" onClick={handleLogout} className="flex items-center font-medium px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-navy-800 hover:bg-gray-50">
+                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Log out
                   </button>
-                </div>
+                </>
               ) : (
                 <>
-                  <Link to="/login" className="font-medium px-4 py-2 rounded-full transition-colors text-gray-700 hover:text-brand-600 hover:bg-gray-50">
-                    Log in
-                  </Link>
-                  <Link to="/signup" className="font-medium px-6 py-2 rounded-full transition-all shadow-md transform hover:-translate-y-0.5 bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25">
-                    Sign up
-                  </Link>
+                  <Link to="/login" className="font-semibold px-4 py-2 rounded-lg transition-colors text-navy-800 hover:bg-navy-50">Log in</Link>
+                  <Link to="/signup" className="font-semibold px-5 py-2 rounded-lg transition-colors bg-brand-600 hover:bg-brand-700 text-white">Sign up</Link>
                 </>
               )}
             </div>
           </div>
 
-          <div className="md:hidden flex items-center">
-            <button className="p-2 rounded-md focus:outline-none text-gray-600">
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
+          <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}
+            className="lg:hidden p-2 -mr-2 rounded-lg text-navy-800 hover:bg-gray-100">
+            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
       </div>
+
+      {menuOpen && (
+        <div className="lg:hidden border-t border-gray-200 bg-white shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col">
+            {isAuthenticated && <p className="px-2 py-2 text-sm text-gray-500">Signed in as <span className="font-semibold text-gray-800">{user?.name}</span></p>}
+            {links.map((l) => (
+              <NavLink key={l.to} to={l.to} className={({ isActive }) => `px-2 py-3 rounded-lg text-base font-medium ${isActive ? 'text-navy-800 bg-navy-50' : 'text-gray-700 hover:bg-gray-50'}`}>{l.label}</NavLink>
+            ))}
+            <Link to="/help" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">Help</Link>
+            <div className="border-t border-gray-200 mt-2 pt-3 pb-1 flex gap-3">
+              {isAuthenticated ? (
+                <button type="button" onClick={handleLogout} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 font-semibold text-gray-700">
+                  <LogOut className="h-4 w-4" aria-hidden="true" /> Log out
+                </button>
+              ) : (
+                <>
+                  <Link to="/login" className="flex-1 text-center py-3 rounded-lg border border-navy-200 font-semibold text-navy-800">Log in</Link>
+                  <Link to="/signup" className="flex-1 text-center py-3 rounded-lg bg-brand-600 font-semibold text-white">Sign up</Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

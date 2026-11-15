@@ -50,7 +50,7 @@ const HotelCard = ({ hotel }) => {
           </div>
         )}
         {imgError ? (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-brand-500 to-brand-800 text-white">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-navy-600 to-navy-900 text-white">
             <span className="text-4xl font-black opacity-50">
               {hotel.name?.charAt(0) || 'Z'}
             </span>

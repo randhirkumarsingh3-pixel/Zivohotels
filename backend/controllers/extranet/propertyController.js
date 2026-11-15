@@ -24,7 +24,10 @@ export const getProperty = async (req, res) => {
       select: { status: true, commissionRate: true, signedAt: true }
     });
 
-    res.json({ success: true, data: { ...property, agreement } });
+    // Payout account for the Finance page: bank name and the last 4 digits only
+    const bank = await prisma.bankDetail.findUnique({ where: { hotelId: property.id }, select: { bankName: true, accountNumber: true } }).catch(() => null);
+    const bankAccount = bank?.accountNumber ? { bankName: bank.bankName, last4: String(bank.accountNumber).slice(-4) } : null;
+    res.json({ success: true, data: { ...property, agreement, bankAccount } });
   } catch (error) {
     console.error('Error fetching extranet property:', error);
     res.status(500).json({ success: false, message: 'Server error fetching property details' });

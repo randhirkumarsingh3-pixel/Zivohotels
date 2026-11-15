@@ -3,6 +3,7 @@ import {
   Zap, ShieldAlert, Activity, FlaskConical,
   RotateCcw, Pause, Edit3, MessageSquare
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const DecisionItem = ({ id, type, action, reason, signals, timestamp, status, onOverride }) => {
   const icons = {
@@ -96,6 +97,7 @@ const OperatorDecisionCenter = () => {
 
   return (
     <div className="space-y-10 pb-12">
+      <SampleDataNotice what="Experiments" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

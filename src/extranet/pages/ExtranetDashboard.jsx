@@ -289,17 +289,17 @@ const ExtranetDashboard = () => {
               </div>
 
               {/* Quick Support */}
-              <div className="flex items-center gap-4 p-6 bg-slate-900 rounded-[2rem] text-white">
+              <div className="flex items-center gap-4 p-6 bg-navy-900 rounded-[2rem] text-white">
                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
                     <Info className="text-blue-400" />
                  </div>
-                 <div>
-                    <h4 className="text-sm font-black">Need Help?</h4>
-                    <p className="text-[10px] text-slate-400">Your account manager is online.</p>
+                 <div className="min-w-0">
+                    <h4 className="text-sm font-bold">Need help?</h4>
+                    <p className="text-xs text-navy-100">Write to <span className="font-semibold text-white select-all">partners@zivohotels.com</span></p>
                  </div>
-                 <button className="ml-auto w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-500 transition-all">
+                 <a href="/help#hotels" aria-label="Help for hotels" className="ml-auto w-10 h-10 bg-brand-600 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors shrink-0">
                     <ArrowRight size={16} />
-                 </button>
+                 </a>
               </div>
            </div>
         </div>

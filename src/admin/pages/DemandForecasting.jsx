@@ -5,6 +5,7 @@ import {
   ArrowRight, MapPin,
   Sun, Cloud, CloudRain
 } from 'lucide-react';
+import SampleDataNotice from '../../components/shared/SampleDataNotice';
 
 const forecastData = [
   { date: 'May 16', day: 'Fri', demand: 92, price: 5800, event: 'Weekend', weather: Sun },
@@ -32,6 +33,7 @@ const DemandForecasting = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      <SampleDataNotice what="Demand forecasting" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

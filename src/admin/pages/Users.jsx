@@ -216,7 +216,7 @@ const Users = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Status Filter */}
-          <select
+          <select aria-label="Filter by status"
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
             className="px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-brand-500 text-sm bg-white"
