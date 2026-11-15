@@ -58,11 +58,15 @@ export const usePropertyWizard = (options) => {
         const mappedData = mapBackendToFormData(json.data);
         setInitialRoomIds(mappedData.rooms.map(r => r.id));
         if (draftLoaded) {
-          setFormData(prev => ({
-            ...mappedData,
-            ...prev,
-            lastUpdatedAt: mappedData.lastUpdatedAt
-          }));
+          // The copy kept in this browser only wins while it is newer than what the server has.
+          // It used to win always, so Edit Property showed (and saved back) stale values after
+          // the property had been saved elsewhere, e.g. the location from another session.
+          setFormData(prev => {
+            const serverTime = new Date(mappedData.lastUpdatedAt || 0).getTime();
+            const localTime = new Date(prev.lastUpdatedAt || 0).getTime();
+            if (!prev.lastUpdatedAt || serverTime > localTime) return mappedData;
+            return { ...mappedData, ...prev, lastUpdatedAt: mappedData.lastUpdatedAt };
+          });
         } else {
           setFormData(mappedData);
         }

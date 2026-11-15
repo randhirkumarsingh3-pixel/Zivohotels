@@ -69,7 +69,7 @@ const RoomsStep = ({ formData, updateForm }) => {
   // Single Room Edit State
   const [roomForm, setRoomForm] = useState({
     type: 'Deluxe',
-    view: 'Airport View',
+    view: '',
     size: '',
     sizeUnit: 'Square Feet',
     name: 'Deluxe Room',
@@ -135,7 +135,7 @@ const RoomsStep = ({ formData, updateForm }) => {
   const handleOpenAddRoom = () => {
     setRoomForm({
       type: 'Deluxe',
-      view: 'Airport View',
+      view: '',
       size: '',
       sizeUnit: 'Square Feet',
       name: 'Deluxe Room',
@@ -310,6 +310,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                 onChange={e => updateRoomForm('view', e.target.value)}
                 className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm bg-white text-slate-900"
               >
+                <option value="">No particular view</option>
                 {ROOM_VIEWS.map(v => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>

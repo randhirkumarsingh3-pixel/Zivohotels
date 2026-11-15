@@ -12,6 +12,7 @@ import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { displayOffers } from '../services/promotionService.js';
+import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
 
 // --- ZOD SCHEMAS ---
@@ -24,6 +25,7 @@ const hotelSchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
   area: z.string().optional(),
+  houseNo: z.string().max(200).optional(),
   pincode: z.string().optional(),
   landmark: z.string().optional(),
   propertyType: z.string().optional(),
@@ -168,7 +170,7 @@ export const normalizeHotelPayload = (data) => {
     bankDetail, commissionRate, cancellationPolicy, status, channelProvider,
     propertyType, rating, legalName, pan, gstin,
     incorporationType, payoutCycle, msme, builtYear, bookingSince,
-    state, country, area, pincode, landmark, policyRules, mealPrices
+    state, country, area, pincode, landmark, policyRules, mealPrices, houseNo
   } = data;
   
   // 1. Consistent location derived from address and city
@@ -219,6 +221,7 @@ export const normalizeHotelPayload = (data) => {
   // Address breakdown for edit property
   const _addressDetails = {};
   if (address) _addressDetails.address = address;
+  if (houseNo) _addressDetails.houseNo = houseNo;
   if (area) _addressDetails.area = area;
   if (state) _addressDetails.state = state;
   if (pincode) _addressDetails.pincode = pincode;
@@ -249,6 +252,60 @@ export const normalizeHotelPayload = (data) => {
 };
 
 const activeFilter = { isDeleted: false };
+
+/**
+ * Finds the owner account for the email entered in the property form, or creates an invited
+ * OWNER account (temporary password + set-password link, emailed by sendOwnerInvite). A customer
+ * account with that email becomes an owner. Returns { ownerId, invite? }.
+ */
+const resolveOwnerAccount = async (contact) => {
+  const email = String(contact.ownerEmail).trim().toLowerCase();
+  const existingOwner = await prisma.user.findUnique({ where: { email } });
+  if (existingOwner) {
+    if (existingOwner.role === 'CUSTOMER') {
+      await prisma.user.update({ where: { id: existingOwner.id }, data: { role: 'OWNER' } });
+    }
+    return { ownerId: existingOwner.id };
+  }
+  // Invite link token: the raw value goes in the email, its SHA-256 is stored (as
+  // /users/accept-invite expects)
+  const inviteToken = crypto.randomBytes(32).toString('hex');
+  const tempPassword = crypto.randomBytes(6).toString('hex');
+  const newOwner = await prisma.user.create({
+    data: {
+      name: contact.ownerName || 'Property Owner',
+      email,
+      password: await bcrypt.hash(tempPassword, 10),
+      phone: contact.ownerPhone || null,
+      role: 'OWNER',
+      status: 'INVITED',
+      inviteToken: crypto.createHash('sha256').update(inviteToken).digest('hex'),
+      inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      mustChangePassword: true
+    }
+  });
+  return { ownerId: newOwner.id, invite: { inviteToken, tempPassword } };
+};
+
+const sendOwnerInvite = (hotel, ownerEmail, { inviteToken, tempPassword }) =>
+  queueService.enqueue('email', 'SEND_OWNER_INVITE', {
+    to: ownerEmail,
+    subject: 'Welcome to ZivoHotels - Claim Your Property',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2>Welcome to ZivoHotels!</h2>
+        <p>An admin has started onboarding your property: <strong>${escapeHtml(hotel.name)}</strong>.</p>
+        <p>An owner account has been created for you. Please log in using the temporary credentials below to review and submit your property.</p>
+        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${escapeHtml(ownerEmail)}</p>
+          <p><strong>Temporary Password:</strong> ${tempPassword}</p>
+        </div>
+        <p>Or set your own password here (link valid for 7 days):<br>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/accept-invite?token=${inviteToken}">Set my password</a></p>
+        <p>Please change your password immediately after logging in.</p>
+      </div>
+    `
+  }, { priority: 1 });
 
 export const createHotel = asyncHandler(async (req, res) => {
   const validation = hotelSchema.safeParse(req.body);
@@ -283,44 +340,11 @@ export const createHotel = asyncHandler(async (req, res) => {
     return settings;
   };
 
-  let targetOwnerId = req.user.id;
-  let isNewOwner = false;
-  let inviteToken = null;
-  let tempPassword = null;
+  // The owner named in the form (admin onboarding): an existing account, or a new invited one
   const ownerEmail = _contactInfo.ownerEmail;
-
-  if (ownerEmail) {
-    const existingOwner = await prisma.user.findUnique({
-      where: { email: ownerEmail }
-    });
-    
-    if (existingOwner) {
-      targetOwnerId = existingOwner.id;
-    } else {
-      // Auto-create OWNER
-      // Invite link token: the raw value goes in the email, its SHA-256 is stored (as
-      // /users/accept-invite expects)
-      inviteToken = crypto.randomBytes(32).toString('hex');
-      tempPassword = crypto.randomBytes(6).toString('hex');
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
-      
-      const newOwner = await prisma.user.create({
-        data: {
-          name: _contactInfo.ownerName || 'Property Owner',
-          email: ownerEmail,
-          password: hashedPassword,
-          phone: _contactInfo.ownerPhone || null,
-          role: 'OWNER',
-          status: 'INVITED', // was 'PENDING', which isn't a user status: saving the property failed
-          inviteToken: crypto.createHash('sha256').update(inviteToken).digest('hex'),
-          inviteExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-          mustChangePassword: true
-        }
-      });
-      targetOwnerId = newOwner.id;
-      isNewOwner = true;
-    }
-  }
+  const resolved = ownerEmail ? await resolveOwnerAccount(_contactInfo) : null;
+  const targetOwnerId = resolved?.ownerId || req.user.id;
+  const isNewOwner = Boolean(resolved?.invite);
 
   let hotel;
   if (existing) {
@@ -346,27 +370,7 @@ export const createHotel = asyncHandler(async (req, res) => {
     });
   }
 
-  if (isNewOwner) {
-    // Queue owner invite email
-    await queueService.enqueue('email', 'SEND_OWNER_INVITE', {
-      to: ownerEmail,
-      subject: 'Welcome to ZivoHotels - Claim Your Property',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Welcome to ZivoHotels!</h2>
-          <p>An admin has started onboarding your property: <strong>${hotel.name}</strong>.</p>
-          <p>An owner account has been created for you. Please log in using the temporary credentials below to review and submit your property.</p>
-          <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Email:</strong> ${ownerEmail}</p>
-            <p><strong>Temporary Password:</strong> ${tempPassword}</p>
-          </div>
-          <p>Or set your own password here (link valid for 7 days):<br>
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/accept-invite?token=${inviteToken}">Set my password</a></p>
-          <p>Please change your password immediately after logging in.</p>
-        </div>
-      `
-    }, { priority: 1 });
-  }
+  if (isNewOwner) await sendOwnerInvite(hotel, ownerEmail, resolved.invite);
 
   // Handle manual creation of agreement and bank detail to avoid client-sync issues.
   // Only an admin sets commission; an owner's property gets its agreement at approval.
@@ -493,6 +497,19 @@ export const updateHotel = asyncHandler(async (req, res) => {
     }
   }
 
+  // Admin onboarding: the draft is created (step 1) before the owner's email is entered, so the
+  // property starts out owned by the admin. When the owner email is saved, link (or invite) that
+  // owner. A property that already belongs to an owner account is never moved this way.
+  let ownerChange = null;
+  if (isAdmin && _contactInfo?.ownerEmail) {
+    const currentOwner = await prisma.user.findUnique({ where: { id: existingHotel.ownerId }, select: { email: true, role: true } });
+    const wanted = String(_contactInfo.ownerEmail).trim().toLowerCase();
+    if (currentOwner?.role !== 'OWNER' && currentOwner?.email?.toLowerCase() !== wanted) {
+      ownerChange = await resolveOwnerAccount(_contactInfo);
+      prismaData.ownerId = ownerChange.ownerId;
+    }
+  }
+
   // Safely merge new contact info and address details into integrationSettings
   let newSettings = undefined;
   const hasContact = _contactInfo && Object.keys(_contactInfo).length > 0;
@@ -554,6 +571,8 @@ export const updateHotel = asyncHandler(async (req, res) => {
     }
   });
 
+  if (ownerChange?.invite) await sendOwnerInvite(hotel, _contactInfo.ownerEmail, ownerChange.invite);
+
   if (Object.keys(auditDetails.fields).length > 0) {
     await prisma.auditLog.create({
       data: {
@@ -573,7 +592,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
       where: { hotelId: id },
       create: { 
         hotelId: id,
-        ownerId: existingHotel.ownerId, 
+        ownerId: hotel.ownerId, 
         commissionRate: _commissionRate, 
         status: 'DRAFT' 
       },
@@ -607,7 +626,17 @@ export const deleteHotel = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
-  await prisma.hotel.delete({ where: { id } });
+  // Bookings keep a property: it can't be erased (archive it instead). Its cancellation policy
+  // and any sales lead pointing at it used to block the delete with a database error.
+  const bookings = await prisma.booking.count({ where: { hotelId: id } });
+  if (bookings > 0) {
+    return res.status(409).json({ success: false, message: `This property has ${bookings} booking(s), so it can't be permanently deleted. Deactivate it instead.`, requestId: req.id });
+  }
+  await prisma.$transaction([
+    prisma.cancellationPolicy.deleteMany({ where: { hotelId: id } }),
+    prisma.propertyLead.updateMany({ where: { hotelId: id }, data: { hotelId: null } }),
+    prisma.hotel.delete({ where: { id } }),
+  ]);
 
   await prisma.auditLog.create({
     data: { action: 'HARD_DELETE_HOTEL', entityType: 'HOTEL', entityId: id, userId: req.user.id, requestId: req.id }
@@ -639,6 +668,7 @@ export const formatHotelResponse = (hotel) => {
     policyRules: integSettings.policyRules || {},
     mealPrices: integSettings.mealPrices || {},
     addressLine: addressDetails.address || null,
+    houseNo: addressDetails.houseNo || null,
     area: addressDetails.area || null,
     state: addressDetails.state || null,
     pincode: addressDetails.pincode || null,
@@ -787,7 +817,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
   const hotel = await prisma.hotel.findUnique({
     where: { id },
     include: {
-      owner: { select: { id: true, name: true, email: true, phone: true } },
+      owner: { select: { id: true, name: true, email: true, phone: true, role: true } },
       media: true, // 👈 New Media Library
       roomTypes: {
         where: { isActive: true },
