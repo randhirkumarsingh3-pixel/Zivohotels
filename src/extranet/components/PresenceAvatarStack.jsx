@@ -21,7 +21,9 @@ const PresenceAvatarStack = () => {
   }, [socket, hotelId]);
 
   return (
-    <div className="flex items-center -space-x-3 overflow-hidden">
+    <div className="flex items-center">
+      {/* Avatars overlap each other; the label sits outside that group (it was pulled under them) */}
+      <div className="flex items-center -space-x-3">
       {activeUsers.map((user, _i) => (
         <div 
           key={user.id}
@@ -47,6 +49,7 @@ const PresenceAvatarStack = () => {
           </div>
         </div>
       ))}
+      </div>
       
       {activeUsers.length > 0 && (
         <span className="ml-4 text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">
