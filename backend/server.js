@@ -15,6 +15,8 @@ import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import ariRoutes from './routes/ariRoutes.js';
+import { adminChannelRoutes, channelManagerApi } from './routes/channelConnectivityRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import ratePlanRoutes from './routes/ratePlanRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
@@ -213,6 +215,8 @@ app.use('/api/v1/master', masterAdminRoutes);
 
 // ─── PARTNER EXTRANET APIS (Isolated Property Control) ───────────────────────
 app.use('/api/v1/extranet', extranetRoutes);
+// Channel managers push rates & availability and pull bookings (API key per property)
+app.use('/api/v1/channel-manager', channelManagerApi);
 
 // ─── ADMIN / OWNER APIS (Legacy Transition) ──────────────────────────────────
 app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter);
@@ -220,6 +224,8 @@ app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter
 app.use('/api/v1/admin/hotels',     hotelRoutes);
 app.use('/api/v1/admin/rooms',      roomRoutes);
 app.use('/api/v1/admin/inventory',  inventoryRoutes);
+app.use('/api/v1/admin/ari',        ariRoutes);
+app.use('/api/v1/admin/channel-manager', adminChannelRoutes);
 app.use('/api/v1/admin/bookings',   bookingRoutes);
 app.use('/api/v1/admin/rate-plans', ratePlanRoutes);
 app.use('/api/v1/admin/invoices',   invoiceRoutes);

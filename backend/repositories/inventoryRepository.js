@@ -44,6 +44,15 @@ export const inventoryRepository = {
       FOR UPDATE
     `;
 
+    // 1b. Dates closed for sale (stop-sell) can't be booked, checked under the same row locks
+    const closed = await tx.inventory.findFirst({
+      where: { roomTypeId, date: { in: dateRange }, stopSell: true },
+      select: { date: true }
+    });
+    if (closed) {
+      throw new Error(`Not available on ${closed.date.toDateString()} (closed for sale)`);
+    }
+
     // 2. Atomic Bulk Update
     const updateResult = await tx.inventory.updateMany({
       where: {

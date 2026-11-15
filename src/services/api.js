@@ -282,7 +282,11 @@ export const getHotels = async (searchParams = {}, filters = {}) => {
   return apiFetch(url).then(res => res?.data);
 };
 
-export const getHotelById = (id) => apiFetch(`${PUBLIC_BASE}/hotels/${id}`).then(res => res?.data);
+// With stay dates the response includes each rate plan's price for those nights and room availability
+export const getHotelById = (id, stay = {}) => {
+  const q = stay.checkIn && stay.checkOut ? `?${new URLSearchParams({ checkin: stay.checkIn, checkout: stay.checkOut })}` : '';
+  return apiFetch(`${PUBLIC_BASE}/hotels/${id}${q}`).then(res => res?.data);
+};
 export const getHotelAvailability = (id, params) => {
   const qs = new URLSearchParams(params).toString();
   return apiFetch(`${PUBLIC_BASE}/hotels/${id}/availability?${qs}`).then(res => res?.data);

@@ -1,9 +1,10 @@
 import prisma from '../config/db.js';
 import { pricingDomain } from '../domains/pricingDomain.js';
+import { dailyRatesFor, stopSellNights } from './ariService.js';
+import { getDatesInRange } from '../utils/dateUtils.js';
 import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import { bookingRepository } from '../repositories/bookingRepository.js';
 import { couponService } from './couponService.js';
-import channelManagerService from './channel/channelManagerService.js';
 import loyaltyService from './finance/loyaltyService.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
@@ -62,6 +63,14 @@ export const bookingService = {
       device: 'WEB'
     };
 
+    // Daily rates and stop-sell from Inventory & Rates / the property's channel manager
+    const stayNights = getDatesInRange(checkInDate, checkOutDate);
+    const closed = await stopSellNights(roomType.id, stayNights);
+    if (closed.length) {
+      throw new Error(`${roomType.name} isn't available on ${closed.map(d => d.toDateString()).join(', ')}. Please choose other dates or another room.`);
+    }
+    const dailyRates = await dailyRatesFor(ratePlan.id, stayNights);
+
     const calculationInput = {
       roomType,
       ratePlan,
@@ -75,7 +84,8 @@ export const bookingService = {
       extraBeds,
       paymentType,
       appliedCoupon,
-      dynamicContext
+      dynamicContext,
+      dailyRates
     };
 
     return pricingDomain.calculate(calculationInput);
@@ -141,6 +151,14 @@ export const bookingService = {
       device: 'WEB'
     };
 
+    // Daily rates and stop-sell from Inventory & Rates / the property's channel manager
+    const stayNights = getDatesInRange(checkInDate, checkOutDate);
+    const closed = await stopSellNights(roomType.id, stayNights);
+    if (closed.length) {
+      throw new Error(`${roomType.name} isn't available on ${closed.map(d => d.toDateString()).join(', ')}. Please choose other dates or another room.`);
+    }
+    const dailyRates = await dailyRatesFor(ratePlan.id, stayNights);
+
     const calculationInput = {
       roomType,
       ratePlan,
@@ -154,7 +172,8 @@ export const bookingService = {
       extraBeds,
       paymentType,
       appliedCoupon,
-      dynamicContext
+      dynamicContext,
+      dailyRates
     };
 
     const pricing = pricingDomain.calculate(calculationInput);
@@ -322,15 +341,9 @@ export const bookingService = {
       return booking;
     }, { timeout: 10000 });
 
-    // 7. Channel Manager Sync (Phase 8)
-    const hotel = await prisma.hotel.findUnique({
-      where: { id: hotelId },
-      select: { integrationMode: true }
-    });
-    if (hotel?.integrationMode === 'CHANNEL_MANAGER') {
-      channelManagerService.pushBooking(hotelId, bookingResult)
-        .catch(e => console.error('[ChannelManager] Async push failed:', e.message));
-    }
+    // 7. Channel manager: a property connected to one gets its bookings by pulling them from
+    // GET /api/v1/channel-manager/bookings (services/channelConnectivityService.js). The old code
+    // here "pushed" to a stub adapter that only logged and returned a made-up reference.
 
     // 8. Loyalty Reward (Phase 8.7)
     if (userId) {

@@ -202,6 +202,26 @@ settlement. Fixed along the way:
 - **Invoice:** shows the hotel's real GSTIN (it printed a made-up one), the true payment status, the
   discount, CGST/SGST split and the company as "Billed to"; user text is HTML-escaped.
 
+### Rooms, rates & availability, channel managers (Nov 2026)
+- **Inventory & Rates** (admin) and the extranet's Inventory & Rates page share
+  `src/components/ari/AriCalendar.jsx`: per room type and day, rooms to sell / booked / available
+  and **stop-sell**; per rate plan and day, the **price** (a `DailyRate`, else the base price).
+  API: `GET /admin/ari/calendar`, `POST /admin/ari/inventory`, `POST /admin/ari/rates`
+  (`services/ariService.js`; owners limited to their properties). Both pages used to be mocks.
+- **Booking engine honours ARI:** pricing uses daily rates per night (`dailyRates` in
+  `pricingDomain`), stop-sell nights are refused (preview, booking and under the inventory lock),
+  search and the hotel page show the average nightly price for the dates and availability
+  (`stayNightlyPrice`). A rate plan without a price can't be shown or booked.
+- **Room Config:** prices are shown (every plan read "UNCONFIGURED ₹—"), room photos upload the file
+  (they saved a browser-only `blob:` URL), the rate-plan form gets its room type.
+- **Channel managers (ZivoHotels as the OTA):** Admin -> Channel Manager records per property
+  whether ARI comes from the extranet or its channel manager (provider, property code, room/rate
+  code mapping, API key, status). The channel manager uses `X-Api-Key` on
+  `GET /channel-manager/property`, `POST /channel-manager/ari`, `GET /channel-manager/bookings`
+  (`services/channelConnectivityService.js`; guide on the admin page). While ACTIVE it is the source
+  of truth: owners can't edit ARI by hand. The old STAAH stub (fake data, fake booking push, broken
+  webhook) was removed.
+
 ### Not covered / not fixed
 - **Online payment wasn't completed end to end:** the local Razorpay keys in `backend/.env` are
   placeholders (Razorpay answers "Authentication failed"). Put real test keys in
@@ -213,6 +233,10 @@ settlement. Fixed along the way:
 - IFSC / PAN / GST "Verify" buttons in the wizard are simulated.
 - The owner's bookings list shows abandoned checkouts as "cancelled"; the Live Ops Feed box covers
   the last row.
+- Channel managers collect bookings by polling `GET /channel-manager/bookings`; pushing bookings to a
+  specific channel manager's own API isn't built (each needs its partner spec and credentials).
+- New rooms still get 60 days of inventory rows at creation; days without a row sell the physical
+  count, so this doesn't limit sales.
 - The results page search box shows the dates as "-".
 - Search availability reads inventory by UTC date; on a server in IST (this Mac) booked rooms aren't
   subtracted. Production runs in UTC.

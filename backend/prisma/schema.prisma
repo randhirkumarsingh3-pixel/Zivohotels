@@ -190,9 +190,24 @@ model RatePlan {
   isConfigured       Boolean            @default(false)
   bookings           Booking[]
   occupancyPricing   OccupancyPricing[]
+  dailyRates         DailyRate[]
   roomType           RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 
   @@index([roomTypeId])
+}
+
+/// Price of a rate plan for one night, overriding its base price (set in Inventory & Rates or by
+/// the property's channel manager). Base occupancy; extra guest / bed / meal charges still apply.
+model DailyRate {
+  id         String   @id @default(uuid())
+  ratePlanId String
+  date       DateTime
+  price      Decimal  @db.Decimal(12, 2)
+  source     String   @default("MANUAL") // MANUAL | CHANNEL_MANAGER
+  updatedAt  DateTime @updatedAt
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+
+  @@unique([ratePlanId, date])
 }
 
 model OccupancyPricing {
@@ -315,6 +330,7 @@ model Inventory {
   totalRooms     Int
   bookedRooms    Int?     @default(0)
   availableRooms Int
+  stopSell       Boolean  @default(false) // closed for sale on this date (bookings refused)
   roomTypeId     String
   roomType       RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 
@@ -668,13 +684,19 @@ model PricingFeedback {
 }
 
 model ChannelIntegration {
-  id          String   @id @default(uuid())
-  hotelId     String   @unique
-  provider    String
-  credentials Json
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String    @id @default(uuid())
+  hotelId           String    @unique
+  provider          String
+  credentials       Json
+  isActive          Boolean   @default(true)
+  externalHotelCode String? // the property's ID at its channel manager
+  apiKeyHash        String? // SHA-256 of the key the channel manager uses to push ARI to ZivoHotels
+  apiKeyHint        String? // last 4 characters, to recognise the key
+  status            String    @default("PENDING") // PENDING | ACTIVE | PAUSED
+  lastAriAt         DateTime?
+  lastAriError      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model ChannelMapping {
@@ -693,7 +715,10 @@ model ChannelMapping {
   updatedAt         DateTime  @updatedAt
   hotel             Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 
-  @@unique([hotelId, zivoRoomTypeId, externalProvider])
+  // One row per room type (zivoRatePlanId null) and one per rate plan, each with the channel
+  // manager's code
+  @@unique([hotelId, externalProvider, zivoRoomTypeId, zivoRatePlanId])
+  @@index([hotelId, externalProvider, externalRoomCode])
 }
 
 model Transaction {

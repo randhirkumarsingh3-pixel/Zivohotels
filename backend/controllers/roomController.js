@@ -79,7 +79,7 @@ export const createRoomType = asyncHandler(async (req, res) => {
         extraChildPrice: 0,
         roomTypeId: room.id,
         isActive: true,
-        isConfigured: false,
+        isConfigured: (normalized.basePrice || 0) > 0, // a plan with a price is ready to sell
       }
     });
 
