@@ -10,6 +10,8 @@ import { getBookings, updateBookingStatus } from '../controllers/extranet/bookin
 import { listHotelReviews, replyToReview, deleteReply, reportReview } from '../controllers/reviewController.js';
 import { fetchNotifications, markNotificationsRead } from '../controllers/extranet/notificationController.js';
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
+import { getDashboard } from '../controllers/extranet/dashboardController.js';
+import { getPerformance } from '../controllers/extranet/performanceController.js';
 import { getFinancialOverview, getSettlementDetails, getPayoutHistory } from '../controllers/extranet/financeController.js';
 import { getHotelWallet } from '../controllers/walletController.js';
 import { getHotelMembership, putHotelMembership } from '../controllers/membershipController.js';
@@ -79,6 +81,8 @@ router.post('/reviews/:reviewId/report', reportReview);
 router.get('/notifications', fetchNotifications);
 router.put('/notifications/read', markNotificationsRead);
 router.get('/activity', fetchActivityTimeline);
+router.get('/dashboard', getDashboard);
+router.get('/performance', getPerformance);
 
 // Finance & Settlements
 router.get('/finance/overview', getFinancialOverview);

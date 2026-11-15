@@ -8,11 +8,25 @@ import { fetchFinanceOverview, fetchPayoutHistory } from '../../services/extrane
 import { useExtranet } from '../context/ExtranetContext';
 import ExplainMoneyModal from '../components/ExplainMoneyModal';
 
+const STATUS_LABEL = { PENDING: 'On hold', READY: 'Ready to pay', PAID: 'Paid', SETTLED: 'Paid', REVERSED: 'Reversed', CANCELLED: 'Cancelled' };
+const KIND_LABEL = { STAY: 'Stay', CANCELLATION: 'Cancellation fee', NO_SHOW: 'No-show' };
+const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
 const ExtranetFinance = () => {
   const [overview, setOverview] = useState(null);
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSettlement, setSelectedSettlement] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const shownSettlements = (overview?.recentSettlements || []).filter((x) => statusFilter === 'ALL' || x.status === statusFilter);
+  // CSV of the settlements shown: what each stay earned, ZivoHotels' commission and taxes, and net payable
+  const exportCsv = () => {
+    const head = ['Booking ID', 'Guest', 'Check-in', 'Check-out', 'Type', 'Status', 'Gross (₹)', 'Commission (₹)', 'GST on commission (₹)', 'TCS (₹)', 'TDS (₹)', 'Net payable (₹)', 'Created', 'Pays on'];
+    const rows = shownSettlements.map((x) => [x.booking?.bookingRef, x.booking?.guestName, x.booking?.checkIn?.slice(0, 10), x.booking?.checkOut?.slice(0, 10), KIND_LABEL[x.kind] || x.kind, STATUS_LABEL[x.status] || x.status, x.grossAmount, x.commissionAmount, x.commissionGstAmount, x.tcsAmount, x.tdsAmount, x.netPayable, String(x.createdAt).slice(0, 10), x.holdUntil ? String(x.holdUntil).slice(0, 10) : ''].map(csvCell).join(','));
+    const blob = new Blob([String.fromCharCode(0xfeff) + [head.map(csvCell).join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `settlements-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   const { addToast, property } = useExtranet();
 
   const loadData = useCallback(async () => {
@@ -48,8 +62,8 @@ const ExtranetFinance = () => {
           <p className="text-slate-500 font-medium mt-1">Track settlements, payouts, and financial health.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
-            <Download size={14} /> Export Report
+          <button type="button" onClick={exportCsv} disabled={!overview?.recentSettlements?.length} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50">
+            <Download size={16} aria-hidden="true" /> Export settlements (CSV)
           </button>
         </div>
       </div>
@@ -93,13 +107,18 @@ const ExtranetFinance = () => {
                    <History className="text-blue-600" size={20} />
                    <h3 className="text-xl font-black text-slate-900">Settlement Timeline</h3>
                 </div>
-                <button className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                   Filter <Filter size={14} />
-                </button>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                   <Filter size={14} aria-hidden="true" />
+                   <span className="sr-only">Show settlements</span>
+                   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Show settlements" className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white">
+                      <option value="ALL">All</option>
+                      {[...new Set((overview?.recentSettlements || []).map((x) => x.status))].map((st) => <option key={st} value={st}>{STATUS_LABEL[st] || st}</option>)}
+                   </select>
+                </label>
              </div>
              
              <div className="divide-y divide-slate-50">
-                {overview?.recentSettlements?.map((s, i) => (
+                {shownSettlements.map((s, i) => (
                   <div key={i} className="p-6 hover:bg-slate-50 transition-all group">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
@@ -107,12 +126,12 @@ const ExtranetFinance = () => {
                               S
                            </div>
                            <div>
-                              <p className="text-sm font-black text-slate-900">ID: #{s.id.slice(0, 8)}</p>
-                              <p className="text-xs text-slate-500 font-medium">Generated: {new Date(s.createdAt).toLocaleDateString()}</p>
+                              <p className="text-sm font-bold text-slate-900">{s.booking?.bookingRef || `#${s.id.slice(0, 8)}`}{s.booking?.guestName ? ` · ${s.booking.guestName}` : ''}</p>
+                              <p className="text-xs text-slate-600">{KIND_LABEL[s.kind] || s.kind} · {STATUS_LABEL[s.status] || s.status} · {new Date(s.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{s.holdUntil && ['PENDING', 'READY'].includes(s.status) ? ` · pays on ${new Date(s.holdUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}</p>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-lg font-black text-slate-900">₹ {Number(s.netPayable).toLocaleString()}</p>
+                           <p className={`text-lg font-bold tabular-nums ${Number(s.netPayable) < 0 ? 'text-orange-800' : 'text-slate-900'}`}>{Number(s.netPayable) < 0 ? '−' : ''}₹{Math.abs(Number(s.netPayable)).toLocaleString('en-IN')}</p>
                            <button 
                              onClick={() => setSelectedSettlement(s)}
                              className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline"
@@ -123,7 +142,7 @@ const ExtranetFinance = () => {
                      </div>
                   </div>
                 ))}
-                {overview?.recentSettlements?.length === 0 && (
+                {shownSettlements.length === 0 && (
                   <div className="p-12 text-center">
                     <AlertCircle className="mx-auto text-slate-200 mb-2" size={48} />
                     <p className="text-slate-400 font-medium">No settlements found.</p>
