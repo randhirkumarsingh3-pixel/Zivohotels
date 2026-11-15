@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, Eye, EyeOff, AlertTriangle, KeyRound } from 'lucide-react';
 import { acceptInvite } from '../services/api';
+import usePageTitle from '../hooks/usePageTitle';
 
 const AcceptInvite = () => {
+  usePageTitle('Set your password');
   const [searchParams] = useSearchParams();
   const _navigate = useNavigate();
   const token = searchParams.get('token');
@@ -49,7 +51,7 @@ const AcceptInvite = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center border border-gray-100">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
+            <CheckCircle2 className="h-8 w-8 text-green-700" />
           </div>
           <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Account Activated!</h2>
           <p className="text-gray-500 mb-8 text-sm">Your password has been set. You can now sign in to your account.</p>
@@ -67,7 +69,7 @@ const AcceptInvite = () => {
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-gray-100">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
-            <KeyRound size={20} className="text-brand-600" />
+            <KeyRound size={20} className="text-brand-700" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-gray-900">Set Your Password</h1>
@@ -96,7 +98,7 @@ const AcceptInvite = () => {
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <ul className="mt-1.5 text-[10px] text-gray-400 space-y-0.5 list-disc list-inside">
+              <ul className="mt-1.5 text-xs text-gray-400 space-y-0.5 list-disc list-inside">
                 <li>At least 8 characters</li>
                 <li>At least 1 letter and 1 number</li>
               </ul>

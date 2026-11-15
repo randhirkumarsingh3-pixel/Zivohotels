@@ -344,7 +344,7 @@ const PhotosStep = ({ formData, updateForm }) => {
   if (!hotelId) {
     return (
       <div className="bg-orange-50 border border-orange-100 p-8 rounded-xl flex flex-col items-center justify-center text-center my-12">
-        <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center mb-4">
           <Info size={32} />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">Save Property First</h3>
@@ -387,7 +387,7 @@ const PhotosStep = ({ formData, updateForm }) => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           {/* Sidebar Thumbnail List */}
           <div className="lg:col-span-1 border border-gray-200 rounded-xl bg-white p-4 space-y-3 max-h-[550px] overflow-y-auto shadow-sm">
-            <span className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">Assets Queue</span>
+            <span className="block text-xs font-black text-gray-400 uppercase tracking-wider mb-2">Assets Queue</span>
             <div className="grid grid-cols-3 lg:grid-cols-1 gap-2">
               {library.map(img => {
                 const isActive = img.id === currentImg.id;
@@ -402,7 +402,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                   >
                     <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="thumbnail" />
                     {!hasTags && (
-                      <span className="absolute bottom-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-sm">
+                      <span className="absolute bottom-1 right-1 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-sm">
                         MISSING
                       </span>
                     )}
@@ -450,7 +450,7 @@ const PhotosStep = ({ formData, updateForm }) => {
           <div className="lg:col-span-1 border border-gray-200 rounded-xl bg-white p-5 space-y-4 shadow-sm">
             <div className="border-b pb-3">
               <h3 className="text-sm font-black text-gray-850 uppercase tracking-widest">Selected Tags</h3>
-              <p className="text-[11px] text-gray-400 mt-1">Associate tags to help guests search and filters</p>
+              <p className="text-xs text-gray-400 mt-1">Associate tags to help guests search and filters</p>
             </div>
 
             {/* Tag Search Bar */}
@@ -551,7 +551,7 @@ const PhotosStep = ({ formData, updateForm }) => {
           <>
             <img src={getImageUrl(coverImage.url)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex flex-col justify-end p-8">
-              <span className="text-[10px] bg-blue-600 text-white font-black px-3 py-1 rounded-md uppercase w-fit tracking-widest shadow-sm mb-3">
+              <span className="text-xs bg-blue-600 text-white font-black px-3 py-1 rounded-md uppercase w-fit tracking-widest shadow-sm mb-3">
                 Property Cover Photo
               </span>
               <button
@@ -577,7 +577,7 @@ const PhotosStep = ({ formData, updateForm }) => {
       {/* Review Alert Notice */}
       <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-amber-900 shadow-sm gap-4 mb-10">
         <div className="flex items-center gap-3">
-          <Sparkles className="text-amber-600 shrink-0 w-5 h-5" />
+          <Sparkles className="text-amber-700 shrink-0 w-5 h-5" />
           <span className="font-medium">{library.length} photos & videos are being reviewed. It will take up to 24 hrs.</span>
         </div>
         <button
@@ -641,7 +641,7 @@ const PhotosStep = ({ formData, updateForm }) => {
 
                   {/* Warning Pill if tag missing */}
                   {!hasTags && (
-                    <span className="absolute bottom-2 left-2 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-sm">
+                    <span className="absolute bottom-2 left-2 bg-red-600 text-white text-xs font-black px-2 py-1 rounded uppercase tracking-widest shadow-sm">
                       Missing Tag
                     </span>
                   )}
@@ -761,7 +761,7 @@ const PhotosStep = ({ formData, updateForm }) => {
 
                       {/* Cover label indicator */}
                       {image.isPrimary && (
-                        <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase">
+                        <span className="absolute bottom-2 left-2 bg-amber-700 text-white text-xs font-black px-1.5 py-0.5 rounded-sm uppercase">
                           Cover
                         </span>
                       )}

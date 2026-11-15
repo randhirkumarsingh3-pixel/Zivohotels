@@ -15,7 +15,7 @@ const StatusBadge = ({ status }) => {
     READY: 'bg-brand-50 text-brand-700 border-brand-200',
   };
   return (
-    <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${styles[status] || styles.PENDING}`}>
+    <span className={`px-2 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${styles[status] || styles.PENDING}`}>
       {status}
     </span>
   );
@@ -31,15 +31,15 @@ const FinanceOS = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Finance Operating System</h1>
-          <p className="text-gray-500 font-medium mt-1">Multi-ledger accounting with dispute management.</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Finance ledger</h1>
+          <p className="text-gray-500 font-medium mt-1">Ledger entries, disputes and payouts.</p>
         </div>
 
         <div className="flex items-center gap-4">
            <div className={`flex items-center gap-3 px-4 py-2 rounded-2xl border transition-all ${isPeriodLocked ? 'bg-orange-50 border-orange-100 text-orange-700' : 'bg-green-50 border-green-100 text-green-700'}`}>
               {isPeriodLocked ? <Lock size={16} /> : <Unlock size={16} />}
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest leading-none">April 2026</span>
+                <span className="text-xs font-black uppercase tracking-widest leading-none">April 2026</span>
                 <span className="text-xs font-bold">{isPeriodLocked ? 'PERIOD_LOCKED' : 'PERIOD_OPEN'}</span>
               </div>
            </div>
@@ -60,33 +60,33 @@ const FinanceOS = () => {
       {/* Advanced Financial Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
-          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Ledger Integrity</p>
+          <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Ledger Integrity</p>
           <div className="flex items-center gap-2 mt-1">
             <h3 className="text-2xl font-black">₹ 0.00</h3>
             <CheckCircle2 size={16} className="text-green-500" />
           </div>
-          <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Balanced & Audited</p>
+          <p className="text-xs text-gray-500 mt-2 font-bold uppercase tracking-widest">Balanced & Audited</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Revenue Per User (RPU)</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Revenue Per User (RPU)</p>
           <div className="flex items-end gap-2">
             <h3 className="text-2xl font-black text-gray-900 mt-1">₹ 8,420</h3>
-            <span className="text-[10px] text-green-600 font-bold mb-1">+4%</span>
+            <span className="text-xs text-green-700 font-bold mb-1">+4%</span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-2 font-medium">Blended B2B/B2C Average</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Blended B2B/B2C Average</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dispute Exposure</p>
-          <h3 className="text-2xl font-black text-orange-600 mt-1">₹ 1.2L</h3>
-          <p className="text-[10px] text-gray-400 mt-2 font-medium">Funds held in escrow / disputes.</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Dispute Exposure</p>
+          <h3 className="text-2xl font-black text-orange-700 mt-1">₹ 1.2L</h3>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Funds held in escrow / disputes.</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tax Provisioning (GST)</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Tax Provisioning (GST)</p>
           <h3 className="text-2xl font-black text-gray-900 mt-1">₹ 4.8L</h3>
-          <p className="text-[10px] text-gray-400 mt-2 font-medium">Calculated liability for Q1.</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Calculated liability for Q1.</p>
         </div>
       </div>
 
@@ -116,10 +116,10 @@ const FinanceOS = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">ID / Date</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">ID / Date</th>
+                  <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Description</th>
+                  <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                  <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -127,13 +127,13 @@ const FinanceOS = () => {
                   <tr key={i} className="hover:bg-gray-50/50 transition-all">
                     <td className="px-8 py-6">
                       <p className="text-xs font-bold text-gray-900">#TRX-8271{i}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">May 02, 2026</p>
+                      <p className="text-xs text-gray-400 font-medium">May 02, 2026</p>
                     </td>
                     <td className="px-8 py-6">
                       <p className="text-xs font-bold text-gray-900">
                         {activeTab === 'DISPUTES' ? 'Chargeback: Improper Checkout' : 'Commission Accrual: ZIVO-4829'}
                       </p>
-                      <p className="text-[10px] text-brand-600 font-black uppercase tracking-tight">Hotel Palace Delhi</p>
+                      <p className="text-xs text-brand-700 font-black uppercase tracking-tight">Hotel Palace Delhi</p>
                     </td>
                     <td className="px-8 py-6 text-right">
                       <p className={`text-sm font-black ${i === 3 ? 'text-red-600' : 'text-gray-900'}`}>
@@ -160,14 +160,14 @@ const FinanceOS = () => {
               <div className="space-y-4">
                  <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
                     <div className="flex justify-between items-start mb-2">
-                       <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">High Priority</span>
-                       <span className="text-[10px] font-black text-orange-400">#D-8271</span>
+                       <span className="text-xs font-black text-orange-700 uppercase tracking-widest">High Priority</span>
+                       <span className="text-xs font-black text-orange-400">#D-8271</span>
                     </div>
                     <p className="text-sm font-bold text-gray-900 mb-1">Double Charge Reported</p>
                     <p className="text-xs text-gray-500 leading-relaxed font-medium">User #8271 claims Razorpary deducted twice for same booking.</p>
                     <div className="mt-4 flex gap-2">
-                       <button className="flex-1 py-2 bg-white border border-orange-200 rounded-xl text-[10px] font-black text-orange-600 uppercase tracking-widest">Verify Gateway</button>
-                       <button className="flex-1 py-2 bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Refund</button>
+                       <button className="flex-1 py-2 bg-white border border-orange-200 rounded-xl text-xs font-black text-orange-700 uppercase tracking-widest">Verify Gateway</button>
+                       <button className="flex-1 py-2 bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Refund</button>
                     </div>
                  </div>
               </div>
@@ -187,7 +187,7 @@ const FinanceOS = () => {
                     <span className="text-gray-400">Mismatches</span>
                     <span className="text-red-400">02 DETECTED</span>
                  </div>
-                 <button className="w-full py-4 bg-white/10 hover:bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3">
+                 <button className="w-full py-4 bg-white/10 hover:bg-white/20 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3">
                     <RefreshCw size={14} /> Run Deep Reconciliation
                  </button>
               </div>

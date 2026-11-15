@@ -104,7 +104,7 @@ const TaxSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm mt-4">Loading tax slabs...</p>
     </div>
   );
@@ -130,7 +130,7 @@ const TaxSettings = () => {
 
       {rows.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3 text-sm text-amber-900">
-          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <AlertTriangle size={18} className="text-amber-700 shrink-0 mt-0.5" />
           <div>
             <p className="font-bold">No tax slabs yet, so checkout can&apos;t price any stay.</p>
             <p className="mt-1">Start from the standard hotel GST slabs (5% up to ₹7,500 per night, 18% above), check them, then save.</p>

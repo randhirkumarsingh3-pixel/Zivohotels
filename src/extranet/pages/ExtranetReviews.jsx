@@ -68,7 +68,7 @@ const ExtranetReviews = () => {
     } catch (e) { addToast(e.message, 'error'); } finally { setBusy(false); }
   };
 
-  if (loading && !data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
+  if (loading && !data) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-700" size={32} /></div>;
   const s = data?.summary || { count: 0, distribution: {}, aspects: {} };
 
   return (
@@ -87,7 +87,7 @@ const ExtranetReviews = () => {
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Awaiting your reply</p>
-          <p className={`text-3xl font-black mt-1 ${data?.unreplied ? 'text-orange-600' : 'text-gray-900'}`}>{data?.unreplied ?? 0}</p>
+          <p className={`text-3xl font-black mt-1 ${data?.unreplied ? 'text-orange-700' : 'text-gray-900'}`}>{data?.unreplied ?? 0}</p>
           <p className="text-xs text-gray-500">Reply rate {s.replyRate || 0}%</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm md:col-span-2">
@@ -131,11 +131,11 @@ const ExtranetReviews = () => {
                 <div>
                   <div className="flex items-center gap-2"><Stars value={r.rating} /><span className="font-bold text-gray-900">{r.rating}/5</span></div>
                   <p className="text-xs text-gray-500 mt-1">
-                    <span className="font-semibold text-gray-700">{r.guest}</span> <BadgeCheck size={12} className="inline text-green-600" /> · {r.bookingRef} · {[r.roomType, r.tripType && TRIP_LABEL[r.tripType]].filter(Boolean).join(' · ')} · {new Date(r.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    <span className="font-semibold text-gray-700">{r.guest}</span> <BadgeCheck size={12} className="inline text-green-700" /> · {r.bookingRef} · {[r.roomType, r.tripType && TRIP_LABEL[r.tripType]].filter(Boolean).join(' · ')} · {new Date(r.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {r.report && <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${r.report.resolved ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-800'}`}>{r.report.resolved ? 'Report reviewed' : 'Reported to Zivo'}</span>}
+                  {r.report && <span className={`px-2 py-0.5 rounded text-xs font-bold ${r.report.resolved ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-800'}`}>{r.report.resolved ? 'Report reviewed' : 'Reported to Zivo'}</span>}
                   {!r.report || r.report.resolved ? (
                     <button type="button" onClick={() => setReportFor(r)} className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600"><Flag size={13} /> Report</button>
                   ) : null}
@@ -146,7 +146,7 @@ const ExtranetReviews = () => {
               {Object.keys(r.aspectRatings || {}).length > 0 && (
                 <p className="text-xs text-gray-500 mt-2">{Object.entries(r.aspectRatings).map(([k, v]) => `${ASPECT_LABEL[k] || k} ${v}`).join(' · ')}</p>
               )}
-              {r.tags?.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{r.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-[11px] text-gray-600">{t}</span>)}</div>}
+              {r.tags?.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{r.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600">{t}</span>)}</div>}
               {r.photos?.length > 0 && <div className="flex gap-2 mt-3">{r.photos.map((p) => <img key={p.url} src={getImageUrl(p.url)} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-100" />)}</div>}
 
               {r.reply && replyFor !== r.id && (
@@ -154,7 +154,7 @@ const ExtranetReviews = () => {
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold text-gray-700">Your reply · {new Date(r.reply.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                     <div className="flex gap-1">
-                      <button type="button" aria-label="Edit reply" onClick={() => { setReplyFor(r.id); setReplyText(r.reply.text); }} className="p-1 text-gray-400 hover:text-brand-600"><Pencil size={14} /></button>
+                      <button type="button" aria-label="Edit reply" onClick={() => { setReplyFor(r.id); setReplyText(r.reply.text); }} className="p-1 text-gray-400 hover:text-brand-700"><Pencil size={14} /></button>
                       <button type="button" aria-label="Delete reply" onClick={() => removeReply(r.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>
                     </div>
                   </div>
@@ -167,7 +167,7 @@ const ExtranetReviews = () => {
                     placeholder={`Thank ${r.guest.split(' ')[0]} for staying with you${r.rating < 3 ? ', apologise for what went wrong and say what you have changed' : ''}…`}
                     className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-gray-400">Public: shown under the review on your hotel page. No phone numbers, emails or links.</p>
+                    <p className="text-xs text-gray-400">Public: shown under the review on your hotel page. No phone numbers, emails or links.</p>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => { setReplyFor(null); setReplyText(''); }} className="px-3 py-1.5 text-sm font-semibold text-gray-600">Cancel</button>
                       <button type="button" disabled={busy} onClick={() => sendReply(r.id)} className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-bold disabled:opacity-50">{r.reply ? 'Save reply' : 'Publish reply'}</button>
@@ -175,7 +175,7 @@ const ExtranetReviews = () => {
                   </div>
                 </div>
               ) : !r.reply && (
-                <button type="button" onClick={() => { setReplyFor(r.id); setReplyText(''); }} className="mt-4 flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:text-brand-700"><Reply size={15} /> Reply</button>
+                <button type="button" onClick={() => { setReplyFor(r.id); setReplyText(''); }} className="mt-4 flex items-center gap-1.5 text-sm font-bold text-brand-700 hover:text-brand-700"><Reply size={15} /> Reply</button>
               )}
             </div>
           ))}

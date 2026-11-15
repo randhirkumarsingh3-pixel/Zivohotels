@@ -331,7 +331,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                     />
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-semibold text-slate-700">Square Feet</span>
-                      <span className="text-[10px] bg-gray-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">Recommended</span>
+                      <span className="text-xs bg-gray-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">Recommended</span>
                     </div>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -426,7 +426,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                 {roomForm.beds.map((bed, idx) => (
                   <div key={idx} className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200 w-full max-w-xl">
                     <div className="flex-1 min-w-[200px]">
-                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Bed Type {idx + 1}</span>
+                      <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Bed Type {idx + 1}</span>
                       <select
                         value={bed.type}
                         onChange={e => handleBedFieldChange(idx, 'type', e.target.value)}
@@ -439,7 +439,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                     </div>
 
                     <div className="shrink-0">
-                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Number of beds</span>
+                      <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Number of beds</span>
                       <div className="flex items-center border border-slate-300 rounded overflow-hidden bg-white w-28">
                         <button
                           type="button"
@@ -723,7 +723,7 @@ const RoomsStep = ({ formData, updateForm }) => {
             <div>
               <h4 className="text-sm font-bold text-slate-800 mb-2">Meal Options</h4>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Select a meal plan</label>
-              <p className="text-[11px] text-slate-500 mb-2">Select the meals included with this room type (e.g. breakfast only, breakfast & dinner...)</p>
+              <p className="text-xs text-slate-500 mb-2">Select the meals included with this room type (e.g. breakfast only, breakfast & dinner...)</p>
               <select
                 value={roomForm.mealPlan}
                 onChange={e => updateRoomForm('mealPlan', e.target.value)}
@@ -798,7 +798,7 @@ const RoomsStep = ({ formData, updateForm }) => {
               <span className="block text-xs font-semibold text-slate-600">Select a date range</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
                   <input
                     type="date"
                     value={roomForm.startDate}
@@ -807,7 +807,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
                   <input
                     type="date"
                     value={roomForm.endDate}
@@ -862,7 +862,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                     }`}
                   >
                     <span>{cat.name}</span>
-                    <span className="text-[10px] text-slate-500">({count} of {total})</span>
+                    <span className="text-xs text-slate-500">({count} of {total})</span>
                   </button>
                 );
               })}
@@ -1004,7 +1004,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                           {room.count} Unit(s)
                         </span>
                         {room.view && (
-                          <span className="text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1 rounded-xl font-bold uppercase tracking-wider">
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-xl font-bold uppercase tracking-wider">
                             {room.view}
                           </span>
                         )}
@@ -1020,7 +1020,7 @@ const RoomsStep = ({ formData, updateForm }) => {
                   
                   <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-0 pt-4 sm:pt-0">
                     <div className="text-left sm:text-right">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Base Rate</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-0.5">Base Rate</p>
                       <p className="font-black text-slate-900 text-2xl">₹{room.basePrice}</p>
                     </div>
                     <div className="flex items-center gap-2">

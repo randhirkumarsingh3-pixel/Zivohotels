@@ -37,7 +37,7 @@ const PhotoGallery = ({ hotelName, photos }) => {
   }, [open, close, move]);
 
   if (photos.length === 0) {
-    return <div className="h-[30vh] rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Photos coming soon</div>;
+    return <div className="h-[200px] rounded-card bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Photos coming soon</div>;
   }
 
   const openAt = (i) => { setFilter('All'); setOpen(i); };
@@ -46,7 +46,7 @@ const PhotoGallery = ({ hotelName, photos }) => {
   return (
     <>
       <div className="relative">
-        <div className={`grid grid-cols-1 ${grid.length > 1 ? 'md:grid-cols-4 md:grid-rows-2' : ''} gap-2 h-[40vh] md:h-[56vh] rounded-2xl overflow-hidden`}>
+        <div className={`grid grid-cols-1 ${grid.length > 1 ? 'md:grid-cols-4 md:grid-rows-2' : ''} gap-2 h-[240px] sm:h-[320px] md:h-[440px] rounded-card overflow-hidden`}>
           <Tile src={grid[0].url} alt={hotelName} onClick={() => openAt(0)} className={grid.length > 1 ? 'md:col-span-2 md:row-span-2' : 'h-full'} />
           {grid.slice(1).map((p, i) => (
             <Tile key={p.url + i} src={p.url} alt={`${hotelName}: ${p.label || `photo ${i + 2}`}`} onClick={() => openAt(i + 1)}

@@ -14,7 +14,7 @@ const OccupancyReport = () => {
     { header: "ALOS", accessor: "alos" },
     { header: "Occupancy %", accessor: "occupancy", cell: (row) => (
       <div className="flex items-center">
-        <span className="font-bold text-brand-600 w-12">{row.occupancy}</span>
+        <span className="font-bold text-brand-700 w-12">{row.occupancy}</span>
         <div className="w-24 h-2 bg-gray-200 rounded-full ml-2 overflow-hidden">
           <div className="h-full bg-brand-500 rounded-full" style={{ width: row.occupancy }}></div>
         </div>

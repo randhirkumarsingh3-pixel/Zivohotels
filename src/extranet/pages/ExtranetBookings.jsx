@@ -12,10 +12,10 @@ import { saveVoucher } from '../../utils/voucher';
 const statusConfig = {
   PENDING: { color: 'bg-yellow-50 text-yellow-600 border-yellow-100', icon: Clock },
   CONFIRMED: { color: 'bg-blue-50 text-blue-600 border-blue-100', icon: CheckCircle2 },
-  CHECKED_IN: { color: 'bg-green-50 text-green-600 border-green-100', icon: CheckCircle2 },
+  CHECKED_IN: { color: 'bg-green-50 text-green-700 border-green-100', icon: CheckCircle2 },
   COMPLETED: { color: 'bg-gray-100 text-gray-500 border-gray-200', icon: Clock },
   CANCELLED: { color: 'bg-red-50 text-red-600 border-red-100', icon: XCircle },
-  NO_SHOW: { color: 'bg-orange-50 text-orange-600 border-orange-100', icon: AlertCircle },
+  NO_SHOW: { color: 'bg-orange-50 text-orange-700 border-orange-100', icon: AlertCircle },
 };
 
 // COMPLETED is stored for a checked-out stay
@@ -71,7 +71,7 @@ const ExtranetBookings = () => {
     : bookings.filter(b => b.status === activeFilter);
 
   if (loading && bookings.length === 0) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-brand-700" size={32} /></div>;
   }
 
   return (
@@ -95,7 +95,7 @@ const ExtranetBookings = () => {
           <button 
             key={f}
             onClick={() => setActiveFilter(f)}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${activeFilter === f ? 'bg-brand-600 text-white border-brand-600 shadow-lg shadow-brand-600/20' : 'bg-white text-gray-400 border-gray-100 hover:text-gray-600 hover:border-gray-200'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${activeFilter === f ? 'bg-brand-600 text-white border-brand-600 shadow-lg shadow-brand-600/20' : 'bg-white text-gray-400 border-gray-100 hover:text-gray-600 hover:border-gray-200'}`}
           >
             {f === 'ALL' ? 'ALL' : statusLabel(f)}
           </button>
@@ -140,11 +140,11 @@ const ExtranetBookings = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-1">
                       <h4 className="text-sm font-black text-gray-900">{booking.guestName}</h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${config.color}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-widest border ${config.color}`}>
                         {statusLabel(booking.status)}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-500 font-medium flex items-center gap-3 flex-wrap">
+                    <p className="text-xs text-gray-500 font-medium flex items-center gap-3 flex-wrap">
                       <span className="font-bold text-gray-700">{booking.bookingRef}</span>
                       {booking.metadata?.membership?.isPaid && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold" title={booking.metadata.membership.prioritySupport ? 'Paid member: priority support' : 'Paid member'}>
@@ -161,12 +161,12 @@ const ExtranetBookings = () => {
 
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-lg font-black text-gray-900">₹ {booking.totalAmount}</p>
-                    <p className={`text-[9px] font-black uppercase tracking-widest ${booking.paymentMode === 'PREPAID' ? 'text-green-600' : 'text-orange-600'}`}>
-                      {booking.paymentMode || 'N/A'}
+                    <p className="text-lg font-bold text-gray-900 tabular-nums">₹{Number(booking.totalAmount || 0).toLocaleString('en-IN')}</p>
+                    <p className={`text-xs font-semibold ${(booking.paymentType || booking.paymentMode) === 'PREPAID' ? 'text-green-700' : 'text-orange-700'}`}>
+                      {{ PREPAID: 'Paid online', PARTIAL: 'Part paid', PAY_AT_HOTEL: 'Pay at hotel' }[booking.paymentType || booking.paymentMode] || 'Payment pending'}
                     </p>
                   </div>
-                  {isProcessing ? <Loader2 size={18} className="animate-spin text-brand-600" /> : <ChevronDown size={18} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
+                  {isProcessing ? <Loader2 size={18} className="animate-spin text-brand-700" /> : <ChevronDown size={18} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
                 </div>
               </div>
 
@@ -174,30 +174,30 @@ const ExtranetBookings = () => {
                 <div className="border-t border-gray-100 p-6 bg-gray-50/50">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div className="flex items-center gap-3">
-                      <Phone className="text-brand-600" size={16} />
+                      <Phone className="text-brand-700" size={16} />
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phone</p>
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Phone</p>
                         <p className="text-sm font-bold text-gray-900">{booking.guestPhone || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Mail className="text-brand-600" size={16} />
+                      <Mail className="text-brand-700" size={16} />
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</p>
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Email</p>
                         <p className="text-sm font-bold text-gray-900">{booking.guestEmail || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Users className="text-brand-600" size={16} />
+                      <Users className="text-brand-700" size={16} />
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Guests</p>
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Guests</p>
                         <p className="text-sm font-bold text-gray-900">{booking.guests} Guest(s)</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <BedDouble className="text-brand-600" size={16} />
+                      <BedDouble className="text-brand-700" size={16} />
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rooms</p>
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Rooms</p>
                         <p className="text-sm font-bold text-gray-900">{booking.rooms} Room(s)</p>
                       </div>
                     </div>
@@ -208,7 +208,7 @@ const ExtranetBookings = () => {
                     {booking.status === 'CONFIRMED' && (
                       <button 
                         onClick={() => handleTransition(booking.id, 'CHECKED_IN')}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all"
                       >
                         <CheckCircle2 size={14} /> Mark Check-in
                       </button>
@@ -216,7 +216,7 @@ const ExtranetBookings = () => {
                     {booking.status === 'CHECKED_IN' && (
                       <button 
                         onClick={() => handleTransition(booking.id, 'CHECKED_OUT')}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-700 transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-700 transition-all"
                       >
                         <CheckCircle2 size={14} /> Mark Check-out
                       </button>
@@ -228,14 +228,14 @@ const ExtranetBookings = () => {
                         try { await saveVoucher(booking.id, booking.bookingRef, 'hotelier'); }
                         catch (err) { addToast(err.message || 'Could not download the voucher.', 'error'); }
                       }}
-                      className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-700 hover:bg-gray-50 transition-all"
+                      className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest text-gray-700 hover:bg-gray-50 transition-all"
                     >
                       <Download size={14} /> Hotelier voucher
                     </button>
                     {['PENDING', 'CONFIRMED'].includes(booking.status) && (
                       <button 
                         onClick={() => handleTransition(booking.id, 'CANCELLED')}
-                        className="flex items-center gap-2 px-5 py-2.5 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-all ml-auto"
+                        className="flex items-center gap-2 px-5 py-2.5 border border-red-200 rounded-xl text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-all ml-auto"
                       >
                         <XCircle size={14} /> Cancel Booking
                       </button>

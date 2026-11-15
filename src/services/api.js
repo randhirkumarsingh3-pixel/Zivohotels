@@ -273,7 +273,7 @@ export const getHotels = async (searchParams = {}, filters = {}) => {
   if (searchParams.guests) params.set('guests', searchParams.guests);
   if (filters.priceMin) params.set('minPrice', filters.priceMin);
   if (filters.priceMax) params.set('maxPrice', filters.priceMax);
-  if (filters.stars) params.set('minRating', filters.stars);
+  if (filters.stars) params.set('minStars', filters.stars); // star category (not the review score)
   if (filters.sortBy) params.set('sort', filters.sortBy);
   if (filters.includeSoldOut !== undefined) params.set('includeSoldOut', filters.includeSoldOut);
 
@@ -307,7 +307,10 @@ export const removeFromWishlist = (hotelId) => apiFetch(`${PUBLIC_BASE}/wishlist
 // ─── PROFILE ─────────────────────────────────────────────────────────────────
 export const getProfile = () => apiFetch(`${PUBLIC_BASE}/profile`).then(res => res?.data);
 export const updateProfile = (data) => apiFetch(`${PUBLIC_BASE}/profile`, { method: 'PUT', body: JSON.stringify(data) });
-export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/profile/password`, { method: 'PUT', body: JSON.stringify(data) });
+// Passwords: change while signed in (returns a new token); forgot / reset by emailed link
+export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/auth/password`, { method: 'PUT', body: JSON.stringify(data) });
+export const requestPasswordReset = (email) => apiFetch(`${PUBLIC_BASE}/auth/forgot-password`, { method: 'POST', body: JSON.stringify({ email }) });
+export const resetPassword = (token, password) => apiFetch(`${PUBLIC_BASE}/auth/reset-password`, { method: 'POST', body: JSON.stringify({ token, password }) });
 export const getNotifications = () => apiFetch(`${PUBLIC_BASE}/profile/notifications`).then(res => res?.data);
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────

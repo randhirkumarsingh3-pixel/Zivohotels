@@ -38,7 +38,7 @@ const ImageTagSelector = ({ selectedTags = [], onChange }) => {
               type="button"
               onClick={() => toggleTag(tag)}
               className={`
-                px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider transition-all
+                px-3 py-1.5 rounded-full text-xs font-bold tracking-wider transition-all
                 ${isActive 
                   ? 'bg-brand-600 text-white shadow-md' 
                   : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}
@@ -50,7 +50,7 @@ const ImageTagSelector = ({ selectedTags = [], onChange }) => {
           );
         })}
       </div>
-      <p className="text-[10px] text-gray-400">Select at least one tag to improve guest search visibility.</p>
+      <p className="text-xs text-gray-400">Select at least one tag to improve guest search visibility.</p>
     </div>
   );
 };

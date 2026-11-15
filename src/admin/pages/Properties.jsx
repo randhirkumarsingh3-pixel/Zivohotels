@@ -465,7 +465,7 @@ const Properties = () => {
                       <tr key={hotel.id} className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 shrink-0">
+                            <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-700 shrink-0">
                               <Building size={18} />
                             </div>
                             <div>
@@ -479,7 +479,7 @@ const Properties = () => {
                         <td className="px-6 py-4 text-gray-700">{hotel.city}</td>
                         <td className="px-6 py-4">
                           {hotel.rating ? (
-                            <span className="flex items-center gap-1 font-semibold text-amber-600">
+                            <span className="flex items-center gap-1 font-semibold text-amber-700">
                               <Star size={14} className="fill-current" />{hotel.rating}
                             </span>
                           ) : (
@@ -499,7 +499,7 @@ const Properties = () => {
                             {(hotel.status === 'DRAFT' || hotel.status === 'INFORMATION_REQUESTED') && (
                               <button
                                 onClick={() => handleSubmitForReview(hotel)}
-                                className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                                className="p-1.5 text-gray-400 hover:text-green-700 rounded-lg hover:bg-green-50 transition-colors"
                                 title="Submit for Review"
                               >
                                 <Send size={15} />

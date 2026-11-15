@@ -445,10 +445,10 @@ const PropertyWizard = () => {
             </p>
 
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-150 mb-6 font-mono text-center relative overflow-hidden">
-              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
                 Reference Number
               </span>
-              <span className="text-lg font-black text-brand-600 tracking-wider">
+              <span className="text-lg font-black text-brand-700 tracking-wider">
                 {referenceNumber}
               </span>
             </div>
@@ -457,7 +457,7 @@ const PropertyWizard = () => {
               <Sparkles className="text-teal-650 text-teal-600 mt-0.5 shrink-0 w-5 h-5" />
               <div>
                 <span className="block text-xs font-bold text-teal-900">Admin Action Complete</span>
-                <span className="text-[11px] text-teal-800/80 leading-relaxed block mt-0.5">
+                <span className="text-xs text-teal-800/80 leading-relaxed block mt-0.5">
                   As an administrator, you have directly created or updated this property. The changes are immediately processed in the backend.
                 </span>
               </div>

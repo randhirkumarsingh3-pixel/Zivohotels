@@ -934,7 +934,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
 });
 
 export const searchHotels = asyncHandler(async (req, res) => {
-  const { city, checkIn, checkOut, sort, minPrice, maxPrice, minRating, amenities, includeSoldOut } = req.query;
+  const { city, checkIn, checkOut, sort, minPrice, maxPrice, minRating, minStars, amenities, includeSoldOut } = req.query;
 
   if (!city || !checkIn || !checkOut) {
     return res.status(400).json({ success: false, message: 'City, checkIn, and checkOut are required' });
@@ -967,7 +967,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
     },
     take: 100,
     include: {
-      media: { take: 1 },
+      media: { take: 1, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }], select: { url: true } },
       cancellationPolicy: { select: { policyCode: true } },
       roomTypes: {
         where: { isActive: true },
@@ -1059,6 +1059,14 @@ export const searchHotels = asyncHandler(async (req, res) => {
         availableRooms: availableRooms || 0,
         freeCancellation: hasFreeCancellation,
         amenities: hotel.amenities || [],
+        // For the card, the map and the locality / type filters on the results page
+        city: hotel.city,
+        area: hotel.integrationSettings?.addressDetails?.area || '',
+        location: [hotel.integrationSettings?.addressDetails?.area || hotel.landmark, hotel.city].filter(Boolean).join(', ') || hotel.location,
+        image: hotel.media?.[0]?.url || null,
+        latitude: hotel.latitude ?? null,
+        longitude: hotel.longitude ?? null,
+        type: hotel.type || null,
         bookablePlans
      };
   });
@@ -1089,8 +1097,12 @@ export const searchHotels = asyncHandler(async (req, res) => {
   if (maxPrice) {
     filteredHotels = filteredHotels.filter(h => h.price <= parseFloat(maxPrice));
   }
+  // minRating = guest review score; minStars = the property's star category
   if (minRating) {
     filteredHotels = filteredHotels.filter(h => h.rating >= parseFloat(minRating));
+  }
+  if (minStars) {
+    filteredHotels = filteredHotels.filter(h => (h.starRating || 0) >= parseFloat(minStars));
   }
   if (amenities) {
     const requiredAmenities = amenities.split(',').map(a => a.trim().toLowerCase());

@@ -317,8 +317,8 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
           </div>
           
           {emailSuccessMsg && (
-            <div className="mt-2 text-sm text-green-600 font-medium flex items-center gap-1.5 animate-fade-in">
-              <CheckCircle2 size={16} className="text-green-600" />
+            <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5 animate-fade-in">
+              <CheckCircle2 size={16} className="text-green-700" />
               {emailSuccessMsg}
             </div>
           )}
@@ -327,7 +327,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
             <div className="mt-3 p-5 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col gap-4 animate-fade-in">
               <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
                 <div className="flex-1 w-full md:w-auto overflow-hidden">
-                  <span className="text-[10px] text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit Code</span>
+                  <span className="text-xs text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit Code</span>
                   <div className="flex gap-2 w-full justify-start overflow-x-auto pb-1" onPaste={handleOtpPaste}>
                     {otpValues.map((digit, idx) => (
                       <input
@@ -472,7 +472,7 @@ const BasicInfoStep = ({ formData, updateForm, isAdmin = true }) => {
           {verifyingMobile && (
             <div className="mt-2 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
               <div className="flex-1 w-full sm:w-auto">
-                <span className="text-[10px] text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit OTP</span>
+                <span className="text-xs text-blue-600 font-bold block mb-2 uppercase tracking-widest">Enter 6-Digit OTP</span>
                 <input 
                   type="text" 
                   placeholder="123456" 

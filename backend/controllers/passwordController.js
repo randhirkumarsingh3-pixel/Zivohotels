@@ -1,0 +1,94 @@
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import prisma from '../config/db.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import { queueService } from '../services/queueService.js';
+import { escapeHtml } from '../utils/html.js';
+
+/**
+ * Passwords: change (signed in), "forgot password" (emailed link, 1 hour) and reset.
+ * Changing or resetting a password signs the account out everywhere else (tokenVersion + 1); a
+ * change hands the current device a fresh token so it stays signed in.
+ */
+
+const RESET_TTL_MS = 60 * 60 * 1000;
+const PASSWORD_RULE = z.string().min(8, 'Use at least 8 characters').max(128, 'Use at most 128 characters');
+const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+
+const signToken = (id, role, hotelId, tokenVersion) => jwt.sign({ id, role, hotelId, tokenVersion }, process.env.JWT_SECRET, {
+  algorithm: 'HS256',
+  expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+});
+
+const fail = (res, req, status, message) => res.status(status).json({ success: false, message, requestId: req.id });
+
+/** PUT /api/v1/auth/password { currentPassword, newPassword } */
+export const changePassword = asyncHandler(async (req, res) => {
+  const parsed = z.object({ currentPassword: z.string().min(1, 'Enter your current password'), newPassword: PASSWORD_RULE }).safeParse(req.body || {});
+  if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
+  const { currentPassword, newPassword } = parsed.data;
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, password: true } });
+  if (!user || !(await bcrypt.compare(currentPassword, user.password))) return fail(res, req, 400, 'Your current password is not right');
+  if (await bcrypt.compare(newPassword, user.password)) return fail(res, req, 400, 'Choose a password different from your current one');
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { password: await bcrypt.hash(newPassword, 12), tokenVersion: { increment: 1 }, mustChangePassword: false, passwordChangedAt: new Date(), passwordResetToken: null, passwordResetExpiry: null },
+    select: { id: true, role: true, tokenVersion: true },
+  });
+  const hotel = ['OWNER', 'MANAGER'].includes(updated.role) ? await prisma.hotel.findFirst({ where: { ownerId: updated.id }, select: { id: true } }) : null;
+  await prisma.auditLog.create({ data: { action: 'PASSWORD_CHANGED', entityType: 'USER', entityId: updated.id, userId: updated.id, requestId: req.id, details: {} } }).catch(() => {});
+  res.json({ success: true, message: 'Password changed. Other devices have been signed out.', token: signToken(updated.id, updated.role, hotel?.id || null, updated.tokenVersion), requestId: req.id });
+});
+
+/** POST /api/v1/auth/forgot-password { email } — same answer whether or not the account exists. */
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const parsed = z.object({ email: z.string().email('Enter a valid email address') }).safeParse(req.body || {});
+  if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
+  const email = parsed.data.email.trim().toLowerCase();
+  const answer = { success: true, message: 'If an account exists for that email, we have sent a link to reset the password. It works for 1 hour.', requestId: req.id };
+
+  const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, name: true, email: true, status: true, role: true } });
+  if (!user || ['SUSPENDED', 'BLOCKED', 'DELETED', 'INACTIVE'].includes(user.status)) return res.json(answer);
+
+  const token = crypto.randomBytes(32).toString('hex');
+  await prisma.user.update({ where: { id: user.id }, data: { passwordResetToken: hashToken(token), passwordResetExpiry: new Date(Date.now() + RESET_TTL_MS) } });
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const link = `${base}/reset-password?token=${token}`;
+  await queueService.enqueue('email', 'SEND_PASSWORD_RESET', {
+    to: user.email,
+    subject: 'Reset your ZivoHotels password',
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1b2a3d;">
+        <h2 style="color: #013a67;">Reset your password</h2>
+        <p>Hi ${escapeHtml(user.name || '')},</p>
+        <p>We received a request to reset the password for your ZivoHotels account. The link below works for 1 hour.</p>
+        <p><a href="${link}" style="display: inline-block; background: #e7194a; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">Choose a new password</a></p>
+        <p style="font-size: 13px; color: #5a6b80;">If you didn't ask for this, you can ignore this email: your password stays the same.</p>
+      </div>`,
+  }, { priority: 1 });
+  res.json(answer);
+});
+
+/** POST /api/v1/auth/reset-password { token, password } */
+export const resetPassword = asyncHandler(async (req, res) => {
+  const parsed = z.object({ token: z.string().min(20, 'This reset link is not valid'), password: PASSWORD_RULE }).safeParse(req.body || {});
+  if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
+  const user = await prisma.user.findFirst({ where: { passwordResetToken: hashToken(parsed.data.token), passwordResetExpiry: { gt: new Date() } }, select: { id: true, status: true } });
+  if (!user) return fail(res, req, 400, 'This reset link has expired or was already used. Ask for a new one.');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: await bcrypt.hash(parsed.data.password, 12),
+      passwordResetToken: null, passwordResetExpiry: null, passwordChangedAt: new Date(),
+      tokenVersion: { increment: 1 }, mustChangePassword: false,
+      // An invited owner who resets from their email has proved they own it
+      ...(user.status === 'INVITED' ? { status: 'ACTIVE', inviteToken: null, inviteExpiry: null } : {}),
+    },
+  });
+  await prisma.auditLog.create({ data: { action: 'PASSWORD_RESET', entityType: 'USER', entityId: user.id, userId: user.id, requestId: req.id, details: {} } }).catch(() => {});
+  res.json({ success: true, message: 'Password updated. Log in with your new password.', requestId: req.id });
+});

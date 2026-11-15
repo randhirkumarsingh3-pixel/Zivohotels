@@ -14,9 +14,9 @@ const formatSize = (bytes) => {
 };
 
 const StatusBadge = ({ status }) => {
-  if (status === 'VERIFIED') return <span className="flex items-center text-xs font-medium text-green-600"><CheckCircle2 size={14} className="mr-1" /> Verified</span>;
+  if (status === 'VERIFIED') return <span className="flex items-center text-xs font-medium text-green-700"><CheckCircle2 size={14} className="mr-1" /> Verified</span>;
   if (status === 'REJECTED') return <span className="flex items-center text-xs font-medium text-red-600"><XCircle size={14} className="mr-1" /> Rejected</span>;
-  return <span className="flex items-center text-xs font-medium text-amber-600"><Clock size={14} className="mr-1" /> Pending review</span>;
+  return <span className="flex items-center text-xs font-medium text-amber-700"><Clock size={14} className="mr-1" /> Pending review</span>;
 };
 
 /**
@@ -81,7 +81,7 @@ const DocumentsStep = ({ hotelId }) => {
           required before the property can be submitted for review, along with bank details.
         </p>
         <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-          <ShieldCheck size={14} className="text-green-600" /> Documents are stored privately and are only visible to you and the ZivoHotels verification team.
+          <ShieldCheck size={14} className="text-green-700" /> Documents are stored privately and are only visible to you and the ZivoHotels verification team.
         </p>
       </div>
 

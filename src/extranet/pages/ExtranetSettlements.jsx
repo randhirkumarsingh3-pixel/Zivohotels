@@ -32,27 +32,27 @@ const ExtranetSettlements = () => {
       {/* Financial Pulse */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl shadow-gray-900/10">
-          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Earnings (MTD)</p>
+          <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Total Earnings (MTD)</p>
           <h3 className="text-3xl font-black">₹ 1,42,850</h3>
           <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between">
-            <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+12% vs last month</span>
+            <span className="text-xs font-black text-green-500 uppercase tracking-widest">+12% vs last month</span>
             <ArrowRight size={14} className="text-gray-600" />
           </div>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Next Scheduled Payout</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Next Scheduled Payout</p>
           <div className="flex items-center gap-2 mt-1">
             <h3 className="text-3xl font-black text-gray-900">₹ 42,500</h3>
-            <span className="text-[10px] bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">READY</span>
+            <span className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">READY</span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">Expected Date: May 05, 2026</p>
+          <p className="text-xs text-gray-400 mt-2 font-bold uppercase tracking-widest">Expected Date: May 05, 2026</p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding Commission</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding Commission</p>
           <h3 className="text-3xl font-black text-gray-900">₹ 21,420</h3>
-          <p className="text-[10px] text-gray-400 mt-2 font-medium">To be deducted from current bookings.</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">To be deducted from current bookings.</p>
         </div>
       </div>
 
@@ -78,11 +78,11 @@ const ExtranetSettlements = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Booking ID / Guest</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Gross Amount</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Zivo Comm (15%)</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Net Payable</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Booking ID / Guest</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Gross Amount</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Zivo Comm (15%)</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Net Payable</th>
+                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -90,7 +90,7 @@ const ExtranetSettlements = () => {
                 <tr key={i} className="hover:bg-gray-50/50 transition-all cursor-pointer">
                   <td className="px-8 py-6">
                     <p className="text-sm font-bold text-gray-900">#ZIVO-8271{i}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Rajesh Kumar · Deluxe Room</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-tight">Rajesh Kumar · Deluxe Room</p>
                   </td>
                   <td className="px-8 py-6">
                     <p className="text-sm font-bold text-gray-900">₹ 8,000.00</p>
@@ -99,10 +99,10 @@ const ExtranetSettlements = () => {
                     <p className="text-sm font-bold text-red-500">- ₹ 1,200.00</p>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <p className="text-sm font-black text-green-600">₹ 6,800.00</p>
+                    <p className="text-sm font-black text-green-700">₹ 6,800.00</p>
                   </td>
                   <td className="px-8 py-6 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${i === 3 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${i === 3 ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-green-50 text-green-700 border-green-100'}`}>
                       {i === 3 ? 'PENDING' : 'PAID'}
                     </span>
                   </td>
@@ -114,7 +114,7 @@ const ExtranetSettlements = () => {
       </div>
 
       <div className="bg-brand-50 border border-brand-100 rounded-3xl p-8 flex items-start gap-6">
-        <div className="p-3 bg-white rounded-2xl text-brand-600 shadow-sm">
+        <div className="p-3 bg-white rounded-2xl text-brand-700 shadow-sm">
           <HelpCircle size={24} />
         </div>
         <div>

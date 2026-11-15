@@ -408,9 +408,35 @@ settlement. Fixed along the way:
 - The hotel page asks `POST /bookings/preview` (now optional login) for the price, so its total is
   the checkout total. The local estimate only shows while it loads.
 - New `/help` page (cancellations, payments, Zivo Cash, contact). Footer links all go somewhere real.
-- Still open: no Privacy Policy or Terms pages yet (they need legal text); no password change or reset
-  endpoint (the extranet points owners to partner support); the remaining contrast fixes and the
-  weeks 2–6 items in the UI audit.
+- Neutral 400/500 were darkened, and red, amber, green and orange text moved one shade darker, so
+  text meets WCAG AA contrast. No text is smaller than 12px (the 7–11px sizes became `text-xs`).
+
+## Passwords, legal pages and UI roadmap (Nov 2026)
+- Passwords (`controllers/passwordController.js`): `PUT /api/v1/auth/password` (signed in; signs out
+  other devices, returns a new token for this one), `POST /auth/forgot-password` (emails a 1-hour
+  link; same answer whether or not the account exists) and `POST /auth/reset-password`. Reset tokens
+  are stored hashed (`User.passwordResetToken`, `passwordResetExpiry`, `passwordChangedAt`). Changing
+  the password cancels any pending reset link. These routes share the login rate limit (10 per 15
+  minutes). Minimum length is now 8 for sign-up, change and reset. Pages: `/forgot-password`,
+  `/reset-password?token=`, `/account` (the "Hi, name" chip links there); the extranet Settings page
+  has the same change form. Resend refuses example.com addresses, so reset emails to test accounts fail.
+- Privacy Policy (`/privacy`) and Terms (`/terms`) are drafts written from how the platform works.
+  Company details live in `src/constants/legal.js`: fill in the legal entity, registered address,
+  grievance officer and jurisdiction city, have a lawyer review both pages, then set
+  `reviewed: true` to remove the "Draft" notice. Linked from the footer, sign-up and checkout.
+- Hotel page: summary row (stars, name, place, review score, lowest price, See rooms) above a
+  fixed-height photo grid; sticky price and Book bar on phones. The total comes from the checkout
+  calculation.
+- Results page: filters for price (slider), free cancellation, deals, guest rating, star category,
+  property type, area and facilities (options come from the results); list and map views (Leaflet +
+  OpenStreetMap, `components/search/ResultsMap.jsx`); the home page's search bar, prefilled.
+  `GET /hotels/search` now returns city, area, location, image, latitude/longitude and type, and
+  takes `minStars` (star category; `minRating` is the guest score).
+- Checkout: step indicator, "Pay now / Pay 30% now / Pay at the hotel" options showing the amount
+  due now and at the hotel. Home rows scroll sideways and don't repeat a hotel.
+- Every page sets its browser title and description (`hooks/usePageTitle.js`); unknown addresses show
+  a 404 page. Admin page titles use plain names (Finance ledger, Experiments, System health...).
+- Not done: sign-in by phone OTP or Google needs an SMS provider and a Google OAuth client.
 
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with

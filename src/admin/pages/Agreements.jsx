@@ -55,7 +55,7 @@ const CreateModal = ({ properties, onClose, onSuccess }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center">
-              <FileSignature size={16} className="text-brand-600" />
+              <FileSignature size={16} className="text-brand-700" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">Generate Agreement</h2>
           </div>
@@ -80,7 +80,7 @@ const CreateModal = ({ properties, onClose, onSuccess }) => {
             <input type="number" min={0} max={50} step={0.5} value={commissionRate}
               onChange={e => setCommissionRate(parseFloat(e.target.value))}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500" />
-            <p className="text-[10px] text-gray-400 mt-1">Platform commission deducted per successful booking.</p>
+            <p className="text-xs text-gray-400 mt-1">Platform commission deducted per successful booking.</p>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
@@ -140,10 +140,10 @@ const AgreementDrawer = ({ agreement, onClose, onAction, actionLoading }) => {
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="bg-gray-50 px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Terms</div>
             <div className="p-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Commission Rate</span><span className="font-bold text-brand-600 text-base">{agreement.commissionRate}%</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Commission Rate</span><span className="font-bold text-brand-700 text-base">{agreement.commissionRate}%</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Created</span><span>{fmtDate(agreement.createdAt)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Sent</span><span>{fmtDate(agreement.sentAt)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Signed</span><span className={agreement.signedAt ? 'text-green-600 font-semibold' : 'text-gray-400'}>{fmtDate(agreement.signedAt)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Signed</span><span className={agreement.signedAt ? 'text-green-700 font-semibold' : 'text-gray-400'}>{fmtDate(agreement.signedAt)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Expires</span><span>{fmtDate(agreement.expiryAt)}</span></div>
             </div>
           </div>
@@ -270,8 +270,8 @@ const Agreements = () => {
     { label: 'Expired',  value: counts.expired  || 0, color: 'red',    icon: <FileWarning size={18} /> },
   ];
   const COLOR_MAP = {
-    blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-600',
-    green: 'bg-green-50 text-green-600', red: 'bg-red-50 text-red-600',
+    blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-700',
+    green: 'bg-green-50 text-green-700', red: 'bg-red-50 text-red-600',
   };
 
   return (
@@ -360,7 +360,7 @@ const Agreements = () => {
                     <tr key={a.id} className="hover:bg-gray-50/60 transition-colors">
                       <td className="px-4 py-3">
                         <button onClick={() => setSelectedAgreement(a)}
-                          className="font-semibold text-gray-900 hover:text-brand-600 text-left">
+                          className="font-semibold text-gray-900 hover:text-brand-700 text-left">
                           {a.hotel?.name}
                         </button>
                         <p className="text-xs text-gray-400">{a.hotel?.city}</p>
@@ -369,14 +369,14 @@ const Agreements = () => {
                         <p className="font-medium text-gray-800">{a.hotel?.owner?.name}</p>
                         <p className="text-xs text-gray-400">{a.hotel?.owner?.email}</p>
                       </td>
-                      <td className="px-4 py-3 font-bold text-brand-600">{a.commissionRate}%</td>
+                      <td className="px-4 py-3 font-bold text-brand-700">{a.commissionRate}%</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.cls}`}>
                           {st.label}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold ${a.hotel?.status === 'ACTIVE' ? 'text-green-600' : 'text-amber-600'}`}>
+                        <span className={`text-xs font-semibold ${a.hotel?.status === 'ACTIVE' ? 'text-green-700' : 'text-amber-700'}`}>
                           {a.hotel?.status}
                         </span>
                       </td>
@@ -386,18 +386,18 @@ const Agreements = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button onClick={() => setSelectedAgreement(a)}
-                            className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors" title="View">
+                            className="p-1.5 text-gray-400 hover:text-brand-700 rounded-md hover:bg-brand-50 transition-colors" title="View">
                             <FileText size={15} />
                           </button>
                           {a.status !== 'SIGNED' && a.status !== 'EXPIRED' && (
                             <button onClick={() => handleAction(a.id, 'sign')} disabled={actionLoading}
-                              className="p-1.5 text-gray-400 hover:text-green-600 rounded-md hover:bg-green-50 transition-colors" title="Mark Signed">
+                              className="p-1.5 text-gray-400 hover:text-green-700 rounded-md hover:bg-green-50 transition-colors" title="Mark Signed">
                               <FileCheck size={15} />
                             </button>
                           )}
                           {a.status === 'DRAFT' && (
                             <button onClick={() => handleAction(a.id, 'send')} disabled={actionLoading}
-                              className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-amber-50 transition-colors" title="Mark Sent">
+                              className="p-1.5 text-gray-400 hover:text-amber-700 rounded-md hover:bg-amber-50 transition-colors" title="Mark Sent">
                               <Mail size={15} />
                             </button>
                           )}

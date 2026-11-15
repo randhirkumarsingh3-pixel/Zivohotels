@@ -44,7 +44,7 @@ const AddUserModal = ({ onClose, onSuccess }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center">
-              <UserPlus size={16} className="text-brand-600" />
+              <UserPlus size={16} className="text-brand-700" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
           </div>
@@ -84,7 +84,7 @@ const AddUserModal = ({ onClose, onSuccess }) => {
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">User will be prompted to change password on first login.</p>
+              <p className="text-xs text-gray-400 mt-1">User will be prompted to change password on first login.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Phone (optional)</label>

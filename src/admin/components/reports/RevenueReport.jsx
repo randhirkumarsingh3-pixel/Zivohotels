@@ -11,7 +11,7 @@ const RevenueReport = () => {
     { header: "Property", accessor: "property", cell: (row) => <span className="font-semibold text-gray-900">{row.property}</span> },
     { header: "Gross Booking Value", accessor: "value", cell: (row) => <span className="font-medium text-gray-700">{row.value}</span> },
     { header: "Comm. %", accessor: "commissionPercent", cell: (row) => <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded text-xs">{row.commissionPercent}</span> },
-    { header: "Platform Commission", accessor: "commission", cell: (row) => <span className="font-bold text-green-600">{row.commission}</span> },
+    { header: "Platform Commission", accessor: "commission", cell: (row) => <span className="font-bold text-green-700">{row.commission}</span> },
     { header: "GST Amount", accessor: "gst", cell: (row) => <span className="text-gray-500">{row.gst}</span> },
     { header: "Net Payout", accessor: "net", cell: (row) => <span className="font-bold text-gray-900">{row.net}</span> },
   ];

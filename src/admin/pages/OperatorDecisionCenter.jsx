@@ -18,7 +18,7 @@ const DecisionItem = ({ id, type, action, reason, signals, timestamp, status, on
     <div className="flex gap-6 p-8 bg-white rounded-3xl border border-gray-100 hover:shadow-xl transition-all group relative overflow-hidden">
       {status === 'REVERTED' && (
         <div className="absolute top-0 right-0 p-4">
-           <span className="flex items-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-lg">
+           <span className="flex items-center gap-1 text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-lg">
              <RotateCcw size={10} /> REVERTED BY ADMIN
            </span>
         </div>
@@ -34,14 +34,14 @@ const DecisionItem = ({ id, type, action, reason, signals, timestamp, status, on
       <div className="flex-1">
         <div className="flex justify-between items-start mb-4">
            <div>
-             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{timestamp}</span>
+             <span className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-1">{timestamp}</span>
              <h4 className="text-xl font-black text-gray-900 leading-tight">{action}</h4>
            </div>
            <div className="flex items-center gap-2">
               {status === 'ACTIVE' && (
                 <button 
                   onClick={() => onOverride(id)}
-                  className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+                  className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
                 >
                   <RotateCcw size={12} /> Override
                 </button>
@@ -59,7 +59,7 @@ const DecisionItem = ({ id, type, action, reason, signals, timestamp, status, on
         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6">
            {Object.entries(signals).map(([key, val]) => (
              <div key={key}>
-               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{key.replace(/_/g, ' ')}</p>
+               <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{key.replace(/_/g, ' ')}</p>
                <p className="text-sm font-black text-gray-900">{val}</p>
              </div>
            ))}
@@ -103,9 +103,9 @@ const OperatorDecisionCenter = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-            <span className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em]">Operational Governance</span>
+            <span className="text-xs font-black text-brand-700 uppercase tracking-[0.2em]">Operational Governance</span>
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Operator Decision Center</h1>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Experiments</h1>
           <p className="text-gray-500 font-medium mt-1">Audit and override autonomous system behaviors.</p>
         </div>
 

@@ -123,7 +123,7 @@ const Holidays = () => {
                 <span className="font-medium text-gray-900 w-32">{new Date(h.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 <span className="flex-1 text-gray-700">{h.name}</span>
                 <span className="text-gray-500 w-32">{h.city || 'All cities'}</span>
-                <span className="font-bold text-orange-600 w-16 text-right">{h.multiplier > 0 ? '+' : ''}{Math.round(h.multiplier * 100)}%</span>
+                <span className="font-bold text-orange-700 w-16 text-right">{h.multiplier > 0 ? '+' : ''}{Math.round(h.multiplier * 100)}%</span>
                 <button type="button" aria-label={`Remove ${h.name}`} onClick={() => remove(h)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
               </li>
             ))}

@@ -5,6 +5,11 @@ import { getPopularDestinations, searchDestinations, nearbyDestinations } from '
 
 const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNext, _isMobile }) => {
   const [query, setQuery] = useState(destination?.label || '');
+  // Show the destination chosen elsewhere (e.g. the search in the URL), unless the person is typing
+  const destLabel = destination?.label || '';
+  useEffect(() => {
+    if (document.activeElement?.dataset?.destinationInput !== 'true') setQuery(destLabel);
+  }, [destLabel]);
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [popularCities, setPopularCities] = useState([]);
@@ -142,6 +147,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
         <input 
           type="text" 
           placeholder="City, Hotel, or Area" 
+          aria-label="Destination"
+          data-destination-input="true"
           className="w-full bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 font-medium text-base"
           value={query}
           onChange={(e) => {
@@ -222,7 +229,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
                         className="flex items-center px-4 py-2.5 cursor-pointer hover:bg-gray-50 group"
                       >
                         <div className="bg-gray-100 p-1.5 rounded mr-3 group-hover:bg-brand-50 transition-colors">
-                          <MapIcon className="h-4 w-4 text-gray-500 group-hover:text-brand-600" />
+                          <MapIcon className="h-4 w-4 text-gray-500 group-hover:text-brand-700" />
                         </div>
                         <span className="text-gray-700 font-medium text-sm">{loc.label}</span>
                       </div>

@@ -145,7 +145,7 @@ const AriCalendar = ({ hotelId, canEditWhenChannelManager = false }) => {
                   const day = new Date(d); const weekend = day.getDay() === 0 || day.getDay() === 6;
                   return (
                     <th key={d} className={`px-2 py-2 text-center border-r border-gray-100 min-w-[78px] ${weekend ? 'bg-gray-100' : ''}`}>
-                      <div className="text-[10px] text-gray-400 font-semibold uppercase">{WEEKDAYS[day.getDay()]}</div>
+                      <div className="text-xs text-gray-400 font-semibold uppercase">{WEEKDAYS[day.getDay()]}</div>
                       <div className="font-bold text-gray-800 text-xs">{day.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</div>
                     </th>
                   );
@@ -257,7 +257,7 @@ const FragmentRows = ({ rt, locked, onInventory, onRate }) => (
               aria-label={`${rt.name} ${new Date(c.date).toDateString()}: ${c.stopSell ? 'stop sell' : `${c.availableRooms} of ${c.totalRooms} available`}`}
               className={`w-full rounded-md py-1.5 text-xs font-bold border ${closed ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'} ${locked ? 'cursor-default' : 'hover:ring-2 hover:ring-brand-300'}`}>
               {c.stopSell ? 'Closed' : `${c.availableRooms}/${c.totalRooms}`}
-              {c.bookedRooms > 0 && <span className="block text-[9px] font-semibold text-orange-600">{c.bookedRooms} sold</span>}
+              {c.bookedRooms > 0 && <span className="block text-xs font-semibold text-orange-700">{c.bookedRooms} sold</span>}
             </button>
           </td>
         );
@@ -267,7 +267,7 @@ const FragmentRows = ({ rt, locked, onInventory, onRate }) => (
       <tr key={rp.id} className="bg-gray-50/40">
         <td className="px-4 py-2 pl-8 sticky left-0 bg-gray-50 border-r border-gray-200 z-10">
           <div className="text-sm font-semibold text-gray-800">{rp.name}</div>
-          <div className="text-[11px] text-gray-500">{MEAL[rp.mealPlan] || 'Room only'} · base {inr(rp.basePrice)}</div>
+          <div className="text-xs text-gray-500">{MEAL[rp.mealPlan] || 'Room only'} · base {inr(rp.basePrice)}</div>
         </td>
         {rp.rates.map((r) => (
           <td key={r.date} className="px-1 py-2 border-r border-gray-100 text-center">

@@ -45,7 +45,7 @@ const GuestDrawer = ({ guest, onClose, onChanged }) => {
   };
   return (
     <Drawer title={guest.name} sub={guest.email} onClose={onClose}>
-      {!data ? <Loader2 className="animate-spin text-brand-600" /> : (
+      {!data ? <Loader2 className="animate-spin text-brand-700" /> : (
         <>
           <div className="rounded-xl bg-gray-900 text-white p-4"><p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Zivo Cash balance</p><p className="text-3xl font-black">{inr(data.balance)}</p></div>
           <div className="rounded-xl border border-gray-200 p-4 space-y-2">
@@ -59,17 +59,17 @@ const GuestDrawer = ({ guest, onClose, onChanged }) => {
               <button type="button" onClick={() => adjust('DEBIT')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-300"><Minus size={14} /> Debit</button>
             </div>
             {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
-            <p className="text-[11px] text-gray-400">Zivo Cash can only be spent on bookings. Use credits for goodwill or to correct a refund.</p>
+            <p className="text-xs text-gray-400">Zivo Cash can only be spent on bookings. Use credits for goodwill or to correct a refund.</p>
           </div>
           <ul className="divide-y divide-gray-100 text-sm">
             {data.transactions.length === 0 && <li className="py-3 text-gray-500">No transactions.</li>}
             {data.transactions.map((t) => (
               <li key={t.id} className="py-2.5 flex justify-between gap-3">
                 <div className="flex gap-2">
-                  {t.type === 'CREDIT' ? <ArrowDownLeft size={15} className="text-green-600 mt-0.5" /> : <ArrowUpRight size={15} className="text-gray-400 mt-0.5" />}
+                  {t.type === 'CREDIT' ? <ArrowDownLeft size={15} className="text-green-700 mt-0.5" /> : <ArrowUpRight size={15} className="text-gray-400 mt-0.5" />}
                   <div><p className="text-gray-900">{t.description || t.label}</p><p className="text-xs text-gray-500">{new Date(t.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · {t.label}</p></div>
                 </div>
-                <div className="text-right"><p className={`font-bold ${t.type === 'CREDIT' ? 'text-green-700' : ''}`}>{t.type === 'CREDIT' ? '+' : '−'}{inr(t.amount)}</p>{t.balanceAfter != null && <p className="text-[11px] text-gray-400">{inr(t.balanceAfter)}</p>}</div>
+                <div className="text-right"><p className={`font-bold ${t.type === 'CREDIT' ? 'text-green-700' : ''}`}>{t.type === 'CREDIT' ? '+' : '−'}{inr(t.amount)}</p>{t.balanceAfter != null && <p className="text-xs text-gray-400">{inr(t.balanceAfter)}</p>}</div>
               </li>
             ))}
           </ul>
@@ -84,7 +84,7 @@ const HotelDrawer = ({ hotel, onClose }) => {
   useEffect(() => { call(`/hotels/${hotel.id}`).then(setData).catch(() => setData({ statement: [] })); }, [hotel.id]);
   return (
     <Drawer title={hotel.name} sub={`${hotel.city} · statement`} onClose={onClose}>
-      {!data ? <Loader2 className="animate-spin text-brand-600" /> : (
+      {!data ? <Loader2 className="animate-spin text-brand-700" /> : (
         <>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[['On hold', data.onHold], ['Ready', data.ready], ['Owed to Zivo', data.owed], ['Paid out', data.paidOut]].map(([k, v]) => (
@@ -96,7 +96,7 @@ const HotelDrawer = ({ hotel, onClose }) => {
             {(data.statement || []).map((e) => (
               <li key={`${e.kind}-${e.id}`} className="py-2.5 flex justify-between gap-3">
                 <div><p className="text-gray-900">{e.title}</p><p className="text-xs text-gray-500">{new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{e.detail ? ` · ${e.detail}` : ''} · {e.status}</p></div>
-                <div className="text-right"><p className={`font-bold ${e.amount >= 0 ? 'text-green-700' : ''}`}>{e.amount >= 0 ? '+' : '−'}{inr(Math.abs(e.amount))}</p><p className="text-[11px] text-gray-400">{inr(e.balance)}</p></div>
+                <div className="text-right"><p className={`font-bold ${e.amount >= 0 ? 'text-green-700' : ''}`}>{e.amount >= 0 ? '+' : '−'}{inr(Math.abs(e.amount))}</p><p className="text-xs text-gray-400">{inr(e.balance)}</p></div>
               </li>
             ))}
           </ul>
@@ -123,7 +123,7 @@ const WalletControl = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Wallet className="text-brand-600" size={22} /> Wallet Control</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Wallet className="text-brand-700" size={22} /> Wallet Control</h1>
         <p className="text-gray-500 mt-1">Guests&apos; Zivo Cash and what each property is owed or owes.</p>
       </div>
       {error && <p className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</p>}

@@ -48,7 +48,7 @@ const SocialSettings = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-700 animate-spin" />
       <p className="text-gray-500 text-sm mt-4">Loading social links...</p>
     </div>
   );

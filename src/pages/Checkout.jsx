@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
+import usePageTitle from '../hooks/usePageTitle';
 
 const useCountdown = (expiresAt) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -34,6 +35,7 @@ const useCountdown = (expiresAt) => {
 };
 
 const Checkout = () => {
+  usePageTitle('Confirm and pay');
   const navigate = useNavigate();
   const { selectedHotel, searchParams, clearBooking } = useBooking();
   const allExperiments = useAllExperiments();
@@ -392,6 +394,15 @@ const Checkout = () => {
             <Lock size={14} /> Secure payment
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-navy-900">Confirm and pay</h1>
+          <ol className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" aria-label="Booking steps">
+            {[['Choose room', true], ['Your details & payment', 'current'], ['Confirmation', false]].map(([label, state], i) => (
+              <li key={label} className="flex items-center gap-2" aria-current={state === 'current' ? 'step' : undefined}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${state === true ? 'bg-green-700 text-white' : state === 'current' ? 'bg-navy-800 text-white' : 'bg-gray-200 text-gray-600'}`}>{state === true ? '✓' : i + 1}</span>
+                <span className={state === 'current' ? 'font-semibold text-gray-900' : 'text-gray-600'}>{label}</span>
+                {i < 2 && <span className="w-6 h-px bg-gray-300" aria-hidden="true" />}
+              </li>
+            ))}
+          </ol>
         </header>
 
         {previewError && !fetchingPreview && (
@@ -482,25 +493,37 @@ const Checkout = () => {
                 <h2 className="text-2xl font-bold text-navy-900">How would you like to pay?</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4" role="radiogroup" aria-label="Payment option">
                 {[
-                  { id: 'PREPAID', label: 'Full Prepaid', desc: 'Secure best rate', icon: <CreditCard />, tag: `Save ${config.prepaidDiscountPercent}%` },
-                  { id: 'PARTIAL', label: `Book with ${config.partialPaymentPercent}%`, desc: 'Pay rest later', icon: <PieChart /> },
-                  { id: 'PAY_AT_HOTEL', label: 'Pay @ Hotel', desc: 'Confirm without pay', icon: <Building /> }
-                ].map((opt) => (
-                  <div 
-                    key={opt.id}
-                    onClick={() => setPaymentType(opt.id)}
-                    className={`relative cursor-pointer p-6 rounded-2xl border-2 transition-all group ${paymentType === opt.id ? 'border-brand-700 bg-brand-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
-                  >
-                    {opt.tag && <span className="absolute -top-3 right-4 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-full uppercase">{opt.tag}</span>}
-                    <div className={`mb-4 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${paymentType === opt.id ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                      {opt.icon}
-                    </div>
-                    <p className="font-black text-gray-900 text-sm leading-tight mb-1">{opt.label}</p>
-                    <p className="text-xs text-gray-500 font-medium">{opt.desc}</p>
-                  </div>
-                ))}
+                  { id: 'PREPAID', label: 'Pay now', desc: `Lowest price: ${config.prepaidDiscountPercent}% off`, icon: <CreditCard />, tag: `Save ${config.prepaidDiscountPercent}%` },
+                  { id: 'PARTIAL', label: `Pay ${config.partialPaymentPercent}% now`, desc: 'Rest at the hotel', icon: <PieChart /> },
+                  { id: 'PAY_AT_HOTEL', label: 'Pay at the hotel', desc: 'Nothing to pay now', icon: <Building /> }
+                ].map((opt) => {
+                  const on = paymentType === opt.id;
+                  return (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      key={opt.id}
+                      onClick={() => setPaymentType(opt.id)}
+                      className={`relative text-left p-5 rounded-2xl border-2 transition-colors ${on ? 'border-navy-700 bg-navy-50/60' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                    >
+                      {opt.tag && <span className="absolute -top-3 right-4 bg-green-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">{opt.tag}</span>}
+                      <div className={`mb-3 w-10 h-10 rounded-xl flex items-center justify-center ${on ? 'bg-navy-800 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        {opt.icon}
+                      </div>
+                      <p className="font-bold text-gray-900 text-sm leading-tight mb-1">{opt.label}</p>
+                      <p className="text-xs text-gray-600">{opt.desc}</p>
+                      {on && preview && !fetchingPreview && (
+                        <p className="mt-3 pt-3 border-t border-navy-100 text-sm text-gray-900 tabular-nums">
+                          <strong>₹{Math.round(payableNow).toLocaleString('en-IN')}</strong> now
+                          {total - payableNow > 0 && <span className="block text-xs text-gray-600">₹{Math.round(total - payableNow).toLocaleString('en-IN')} at the hotel</span>}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
@@ -514,7 +537,7 @@ const Checkout = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  I agree to the <span className="text-navy-800 font-bold">Terms of Service</span>, <span className="text-navy-800 font-bold">Privacy Policy</span> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking.
+                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Privacy Policy</a> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking.
                 </p>
               </label>
             </section>
@@ -556,13 +579,13 @@ const Checkout = () => {
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] text-gray-400 font-black uppercase mb-1 flex items-center gap-1">
+                    <p className="text-xs text-gray-400 font-black uppercase mb-1 flex items-center gap-1">
                       <CalendarDays size={10} /> Check-in
                     </p>
                     <p className="font-bold text-gray-900 text-sm">{new Date(searchParams.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] text-gray-400 font-black uppercase mb-1 flex items-center gap-1">
+                    <p className="text-xs text-gray-400 font-black uppercase mb-1 flex items-center gap-1">
                       <CalendarDays size={10} /> Check-out
                     </p>
                     <p className="font-bold text-gray-900 text-sm">{new Date(searchParams.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
@@ -576,7 +599,7 @@ const Checkout = () => {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-900">{selectedHotel.selectedRoomType?.name}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase">{selectedHotel.selectedRatePlan?.name}</p>
+                      <p className="text-xs text-gray-400 font-bold uppercase">{selectedHotel.selectedRatePlan?.name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -590,7 +613,7 @@ const Checkout = () => {
                 <div className="pt-6 border-t border-dashed border-gray-200 space-y-3">
                   {pricingSource && (
                     <div className="mb-2">
-                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${pricingSource === 'OVERRIDE' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`px-2 py-0.5 text-xs font-bold rounded ${pricingSource === 'OVERRIDE' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
                         {pricingSource === 'OVERRIDE' ? 'Override Applied' : 'Standard Pricing'}
                       </span>
                     </div>
@@ -628,7 +651,7 @@ const Checkout = () => {
                     </div>
                   )}
                   {prepaidOff > 0 && (
-                    <div className="flex justify-between text-green-600 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
+                    <div className="flex justify-between text-green-700 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
                       <span className="flex items-center gap-1"><ShieldCheck size={14} /> You save (Prepaid)</span>
                       <span>-₹{prepaidOff.toLocaleString()}</span>
                     </div>
@@ -647,12 +670,12 @@ const Checkout = () => {
                     </div>
                   )}
                   {member && !member.isPaid && (
-                    <a href="/membership" className="block text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    <a href="/membership" className="block text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                       <Crown size={12} className="inline mr-1" />Get extra savings, 2× points and longer free cancellation with Zivo Prime →
                     </a>
                   )}
                   {member?.isPaid && member.freeCancelExtraHours > 0 && (
-                    <p className="text-[11px] text-amber-800">{member.plan}: free cancellation {member.freeCancelExtraHours} hours longer than the hotel&apos;s policy{member.prioritySupport ? ' · priority support' : ''}</p>
+                    <p className="text-xs text-amber-800">{member.plan}: free cancellation {member.freeCancelExtraHours} hours longer than the hotel&apos;s policy{member.prioritySupport ? ' · priority support' : ''}</p>
                   )}
                   {pointsOff > 0 && (
                     <div className="flex justify-between text-green-700 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
@@ -665,7 +688,7 @@ const Checkout = () => {
                   {rewards && (
                     <div className="rounded-xl border border-gray-200 p-3 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-gray-800 flex items-center gap-1"><Award size={14} className="text-brand-600" /> Zivo Rewards · {rewards.tier?.name}</span>
+                        <span className="font-bold text-gray-800 flex items-center gap-1"><Award size={14} className="text-brand-700" /> Zivo Rewards · {rewards.tier?.name}</span>
                         <span className="text-gray-500">{rewards.available.toLocaleString('en-IN')} pts available</span>
                       </div>
                       {rewards.maxPoints > 0 ? (
@@ -684,10 +707,10 @@ const Checkout = () => {
                           )}
                         </>
                       ) : (
-                        <p className="text-[11px] text-gray-500">{rewards.available > 0 ? `Use points from ${rewards.minRedeemPoints} points (up to ${rewards.maxRedeemPercent}% of the room price).` : 'Points from your stays can be used on future bookings.'}</p>
+                        <p className="text-xs text-gray-500">{rewards.available > 0 ? `Use points from ${rewards.minRedeemPoints} points (up to ${rewards.maxRedeemPercent}% of the room price).` : 'Points from your stays can be used on future bookings.'}</p>
                       )}
-                      {rewards.reason && <p role="alert" className="text-[11px] text-red-600">{rewards.reason}</p>}
-                      {rewards.earn > 0 && <p className="text-[11px] text-green-700 font-semibold">You&apos;ll earn {rewards.earn.toLocaleString('en-IN')} points after this stay</p>}
+                      {rewards.reason && <p role="alert" className="text-xs text-red-600">{rewards.reason}</p>}
+                      {rewards.earn > 0 && <p className="text-xs text-green-700 font-semibold">You&apos;ll earn {rewards.earn.toLocaleString('en-IN')} points after this stay</p>}
                     </div>
                   )}
 
@@ -696,7 +719,7 @@ const Checkout = () => {
                     <label className="flex items-start gap-2 rounded-xl border border-gray-200 p-3 cursor-pointer">
                       <input type="checkbox" className="mt-0.5 rounded border-gray-300" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
                       <span className="text-sm text-gray-700 flex-1">
-                        <span className="font-bold text-gray-900 flex items-center gap-1"><Wallet size={14} className="text-brand-600" /> Pay with Zivo Cash</span>
+                        <span className="font-bold text-gray-900 flex items-center gap-1"><Wallet size={14} className="text-brand-700" /> Pay with Zivo Cash</span>
                         <span className="text-xs text-gray-500">₹{walletBalance.toLocaleString('en-IN')} available{useWallet ? ` · ₹${walletUse.toLocaleString('en-IN')} will be used` : ''}</span>
                       </span>
                     </label>
@@ -737,7 +760,7 @@ const Checkout = () => {
                         <span className="text-xs font-bold opacity-60">Amount Payable Now</span>
                         <span className="text-xl font-black">₹{payableNow.toLocaleString()}</span>
                       </div>
-                      <p className="text-[10px] font-medium opacity-40 italic">Balance ₹{(total - payableNow).toLocaleString()} payable at reception.</p>
+                      <p className="text-xs font-medium opacity-40 italic">Balance ₹{(total - payableNow).toLocaleString()} payable at reception.</p>
                     </div>
                   )}
                 </div>

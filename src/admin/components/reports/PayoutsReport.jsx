@@ -41,7 +41,7 @@ const PayoutsReport = () => {
         
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-sm text-gray-500 font-medium">Total Paid (This Month)</p>
-          <h3 className="text-3xl font-bold text-green-600 mt-2">₹3,52,700</h3>
+          <h3 className="text-3xl font-bold text-green-700 mt-2">₹3,52,700</h3>
           <p className="text-xs text-gray-400 mt-1">Across 2 properties</p>
         </div>
       </div>

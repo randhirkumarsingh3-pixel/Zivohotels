@@ -44,7 +44,7 @@ const ChannelManager = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <Network className="mr-2 h-6 w-6 text-brand-600" /> Channel Manager Connectivity
+            <Network className="mr-2 h-6 w-6 text-brand-700" /> Channel Manager Connectivity
           </h1>
           <p className="text-gray-500 mt-1 max-w-3xl">
             How each property sends its rates and availability to ZivoHotels: managed in the ZivoHotels extranet,
@@ -94,7 +94,7 @@ const ChannelManager = () => {
                   {r.lastAriError && <div className="text-red-600 flex items-center gap-1 mt-0.5"><AlertTriangle size={12} />{r.lastAriError}</div>}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button type="button" onClick={() => setOpenId(r.id)} className="text-brand-600 font-semibold hover:text-brand-700">Configure</button>
+                  <button type="button" onClick={() => setOpenId(r.id)} className="text-brand-700 font-semibold hover:text-brand-700">Configure</button>
                 </td>
               </tr>
             ))}

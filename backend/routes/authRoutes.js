@@ -1,6 +1,7 @@
 import express from 'express';
 import { signup, login, sendOtp, verifyOtp } from '../controllers/authController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { changePassword, forgotPassword, resetPassword } from '../controllers/passwordController.js';
 
 const router = express.Router();
 
@@ -8,6 +9,11 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
+
+// Passwords: change while signed in; "forgot password" emails a 1-hour link to reset it
+router.put('/password', protect, changePassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Example of a protected route using RBAC
 // The signed-in user's own profile (checkout uses it to fill in "I'm the guest"). Only profile

@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import MasterSidebar from '../admin/components/master/MasterSidebar';
 import { LogoMark } from '../components/brand/Logo';
+import usePageTitle from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -12,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
  */
 const MasterLayout = () => {
   const { user } = useAuth();
+  usePageTitle('Admin');
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
   useEffect(() => { setNavOpen(false); }, [location.pathname]);

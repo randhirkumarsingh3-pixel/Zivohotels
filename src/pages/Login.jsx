@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Login = () => {
+  usePageTitle('Log in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -106,9 +108,9 @@ const Login = () => {
                 </label>
               </div>
               <div className="text-sm">
-                <a href="#" className="font-semibold text-navy-700 hover:text-navy-900">
+                <Link to="/forgot-password" className="font-semibold text-navy-700 hover:text-navy-900">
                   Forgot password?
-                </a>
+                </Link>
               </div>
             </div>
 

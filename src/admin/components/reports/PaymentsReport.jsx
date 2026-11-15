@@ -11,7 +11,7 @@ const PaymentsReport = () => {
   const columns = [
     { header: "Booking ID", accessor: "id", cell: (row) => <span className="font-mono text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">{row.id}</span> },
     { header: "Payment Type", accessor: "type" },
-    { header: "Paid Amount", accessor: "paid", cell: (row) => <span className="font-semibold text-green-600">{row.paid}</span> },
+    { header: "Paid Amount", accessor: "paid", cell: (row) => <span className="font-semibold text-green-700">{row.paid}</span> },
     { header: "Pending Amount", accessor: "pending", cell: (row) => <span className="font-semibold text-red-500">{row.pending}</span> },
     { 
       header: "Status", 
@@ -38,7 +38,7 @@ const PaymentsReport = () => {
             {/* Background circle */}
             <path className="text-gray-100 stroke-current" strokeWidth="8" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
             {/* Slice 1: Prepaid (60%) */}
-            <path className="text-brand-600 stroke-current" strokeWidth="8" strokeDasharray="60, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path className="text-brand-700 stroke-current" strokeWidth="8" strokeDasharray="60, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
             {/* Slice 2: Partial (25%) */}
             <path className="text-blue-500 stroke-current" strokeWidth="8" strokeDasharray="25, 100" strokeDashoffset="-60" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
             {/* Slice 3: Pay@Hotel (15%) */}

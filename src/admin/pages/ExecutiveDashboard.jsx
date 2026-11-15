@@ -77,11 +77,11 @@ const ExecutiveDashboard = () => {
                  <div className="p-3 bg-white/20 rounded-xl">
                     <Zap size={24} fill="currentColor" />
                  </div>
-                 <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-lg">Live Status</span>
+                 <span className="text-xs font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-lg">Live Status</span>
               </div>
-              <p className="text-[10px] font-black text-red-200 uppercase tracking-widest mb-1">System Mode</p>
+              <p className="text-xs font-black text-red-200 uppercase tracking-widest mb-1">System Mode</p>
               <h3 className="text-2xl font-black mb-1 tracking-tight">SAFE_MODE</h3>
-              <p className="text-[10px] font-bold text-red-100 opacity-80 uppercase tracking-widest">Global Payout Freeze: ACTIVE</p>
+              <p className="text-xs font-bold text-red-100 opacity-80 uppercase tracking-widest">Global Payout Freeze: ACTIVE</p>
            </div>
         </div>
 
@@ -95,8 +95,8 @@ const ExecutiveDashboard = () => {
                     <p className="text-gray-400 text-xs font-bold mt-1 uppercase tracking-widest">vs Last 30 Days Portfolio</p>
                  </div>
                  <div className="flex bg-gray-50 p-1 rounded-xl">
-                    <button className="px-4 py-2 bg-white text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Revenue</button>
-                    <button className="px-4 py-2 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:text-gray-600">RPS</button>
+                    <button className="px-4 py-2 bg-white text-gray-900 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm">Revenue</button>
+                    <button className="px-4 py-2 text-gray-400 rounded-lg text-xs font-black uppercase tracking-widest hover:text-gray-600">RPS</button>
                  </div>
               </div>
 
@@ -109,7 +109,7 @@ const ExecutiveDashboard = () => {
                  ))}
                  
                  {/* Floating Tooltip Simulation */}
-                 <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                 <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity">
                     PEAK REVENUE: ₹ 1.24L (12 May)
                  </div>
               </div>
@@ -131,16 +131,16 @@ const ExecutiveDashboard = () => {
                    <div key={i} className="flex items-center gap-4 group cursor-pointer">
                       <div className={`w-2 h-12 rounded-full bg-${a.color}-500 opacity-20 group-hover:opacity-100 transition-opacity`}></div>
                       <div className="flex-1">
-                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{a.type}</p>
-                         <h4 className="text-sm font-black text-gray-900 group-hover:text-brand-600 transition-colors">{a.title}</h4>
-                         <p className="text-[10px] text-gray-400 font-bold">{a.location}</p>
+                         <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{a.type}</p>
+                         <h4 className="text-sm font-black text-gray-900 group-hover:text-brand-700 transition-colors">{a.title}</h4>
+                         <p className="text-xs text-gray-400 font-bold">{a.location}</p>
                       </div>
                       <ChevronRight size={16} className="text-gray-300 group-hover:text-brand-500 transition-all" />
                    </div>
                  ))}
               </div>
 
-              <button className="w-full mt-10 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all">
+              <button className="w-full mt-10 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all">
                  View All Incidents
               </button>
            </div>
@@ -163,11 +163,11 @@ const ExecutiveDashboard = () => {
                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl group hover:bg-white hover:shadow-lg transition-all border border-transparent hover:border-gray-100">
                       <div>
                          <p className="text-xs font-black text-gray-900">{c.name}</p>
-                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">RPS: {c.rps}</p>
+                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">RPS: {c.rps}</p>
                       </div>
                       <div className="text-right">
-                         <p className="text-xs font-black text-brand-600">{c.growth}</p>
-                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{c.revenue}</p>
+                         <p className="text-xs font-black text-brand-700">{c.growth}</p>
+                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{c.revenue}</p>
                       </div>
                    </div>
                  ))}
@@ -188,12 +188,12 @@ const ExecutiveDashboard = () => {
                  ].map((h, i) => (
                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                       <div className="flex items-center gap-3">
-                         <div className={`w-8 h-8 rounded-lg bg-${h.color}-500/10 flex items-center justify-center text-${h.color}-600 font-black text-[10px]`}>
+                         <div className={`w-8 h-8 rounded-lg bg-${h.color}-500/10 flex items-center justify-center text-${h.color}-600 font-black text-xs`}>
                             {h.score}
                          </div>
                          <div>
                             <p className="text-xs font-black text-gray-900">{h.name}</p>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{h.issue}</p>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{h.issue}</p>
                          </div>
                       </div>
                       <button className="p-2 text-gray-300 hover:text-gray-600 hover:bg-white rounded-lg transition-all shadow-sm">
@@ -217,7 +217,7 @@ const ExecutiveDashboard = () => {
               <div className="space-y-8 relative z-10">
                  <div>
                     <div className="flex justify-between items-center mb-2">
-                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Search → View</span>
+                       <span className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Search → View</span>
                        <span className="text-xs font-bold text-green-400">42.5%</span>
                     </div>
                     <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -226,7 +226,7 @@ const ExecutiveDashboard = () => {
                  </div>
                  <div>
                     <div className="flex justify-between items-center mb-2">
-                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">View → Booking</span>
+                       <span className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">View → Booking</span>
                        <span className="text-xs font-bold text-brand-500">3.8%</span>
                     </div>
                     <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -236,9 +236,9 @@ const ExecutiveDashboard = () => {
               </div>
 
               <div className="mt-12 p-6 bg-white/5 rounded-3xl border border-white/10">
-                 <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2">Top Drop-off Point</p>
+                 <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Top Drop-off Point</p>
                  <p className="text-xs font-black text-red-400">Payment Selection Page (18% Drop)</p>
-                 <button className="mt-4 text-[9px] font-black text-brand-500 uppercase tracking-widest hover:underline">
+                 <button className="mt-4 text-xs font-black text-brand-500 uppercase tracking-widest hover:underline">
                     Investigate Checkout UX
                  </button>
               </div>

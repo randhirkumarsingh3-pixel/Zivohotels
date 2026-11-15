@@ -73,7 +73,7 @@ const DataTable = ({
                     </td>
                   ))}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-gray-400 hover:text-brand-600 transition-colors p-1 rounded-md hover:bg-brand-50">
+                    <button className="text-gray-400 hover:text-brand-700 transition-colors p-1 rounded-md hover:bg-brand-50">
                       <MoreVertical className="h-5 w-5" />
                     </button>
                   </td>

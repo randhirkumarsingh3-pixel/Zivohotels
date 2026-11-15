@@ -26,16 +26,16 @@ const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit',
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 const KpiCard = ({ title, value, subtitle, icon, delta, trend, color = 'brand', loading }) => {
   const colorMap = {
-    brand:  'bg-brand-50 text-brand-600',
-    green:  'bg-green-50 text-green-600',
+    brand:  'bg-brand-50 text-brand-700',
+    green:  'bg-green-50 text-green-700',
     blue:   'bg-blue-50 text-blue-600',
     purple: 'bg-purple-50 text-purple-600',
     red:    'bg-red-50 text-red-600',
-    orange: 'bg-orange-50 text-orange-600',
+    orange: 'bg-orange-50 text-orange-700',
   };
 
   const TrendIcon = trend === 'up' ? ArrowUpRight : trend === 'down' ? ArrowDownRight : Minus;
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+  const trendColor = trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all">
@@ -95,14 +95,14 @@ const BarChart = ({ data, loading }) => {
                 className="w-full rounded-t bg-brand-500 group-hover:bg-brand-600 transition-colors"
                 style={{ height: `${h}%` }}
               />
-              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                 {fmtDate(d.date)}: {fmt(d.revenue)}
               </div>
             </div>
           );
         })}
       </div>
-      <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+      <div className="flex justify-between text-xs text-gray-400 px-0.5">
         {visible.slice(0, 5).map(d => <span key={d.date}>{fmtDate(d.date)}</span>)}
       </div>
     </div>
@@ -222,7 +222,7 @@ const RecentBookings = ({ data, loading, onViewAll }) => (
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-base font-bold text-gray-800">Recent Bookings</h3>
       <button onClick={onViewAll}
-        className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+        className="text-xs font-semibold text-brand-700 hover:text-brand-700 flex items-center gap-1">
         View All <Eye size={12} />
       </button>
     </div>
@@ -250,7 +250,7 @@ const RecentBookings = ({ data, loading, onViewAll }) => (
               <p className="text-sm font-bold text-gray-900 tabular-nums">
                 {fmt(b.totalAmount)}
               </p>
-              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-0.5 ${STATUS_COLORS[b.status] || STATUS_COLORS.PENDING}`}>
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${STATUS_COLORS[b.status] || STATUS_COLORS.PENDING}`}>
                 {b.status}
               </span>
             </div>
