@@ -48,7 +48,8 @@ const Settings = ({ config, onSaved }) => {
         <label className={label}>Review bonus (points)<input type="number" min="0" className={input} value={c.reviewBonusPoints} onChange={(e) => set('reviewBonusPoints', e.target.value)} /></label>
         <label className={label}>Sign-up bonus (points)<input type="number" min="0" className={input} value={c.signupBonusPoints} onChange={(e) => set('signupBonusPoints', e.target.value)} /></label>
         <label className={label}>Tier period (months)<input type="number" min="1" max="36" className={input} value={c.tierWindowMonths} onChange={(e) => set('tierWindowMonths', e.target.value)} /></label>
-        <div className="text-xs text-gray-500 self-end pb-2">Guests get back {Math.round((Number(c.earnPointsPer100) / 100) * Number(c.pointValue) * 10000) / 100}% of what they spend (Blue).</div>
+        <label className={label}>Points expire after (months, 0 = never)<input type="number" min="0" max="120" className={input} value={c.expiryMonths ?? 24} onChange={(e) => set('expiryMonths', e.target.value)} /></label>
+        <div className="text-xs text-gray-500 self-end pb-2 md:col-span-3">{Number(c.expiryMonths) > 0 ? `Each batch of points expires ${c.expiryMonths} months after it becomes usable. Oldest points are used first; guests are emailed 30 days before. ` : 'Points never expire. '}Guests get back {Math.round((Number(c.earnPointsPer100) / 100) * Number(c.pointValue) * 10000) / 100}% of what they spend (Blue).</div>
       </div>
       <div>
         <p className="text-sm font-bold text-gray-800 mb-2">Tiers <span className="text-xs font-normal text-gray-500">(reached by nights OR spend in the period)</span></p>
@@ -159,7 +160,7 @@ const Loyalty = () => {
             { icon: Users, k: 'Members with points', v: num(stats.members) },
             { icon: Coins, k: 'Points outstanding', v: num(stats.outstandingPoints), sub: `${inr(stats.outstandingValue)} liability · ${num(stats.pendingPoints)} pending` },
             { icon: Plus, k: 'Earned (30 days)', v: num(stats.earnedLast30) },
-            { icon: Minus, k: 'Used (30 days)', v: num(stats.usedLast30) },
+            { icon: Minus, k: 'Used (30 days)', v: num(stats.usedLast30), sub: `${num(stats.expiredLast30)} expired in 30 days` },
           ].map((s) => (
             <div key={s.k} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1"><s.icon size={13} /> {s.k}</p>

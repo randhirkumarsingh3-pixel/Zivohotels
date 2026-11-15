@@ -22,7 +22,7 @@ const adminOnly = (req, res) => {
 /** Public program description (earn rate, point value, tiers) for the Rewards page. */
 export const getProgram = (req, res) => send(res, req, async () => {
   const c = await loyalty.getConfig();
-  return { enabled: c.enabled, earnPointsPer100: c.earnPointsPer100, pointValue: c.pointValue, minRedeemPoints: c.minRedeemPoints, maxRedeemPercent: c.maxRedeemPercent, reviewBonusPoints: c.reviewBonusPoints, signupBonusPoints: c.signupBonusPoints, tierWindowMonths: c.tierWindowMonths, tiers: c.tiers };
+  return { enabled: c.enabled, earnPointsPer100: c.earnPointsPer100, pointValue: c.pointValue, minRedeemPoints: c.minRedeemPoints, maxRedeemPercent: c.maxRedeemPercent, reviewBonusPoints: c.reviewBonusPoints, signupBonusPoints: c.signupBonusPoints, tierWindowMonths: c.tierWindowMonths, expiryMonths: c.expiryMonths, tiers: c.tiers };
 });
 export const getMyRewards = (req, res) => send(res, req, () => loyalty.memberSummary(req.user.id));
 export const getMyHistory = (req, res) => send(res, req, () => loyalty.history(req.user.id, req.query));

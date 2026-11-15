@@ -991,6 +991,7 @@ model EmailOTP {
 ///  EARN    +points for a stay: PENDING until check-out, then AVAILABLE; REVERSED if cancelled.
 ///  REDEEM  -points used at checkout: AVAILABLE; REVERSED (= returned) if the booking is cancelled.
 ///  BONUS   +points (published review, sign-up) / ADJUST +/- by an admin, with a reason.
+///  EXPIRE  -points left from a batch that reached its expiry (points are used oldest first).
 ///  VOID    rows from before Zivo Rewards (awarded on unpaid / cancelled bookings), not counted.
 model LoyaltyPoint {
   id          String   @id @default(uuid())
@@ -1003,6 +1004,10 @@ model LoyaltyPoint {
   reviewId    String?
   description String?
   createdById String?
+  /// When the points became usable; they expire expiryMonths (LoyaltySetting) later
+  availableAt DateTime?
+  /// When the guest was emailed that these points are about to expire
+  expiryNoticeAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
