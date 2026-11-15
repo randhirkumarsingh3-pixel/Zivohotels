@@ -9,13 +9,18 @@ import MemberBanner from '../components/home/MemberBanner';
 import OffersCarousel from '../components/home/OffersCarousel';
 import WhyZivo from '../components/home/WhyZivo';
 import GuestReviews from '../components/home/GuestReviews';
+import RewardsMembership from '../components/home/RewardsMembership';
+import PartnerPanels from '../components/home/PartnerPanels';
+import HomeFaq from '../components/home/HomeFaq';
+import ExploreLinks from '../components/home/ExploreLinks';
 import { getRecommendations, getHomeFeed } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Home: search (with quick chips), a sign-up or Prime banner, live offers, top-rated hotels, popular
- * cities, the guest's own rows (recently viewed, recommended), why book with us, and guest reviews.
+ * cities, the guest's own rows (recently viewed, recommended), why book with us, guest reviews,
+ * Rewards and Prime, panels for hotels and companies, FAQs and links to every city and area.
  * Everything comes from live data (GET /public/home and recommendations); a section with nothing
  * real to show is hidden.
  */
@@ -130,6 +135,10 @@ const Home = () => {
 
       <WhyZivo />
       <GuestReviews reviews={feed?.reviews} />
+      <RewardsMembership rewards={feed?.rewards} membership={feed?.membership} />
+      <PartnerPanels />
+      <HomeFaq />
+      <ExploreLinks cities={feed?.cities} areas={feed?.areas} />
     </>
   );
 };

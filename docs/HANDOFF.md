@@ -449,6 +449,13 @@ settlement. Fixed along the way:
   only if 3+ exist), the Rewards sign-up bonus (only if set in Admin -> Loyalty) and the cheapest
   paid membership plan. Sections with nothing real to show are hidden.
 - "Near me" picks the nearest city with hotels (within 80 km of the visitor) from those map pins.
+- Below the reviews: Zivo Rewards and Prime (live programme rules and plan), panels for hotels
+  (partners@) and companies (bookings@), 9 FAQs (also published as FAQPage structured data), and
+  "Explore hotels" links to every city and popular area. `/hotels?area=` turns that area filter on.
+- Search bar (home and results): one white bar with Where to? (clear button), Check-in / nights /
+  Check-out, Guests & rooms and Search. The dates shown are now the dates searched: with none
+  chosen, tonight is set (they used to be shown but not set, so Search asked for dates). Dates parse
+  as local days, not UTC.
 - Recommendation cards now use real review scores and counts (`Hotel.reviewScore`/`reviewCount`);
   the old seeded `Hotel.reviews` number is no longer sent to the browser.
 

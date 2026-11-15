@@ -50,7 +50,10 @@ const Listing = () => {
 
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [f, setF] = useState(EMPTY);
+  // ?area=Kurla West (from "Explore hotels" links) turns that area filter on
+  const urlArea = new URLSearchParams(location.search).get('area');
+  const [f, setF] = useState(() => (urlArea ? { ...EMPTY, areas: [urlArea] } : EMPTY));
+  useEffect(() => { if (urlArea) setF((p) => (p.areas.includes(urlArea) ? p : { ...p, areas: [urlArea] })); }, [urlArea]);
   const [sortBy, setSortBy] = useState('recommended');
   const [view, setView] = useState('list');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
