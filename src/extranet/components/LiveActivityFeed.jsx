@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, Activity, X } from 'lucide-react';
 import { useSocketEvent } from '../../context/SocketContext';
 
@@ -13,12 +13,18 @@ const LiveActivityFeed = ({ hotelId }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  useSocketEvent('*', (event) => {
+  // Each event once: the socket hook calls back again whenever the callback changes, so remember
+  // the last event handled (an inline callback added the same event on every render).
+  const lastHandled = useRef(null);
+  const onEvent = useCallback((event) => {
+    if (!event || lastHandled.current === event) return;
+    lastHandled.current = event;
     if (event.hotelId === hotelId || !event.hotelId) {
       setActivities((prev) => [{ id: Math.random().toString(36).slice(2, 11), ...event }, ...prev].slice(0, 20));
       setUnseen((n) => n + 1);
     }
-  });
+  }, [hotelId]);
+  useSocketEvent('*', onEvent);
 
   useEffect(() => {
     if (!open) return undefined;

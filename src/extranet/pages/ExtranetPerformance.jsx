@@ -1,203 +1,151 @@
-import { 
-  BarChart3, TrendingUp, TrendingDown, Eye, 
-  Target, MousePointer2, ChevronRight, Info,
-  Zap, Award
-} from 'lucide-react';
-import SampleDataNotice from '../../components/shared/SampleDataNotice';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { Eye, MousePointerClick, CalendarCheck, Percent, IndianRupee, BedDouble, XCircle, Clock, Trophy, Lightbulb, ChevronRight, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { extranetGet } from '../../services/extranetApi';
+import { useExtranet } from '../context/ExtranetContext';
 
-const PerformanceCard = ({ title, value, trend, trendValue, icon: Icon, color }) => (
-  <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-    <div className="flex items-center justify-between mb-4">
-      <div className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600`}>
-        <Icon size={24} />
-      </div>
-      {trend && (
-        <span className={`flex items-center gap-1 text-sm font-black ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-          {trend === 'up' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-          {trendValue}%
-        </span>
-      )}
-    </div>
-    <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{title}</p>
-    <h3 className="text-3xl font-black text-gray-900 tabular-nums">{value}</h3>
+/**
+ * Extranet -> Performance: real figures for the last 7, 30 or 90 days (GET /extranet/performance):
+ * page views and visitors, booking starts, bookings and conversion, revenue, room nights, average
+ * daily rate, occupancy, cancellations and lead time, rank by views in the city, daily views and
+ * bookings, and tips that follow from the property's own data. Replaces a page of sample figures.
+ */
+const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
+const RANGES = [[7, '7 days'], [30, '30 days'], [90, '90 days']];
+
+const Change = ({ now, before, goodWhenUp = true, suffix = '' }) => {
+  if (now == null || before == null || before === 0) return null;
+  const pct = Math.round(((now - before) / before) * 100);
+  if (!pct) return <span className="text-xs text-gray-500">No change</span>;
+  const good = pct > 0 === goodWhenUp;
+  const Icon = pct > 0 ? ArrowUpRight : ArrowDownRight;
+  return <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${good ? 'text-green-800' : 'text-red-700'}`}><Icon size={14} aria-hidden="true" />{Math.abs(pct)}%{suffix} vs previous</span>;
+};
+
+const Kpi = ({ icon: Icon, label, value, note, change }) => (
+  <div className="bg-white rounded-card border border-gray-200 p-5">
+    <p className="flex items-center gap-2 text-sm font-medium text-gray-600"><Icon size={16} className="text-navy-700" aria-hidden="true" /> {label}</p>
+    <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{value}</p>
+    <div className="mt-1 min-h-[1rem] flex flex-wrap gap-x-2 text-xs text-gray-500">{note && <span>{note}</span>}{change}</div>
   </div>
 );
 
-const ExtranetPerformance = () => {
+/** One series per chart (views and bookings have different scales). Hover a bar for its value. */
+const Bars = ({ title, series, field, unit }) => {
+  const [hover, setHover] = useState(null);
+  const max = Math.max(1, ...series.map((d) => d[field]));
+  const total = series.reduce((s, d) => s + d[field], 0);
+  const fmt = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   return (
-    <div className="space-y-8 pb-12">
-      <SampleDataNotice what="Performance insights" />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <figure className="bg-white rounded-card border border-gray-200 p-5">
+      <figcaption className="flex items-baseline justify-between gap-3">
+        <span className="font-bold text-gray-900">{title}</span>
+        <span className="text-sm text-gray-600 tabular-nums">{total.toLocaleString('en-IN')} in total</span>
+      </figcaption>
+      <div className="relative mt-4 h-40" onMouseLeave={() => setHover(null)}>
+        <div className="absolute inset-x-0 bottom-0 border-t border-gray-200" aria-hidden="true" />
+        <div className="absolute inset-0 flex items-end" style={{ gap: series.length > 40 ? 1 : 2 }}>
+          {series.map((d, i) => (
+            <button key={d.date} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
+              aria-label={`${fmt(d.date)}: ${d[field]} ${unit}`} className="flex-1 h-full flex items-end focus:outline-none group">
+              <span className={`w-full rounded-t-[4px] ${hover === i ? 'bg-navy-900' : 'bg-navy-600'}`} style={{ height: d[field] ? `${Math.max(3, (d[field] / max) * 100)}%` : 0 }} />
+            </button>
+          ))}
+        </div>
+        {hover != null && (
+          <div className="absolute -top-2 pointer-events-none bg-gray-900 text-white text-xs rounded-md px-2 py-1 whitespace-nowrap -translate-x-1/2 -translate-y-full"
+            style={{ left: `${((hover + 0.5) / series.length) * 100}%` }}>
+            {fmt(series[hover].date)}: <strong>{series[hover][field]}</strong> {unit}
+          </div>
+        )}
+      </div>
+      <div className="mt-2 flex justify-between text-xs text-gray-500"><span>{fmt(series[0].date)}</span><span>{fmt(series[series.length - 1].date)}</span></div>
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer text-navy-700 font-medium">Show as table</summary>
+        <div className="max-h-48 overflow-y-auto mt-2">
+          <table className="w-full text-left text-sm">
+            <thead><tr className="text-gray-500"><th className="py-1 font-medium">Date</th><th className="py-1 font-medium text-right">{title}</th></tr></thead>
+            <tbody>{series.filter((d) => d[field]).map((d) => <tr key={d.date} className="border-t border-gray-100"><td className="py-1">{fmt(d.date)}</td><td className="py-1 text-right tabular-nums">{d[field]}</td></tr>)}</tbody>
+          </table>
+          {!series.some((d) => d[field]) && <p className="text-gray-500 py-2">None in this period.</p>}
+        </div>
+      </details>
+    </figure>
+  );
+};
+
+const ExtranetPerformance = () => {
+  const { addToast, hotelId, property } = useExtranet();
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setData(await extranetGet(`/performance?days=${days}`)); } catch (e) { addToast(e.message, 'error'); } finally { setLoading(false); }
+  }, [days, addToast]);
+  useEffect(() => { if (hotelId) load(); }, [load, hotelId]);
+
+  const c = data?.current; const p = data?.previous;
+  return (
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Performance Insights</h1>
-          <p className="text-gray-500 font-medium mt-1">See how your property is performing on the Zivo platform.</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Performance</h1>
+          <p className="text-gray-600 mt-1">How {property?.name || 'your property'} is doing on ZivoHotels. Bookings count when they were made; cancelled ones are left out of revenue.</p>
         </div>
-
-        <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
-           <button className="px-6 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-600/20">Last 30 Days</button>
-           <button className="px-6 py-2.5 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-600">Last 90 Days</button>
-        </div>
-      </div>
-
-      {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <PerformanceCard 
-          title="Search Views" 
-          value="4,821" 
-          trend="up" 
-          trendValue="12.4" 
-          icon={Eye} 
-          color="blue" 
-        />
-        <PerformanceCard 
-          title="Click-Through (CTR)" 
-          value="8.42%" 
-          trend="down" 
-          trendValue="2.1" 
-          icon={MousePointer2} 
-          color="purple" 
-        />
-        <PerformanceCard 
-          title="Conversion Rate" 
-          value="4.15%" 
-          trend="up" 
-          trendValue="0.8" 
-          icon={Target} 
-          color="green" 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Ranking Analytics */}
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-sm">
-           <div className="flex items-center justify-between mb-10">
-              <h3 className="text-2xl font-black text-gray-900 flex items-center gap-4">
-                 <div className="p-3 bg-blue-600 rounded-2xl text-white">
-                    <BarChart3 size={24} />
-                 </div>
-                 Ranking Position Trend
-              </h3>
-              <div className="bg-brand-50 text-brand-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-brand-100 flex items-center gap-2">
-                 <Award size={14} /> Current Rank: #14 in Delhi
-              </div>
-           </div>
-
-           <div className="h-64 bg-gray-50 rounded-3xl border border-dashed border-gray-200 flex items-center justify-center relative">
-              <div className="absolute inset-x-10 bottom-10 flex items-end gap-2 h-40">
-                 {[40, 60, 55, 80, 75, 90, 85, 100].map((h, i) => (
-                    <div key={i} className="flex-1 bg-blue-100 hover:bg-blue-600 transition-colors rounded-t-lg group relative" style={{ height: `${h}%` }}>
-                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Pos: {110 - h}</div>
-                    </div>
-                 ))}
-              </div>
-           </div>
-
-           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-gray-50">
-              <div className="space-y-4">
-                 <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                    <TrendingDown className="text-red-500" size={16} />
-                    Why your ranking dropped?
-                 </h4>
-                 <div className="space-y-3">
-                    <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                       <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0"></div>
-                       <p className="text-xs text-red-900 font-medium leading-relaxed">
-                          Low <strong className="font-bold">Image Quality</strong> score detected. High-resolution photos can boost visibility by 15%.
-                       </p>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
-                       <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
-                       <p className="text-xs text-orange-900 font-medium leading-relaxed">
-                          Your <strong className="font-bold">Cancellation Rate</strong> (12%) is higher than market average (4%).
-                       </p>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="space-y-4">
-                 <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                    <TrendingUp className="text-green-500" size={16} />
-                    How to improve?
-                 </h4>
-                 <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100 hover:scale-105 transition-transform cursor-pointer">
-                       <p className="text-xs text-brand-900 font-bold">Add &quot;Breakfast Included&quot; rates</p>
-                       <ChevronRight size={14} className="text-brand-400" />
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100 hover:scale-105 transition-transform cursor-pointer">
-                       <p className="text-xs text-brand-900 font-bold">Reply to 4 pending guest reviews</p>
-                       <ChevronRight size={14} className="text-brand-400" />
-                    </div>
-                 </div>
-              </div>
-           </div>
-        </div>
-
-        {/* Visibility Score */}
-        <div className="space-y-8">
-           <div className="bg-[#0F172A] rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8">
-                 <Zap className="text-brand-500 animate-pulse" size={32} fill="currentColor" />
-              </div>
-              <h3 className="text-xl font-black mb-10">Hotel Health Score</h3>
-              
-              <div className="flex flex-col items-center justify-center py-6">
-                 <div className="relative w-40 h-40 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90">
-                       <circle cx="80" cy="80" r="70" className="text-white/5" strokeWidth="12" fill="transparent" stroke="currentColor" />
-                       <circle cx="80" cy="80" r="70" className="text-brand-500" strokeWidth="12" fill="transparent" strokeDasharray="440" strokeDashoffset="110" strokeLinecap="round" stroke="currentColor" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                       <span className="text-4xl font-black text-brand-500">72</span>
-                       <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">of 100</span>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="mt-8 space-y-4">
-                 <div className="flex justify-between items-center text-xs font-bold">
-                    <div className="flex items-center gap-2">
-                       <span className="text-gray-400 uppercase tracking-widest">Conversion Strength</span>
-                       <span className="text-xs text-gray-500 font-bold">(30%)</span>
-                    </div>
-                    <span className="text-brand-400">+24 Impact</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs font-bold">
-                    <div className="flex items-center gap-2">
-                       <span className="text-gray-400 uppercase tracking-widest">Price Competitiveness</span>
-                       <span className="text-xs text-gray-500 font-bold">(20%)</span>
-                    </div>
-                    <span className="text-orange-400">-12 Impact</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs font-bold">
-                    <div className="flex items-center gap-2">
-                       <span className="text-gray-400 uppercase tracking-widest">Cancellation Rate</span>
-                       <span className="text-xs text-gray-500 font-bold">(25%)</span>
-                    </div>
-                    <span className="text-red-400">-15 Impact</span>
-                 </div>
-              </div>
-
-              <p className="mt-8 text-xs text-gray-500 leading-relaxed italic text-center">
-                 Your score is <strong className="text-white">Above Average</strong>. Fix content quality to reach #1 spot in your area.
-              </p>
-           </div>
-
-           <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-              <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-                 <Info className="text-blue-600" size={20} />
-                 Competitor Watch
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium mb-6">
-                 Nearby properties are offering an average discount of <strong className="text-brand-700">12%</strong> for the next week. 
-              </p>
-              <button className="w-full py-4 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-900 hover:bg-gray-100 transition-all">
-                 View Competitors
-              </button>
-           </div>
+        <div className="flex shrink-0 rounded-lg border border-gray-300 bg-white overflow-hidden self-start" role="group" aria-label="Period">
+          {RANGES.map(([d, label]) => (
+            <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={`px-4 py-2 text-sm font-semibold whitespace-nowrap ${days === d ? 'bg-navy-800 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>{label}</button>
+          ))}
         </div>
       </div>
+
+      {loading && !data ? <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-navy-700" size={32} /></div> : data && (
+        <>
+          <section aria-label="Guests" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Kpi icon={Eye} label="Page views" value={c.views.toLocaleString('en-IN')} note={`${c.visitors} visitors`} change={<Change now={c.views} before={p.views} />} />
+            <Kpi icon={MousePointerClick} label="Started booking" value={c.starts.toLocaleString('en-IN')} change={<Change now={c.starts} before={p.starts} />} />
+            <Kpi icon={CalendarCheck} label="Bookings" value={c.bookings} change={<Change now={c.bookings} before={p.bookings} />} />
+            <Kpi icon={Percent} label="Conversion" value={c.conversion != null ? `${c.conversion}%` : '—'} note="Bookings ÷ visitors" />
+          </section>
+          <section aria-label="Money and rooms" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Kpi icon={IndianRupee} label="Revenue" value={inr(c.revenue)} change={<Change now={c.revenue} before={p.revenue} />} />
+            <Kpi icon={BedDouble} label="Average daily rate" value={c.adr ? inr(c.adr) : '—'} note={`${c.roomNights} room night${c.roomNights === 1 ? '' : 's'}`} />
+            <Kpi icon={BedDouble} label="Occupancy" value={c.occupancy != null ? `${c.occupancy}%` : '—'} note="Rooms sold ÷ rooms on sale, past nights" />
+            <Kpi icon={XCircle} label="Cancellations" value={c.cancellationRate != null ? `${c.cancellationRate}%` : '—'} note={`${c.cancelled} cancelled${c.leadTimeDays != null ? ` · booked ${c.leadTimeDays} days ahead on average` : ''}`} />
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Bars title="Page views" series={data.series} field="views" unit="views" />
+            <Bars title="Bookings" series={data.series} field="bookings" unit="bookings" />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <section className="bg-white rounded-card border border-gray-200 p-5">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2"><Trophy size={18} className="text-amber-600" aria-hidden="true" /> Your rank</h2>
+              {data.rank
+                ? <p className="mt-2 text-gray-700"><span className="text-3xl font-bold text-gray-900 tabular-nums">#{data.rank.position}</span> of {data.rank.of} hotels in {data.rank.city}, by page views in the last {days} days.</p>
+                : <p className="mt-2 text-sm text-gray-600">You&apos;re the only ZivoHotels property in your city for now, so there&apos;s no ranking yet.</p>}
+              <p className="mt-3 text-xs text-gray-500 flex items-center gap-1"><Clock size={12} aria-hidden="true" /> Updated when you open this page.</p>
+            </section>
+            <section className="lg:col-span-2 bg-white rounded-card border border-gray-200 p-5">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2"><Lightbulb size={18} className="text-brand-600" aria-hidden="true" /> Ways to get more bookings</h2>
+              {data.tips.length ? (
+                <ul className="mt-2 divide-y divide-gray-100">
+                  {data.tips.map((t) => (
+                    <li key={t.key}>
+                      <Link to={t.link === 'EDIT_LISTING' ? `/extranet/onboarding/${hotelId}` : t.link} className="flex items-center justify-between gap-3 py-3 text-sm text-gray-700 hover:text-navy-800">
+                        {t.text} <ChevronRight size={16} className="shrink-0 text-gray-400" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="mt-2 text-sm text-gray-600">Nothing to suggest right now. Nice work.</p>}
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 };

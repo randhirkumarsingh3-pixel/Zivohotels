@@ -459,6 +459,27 @@ settlement. Fixed along the way:
 - Recommendation cards now use real review scores and counts (`Hotel.reviewScore`/`reviewCount`);
   the old seeded `Hotel.reviews` number is no longer sent to the browser.
 
+## Extranet review (Nov 2026)
+- Dashboard (`GET /extranet/dashboard`, `controllers/extranet/dashboardController.js`): arrivals,
+  departures and in-house today, tonight's rooms sold, this month's revenue (stays checking in this
+  month), last 7 days, reviews awaiting a reply, alerts, recent changes in plain words, and a to-do
+  list of setup gaps. Days are India days. Replaced the health score, "system mode" and raw log.
+- Bookings: tabs with counts (Arriving today, Upcoming, In house, Checked out, Cancelled, No-show),
+  search (guest, booking ID, phone, email), CSV export of what's shown, check-in and no-show from the
+  check-in date, check-out, and a confirmation before cancelling (the guest is refunded in full) or
+  marking a no-show. The search box and Export button did nothing before; cancel was one click.
+- Finance Hub: settlements show booking, guest, type and status; filter by status; CSV export with
+  commission, GST on commission, TCS, TDS and net payable (`recentSettlements` now carries `booking`,
+  up to 100).
+- Performance (`GET /extranet/performance?days=7|30|90`): real page views and visitors, booking
+  starts, bookings, conversion, revenue, ADR, occupancy, cancellation rate, lead time, rank by views
+  in the city, daily charts and tips from the property's data. It used to be sample figures.
+- Property Info: live/not-live badge from the real status and a "Your listing" summary (photos,
+  amenities, map pin, nearby places, house rules) linking to the full editor at
+  `/extranet/onboarding/:hotelId`.
+- Live updates: `useSocketEvent` calls back whenever its callback changes, so callbacks must be
+  stable and guard against handling the same event twice (the bell feed added events in a loop).
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

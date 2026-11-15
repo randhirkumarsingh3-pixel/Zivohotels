@@ -33,6 +33,11 @@ export const getFinancialOverview = async (req, res) => {
       .filter(Boolean)
       .sort((a, b) => a - b)[0] || null;
 
+    // Each settlement with its booking (reference, guest, stay dates), so the list says what it was for
+    const recent = settlements.slice(0, 100);
+    const bookings = await prisma.booking.findMany({ where: { id: { in: recent.map((s) => s.bookingId) } }, select: { id: true, bookingRef: true, guestName: true, checkIn: true, checkOut: true, paymentType: true } });
+    const byId = new Map(bookings.map((b) => [b.id, b]));
+
     return res.json({
       success: true,
       data: {
@@ -43,7 +48,7 @@ export const getFinancialOverview = async (req, res) => {
           nextPayoutDate,
           count: settlements.length
         },
-        recentSettlements: settlements.slice(0, 10)
+        recentSettlements: recent.map((s) => ({ ...s, booking: byId.get(s.bookingId) || null }))
       }
     });
   } catch (error) {

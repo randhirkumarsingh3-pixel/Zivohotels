@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { 
   Building2, 
   Edit3, Save, CheckCircle2, Clock, Shield,
-  Wifi, Car, Coffee, Waves, Dumbbell, Wind, Loader2
+  Wifi, Car, Coffee, Waves, Dumbbell, Wind, Loader2, Image as ImageIcon, MapPin, ListChecks, AlertCircle, ArrowRight
 } from 'lucide-react';
 import { fetchProperty, updateProperty } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
@@ -22,6 +23,7 @@ const _amenities = [
 const ExtranetProperty = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [full, setFull] = useState(null); // the whole listing, for the "Your listing" summary
   const { addToast, registerDirtyState } = useExtranet();
 
   const { register, handleSubmit, reset, formState: { isDirty }, watch } = useForm({
@@ -53,6 +55,7 @@ const ExtranetProperty = () => {
     const loadProperty = async () => {
       try {
         const data = await fetchProperty();
+        setFull(data);
         const draft = sessionStorage.getItem('draft_property');
         
         if (draft) {
@@ -100,10 +103,17 @@ const ExtranetProperty = () => {
           <p className="text-gray-500 font-medium mt-1">Manage your hotel&apos;s profile as displayed on Zivo.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-100">
-            <CheckCircle2 size={14} />
-            <span className="text-xs font-black uppercase tracking-widest">Profile Active</span>
-          </div>
+          {['LIVE', 'ACTIVE'].includes(full?.status) ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-800 rounded-lg border border-green-200">
+              <CheckCircle2 size={14} aria-hidden="true" />
+              <span className="text-sm font-semibold">Live on ZivoHotels</span>
+            </div>
+          ) : full?.status && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-900 rounded-lg border border-amber-200">
+              <AlertCircle size={14} aria-hidden="true" />
+              <span className="text-sm font-semibold">Not live yet ({String(full.status).replace(/_/g, ' ').toLowerCase()})</span>
+            </div>
+          )}
           {isEditing ? (
             <div className="flex gap-2">
               <button 
@@ -192,6 +202,39 @@ const ExtranetProperty = () => {
 
         {/* Right: Sidebar */}
         <div className="space-y-8">
+          {/* Everything else about the listing is edited in the property wizard */}
+          {full && (() => {
+            const photos = Array.isArray(full.media) ? full.media.length : 0;
+            const amenities = Array.isArray(full.amenities) ? full.amenities.length : 0;
+            const nearby = Array.isArray(full.nearbyPlaces) ? full.nearbyPlaces.length : 0;
+            const pinned = Boolean(full.latitude && full.longitude);
+            const rules = full.integrationSettings?.policyRules ? Object.keys(full.integrationSettings.policyRules).length : 0;
+            const items = [
+              { icon: ImageIcon, label: 'Photos', value: `${photos}`, ok: photos >= 5, hint: photos < 5 ? 'Add at least 5' : '' },
+              { icon: ListChecks, label: 'Amenities', value: `${amenities}`, ok: amenities >= 5, hint: amenities < 5 ? 'Add what you offer' : '' },
+              { icon: MapPin, label: 'Map pin', value: pinned ? 'Set' : 'Not set', ok: pinned },
+              { icon: MapPin, label: "What's nearby", value: `${nearby} places`, ok: nearby > 0 },
+              { icon: Shield, label: 'House rules', value: rules ? `${rules} answered` : 'Not set', ok: rules > 0 },
+            ];
+            return (
+              <div className="bg-white rounded-card border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900">Your listing</h3>
+                <p className="text-sm text-gray-600 mt-1">Photos, amenities, location, nearby places, rooms and house rules are edited in the full listing editor.</p>
+                <ul className="mt-4 divide-y divide-gray-100">
+                  {items.map((it) => (
+                    <li key={it.label} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                      <span className="flex items-center gap-2 text-gray-700"><it.icon size={16} className="text-navy-700" aria-hidden="true" /> {it.label}</span>
+                      <span className={`font-semibold ${it.ok ? 'text-green-800' : 'text-amber-800'}`}>{it.value}{it.hint ? ` · ${it.hint}` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to={`/extranet/onboarding/${full.id}`} className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white text-sm font-semibold">
+                  Edit full listing <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            );
+          })()}
+
           {/* Policies */}
           <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
             <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
