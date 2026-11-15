@@ -9,7 +9,9 @@ const __dirname = path.dirname(__filename);
 export class LocalDiskProvider extends StorageService {
   constructor() {
     super();
-    this.uploadDir = path.join(__dirname, '../../../public/uploads');
+    // backend/public/uploads: the folder server.js serves at /uploads. (It was three levels up, the
+    // frontend's public/ folder, so every uploaded photo was saved where nothing served it: 404.)
+    this.uploadDir = path.join(__dirname, '../../public/uploads');
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }
