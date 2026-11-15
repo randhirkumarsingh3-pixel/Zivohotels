@@ -306,10 +306,18 @@ export const changePassword = (data) => apiFetch(`${PUBLIC_BASE}/profile/passwor
 export const getNotifications = () => apiFetch(`${PUBLIC_BASE}/profile/notifications`).then(res => res?.data);
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
-export const getReviews = (hotelId) => apiFetch(`${PUBLIC_BASE}/hotels/${hotelId}/reviews`).then(res => res?.data);
-export const submitReview = (hotelId, data) => apiFetch(`${PUBLIC_BASE}/hotels/${hotelId}/reviews`, { method: 'POST', body: JSON.stringify(data) });
+// Zivo Rewards (loyalty)
+export const getRewardsProgram = () => apiFetch(`${PUBLIC_BASE}/loyalty/program`).then(res => res?.data);
+export const getMyRewards = () => apiFetch(`${PUBLIC_BASE}/loyalty/me`).then(res => res?.data);
+export const getRewardsHistory = (page = 1) => apiFetch(`${PUBLIC_BASE}/loyalty/me/history?page=${page}`).then(res => res?.data || []);
+
+// Reviews: public list for a hotel, and the guest's own reviews (write / edit)
+export const getReviews = (hotelId, params = {}) => apiFetch(`${PUBLIC_BASE}/hotels/${hotelId}/reviews?${new URLSearchParams(params)}`).then(res => res?.data);
+export const getReviewOptions = () => apiFetch(`${PUBLIC_BASE}/reviews/options`).then(res => res?.data);
+export const getMyReviews = () => apiFetch(`${PUBLIC_BASE}/reviews/mine`).then(res => res?.data || []);
+// (It posted to /hotels/:id/reviews, which has no such route, so no review could be submitted.)
+export const submitReview = (data) => apiFetch(`${PUBLIC_BASE}/reviews`, { method: 'POST', body: JSON.stringify(data) });
 export const updateReview = (reviewId, data) => apiFetch(`${PUBLIC_BASE}/reviews/${reviewId}`, { method: 'PUT', body: JSON.stringify(data) });
-export const deleteReview = (reviewId) => apiFetch(`${PUBLIC_BASE}/reviews/${reviewId}`, { method: 'DELETE' });
 
 // ─── COUPONS ─────────────────────────────────────────────────────────────────
 export const validateCoupon = (code, hotelId) => apiFetch(`${PUBLIC_BASE}/coupons/validate?code=${code}&hotelId=${hotelId}`).then(res => res?.data);

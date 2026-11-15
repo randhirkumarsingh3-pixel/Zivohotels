@@ -34,6 +34,7 @@ const Header = () => {
 
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/hotels" className="font-medium transition-colors hover:text-brand-600 text-gray-600">All Hotels</Link>
+            <Link to="/rewards" className="font-medium transition-colors hover:text-brand-600 text-gray-600">Zivo Rewards</Link>
             
             {/* Role-Based Links */}
             {isAuthenticated && (

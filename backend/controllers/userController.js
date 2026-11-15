@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { availablePoints } from '../services/loyaltyService.js';
 import { toMoney } from '../utils/money.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -84,6 +85,8 @@ export const getUsers = asyncHandler(async (req, res) => {
         _sum: { totalAmount: true }
       });
       user.totalSpend = toMoney(agg._sum.totalAmount) || 0;
+      // Zivo Rewards balance (the old "loyalty" column was never filled in)
+      user.loyalty = { points: await availablePoints(user.id) };
     }
   }
 

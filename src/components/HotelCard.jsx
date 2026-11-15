@@ -13,6 +13,9 @@ const HotelCard = ({ hotel }) => {
     : '';
 
   // Use startingPrice or price from backend (lowest configured rate plan)
+  // Guest review score from verified reviews (search sends it as rating; other lists as reviewScore)
+  const reviewCount = hotel.reviewCount || 0;
+  const reviewScore = hotel.reviewScore ?? hotel.rating;
   // An automatic offer (promotion) lowers the price shown; checkout gives the same discount.
   const offer = hotel.offer || null;
   const listPrice = hotel.startingPrice || hotel.price || 0;
@@ -72,10 +75,15 @@ const HotelCard = ({ hotel }) => {
               <span className="line-clamp-1">{hotel.location}</span>
             </div>
           </div>
-          <div className="flex items-center bg-green-50 px-2 py-1 rounded shrink-0 ml-2">
-            <Star className="h-3.5 w-3.5 text-green-600 mr-1 fill-current" />
-            <span className="font-bold text-green-700 text-sm">{hotel.rating}</span>
-          </div>
+          {reviewCount > 0 ? (
+            <div className="flex items-center bg-green-50 px-2 py-1 rounded shrink-0 ml-2" title={`${reviewCount} verified review${reviewCount === 1 ? '' : 's'}`}>
+              <Star className="h-3.5 w-3.5 text-green-600 mr-1 fill-current" />
+              <span className="font-bold text-green-700 text-sm">{reviewScore}</span>
+              <span className="text-[10px] text-green-700/70 ml-1">({reviewCount})</span>
+            </div>
+          ) : (
+            <span className="shrink-0 ml-2 px-2 py-1 rounded bg-gray-50 text-[11px] font-semibold text-gray-500">New</span>
+          )}
         </div>
         
         <div className="flex items-center gap-2 mt-4 text-xs font-medium text-gray-500 flex-wrap">

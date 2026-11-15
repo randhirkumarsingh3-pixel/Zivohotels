@@ -18,7 +18,8 @@ const previewSchema = z.object({
   children: z.number().int().min(0).optional().default(0),
   extraBeds: z.number().int().min(0).optional().default(0),
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
-  promoCode: z.string().trim().max(40).optional()
+  promoCode: z.string().trim().max(40).optional(),
+  usePoints: z.number().int().min(0).max(10000000).optional()
 });
 
 const createBookingSchema = z.object({
@@ -36,6 +37,7 @@ const createBookingSchema = z.object({
   extraBeds: z.number().int().min(0).optional().default(0),
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']),
   promoCode: z.string().trim().max(40).optional(),
+  usePoints: z.number().int().min(0).max(10000000).optional(),
   // Optional: GST invoice in a company's name (business travel)
   companyName: z.string().trim().max(200).optional(),
   companyGstin: z.string().trim().toUpperCase()
@@ -97,7 +99,7 @@ export const createBooking = async (req, res, next) => {
     const {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
       rooms, adults, children, extraBeds, paymentType,
-      guestName, guestEmail, guestPhone, promoCode, agentId,
+      guestName, guestEmail, guestPhone, promoCode, usePoints, agentId,
       companyName, companyGstin, companyAddress
     } = validation.data;
 
@@ -110,7 +112,7 @@ export const createBooking = async (req, res, next) => {
     const serviceContext = {
       guestName, guestEmail, guestPhone,
       company: companyName ? { name: companyName, gstin: companyGstin || null, address: companyAddress || null } : null,
-      ratePlanId, paymentType, couponCode: promoCode,
+      ratePlanId, paymentType, couponCode: promoCode, usePoints,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,
       agentId

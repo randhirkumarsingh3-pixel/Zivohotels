@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import prisma from '../config/db.js';
 import { calculateRefund, getDefaultPolicy } from '../utils/refundCalculator.js';
 import { roundMoney, toMoney } from '../utils/money.js';
@@ -183,6 +184,9 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
       (retainedAmount > 0 ? ` ${inr(retainedAmount)} was kept and will be settled in your payout cycle.` : '')
     : `Booking ${booking.bookingRef} was cancelled by ${byLabel}.` +
       (refundAmount > 0 ? ` A full refund of ${inr(refundAmount)} will be initiated to the guest.` : ' Nothing was paid online, so there is no refund.');
+
+  // Zivo Rewards: points used on this booking come back; points it would earn are cancelled
+  await syncLoyalty(bookingId).catch((e) => console.error('[ZivoRewards] sync failed:', e.message));
 
   // An unpaid booking abandoned at checkout (payment cancelled / failed) was never confirmed, so
   // the hotel doesn't need to hear about it

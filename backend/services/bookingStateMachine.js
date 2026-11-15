@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import { logActivity } from './activityService.js';
 import { createNotification } from './notificationService.js';
 import settlementService from './finance/settlementService.js';
@@ -128,6 +129,9 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     return updated;
   });
 
+
+  // Zivo Rewards: points for a completed stay become available; cancelled / no-show earn nothing
+  await syncLoyalty(booking.id).catch((e) => console.error('[ZivoRewards] sync failed:', e.message));
 
   // 4. Log Activity & Notifications
   await logActivity({

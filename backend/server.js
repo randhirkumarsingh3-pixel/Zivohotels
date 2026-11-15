@@ -27,6 +27,7 @@ import imageRoutes from './routes/imageRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import userInvoiceRoutes from './routes/userInvoiceRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import adminReviewRoutes from './routes/adminReviewRoutes.js';
 import propertyReviewRoutes from './routes/propertyReviewRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import publicAnalyticsRoutes from './routes/publicAnalyticsRoutes.js';
@@ -44,6 +45,9 @@ import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import { startBookingExpiryJob } from './services/bookingExpiryService.js';
 import { startDynamicPricingJob } from './services/dynamicPricingService.js';
+import { startLoyaltyJob } from './services/loyaltyService.js';
+import loyaltyRoutes from './routes/loyaltyRoutes.js';
+import adminLoyaltyRoutes from './routes/adminLoyaltyRoutes.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
@@ -146,8 +150,9 @@ const keepRawBody = (req, res, buf) => {
 const jsonDefault = express.json({ limit: '1mb', verify: keepRawBody });
 const jsonImageUpload = express.json({ limit: '15mb', verify: keepRawBody });
 app.use((req, res, next) => {
-  const isFileUpload = req.method === 'POST' && (
+  const isFileUpload = (req.method === 'POST' || req.method === 'PUT') && (
     /^\/api\/v1\/admin\/images\/?$/.test(req.path) ||
+    /^\/api\/v1\/reviews(\/[^/]+)?\/?$/.test(req.path) ||
     /^\/api\/v1\/kyc\/[^/]+\/upload\/?$/.test(req.path)
   );
   return (isFileUpload ? jsonImageUpload : jsonDefault)(req, res, next);
@@ -202,6 +207,7 @@ app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.use('/api/v1/bookings/preview', previewLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/loyalty', loyaltyRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/invoices', protect, userInvoiceRoutes);
 app.use('/api/v1/payments', bookingLimiter, paymentRoutes);
@@ -240,6 +246,8 @@ app.use('/api/v1/admin/system',     systemRoutes);
 app.use('/api/v1/admin/images',     imageRoutes);
 app.use('/api/v1/admin/pricing',    pricingRoutes);
 app.use('/api/v1/admin/promotions', promotionRoutes);
+app.use('/api/v1/admin/reviews',    adminReviewRoutes);
+app.use('/api/v1/admin/loyalty',    adminLoyaltyRoutes);
 app.use('/api/v1/pricing', pricingRoutes);
 app.use('/api/v1/finance', financeRoutes);
 
@@ -267,5 +275,6 @@ server.listen(PORT, '0.0.0.0', () => {
   // Release unpaid bookings whose payment window has passed (every 5 minutes)
   startBookingExpiryJob();
   startDynamicPricingJob();
+  startLoyaltyJob();
   console.log('✉️  Email worker started in-process');
 });

@@ -243,8 +243,11 @@ export const guestVoucherHtml = (d) => {
           ${(() => {
             const promo = booking.metadata?.promotion;
             const promoAmt = toMoney(promo?.discountAmount) || 0;
-            const other = roundMoney(discount - promoAmt);
+            const pts = booking.metadata?.loyalty;
+            const ptsAmt = toMoney(pts?.discountAmount) || 0;
+            const other = roundMoney(discount - promoAmt - ptsAmt);
             return (promoAmt ? `<div><span>Offer: ${h(promo.name)}${promo.code ? ` (${h(promo.code)})` : ''}</span><span>− ${inr(promoAmt)}</span></div>` : '')
+              + (ptsAmt ? `<div><span>Zivo Rewards (${Number(pts.pointsRedeemed).toLocaleString('en-IN')} points)</span><span>− ${inr(ptsAmt)}</span></div>` : '')
               + (other > 0 ? `<div><span>${booking.metadata?.prepaidDiscountAmount ? 'Pay-now discount' : 'Discount'}</span><span>− ${inr(other)}</span></div>` : '');
           })()}
           <div><span>GST${taxPct != null ? ` @ ${h(taxPct)}%` : ''}</span><span>${inr(booking.taxAmount)}</span></div>
@@ -379,7 +382,7 @@ export const hotelierVoucherHtml = (d, f) => {
         <div><span>2. Extra guest / bed / meal charges</span><span>${inr(f.extras)}</span></div>
         <div><span>3. GST charged to the guest</span><span>${inr(f.tax)}</span></div>
         <div class="sub"><span>(A) Property gross charges (1+2+3)</span><span>${inr(f.gross)}</span></div>
-        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded promotion (paid by ZivoHotels; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
+        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded discount (offer / reward points, paid by ZivoHotels; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
         ${collectedAtHotel ? `<div><span>Less: collected by the property from the guest</span><span>− ${inr(collectedAtHotel)}</span></div>
         <div class="sub"><span>(A′) Collected online by ZivoHotels</span><span>${inr(f.collected)}</span></div>` : ''}
         <div><span>4. ZivoHotels commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>

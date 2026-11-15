@@ -84,8 +84,10 @@ export const fetchBookings = () => extranetFetch('/bookings', { method: 'GET' })
 export const transitionBookingStatus = (bookingId, status) => extranetFetch(`/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
 
 // --- REVIEWS ---
-export const fetchReviews = () => extranetFetch('/reviews', { method: 'GET' });
+export const fetchReviews = (params = {}) => extranetFetch(`/reviews?${new URLSearchParams(params)}`, { method: 'GET' });
 export const replyToReview = (reviewId, replyText) => extranetFetch(`/reviews/${reviewId}/reply`, { method: 'POST', body: JSON.stringify({ replyText }) });
+export const deleteReviewReply = (reviewId) => extranetFetch(`/reviews/${reviewId}/reply`, { method: 'DELETE' });
+export const reportReview = (reviewId, reason, details) => extranetFetch(`/reviews/${reviewId}/report`, { method: 'POST', body: JSON.stringify({ reason, details }) });
 
 // --- FINANCE ---
 export const fetchFinanceOverview = () => extranetFetch('/finance/overview', { method: 'GET' });

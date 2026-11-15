@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import MyBookings from './pages/MyBookings';
+import Rewards from './pages/Rewards';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -34,6 +35,8 @@ const PlatformSettings = lazy(() => import('./admin/pages/Settings'));
 const SystemControlCenter = lazy(() => import('./admin/pages/SystemControlCenter'));
 const PricingRMS = lazy(() => import('./admin/pages/PricingRMS'));
 const AdminPromotions = lazy(() => import('./admin/pages/Promotions'));
+const ReviewModeration = lazy(() => import('./admin/pages/ReviewModeration'));
+const AdminLoyalty = lazy(() => import('./admin/pages/Loyalty'));
 const FinanceOS = lazy(() => import('./admin/pages/FinanceOS'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -93,6 +96,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route path="/rewards" element={<Rewards />} />
               <Route 
                 path="/my-bookings" 
                 element={
@@ -128,6 +132,8 @@ function App() {
               {/* Pricing & RMS */}
               <Route path="pricing-rms" element={<PricingRMS />} />
               <Route path="promotions" element={<AdminPromotions />} />
+              <Route path="reviews" element={<ReviewModeration />} />
+              <Route path="loyalty" element={<AdminLoyalty />} />
               <Route path="forecasting" element={<DemandForecasting />} />
 
               {/* Analytics */}

@@ -127,7 +127,7 @@ const ExtranetDashboard = () => {
       deltaType: revenueDelta ? 'green' : 'gray' 
     },
     { label: 'Status', value: statusInfo.short, delta: statusInfo.isLive ? 'LIVE' : 'NOT LIVE', deltaType: statusInfo.isLive ? 'green' : 'gray' },
-    { label: 'Quality Score', value: property?.rating?.toFixed(1) || '0.0', delta: property?.reviews > 0 ? 'ACTIVE' : 'NEW', deltaType: 'brand' },
+    { label: 'Review Score', value: property?.reviewCount > 0 ? `${property.reviewScore}/5` : '—', delta: property?.reviewCount > 0 ? `${property.reviewCount} reviews` : 'NO REVIEWS YET', deltaType: 'brand' },
     { label: 'Health Score', value: property?.healthScore ?? '—', delta: property?.healthScore != null ? 'LIVE' : 'NEW', deltaType: property?.healthScore != null ? 'green' : 'gray' }
   ];
 

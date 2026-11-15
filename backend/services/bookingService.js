@@ -6,7 +6,7 @@ import { getDatesInRange } from '../utils/dateUtils.js';
 import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import { bookingRepository } from '../repositories/bookingRepository.js';
 import { resolveBest, redeem } from './promotionService.js';
-import loyaltyService from './finance/loyaltyService.js';
+import { planForCheckout, redeemForBooking, recordEarnForBooking } from './loyaltyService.js';
 import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
@@ -19,8 +19,14 @@ import { sendBookingConfirmationEmail } from './emailService.js';
 const priceWithPromotion = async (calculationInput, ctx) => {
   const base = pricingDomain.calculate(calculationInput);
   const { promotion, codeStatus } = await resolveBest({ ...ctx, subtotal: base.subtotal });
-  if (!promotion) return { pricing: base, promotion: null, codeStatus };
-  return { pricing: pricingDomain.calculate({ ...calculationInput, appliedPromotion: promotion.raw }), promotion, codeStatus };
+  const withPromo = promotion ? { ...calculationInput, appliedPromotion: promotion.raw } : calculationInput;
+  let pricing = promotion ? pricingDomain.calculate(withPromo) : base;
+  // Zivo Rewards: points the member chose to use (and what the stay will earn)
+  const loyalty = ctx.userId
+    ? await planForCheckout({ userId: ctx.userId, eligibleAmount: pricing.subtotal - pricing.discountAmount, requestedPoints: ctx.usePoints })
+    : null;
+  if (loyalty?.pointsApplied) pricing = pricingDomain.calculate({ ...withPromo, loyaltyDiscountAmount: loyalty.discount });
+  return { pricing, promotion, codeStatus, loyalty };
 };
 
 export const bookingService = {
@@ -88,11 +94,11 @@ export const bookingService = {
       dailyRates
     };
 
-    const { pricing, promotion, codeStatus } = await priceWithPromotion(calculationInput, {
-      hotelId: roomType.hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId: params.userId, code: couponCode
+    const { pricing, promotion, codeStatus, loyalty } = await priceWithPromotion(calculationInput, {
+      hotelId: roomType.hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId: params.userId, code: couponCode, usePoints: params.usePoints
     });
     const { raw: _raw, ...promotionSummary } = promotion || {};
-    return { ...pricing, promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus };
+    return { ...pricing, promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus, loyalty };
   },
 
   /**
@@ -169,9 +175,10 @@ export const bookingService = {
       dailyRates
     };
 
-    const { pricing, promotion, codeStatus } = await priceWithPromotion(calculationInput, {
-      hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode
+    const { pricing, promotion, codeStatus, loyalty } = await priceWithPromotion(calculationInput, {
+      hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode, usePoints: context.usePoints
     });
+    if (context.usePoints && loyalty?.reason) throw Object.assign(new Error(loyalty.reason), { statusCode: 400 });
     if (couponCode && codeStatus && !codeStatus.ok && !promotion) {
       throw Object.assign(new Error(codeStatus.message), { statusCode: 400 });
     }
@@ -231,11 +238,24 @@ export const bookingService = {
              id: promotion.id, name: promotion.name, code: promotion.code, label: promotion.label,
              discountAmount: pricing.promotionDiscountAmount, fundedBy: promotion.fundedBy, platform: promotion.platform
            } : null,
+           loyalty: loyalty ? {
+             pointsRedeemed: loyalty.pointsApplied, discountAmount: pricing.loyaltyDiscountAmount,
+             pointsEarned: loyalty.earn, tier: loyalty.tier?.name, fundedBy: 'ZIVO'
+           } : null,
            taxPercentage: pricing.taxPercentage
         }
       };
 
       const booking = await bookingRepository.create(tx, bookingData);
+
+      // Zivo Rewards: spend the points chosen (checked again under a lock) and record what the stay
+      // earns (pending until check-out)
+      if (loyalty?.pointsApplied) {
+        await redeemForBooking(tx, { userId, bookingId: booking.id, points: loyalty.pointsApplied, bookingRef: booking.bookingRef });
+      }
+      if (loyalty?.earn) {
+        await recordEarnForBooking(tx, { userId, bookingId: booking.id, points: loyalty.earn, bookingRef: booking.bookingRef, tierName: loyalty.tier?.name });
+      }
 
       // B. Promotion: recorded with its limits checked again under a lock
       if (promotion && pricing.promotionDiscountAmount > 0) {
@@ -348,12 +368,7 @@ export const bookingService = {
     // GET /api/v1/channel-manager/bookings (services/channelConnectivityService.js). The old code
     // here "pushed" to a stub adapter that only logged and returned a made-up reference.
 
-    // 8. Loyalty Reward (Phase 8.7)
-    if (userId) {
-      const points = loyaltyService.calculateEarnedPoints(pricing.finalAmount);
-      loyaltyService.awardPoints(userId, points, 'BOOKING')
-        .catch(e => console.error('[Loyalty] Error awarding points:', e));
-    }
+    // 8. Loyalty points are recorded inside the transaction above (Zivo Rewards).
 
     if (paymentType === 'PAY_AT_HOTEL') {
       sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
