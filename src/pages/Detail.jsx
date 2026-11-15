@@ -4,10 +4,13 @@ import { getHotelById, trackEvent } from '../services/api';
 import { getImageUrl } from '../utils/image';
 import { useBooking } from '../context/BookingContext';
 import {
-  MapPin, Star, CheckCircle2,
+  MapPin, Star,
   CalendarDays, Users, BedDouble, ShieldCheck, ChevronDown, ChevronUp, Flame, CreditCard
 } from 'lucide-react';
 import { useExperiment, useAllExperiments } from '../context/ExperimentContext';
+import PhotoGallery from '../components/hotel/PhotoGallery';
+import { galleryPhotos } from '../components/hotel/galleryPhotos';
+import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection, RoomFeatures } from '../components/hotel/HotelSections';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (dateStr) => {
@@ -36,16 +39,6 @@ const MEAL_LABELS = {
   AP: { label: 'Full Board (AP)', icon: '🍴', color: 'bg-green-50 border-green-200 text-green-800' },
   HALF_BOARD: { label: 'Half Board (MAP)', icon: '🍽️', color: 'bg-orange-50 border-orange-200 text-orange-800' },
   FULL_BOARD: { label: 'Full Board (AP)', icon: '🍴', color: 'bg-green-50 border-green-200 text-green-800' },
-};
-
-// A photo that hides itself (grey tile) if the file can't be loaded, instead of a broken icon
-const GalleryImage = ({ src, alt }) => {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <div className="w-full h-full bg-gray-100" aria-label={alt} />;
-  return (
-    <img src={getImageUrl(src)} alt={alt} onError={() => setFailed(true)}
-      className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
-  );
 };
 
 // The property's cancellation policy (CancellationPolicy.policyCode)
@@ -125,26 +118,32 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
 // ─── Room Type Section ────────────────────────────────────────────────────────
 const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nights, rooms, onSelect }) => {
   const isExpanded = selectedRoomTypeId === roomType.id;
+  const roomPhoto = (roomType.images?.find((i) => i.isPrimary) || roomType.images?.[0])?.url;
 
   return (
     <div className={`border rounded-xl overflow-hidden transition-all ${isExpanded ? 'border-brand-300 shadow-sm' : 'border-gray-200'}`}>
       {/* Room type header */}
       <button
         onClick={() => onSelect(roomType, roomType.ratePlans?.[0])}
-        className={`w-full flex items-center justify-between p-4 text-left transition-colors ${isExpanded ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
+        className={`w-full flex items-start justify-between gap-3 p-4 text-left transition-colors ${isExpanded ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
       >
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isExpanded ? 'bg-brand-100' : 'bg-gray-100'}`}>
-            <BedDouble size={18} className={isExpanded ? 'text-brand-600' : 'text-gray-400'} />
-          </div>
-          <div>
-            <p className="font-bold text-gray-900 text-sm">{roomType.name}</p>
+        <div className="flex items-start gap-4 min-w-0">
+          {roomPhoto ? (
+            <img src={getImageUrl(roomPhoto)} alt={roomType.name} loading="lazy" className="w-24 h-20 md:w-32 md:h-24 rounded-lg object-cover bg-gray-100 shrink-0" />
+          ) : (
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${isExpanded ? 'bg-brand-100' : 'bg-gray-100'}`}>
+              <BedDouble size={20} className={isExpanded ? 'text-brand-600' : 'text-gray-400'} />
+            </div>
+          )}
+          <div className="min-w-0 space-y-1.5">
+            <p className="font-bold text-gray-900">{roomType.name}</p>
             <p className="text-xs text-gray-500">
               {roomType.availableForStay === 0
                 ? <span className="text-red-600 font-semibold">Sold out for your dates</span>
                 : <>From {fmt(Math.min(...(roomType.ratePlans || []).map(offerPrice), Infinity) === Infinity ? 0 : Math.min(...roomType.ratePlans.map(offerPrice)))} / night{roomType.ratePlans?.some(p => p.offer) && <span className="ml-1 text-green-700 font-semibold">· offer</span>}</>}
               {roomType.ratePlans?.length > 1 && ` · ${roomType.ratePlans.length} rate plans`}
             </p>
+            <RoomFeatures roomType={roomType} />
           </div>
         </div>
         {isExpanded ? <ChevronUp size={16} className="text-brand-600" /> : <ChevronDown size={16} className="text-gray-400" />}
@@ -294,10 +293,10 @@ const Detail = () => {
     </div>
   );
 
-  const photos = [...(hotel.media || [])]
-    .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
-    .map(m => m.url)
-    .filter(Boolean);
+  const photos = galleryPhotos(hotel);
+  // Star category from onboarding (1-5, whole number); older listings hold a review score there
+  const ratingNum = Number(hotel.rating) || 0;
+  const stars = Number.isInteger(ratingNum) && ratingNum >= 1 && ratingNum <= 5 ? ratingNum : 0;
   const nights    = getNights(checkIn, checkOut);
   const nightsN   = rooms || 1;
   const pricePerNight = selectedRatePlan ? nightlyPrice(selectedRatePlan) : 0;
@@ -311,28 +310,19 @@ const Detail = () => {
 
   return (
     <div className="pt-20 pb-20 bg-gray-50">
-      {/* Image Gallery: the property's own photos (primary first). It used to read fields the API
-          doesn't send, so the main photo was blank and the rest were stock pictures, some broken. */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {photos.length === 0 ? (
-          <div className="h-[30vh] rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Photos coming soon</div>
-        ) : (
-          <div className={`grid grid-cols-1 ${photos.length > 1 ? 'md:grid-cols-4' : ''} gap-4 h-[40vh] md:h-[60vh] rounded-2xl overflow-hidden`}>
-            <div className={`${photos.length > 1 ? 'md:col-span-2' : ''} h-full bg-gray-100`}>
-              <GalleryImage src={photos[0]} alt={hotel.name} />
-            </div>
-            {photos.length > 1 && (
-              <div className={`hidden md:grid col-span-2 ${photos.length > 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 h-full`}>
-                {photos.slice(1, 5).map((src, i) => (
-                  <div key={src + i} className={`bg-gray-100 ${photos.length === 3 ? 'row-span-2' : ''}`}>
-                    <GalleryImage src={src} alt={`${hotel.name} photo ${i + 2}`} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Photos from onboarding (primary first, then the rest and room photos) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PhotoGallery hotelName={hotel.name} photos={photos} />
       </div>
+
+      {/* Section tabs */}
+      <nav aria-label="Hotel sections" className="sticky top-16 z-30 bg-gray-50/95 backdrop-blur border-b border-gray-200 mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-6 overflow-x-auto text-sm font-semibold text-gray-600">
+          {[['overview', 'Overview'], ['rooms', 'Rooms'], ['amenities', 'Amenities'], ['policies', 'Policies'], ['location', 'Location']].map(([sid, label]) => (
+            <a key={sid} href={`#${sid}`} className="py-3 border-b-2 border-transparent hover:border-brand-600 hover:text-gray-900 whitespace-nowrap">{label}</a>
+          ))}
+        </div>
+      </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -340,21 +330,31 @@ const Detail = () => {
           {/* Left: Info + Room Selection */}
           <div className="flex-1 space-y-6">
             {/* Hotel Info */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div id="overview" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-28">
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-start gap-2">
                   <ShieldCheck size={16} className="mt-0.5 shrink-0" />
                   <p>{error}</p>
                 </div>
               )}
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
-                  <div className="flex items-center text-gray-500 mb-4">
-                    <MapPin className="h-5 w-5 mr-1 text-brand-600" />
-                    {hotel.location}, {hotel.city}
-                  </div>
-                  
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {stars > 0 && (
+                  <span className="inline-flex items-center gap-0.5" aria-label={`${stars}-star property`}>
+                    {Array.from({ length: stars }, (_, i) => <Star key={i} size={14} className="text-amber-400 fill-current" />)}
+                  </span>
+                )}
+                {!stars && ratingNum > 0 && (
+                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-md text-xs font-bold"><Star size={12} className="fill-current" /> {ratingNum}</span>
+                )}
+                {hotel.type && <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{hotel.type}</span>}
+                {hotel.reviews > 0 && <span className="text-xs text-gray-500">· {hotel.reviews} reviews</span>}
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
+              <a href="#location" className="inline-flex items-start text-gray-500 hover:text-gray-800 mb-4 text-sm">
+                <MapPin className="h-4 w-4 mr-1 mt-0.5 text-brand-600 shrink-0" />
+                {[hotel.area || hotel.location, hotel.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ')}
+                <span className="ml-2 font-semibold text-brand-600">View on map</span>
+              </a>
                   {/* Urgency Badges (A/B Tested) */}
                   {badgeVariant === 'variantA' && (
                     <div className="flex flex-wrap gap-2">
@@ -370,38 +370,18 @@ const Detail = () => {
                       )}
                     </div>
                   )}
-                </div>
-                <div className="flex items-center bg-green-50 px-3 py-1.5 rounded-lg">
-                  <Star className="h-5 w-5 text-green-600 mr-1 fill-current" />
-                  <span className="font-bold text-green-700 text-lg">{hotel.rating}</span>
-                </div>
-              </div>
+              <div className="mt-4"><Highlights hotel={hotel} /></div>
 
-              <div className="prose max-w-none text-gray-600 mb-8 mt-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-3">About this hotel</h3>
-                <p className="leading-relaxed">{hotel.description}</p>
-              </div>
-
-              {/* Amenities */}
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Popular Amenities</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
-                  {/* Only what the property actually listed (a fixed list here claimed a pool,
-                      gym and breakfast for every hotel) */}
-                  {(hotel.amenities || []).length === 0 && (
-                    <p className="text-sm text-gray-400 col-span-full">The property hasn&apos;t listed its amenities yet.</p>
-                  )}
-                  {(hotel.amenities || []).map((a, i) => (
-                    <div key={i} className="flex items-center text-gray-600">
-                      <CheckCircle2 className="h-5 w-5 mr-3 text-brand-500" /> {a}
-                    </div>
-                  ))}
+              {hotel.description && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">About this property</h3>
+                  <p className="text-gray-600 leading-relaxed whitespace-pre-line">{hotel.description}</p>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Room Type & Rate Plan Selection */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div id="rooms" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-28">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Select Your Room & Plan</h2>
               <p className="text-sm text-gray-500 mb-6">Choose a room type and your preferred meal plan / rate.</p>
 
@@ -426,11 +406,23 @@ const Detail = () => {
                 </div>
               )}
             </div>
+
+            <Section id="amenities" title="Amenities">
+              <AmenitiesSection amenities={hotel.amenities} />
+            </Section>
+
+            <Section id="policies" title="Policies & house rules" subtitle="Set by the property. Please read before you book.">
+              <PoliciesSection hotel={hotel} />
+            </Section>
+
+            <Section id="location" title="Location">
+              <LocationSection hotel={hotel} />
+            </Section>
           </div>
 
           {/* Right: Booking Widget */}
           <div className="w-full lg:w-[400px]">
-            <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 sticky top-24">
+            <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 lg:sticky lg:top-32">
 
               {/* Selected plan summary */}
               {selectedRatePlan ? (

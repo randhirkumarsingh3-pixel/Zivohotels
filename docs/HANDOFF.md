@@ -270,6 +270,17 @@ settlement. Fixed along the way:
   OTP 123456 (ignored when `NODE_ENV=production`); the property wizard's mobile OTP is a fixed
   123456 in `BasicInfoStep.jsx` (no SMS provider yet).
 
+## Guest hotel page (Nov 2026)
+
+- `src/pages/Detail.jsx` with `src/components/hotel/` (PhotoGallery, HotelSections, galleryPhotos):
+  photo grid + full-screen viewer (labelled by onboarding photo tags and room names), star category,
+  highlights, section tabs, room cards with photo / size / beds / view / occupancy / room amenities,
+  amenities grouped as in onboarding (`src/constants/amenities.js`, shared with the Amenities step),
+  policies & house rules, meal prices and an OpenStreetMap location. Empty sections hide themselves.
+- The Policies step's house rules (`policyRules`) and meal prices (`mealPrices`) were never sent or
+  saved; they are now stored in `integrationSettings` and exposed to guests as `houseRules` /
+  `mealPrices` through an allow list (`PUBLIC_HOUSE_RULES` in hotelController).
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.
