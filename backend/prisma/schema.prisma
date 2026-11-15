@@ -39,6 +39,11 @@ model Hotel {
   city            String
   rating          Float           @default(0)
   reviews         Int             @default(0)
+  /// What's nearby (onboarding Location step): [{ id, name, category: TRANSIT | ATTRACTION |
+  /// LANDMARK | RESTAURANT, type, lat, lng, distanceKm, source: OSM | MANUAL, visible }]
+  nearbyPlaces          Json      @default("[]")
+  /// When nearby places were filled automatically from the map pin (once, for the owner to review)
+  nearbyAutoFilledAt    DateTime?
   /// Member price: % off for signed-in members, set by the hotel in the extranet (0 = not offered)
   memberDiscountPercent Float   @default(0)
   /// Guest review score (average of published reviews, 1-5) and count; rating is the star category

@@ -4,6 +4,7 @@ import {
   Contact as IdCard, BedDouble, UtensilsCrossed, MapPin, Navigation, CheckCircle2, XCircle, Info, Ruler, Eye, Bath,
 } from 'lucide-react';
 import { amenityGroup } from '../../constants/amenities';
+import { NEARBY_CATEGORIES, formatDistance } from '../../constants/nearbyPlaces';
 
 /**
  * Sections of the guest hotel page built from what the property entered at onboarding:
@@ -212,6 +213,46 @@ export const LocationSection = ({ hotel }) => {
           </a>
         </>
       )}
+      <NearbyPlaces places={hotel.nearbyPlaces} />
+    </div>
+  );
+};
+
+/** What's nearby: Transit, Attractions, Landmarks, Restaurants with distances (top 5, then "View all"). */
+const NearbyPlaces = ({ places }) => {
+  const [open, setOpen] = useState({});
+  const visible = (Array.isArray(places) ? places : []).filter((p) => p && p.name && p.visible !== false);
+  const groups = NEARBY_CATEGORIES.map((c) => ({ ...c, items: visible.filter((p) => p.category === c.key).sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999)) })).filter((g) => g.items.length);
+  if (!groups.length) return null;
+  return (
+    <div className="pt-2">
+      <h3 className="font-bold text-gray-900 mb-3">What&apos;s nearby</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-x-8 gap-y-6">
+        {groups.map((g) => {
+          const shown = open[g.key] ? g.items : g.items.slice(0, 5);
+          return (
+            <div key={g.key}>
+              <p className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2"><g.icon size={16} className="text-brand-600" /> {g.label}</p>
+              <ul className="space-y-2">
+                {shown.map((p, i) => (
+                  <li key={`${p.name}-${i}`} className="flex items-start justify-between gap-3 text-sm">
+                    <span className="min-w-0">
+                      <span className="block text-gray-800 leading-snug">{p.name}</span>
+                      {p.type && <span className="block text-xs text-gray-500">{p.type}</span>}
+                    </span>
+                    <span className="text-gray-600 whitespace-nowrap">{formatDistance(p.distanceKm)}</span>
+                  </li>
+                ))}
+              </ul>
+              {g.items.length > 5 && (
+                <button type="button" onClick={() => setOpen((o) => ({ ...o, [g.key]: !o[g.key] }))} className="mt-2 text-sm font-bold text-brand-600 hover:text-brand-700">
+                  {open[g.key] ? 'Show less' : `View all ${g.items.length}`}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

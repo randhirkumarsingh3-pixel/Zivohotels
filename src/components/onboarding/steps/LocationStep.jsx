@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Search, Info, Loader2 } from 'lucide-react';
+import NearbyPlacesEditor from './NearbyPlacesEditor';
 
 const LocationStep = ({ formData, updateForm }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -756,6 +757,8 @@ const LocationStep = ({ formData, updateForm }) => {
           </div>
         </div>
       </div>
+
+      <NearbyPlacesEditor formData={formData} updateForm={updateForm} />
     </div>
   );
 };

@@ -24,6 +24,9 @@ export const buildHotelPayload = (formData, VITE_API_URL) => {
     description: formData.description || '',
     latitude: formData.latitude || undefined,
     longitude: formData.longitude || undefined,
+    // What's nearby: sent only once the owner has touched the list, so a list the server filled
+    // from the map in the background isn't overwritten by the empty list the form started with
+    nearbyPlaces: formData.nearbyPlacesEdited && Array.isArray(formData.nearbyPlaces) ? formData.nearbyPlaces : undefined,
     rating: formData.rating !== undefined && formData.rating !== '' ? formData.rating : undefined,
 
     // Media — send the raw url from DB (relative /uploads/...) or fully qualified
@@ -105,6 +108,8 @@ export const mapBackendToFormData = (hotel) => {
     pincode: hotel.pincode || hotel.integrationSettings?.addressDetails?.pincode || '',
     latitude: hotel.latitude || '',
     longitude: hotel.longitude || '',
+    nearbyPlaces: Array.isArray(hotel.nearbyPlaces) ? hotel.nearbyPlaces : [],
+    nearbyPlacesEdited: false,
     
     receptionPhone: hotel.receptionPhone || hotel.integrationSettings?.contactInfo?.receptionPhone || '',
     receptionEmail: hotel.receptionEmail || hotel.integrationSettings?.contactInfo?.receptionEmail || '',

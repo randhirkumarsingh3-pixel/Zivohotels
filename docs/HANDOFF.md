@@ -365,6 +365,24 @@ settlement. Fixed along the way:
 - Plan fees are booked to ledger account MEMBERSHIP_REVENUE (GST inclusive): confirm GST invoicing
   for membership fees with the accountant. Online purchase needs Razorpay keys (not set locally).
 
+## What's nearby (Nov 2026)
+- Location step of the property wizard (admin onboarding, extranet onboarding and Edit Property) has a
+  **What's nearby** editor: Transit, Attractions, Landmarks, Restaurants, each place with a type and the
+  distance from the map pin. Guests see the visible ones on the hotel page (Location section, top 5 per
+  group with "View all"). Distances only; no travel times.
+- Data: `Hotel.nearbyPlaces` (JSON list) and `Hotel.nearbyAutoFilledAt`. Logic in
+  `backend/services/nearbyPlacesService.js`; endpoints `POST /api/v1/hotels/nearby/suggest` and
+  `/nearby/lookup` (admin/owner).
+- Source is free OpenStreetMap search (Nominatim): about 22 searches around the pin, at most one per
+  second across the whole server (their usage policy), so "Find nearby places" takes about 40 seconds.
+  Owners can also search a place by name or type a name and distance. The Overpass API was tried
+  first; its public servers were at capacity. For heavy use, host Nominatim or use a paid places API.
+- Places with coordinates get their distance recomputed when the pin moves; typed ones keep the typed
+  distance.
+- Auto-fill: when a property with a pin has no nearby places (new or live), the server fills them once
+  in the background and notifies the owner to review them (on save, and a job every 6 hours). Once
+  the owner edits the list, it is never auto-filled again, even if they clear it.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

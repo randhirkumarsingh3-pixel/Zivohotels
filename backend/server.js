@@ -51,6 +51,7 @@ import walletRoutes from './routes/walletRoutes.js';
 import membershipRoutes from './routes/membershipRoutes.js';
 import adminMembershipRoutes from './routes/adminMembershipRoutes.js';
 import { startMembershipJob } from './services/membershipService.js';
+import { startNearbyJob } from './services/nearbyPlacesService.js';
 import adminWalletRoutes from './routes/adminWalletRoutes.js';
 import { startWalletJob } from './services/finance/walletService.js';
 import adminLoyaltyRoutes from './routes/adminLoyaltyRoutes.js';
@@ -288,5 +289,6 @@ server.listen(PORT, '0.0.0.0', () => {
   startLoyaltyJob();
   startWalletJob();
   startMembershipJob();
+  startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
   console.log('✉️  Email worker started in-process');
 });
