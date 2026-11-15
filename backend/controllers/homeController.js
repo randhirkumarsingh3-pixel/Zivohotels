@@ -14,6 +14,7 @@ import cacheUtils from '../utils/cacheUtils.js';
  *   reviews     recent approved reviews of 4+ stars with written comments (shown only if 3+)
  *   signup      the Zivo Rewards sign-up bonus, if the programme is on and the bonus is set
  *   membership  the cheapest paid plan's headline benefits, and how many hotels give member prices
+ *   rewards     how Zivo Rewards points are earned and used; areas: localities with hotels
  * Cached for 5 minutes (the same for every visitor; nothing personal in it).
  */
 const CACHE_KEY = 'public-home-v1';
@@ -49,6 +50,17 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
     if (Number.isFinite(h.latitude) && Number.isFinite(h.longitude) && (h.latitude || h.longitude)) { e.lat += h.latitude; e.lng += h.longitude; e.pins += 1; }
     byCity.set(c, e);
   }
+  // Areas inside cities, for the "Explore hotels" links (e.g. Kurla West, Mumbai)
+  const byArea = new Map();
+  for (const h of hotels) {
+    const area = String(h.integrationSettings?.addressDetails?.area || '').trim();
+    const city = titleCase(h.city);
+    if (!area || !city || /^default/i.test(city)) continue;
+    const k = `${area}|${city}`;
+    byArea.set(k, (byArea.get(k) || 0) + 1);
+  }
+  const areas = [...byArea.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, count]) => { const [area, city] = k.split('|'); return { area, city, count }; });
+
   const cities = [...byCity.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
     .map(([name, e]) => ({ name, count: e.count, ...(e.pins ? { lat: Math.round((e.lat / e.pins) * 1e4) / 1e4, lng: Math.round((e.lng / e.pins) * 1e4) / 1e4 } : {}) }));
 
@@ -118,6 +130,11 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   }));
 
   const loyalty = await loyaltyConfig().catch(() => null);
+  const rewards = loyalty?.enabled ? {
+    earnPointsPer100: Number(loyalty.earnPointsPer100) || 0, pointValue: Number(loyalty.pointValue) || 1,
+    expiryMonths: Number(loyalty.expiryMonths) || 0, maxRedeemPercent: Number(loyalty.maxRedeemPercent) || 0,
+    tiers: (loyalty.tiers || []).map((t) => ({ name: t.name, multiplier: Number(t.multiplier) || 1 })),
+  } : null;
   const signup = loyalty?.enabled && loyalty.signupBonusPoints > 0 ? { points: loyalty.signupBonusPoints, worth: Math.round(loyalty.signupBonusPoints * (Number(loyalty.pointValue) || 1)) } : null;
 
   const paid = await prisma.membershipPlan.findFirst({ where: { isActive: true, isFree: false }, orderBy: [{ price: 'asc' }] });
@@ -132,7 +149,7 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
     } : null,
   };
 
-  const data = { cities, topRated, offers, reviews: reviews.length >= 3 ? reviews : [], signup, membership, hotelCount: hotels.length };
+  const data = { cities, areas, rewards, topRated, offers, reviews: reviews.length >= 3 ? reviews : [], signup, membership, hotelCount: hotels.length };
   cacheUtils.setCache(CACHE_KEY, data, 5 * 60 * 1000);
   res.json({ success: true, data, requestId: req.id });
 });

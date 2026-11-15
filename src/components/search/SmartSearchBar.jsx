@@ -94,61 +94,55 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto relative z-20">
-      <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl md:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-        <div className="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-xl md:rounded-full">
-          
-          <DestinationAutocomplete 
-            destination={destination}
-            setDestination={setDestination}
-            error={error === 'destination'}
-            onFocusNext={() => handleFocusNext('destination')}
-            isMobile={isMobile}
-          />
+    <div className="w-full max-w-5xl mx-auto relative z-20 text-left">
+      <div className="bg-white rounded-2xl shadow-[0_16px_48px_rgba(3,27,49,0.35)] p-2 flex flex-col md:flex-row md:items-stretch gap-1 md:gap-0">
+        <DestinationAutocomplete
+          destination={destination}
+          setDestination={setDestination}
+          error={error === 'destination'}
+          onFocusNext={() => handleFocusNext('destination')}
+          isMobile={isMobile}
+        />
 
-          <div className="hidden md:block w-px bg-gray-200 my-2 mx-1"></div>
+        <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
 
-          <DatePickerV2 
-            checkIn={checkIn}
-            setCheckIn={setCheckIn}
-            checkOut={checkOut}
-            setCheckOut={setCheckOut}
-            error={error === 'dates'}
-            isOpen={openSection === 'dates'}
-            setIsOpen={(val) => setOpenSection(val ? 'dates' : null)}
-            onFocusNext={() => handleFocusNext('dates')}
-            isMobile={isMobile}
-          />
+        <DatePickerV2
+          checkIn={checkIn}
+          setCheckIn={setCheckIn}
+          checkOut={checkOut}
+          setCheckOut={setCheckOut}
+          error={error === 'dates'}
+          isOpen={openSection === 'dates'}
+          setIsOpen={(val) => setOpenSection(val ? 'dates' : null)}
+          onFocusNext={() => handleFocusNext('dates')}
+          isMobile={isMobile}
+        />
 
-          <div className="hidden md:block w-px bg-gray-200 my-2 mx-1"></div>
+        <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
 
-          <GuestSelectorV2 
-            guests={guests}
-            setGuests={setGuests}
-            rooms={rooms}
-            setRooms={setRooms}
-            isOpen={openSection === 'guests'}
-            setIsOpen={(val) => setOpenSection(val ? 'guests' : null)}
-          />
+        <GuestSelectorV2
+          guests={guests}
+          setGuests={setGuests}
+          rooms={rooms}
+          setRooms={setRooms}
+          isOpen={openSection === 'guests'}
+          setIsOpen={(val) => setOpenSection(val ? 'guests' : null)}
+        />
 
-          <div className="mt-2 md:mt-0 md:ml-2">
-            <button 
-              type="button"
-              onClick={handleSearch}
-              // Always the brand red: a grey button looked disabled. Missing fields are pointed out on click.
-              className="w-full md:w-auto h-full min-h-[56px] px-8 rounded-lg md:rounded-full font-bold text-lg flex items-center justify-center transition-colors bg-brand-600 hover:bg-brand-700 text-white"
-            >
-              <Search className="h-5 w-5 mr-2" />
-              Search
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={handleSearch}
+          className="mt-1 md:mt-0 md:ml-2 min-h-[56px] px-7 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-colors bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shrink-0"
+        >
+          <Search className="h-5 w-5" aria-hidden="true" />
+          Search
+        </button>
       </div>
-      
-      {error === 'destination' && (
-        <div className="mt-3 text-red-100 text-sm font-medium bg-red-500/80 inline-block px-4 py-1.5 rounded-full animate-fade-in">
-          Please select a destination
-        </div>
+
+      {error && (
+        <p role="alert" className="mt-3 inline-flex items-center gap-2 bg-white text-red-700 text-sm font-semibold px-4 py-1.5 rounded-full shadow">
+          {error === 'destination' ? 'Choose where you want to stay' : 'Choose your check-in and check-out dates'}
+        </p>
       )}
     </div>
   );

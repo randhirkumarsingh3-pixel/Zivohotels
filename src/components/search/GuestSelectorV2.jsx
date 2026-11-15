@@ -43,18 +43,21 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
   };
 
   return (
-    <div className="flex-1 relative group" ref={wrapperRef}>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 ml-1">Guests & Rooms</label>
-      
-      <div 
-        className={`flex items-center border rounded-xl px-4 py-3 bg-white transition-colors cursor-pointer ${isOpen ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-gray-200 hover:border-brand-500'}`}
+    <div className="md:flex-1 relative min-w-0" ref={wrapperRef}>
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        className={`w-full h-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${isOpen ? 'bg-navy-50 ring-2 ring-navy-500/30' : 'hover:bg-gray-50'}`}
       >
-        <Users className={`mr-3 h-5 w-5 ${isOpen ? 'text-brand-500' : 'text-gray-400'}`} />
-        <span className="text-sm font-medium text-gray-800">
-          {guests} {guests === 1 ? 'Guest' : 'Guests'}, {rooms} {rooms === 1 ? 'Room' : 'Rooms'}
+        <Users className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold text-gray-500">Guests & rooms</span>
+          <span className="block text-base font-semibold text-gray-900 whitespace-nowrap truncate">
+            {guests} {guests === 1 ? 'guest' : 'guests'} · {rooms} {rooms === 1 ? 'room' : 'rooms'}
+          </span>
         </span>
-      </div>
+      </button>
 
       {isOpen && (
         <div className="absolute z-[9999] w-72 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 animate-fade-in origin-top right-0">
@@ -67,17 +70,21 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
             </div>
             <div className="flex items-center space-x-3">
               <button 
+                type="button"
+                aria-label="Fewer guests"
                 onClick={() => updateCount('guests', 'sub')}
                 disabled={guests <= 1 || guests <= rooms}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-4 text-center font-semibold text-gray-900">{guests}</span>
+              <span className="w-6 text-center font-semibold text-gray-900 tabular-nums" aria-live="polite">{guests}</span>
               <button 
+                type="button"
+                aria-label="More guests"
                 onClick={() => updateCount('guests', 'add')}
                 disabled={guests >= 20}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -91,17 +98,21 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
             </div>
             <div className="flex items-center space-x-3">
               <button 
+                type="button"
+                aria-label="Fewer rooms"
                 onClick={() => updateCount('rooms', 'sub')}
                 disabled={rooms <= 1}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-4 text-center font-semibold text-gray-900">{rooms}</span>
+              <span className="w-6 text-center font-semibold text-gray-900 tabular-nums" aria-live="polite">{rooms}</span>
               <button 
+                type="button"
+                aria-label="More rooms"
                 onClick={() => updateCount('rooms', 'add')}
                 disabled={rooms >= 10}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -109,8 +120,9 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
           </div>
 
           <button 
+            type="button"
             onClick={handleClose}
-            className="w-full bg-brand-50 text-brand-700 font-semibold py-2 rounded-lg hover:bg-brand-100 transition-colors text-sm"
+            className="w-full bg-navy-800 text-white font-semibold py-2.5 rounded-lg hover:bg-navy-900 transition-colors text-sm"
           >
             Done
           </button>

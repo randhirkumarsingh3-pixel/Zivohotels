@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, Navigation, History, Map as MapIcon, Building, AlertCircle } from 'lucide-react';
+import { MapPin, Navigation, History, Map as MapIcon, Building, AlertCircle, X } from 'lucide-react';
 import { trackEvent } from '../../services/api';
 import { getPopularDestinations, searchDestinations, nearbyDestinations } from '../../services/api';
 
@@ -137,29 +137,38 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
   const hasResults = suggestions.length > 0;
 
   return (
-    <div className="flex-1 relative group" ref={wrapperRef}>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 ml-1">Destination</label>
-      <div 
-        className={`flex items-center border rounded-xl px-4 py-3 bg-white transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 cursor-text ${error ? 'border-red-500 ring-2 ring-red-500/20' : 'border-gray-200 hover:border-brand-500'}`}
+    <div className="md:flex-[1.15] relative min-w-0" ref={wrapperRef}>
+      <div
+        className={`h-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-text transition-colors ${isOpen ? 'bg-navy-50 ring-2 ring-navy-500/30' : 'hover:bg-gray-50'} ${error ? 'bg-red-50 ring-2 ring-red-500/40' : ''}`}
         onClick={() => setIsOpen(true)}
       >
-        <Search className={`mr-3 h-5 w-5 ${error ? 'text-red-500' : 'text-brand-500'}`} />
-        <input 
-          type="text" 
-          placeholder="City, Hotel, or Area" 
-          aria-label="Destination"
-          data-destination-input="true"
-          className="w-full bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 font-medium text-base"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (!isOpen) setIsOpen(true);
-          }}
-          onFocus={() => {
-            setIsOpen(true);
-            trackEvent("SEARCH_STARTED");
-          }}
-        />
+        <MapPin className={`h-5 w-5 shrink-0 ${error ? 'text-red-600' : 'text-brand-600'}`} aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <label htmlFor="destination-input" className="block text-xs font-semibold text-gray-500">Where to?</label>
+          <input
+            id="destination-input"
+            type="text"
+            autoComplete="off"
+            placeholder="City, area or hotel"
+            data-destination-input="true"
+            className="w-full bg-transparent border-none outline-none p-0 text-base font-semibold text-gray-900 placeholder:text-gray-400 placeholder:font-normal truncate"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => {
+              setIsOpen(true);
+              trackEvent("SEARCH_STARTED");
+            }}
+          />
+        </div>
+        {query && (
+          <button type="button" aria-label="Clear destination" onClick={(e) => { e.stopPropagation(); setQuery(''); setDestination(null); }}
+            className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200 shrink-0">
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {isOpen && (
