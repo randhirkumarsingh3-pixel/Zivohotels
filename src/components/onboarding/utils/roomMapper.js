@@ -34,7 +34,7 @@ export const parseBackendRoomTypes = (roomTypes) => {
       id: rt.id,
       code: rt.code || '',
       type: rt.name.includes('Deluxe') ? 'Deluxe' : rt.name.includes('Suite') ? 'Suite' : rt.name.includes('Standard') ? 'Standard' : 'Deluxe',
-      view: rt.viewType || 'Airport View',
+      view: rt.viewType || '',
       size: size,
       sizeUnit: sizeUnit,
       name: rt.name,
@@ -64,7 +64,8 @@ export const parseBackendRoomTypes = (roomTypes) => {
 export const buildRoomPayload = (room, hotelId, _isNew = false) => {
   return {
     name: room.name,
-    code: room.code || room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6),
+    // Keep a room's code once it has one (a new random code on every save broke the link to it)
+    code: room.code || room.name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 14) + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
     description: room.description || '',
     maxOccupancy: parseInt(room.maxOccupancy) || 2,
     baseOccupancy: parseInt(room.baseAdults) || 2,
@@ -72,8 +73,10 @@ export const buildRoomPayload = (room, hotelId, _isNew = false) => {
     hotelId: hotelId,
     amenities: room.amenities || [],
     bedType: room.beds?.map(b => `${b.count}x ${b.type}`).join(', ') || 'King Bed',
-    roomSize: room.size ? `${room.size} ${room.sizeUnit}` : 'Standard',
-    viewType: room.view || 'Airport View',
+    // Only what the owner entered (these used to default to "Standard" and "Airport View", which
+    // then showed on the guest hotel page)
+    ...(room.size ? { roomSize: `${room.size} ${room.sizeUnit}` } : {}),
+    ...(room.view ? { viewType: room.view } : {}),
     extraBedAllowed: room.allowExtraBed === 'Yes',
     maxExtraBeds: room.allowExtraBed === 'Yes' ? 1 : 0
   };

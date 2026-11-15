@@ -28,6 +28,14 @@ const getAuthHeaders = () => {
   };
 };
 
+/** One readable line from a failed save (first field error, or the message). */
+const saveErrorMessage = (json, fallback) => {
+  const fieldErrors = json?.errors?.fieldErrors;
+  const field = fieldErrors && Object.keys(fieldErrors)[0];
+  if (field) return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldErrors[field][0]}`;
+  return json?.message || fallback;
+};
+
 const PropertyOnboarding = () => {
   const navigate = useNavigate();
   const _location = useLocation();
@@ -120,7 +128,7 @@ const PropertyOnboarding = () => {
           }));
           addToast('Draft saved successfully!', 'success');
         } else {
-          addToast(resJson.message || 'Failed to auto-save property draft', 'error');
+          addToast(saveErrorMessage(resJson, 'Failed to auto-save property draft'), 'error');
         }
         setIsSubmitting(false);
         return res.ok;
@@ -161,7 +169,7 @@ const PropertyOnboarding = () => {
         }
         return true;
       } else {
-        addToast(data.message || 'Failed to save draft', 'error');
+        addToast(saveErrorMessage(data, 'Failed to save draft'), 'error');
         return false;
       }
     } catch (err) {

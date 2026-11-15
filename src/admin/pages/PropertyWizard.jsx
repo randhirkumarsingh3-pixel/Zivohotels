@@ -27,6 +27,14 @@ const getAuthHeaders = () => {
   };
 };
 
+/** One readable line from a failed save (first field error, or the message). */
+const saveErrorMessage = (json, fallback) => {
+  const fieldErrors = json?.errors?.fieldErrors;
+  const field = fieldErrors && Object.keys(fieldErrors)[0];
+  if (field) return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldErrors[field][0]}`;
+  return json?.message || fallback;
+};
+
 const PropertyWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -121,7 +129,7 @@ const PropertyWizard = () => {
           }));
           // Silently succeed on step transition auto-save
         } else {
-          console.error(resJson.message || 'Failed to auto-save property draft');
+          alert(saveErrorMessage(resJson, 'Could not save the property draft'));
         }
         setIsSubmitting(false);
         return res.ok;
@@ -157,7 +165,9 @@ const PropertyWizard = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        console.error(data.message || 'Failed to save draft');
+        // Shown, not just logged: a rejected save (e.g. an invalid PAN or IFSC) used to look like
+        // it worked, and the changes were missing after reloading
+        alert(saveErrorMessage(data, 'Could not save your changes'));
         return false;
       }
       if (data.data?.updatedAt) {
@@ -165,7 +175,7 @@ const PropertyWizard = () => {
       }
       return true;
     } catch (err) {
-      console.error(err.message || 'An error occurred while saving draft.');
+      alert(err.message || 'Could not save your changes. Check your connection and try again.');
       return false;
     } finally {
       setIsSubmitting(false);
