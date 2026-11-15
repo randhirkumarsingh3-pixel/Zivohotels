@@ -4,6 +4,7 @@ import {
   Ticket,
   MessageSquareText,
   Award,
+  Crown,
   Building2, 
   CalendarDays, 
   IndianRupee, 
@@ -106,6 +107,7 @@ const MasterSidebar = () => {
           <NavItem name="Promotions" path="/admin/promotions" icon={<Ticket size={18} />} />
           <NavItem name="Guest Reviews" path="/admin/reviews" icon={<MessageSquareText size={18} />} />
           <NavItem name="Loyalty (Zivo Rewards)" path="/admin/loyalty" icon={<Award size={18} />} />
+          <NavItem name="Membership" path="/admin/membership" icon={<Crown size={18} />} />
           <NavItem name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} />
         </NavGroup>
 

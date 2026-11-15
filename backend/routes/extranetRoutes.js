@@ -12,6 +12,7 @@ import { fetchNotifications, markNotificationsRead } from '../controllers/extran
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
 import { getFinancialOverview, getSettlementDetails, getPayoutHistory } from '../controllers/extranet/financeController.js';
 import { getHotelWallet } from '../controllers/walletController.js';
+import { getHotelMembership, putHotelMembership } from '../controllers/membershipController.js';
 
 import {
   initOnboarding,
@@ -84,5 +85,7 @@ router.get('/finance/overview', getFinancialOverview);
 router.get('/finance/settlements/:settlementId', getSettlementDetails);
 router.get('/finance/payouts', getPayoutHistory);
 router.get('/wallet', getHotelWallet);
+router.get('/membership', getHotelMembership);
+router.put('/membership', putHotelMembership);
 
 export default router;

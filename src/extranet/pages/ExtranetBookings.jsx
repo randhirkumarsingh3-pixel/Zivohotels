@@ -146,6 +146,11 @@ const ExtranetBookings = () => {
                     </div>
                     <p className="text-[11px] text-gray-500 font-medium flex items-center gap-3 flex-wrap">
                       <span className="font-bold text-gray-700">{booking.bookingRef}</span>
+                      {booking.metadata?.membership?.isPaid && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold" title={booking.metadata.membership.prioritySupport ? 'Paid member: priority support' : 'Paid member'}>
+                          {booking.metadata.membership.plan}{booking.metadata.membership.prioritySupport ? ' · priority' : ''}
+                        </span>
+                      )}
                       <span>•</span>
                       <span>{booking.roomType?.name || 'Unknown Room'}</span>
                       <span>•</span>

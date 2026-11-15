@@ -8,7 +8,7 @@ import {
   CheckCircle2, ShieldCheck, CreditCard, Building, 
   PieChart, Clock, AlertTriangle, User, Mail, 
   Phone, BedDouble, CalendarDays, Users, Lock, ChevronRight,
-  ArrowLeft, Briefcase, Download, Tag, Award, Wallet
+  ArrowLeft, Briefcase, Download, Tag, Award, Wallet, Crown
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
@@ -161,9 +161,10 @@ const Checkout = () => {
   const discount = preview?.discountAmount || 0;
   const promotion = preview?.promotion || null;
   const promotionOff = preview?.promotionDiscountAmount || 0;
-  const prepaidOff = preview?.prepaidDiscountAmount ?? Math.max(0, discount - promotionOff - (preview?.loyaltyDiscountAmount || 0));
+  const prepaidOff = preview?.prepaidDiscountAmount ?? Math.max(0, discount - promotionOff - (preview?.loyaltyDiscountAmount || 0) - (preview?.memberDiscountAmount || 0));
   const promoStatus = preview?.promoCodeStatus || null;
   const rewards = preview?.loyalty || null;
+  const member = preview?.membership || null;
   const pointsOff = preview?.loyaltyDiscountAmount || 0;
   const taxes = preview?.taxAmount || 0;
   const taxPercentage = preview?.taxPercentage;
@@ -633,6 +634,26 @@ const Checkout = () => {
                     </div>
                   )}
 
+                  {member?.hotelDiscount > 0 && (
+                    <div className="flex justify-between text-amber-700 font-bold text-sm bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
+                      <span className="flex items-center gap-1"><Crown size={14} /> Member price ({member.hotelMemberPercent}%)</span>
+                      <span>-₹{member.hotelDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {member?.zivoDiscount > 0 && (
+                    <div className="flex justify-between text-amber-700 font-bold text-sm bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
+                      <span className="flex items-center gap-1"><Crown size={14} /> {member.plan} extra</span>
+                      <span>-₹{member.zivoDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {member && !member.isPaid && (
+                    <a href="/membership" className="block text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                      <Crown size={12} className="inline mr-1" />Get extra savings, 2× points and longer free cancellation with Zivo Prime →
+                    </a>
+                  )}
+                  {member?.isPaid && member.freeCancelExtraHours > 0 && (
+                    <p className="text-[11px] text-amber-800">{member.plan}: free cancellation {member.freeCancelExtraHours} hours longer than the hotel&apos;s policy{member.prioritySupport ? ' · priority support' : ''}</p>
+                  )}
                   {pointsOff > 0 && (
                     <div className="flex justify-between text-green-700 font-bold text-sm bg-green-50 px-3 py-2 rounded-xl border border-green-100">
                       <span className="flex items-center gap-1"><Award size={14} /> Zivo Rewards ({rewards.pointsApplied.toLocaleString('en-IN')} pts)</span>

@@ -45,6 +45,8 @@ const schema = z.object({
   perUserLimit: optInt(1, 100),
   firstBookingOnly: z.boolean().optional(),
   fundedBy: z.enum(['HOTEL', 'ZIVO']).optional(),
+  // Who can use it: everyone, any member (signed-in guest), or a paid plan's members (admins)
+  audience: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{3,20}$/).optional(),
   isActive: z.boolean().optional(),
 }).strip();
 
@@ -80,8 +82,13 @@ const buildData = async (req, input, existing = null) => {
     if (clash) bad(`The code ${input.code} is already in use`, 409);
   }
 
+  if (input.audience && !['ALL', 'MEMBERS'].includes(input.audience)) {
+    if (!isAdmin(req)) bad('Hotels can target everyone or members; plan-only offers are set by ZivoHotels');
+    const plan = await prisma.membershipPlan.findUnique({ where: { code: input.audience } });
+    if (!plan || plan.isFree) bad('Unknown membership plan');
+  }
   const data = {};
-  for (const k of ['name', 'description', 'code', 'discountType', 'value', 'maxDiscount', 'minBookingAmount', 'minAdvanceDays', 'maxAdvanceDays', 'usageLimit', 'perUserLimit', 'firstBookingOnly', 'isActive']) {
+  for (const k of ['audience', 'name', 'description', 'code', 'discountType', 'value', 'maxDiscount', 'minBookingAmount', 'minAdvanceDays', 'maxAdvanceDays', 'usageLimit', 'perUserLimit', 'firstBookingOnly', 'isActive']) {
     if (input[k] !== undefined) data[k] = input[k];
   }
   if (input.minNights !== undefined) data.minNights = input.minNights || 1;

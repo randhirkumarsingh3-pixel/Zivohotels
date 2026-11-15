@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import ledgerService from './finance/ledgerService.js';
 import { move as moveWallet } from './finance/walletService.js';
 import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import prisma from '../config/db.js';
@@ -42,10 +43,27 @@ const POLICY_LABELS = {
  * What a guest would get back if they cancelled now (same rules as cancelBookingWithRefund).
  * Shown before they confirm; the old dialog always promised a full refund.
  */
+/**
+ * The guest's refund under the property's policy, and the membership perk: a paid plan with
+ * freeCancelExtraHours (at booking time) lets the guest cancel free for that much longer. The fee
+ * the hotel would have kept is then paid to the hotel by Zivo (memberWaiver).
+ */
+const guestRefund = (booking, policy, now = new Date()) => {
+  const base = calculateRefund(booking, policy, now);
+  const extra = Number(booking.metadata?.membership?.freeCancelExtraHours) || 0;
+  if (extra > 0) {
+    const asIfEarlier = calculateRefund(booking, policy, new Date(now.getTime() - extra * 60 * 60 * 1000));
+    if (asIfEarlier.refundAmount > base.refundAmount) {
+      return { refundAmount: asIfEarlier.refundAmount, policyApplied: `${asIfEarlier.policyApplied}_MEMBER_EXTENDED`, memberWaiver: roundMoney(asIfEarlier.refundAmount - base.refundAmount) };
+    }
+  }
+  return { ...base, memberWaiver: 0 };
+};
+
 export const previewGuestCancellation = async (booking) => {
   const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
   const paidAmount = toMoney(booking.paidAmount) || 0;
-  const { refundAmount, policyApplied } = calculateRefund(booking, policy);
+  const { refundAmount, policyApplied, memberWaiver } = guestRefund(booking, policy);
   // Zivo Cash used on the booking goes back to the wallet; for the rest the guest can choose
   const walletPart = Math.min(refundAmount, toMoney(booking.walletAmount) || 0);
   return {
@@ -54,6 +72,8 @@ export const previewGuestCancellation = async (booking) => {
     walletRefund: roundMoney(walletPart),
     choosableRefund: roundMoney(refundAmount - walletPart),
     retainedAmount: roundMoney(paidAmount - refundAmount),
+    memberWaiver,
+    memberPlan: memberWaiver > 0 ? booking.metadata?.membership?.plan : null,
     payAtHotel: booking.paymentType === 'PAY_AT_HOTEL',
     policyCode: policy.policyCode,
     policyLabel: POLICY_LABELS[policy.policyCode] || 'Standard cancellation policy',
@@ -93,9 +113,10 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   const paidAmount = toMoney(booking.paidAmount) || 0;
   let refundAmount;
   let policyApplied;
+  let memberWaiver = 0;
   if (initiatedBy === 'GUEST') {
     const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
-    ({ refundAmount, policyApplied } = calculateRefund(booking, policy));
+    ({ refundAmount, policyApplied, memberWaiver } = guestRefund(booking, policy));
   } else {
     refundAmount = roundMoney(paidAmount);
     policyApplied = `CANCELLED_BY_${initiatedBy}`; // full refund
@@ -186,8 +207,16 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     });
 
     // Fee kept under the property's policy -> the hotel's share is settled in its payout cycle
-    if (initiatedBy === 'GUEST' && retainedAmount > 0) {
-      await settlementService.createForRetained(tx, updated, 'CANCELLATION', retainedAmount);
+    // (one settlement per booking: the fee kept, plus a fee waived for a member, which Zivo pays)
+    if (initiatedBy === 'GUEST' && retainedAmount + memberWaiver > 0) {
+      await settlementService.createForRetained(tx, updated, 'CANCELLATION', roundMoney(retainedAmount + memberWaiver));
+    }
+    // Membership perk: the guest got the fee back, Zivo pays the hotel the fee it would have kept
+    if (initiatedBy === 'GUEST' && memberWaiver > 0) {
+      await ledgerService.record([
+        { referenceId: bookingId, account: 'ZIVO_MEMBERSHIP', type: 'DEBIT', amount: memberWaiver, description: `Cancellation fee waived for a member, paid to the hotel by Zivo (${booking.bookingRef})` },
+        { referenceId: bookingId, account: 'USER', type: 'CREDIT', amount: memberWaiver, description: `Cancellation fee refunded to the member (${booking.bookingRef})` },
+      ], tx);
     }
 
     await tx.auditLog.create({
@@ -198,7 +227,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         userId,
         requestId,
         details: {
-          initiatedBy, refundAmount, retainedAmount, refundToWallet: toWallet, refundToSource: toSource, walletReturned, status: 'SUCCESS', policy: policyApplied,
+          initiatedBy, refundAmount, retainedAmount, memberWaiver, refundToWallet: toWallet, refundToSource: toSource, walletReturned, status: 'SUCCESS', policy: policyApplied,
           razorpayRefundId, paymentId: booking.razorpayPaymentId
         }
       }
@@ -209,8 +238,9 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
   // Tell the hotel (in-app; plus email when the hotel side cancelled, so the owner has a record)
   const message = initiatedBy === 'GUEST'
-    ? `The guest cancelled booking ${booking.bookingRef}. Refund under your cancellation policy: ${inr(refundAmount)}.` +
-      (retainedAmount > 0 ? ` ${inr(retainedAmount)} was kept and will be settled in your payout cycle.` : '')
+    ? `The guest cancelled booking ${booking.bookingRef}. Refund under your cancellation policy: ${inr(refundAmount - memberWaiver)}.` +
+      (retainedAmount > 0 ? ` ${inr(retainedAmount)} was kept and will be settled in your payout cycle.` : '') +
+      (memberWaiver > 0 ? ` As a ${booking.metadata?.membership?.plan || 'member'} benefit the guest also got the ${inr(memberWaiver)} fee back; ZivoHotels pays you that fee in your payout cycle.` : '')
     : `Booking ${booking.bookingRef} was cancelled by ${byLabel}.` +
       (refundAmount > 0 ? ` A full refund of ${inr(refundAmount)} will be initiated to the guest.` : ' Nothing was paid online, so there is no refund.');
 

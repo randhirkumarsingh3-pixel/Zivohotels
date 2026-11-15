@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { membershipFor, memberDiscounts } from './membershipService.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
 import { pricingDomain } from '../domains/pricingDomain.js';
 import { dailyRatesFor, stopSellNights } from './ariService.js';
@@ -19,16 +20,33 @@ import { sendBookingConfirmationEmail } from './emailService.js';
  * again with that promotion. Used by preview and booking so both give the same result.
  */
 const priceWithPromotion = async (calculationInput, ctx) => {
+  const membership = await membershipFor(ctx.userId);
   const base = pricingDomain.calculate(calculationInput);
-  const { promotion, codeStatus } = await resolveBest({ ...ctx, subtotal: base.subtotal });
-  const withPromo = promotion ? { ...calculationInput, appliedPromotion: promotion.raw } : calculationInput;
-  let pricing = promotion ? pricingDomain.calculate(withPromo) : base;
-  // Zivo Rewards: points the member chose to use (and what the stay will earn)
+  const { promotion, codeStatus } = await resolveBest({ ...ctx, membership, subtotal: base.subtotal });
+  let input = promotion ? { ...calculationInput, appliedPromotion: promotion.raw } : calculationInput;
+  let pricing = promotion ? pricingDomain.calculate(input) : base;
+  // Membership: the hotel's member price (hotel-funded) and the paid plan's extra (Zivo-funded)
+  const member = membership
+    ? memberDiscounts(membership, calculationInput.roomType?.hotel?.memberDiscountPercent, pricing.subtotal - pricing.discountAmount)
+    : { hotel: 0, zivo: 0 };
+  if (member.hotel + member.zivo > 0) {
+    input = { ...input, memberDiscountAmount: member.hotel + member.zivo };
+    pricing = pricingDomain.calculate(input);
+  }
+  // Zivo Rewards: points the member chose to use (and what the stay will earn, plan multiplier included)
   const loyalty = ctx.userId
-    ? await planForCheckout({ userId: ctx.userId, eligibleAmount: pricing.subtotal - pricing.discountAmount, requestedPoints: ctx.usePoints })
+    ? await planForCheckout({ userId: ctx.userId, eligibleAmount: pricing.subtotal - pricing.discountAmount, requestedPoints: ctx.usePoints, extraMultiplier: membership?.benefits?.pointsMultiplier || 1 })
     : null;
-  if (loyalty?.pointsApplied) pricing = pricingDomain.calculate({ ...withPromo, loyaltyDiscountAmount: loyalty.discount });
-  return { pricing, promotion, codeStatus, loyalty };
+  if (loyalty?.pointsApplied) pricing = pricingDomain.calculate({ ...input, loyaltyDiscountAmount: loyalty.discount });
+  const membershipSummary = membership ? {
+    plan: membership.plan.name, code: membership.plan.code, isPaid: membership.isPaid,
+    hotelDiscount: member.hotel, zivoDiscount: member.zivo,
+    hotelMemberPercent: calculationInput.roomType?.hotel?.memberDiscountPercent || 0,
+    pointsMultiplier: membership.benefits.pointsMultiplier,
+    freeCancelExtraHours: membership.benefits.freeCancelExtraHours,
+    prioritySupport: membership.benefits.prioritySupport,
+  } : null;
+  return { pricing, promotion, codeStatus, loyalty, membership: membershipSummary };
 };
 
 export const bookingService = {
@@ -96,11 +114,11 @@ export const bookingService = {
       dailyRates
     };
 
-    const { pricing, promotion, codeStatus, loyalty } = await priceWithPromotion(calculationInput, {
+    const { pricing, promotion, codeStatus, loyalty, membership } = await priceWithPromotion(calculationInput, {
       hotelId: roomType.hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId: params.userId, code: couponCode, usePoints: params.usePoints
     });
     const { raw: _raw, ...promotionSummary } = promotion || {};
-    return { ...pricing, promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus, loyalty };
+    return { ...pricing, promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus, loyalty, membership };
   },
 
   /**
@@ -177,7 +195,7 @@ export const bookingService = {
       dailyRates
     };
 
-    const { pricing, promotion, codeStatus, loyalty } = await priceWithPromotion(calculationInput, {
+    const { pricing, promotion, codeStatus, loyalty, membership } = await priceWithPromotion(calculationInput, {
       hotelId, roomTypeId, ratePlanId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode, usePoints: context.usePoints
     });
     if (context.usePoints && loyalty?.reason) throw Object.assign(new Error(loyalty.reason), { statusCode: 400 });
@@ -240,6 +258,9 @@ export const bookingService = {
              id: promotion.id, name: promotion.name, code: promotion.code, label: promotion.label,
              discountAmount: pricing.promotionDiscountAmount, fundedBy: promotion.fundedBy, platform: promotion.platform
            } : null,
+           // Membership at booking time: discounts (Zivo-funded part paid to the hotel in the
+           // settlement), extended free cancellation and priority support
+           membership: membership && (membership.isPaid || membership.hotelDiscount > 0) ? membership : null,
            loyalty: loyalty ? {
              pointsRedeemed: loyalty.pointsApplied, discountAmount: pricing.loyaltyDiscountAmount,
              pointsEarned: loyalty.earn, tier: loyalty.tier?.name, fundedBy: 'ZIVO'

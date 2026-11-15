@@ -730,6 +730,9 @@ const MyBookings = () => {
                 <div className="space-y-6">
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
                     <h4 className="font-bold text-gray-900 text-sm">Contact Support & Property</h4>
+                    {activeBooking.metadata?.membership?.prioritySupport && (
+                      <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{activeBooking.metadata.membership.plan} booking: you get priority support. Mention your booking ID when you call.</p>
+                    )}
                     <p className="text-xs text-gray-500">Connect directly with the team or navigate to the property.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-bold text-gray-800">
                       <a href={`tel:${activeBooking.guestPhone}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors">

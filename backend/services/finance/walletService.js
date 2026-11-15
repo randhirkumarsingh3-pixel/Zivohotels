@@ -76,6 +76,7 @@ export const CATEGORY_LABEL = {
   PAYMENT_RETURNED: 'Returned from booking',
   ADMIN_CREDIT: 'Credit from ZivoHotels',
   ADMIN_DEBIT: 'Correction by ZivoHotels',
+  MEMBERSHIP: 'Membership',
   OTHER: 'Other',
 };
 

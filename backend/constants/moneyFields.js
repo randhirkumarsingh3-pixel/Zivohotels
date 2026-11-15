@@ -24,4 +24,6 @@ export const MONEY_FIELDS = {
   dynamicPricingSetting: ['minPrice', 'maxPrice'],
   promotion: ['value', 'maxDiscount', 'minBookingAmount'],
   promotionRedemption: ['discountAmount'],
+  membershipPlan: ['price'],
+  membership: ['pricePaid'],
 };

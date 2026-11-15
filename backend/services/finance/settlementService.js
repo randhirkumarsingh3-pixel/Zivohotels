@@ -97,8 +97,10 @@ export const computeSettlement = ({ grossAmount, taxAmount, collected, commissio
 export const zivoFundedDiscount = (booking) => {
   const promo = booking?.metadata?.promotion;
   const promoPart = promo && promo.fundedBy === 'ZIVO' ? D(promo.discountAmount || 0) : D(0);
-  // Zivo Rewards points used by the guest are paid for by Zivo too
-  return promoPart.plus(D(booking?.metadata?.loyalty?.discountAmount || 0));
+  // Zivo Rewards points used and a paid membership's extra discount are paid for by Zivo too
+  return promoPart
+    .plus(D(booking?.metadata?.loyalty?.discountAmount || 0))
+    .plus(D(booking?.metadata?.membership?.zivoDiscount || 0));
 };
 
 /** A checked-out stay: the whole booking value; collected = paid minus refunded. */
