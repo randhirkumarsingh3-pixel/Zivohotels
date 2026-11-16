@@ -36,3 +36,6 @@ public/uploads/*
 # VPS deploy: server settings and Caddy backups (never commit)
 deploy/vps/.env
 deploy/vps/.caddy-backups/
+
+# Generated guest invoice PDFs (never commit)
+backend/public/invoices/

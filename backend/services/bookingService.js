@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import eventBus from '../events/eventBus.js';
 import { membershipFor, memberDiscounts } from './membershipService.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
 import { pricingDomain } from '../domains/pricingDomain.js';
@@ -430,6 +431,10 @@ export const bookingService = {
 
     if (paymentType === 'PAY_AT_HOTEL' || bookingResult.status === 'CONFIRMED') {
       sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
+    }
+    // Paid in full with Zivo Cash: issue the invoice now (pay-at-hotel stays get theirs at check-out)
+    if (paymentType !== 'PAY_AT_HOTEL' && bookingResult.status === 'CONFIRMED') {
+      eventBus.emitEvent('BOOKING_CONFIRMED', { bookingId: bookingResult.id });
     }
 
     // Occupancy changed: refresh this property's dynamic prices (debounced, in the background).

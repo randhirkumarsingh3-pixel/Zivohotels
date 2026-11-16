@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { scheduleRecompute } from '../services/dynamicPricingService.js';
 import Razorpay from 'razorpay';
 import prisma from '../config/db.js';
+import eventBus from '../events/eventBus.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getSystemConfig } from '../config/systemConfig.js';
@@ -225,6 +226,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     });
 
     sendBookingConfirmationEmail(bookingId).catch(err => console.error("[EmailService] verifyPayment confirmation email dispatch failed:", err));
+    // Paid online: issue the invoice (generated in the background, idempotent)
+    eventBus.emitEvent('BOOKING_CONFIRMED', { bookingId });
 
     res.status(200).json({ success: true, message: 'Payment verified successfully', requestId: req.id });
 });
@@ -289,6 +292,7 @@ export const webhook = asyncHandler(async (req, res) => {
         });
 
         sendBookingConfirmationEmail(booking.id).catch(err => console.error("[EmailService] Webhook confirmation email dispatch failed:", err));
+        eventBus.emitEvent('BOOKING_CONFIRMED', { bookingId: booking.id });
       }
     } 
     else if (event === 'payment.refunded') {

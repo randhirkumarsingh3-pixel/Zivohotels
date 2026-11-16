@@ -24,7 +24,7 @@ COPY . .
 RUN rm -rf .env .env.local tests/ docs/ *.log
 
 # Upload folders (mounted as volumes on a VPS): public photos and private KYC documents
-RUN mkdir -p public/uploads private_uploads
+RUN mkdir -p public/uploads public/invoices private_uploads
 
 ENV NODE_ENV=production
 EXPOSE 8080

@@ -50,6 +50,7 @@ services:
     volumes:
       - uploads:/app/public/uploads            # hotel photos (public)
       - private-uploads:/app/private_uploads   # KYC documents (private)
+      - invoices:/app/public/invoices          # guest invoice PDFs (served only via the API)
     depends_on:
       db:
         condition: service_healthy
@@ -87,3 +88,4 @@ volumes:
   db-data: {}
   uploads: {}
   private-uploads: {}
+  invoices: {}

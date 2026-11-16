@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ExperimentProvider } from './context/ExperimentContext';
 
@@ -10,6 +10,7 @@ import Listing from './pages/Listing';
 import Detail from './pages/Detail';
 import Checkout from './pages/Checkout';
 import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
 import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import MyBookings from './pages/MyBookings';
@@ -102,8 +103,9 @@ function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Account /></ProtectedRoute>} />
               <Route path="/login" element={<Login />} />
-              <Route path="/admin/login" element={<Login />} />
-              <Route path="/owner/login" element={<Login />} />
+              {/* Separate logins: admin console, hotel partners (extranet), guests (/login) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/owner/login" element={<Navigate to="/extranet/login" replace />} />
               <Route path="/extranet/login" element={<ExtranetLogin />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/accept-invite" element={<AcceptInvite />} />

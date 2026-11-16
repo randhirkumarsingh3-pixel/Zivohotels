@@ -22,12 +22,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  // options.allowedRoles: each login page accepts only its own kind of account (admin console,
+  // partner extranet). A wrong account is refused before any session is stored.
+  const login = async (email, password, options = {}) => {
     try {
       const response = await loginUser({ email, password });
       
       const loggedInUser = response.data.user;
       const jwtToken = response.data.token || response.token; // Fallback just in case
+
+      if (options.allowedRoles && !options.allowedRoles.includes(loggedInUser?.role)) {
+        return { success: false, message: options.wrongRoleMessage || 'This account cannot sign in here.' };
+      }
 
       // Save to state
       setUser(loggedInUser);
@@ -37,7 +43,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('jwt_token', jwtToken);
       localStorage.setItem('user_data', JSON.stringify(loggedInUser));
 
-      return { success: true };
+      return { success: true, user: loggedInUser };
     } catch (error) {
       return { success: false, message: error.message };
     }
