@@ -13,6 +13,7 @@ import {
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
 import usePageTitle from '../hooks/usePageTitle';
+import { occupancyOf, occParams, roomGuestsLabel } from '../utils/occupancy';
 
 const useCountdown = (expiresAt) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -49,6 +50,25 @@ const Checkout = () => {
 
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const handleForm = (e) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  // The rooms chosen on the hotel page: type, plan and guests of each (older selections: one type
+  // and plan for all rooms, guests from the search)
+  const stayRooms = selectedHotel?.roomSelections?.length
+    ? selectedHotel.roomSelections
+    : occupancyOf(searchParams).map((r) => ({ ...r, roomType: selectedHotel?.selectedRoomType, ratePlan: selectedHotel?.selectedRatePlan }));
+  const multiRoom = stayRooms.length > 1;
+  const roomLines = stayRooms.map((r) => ({
+    roomTypeId: r.roomType?.id || selectedHotel?.defaultRoomTypeId,
+    ratePlanId: r.ratePlan?.id || selectedHotel?.defaultRatePlanId,
+    adults: r.adults, children: r.children || 0,
+  }));
+  const roomLinesKey = JSON.stringify(roomLines);
+  const stayTotals = { adults: roomLines.reduce((t, r) => t + r.adults, 0), children: roomLines.reduce((t, r) => t + r.children, 0) };
+  // Lead guest of each room (one name per room). Room 1 is the person booking unless changed.
+  const [roomGuests, setRoomGuests] = useState([]);
+  const bookerName = `${form.firstName} ${form.lastName}`.trim();
+  const leadGuest = (i) => (roomGuests[i] !== undefined ? roomGuests[i] : i === 0 ? bookerName : '');
+  const setLeadGuest = (i, v) => setRoomGuests((g) => { const n = [...g]; n[i] = v; return n; });
 
   // Logged-in users choose whether they are the guest (details filled from their profile) or are
   // booking for someone else (details entered for that guest)
@@ -110,14 +130,15 @@ const Checkout = () => {
     try {
       const res = await previewBookingApi({
         hotelId: selectedHotel.id,
-        roomTypeId: selectedHotel.selectedRoomType?.id || selectedHotel.defaultRoomTypeId,
-        ratePlanId: selectedHotel.selectedRatePlan?.id || selectedHotel.defaultRatePlanId,
+        roomTypeId: roomLines[0].roomTypeId,
+        ratePlanId: roomLines[0].ratePlanId,
         checkIn: searchParams.checkIn,
         checkOut: searchParams.checkOut,
-        adults: searchParams.adults || searchParams.guests || 2,
-        children: searchParams.children || 0,
-        extraBeds: searchParams.extraBeds || 0,
-        rooms: searchParams.rooms || 1,
+        adults: stayTotals.adults,
+        children: stayTotals.children,
+        extraBeds: 0,
+        rooms: roomLines.length,
+        roomLines,
         paymentType,
         ...(promoCode ? { promoCode } : {}),
         ...(usePoints > 0 ? { usePoints } : {})
@@ -132,7 +153,8 @@ const Checkout = () => {
     } finally {
       setFetchingPreview(false);
     }
-  }, [selectedHotel, searchParams, paymentType, promoCode, usePoints]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHotel, searchParams.checkIn, searchParams.checkOut, roomLinesKey, paymentType, promoCode, usePoints]);
 
   useEffect(() => {
     fetchPreview();
@@ -193,6 +215,12 @@ const Checkout = () => {
       setError('Please agree to the Terms & Conditions and Cancellation Policy.');
       return;
     }
+    // A lead guest for every room
+    const unnamed = stayRooms.findIndex((_, i) => leadGuest(i).trim().length < 2);
+    if (unnamed >= 0) {
+      setError(multiRoom ? `Enter the lead guest's name for room ${unnamed + 1}.` : 'Enter the guest\'s name.');
+      return;
+    }
     if (withCompany) {
       if (!company.name.trim()) { setError('Enter the company name for the GST invoice, or untick "Add company / GST details".'); return; }
       if (company.gstin && !GSTIN_RE.test(company.gstin.trim())) { setError('Enter a valid 15-character GSTIN (for example 27ABCDE1234F1Z5).'); return; }
@@ -205,17 +233,19 @@ const Checkout = () => {
     try {
       const bookingPayload = {
         hotelId: selectedHotel.id,
-        roomTypeId: selectedHotel.selectedRoomType?.id || selectedHotel.defaultRoomTypeId,
-        ratePlanId: selectedHotel.selectedRatePlan?.id || selectedHotel.defaultRatePlanId,
-        guestName: `${form.firstName} ${form.lastName}`.trim(),
+        roomTypeId: roomLines[0].roomTypeId,
+        ratePlanId: roomLines[0].ratePlanId,
+        guestName: bookerName,
         guestEmail: form.email,
         guestPhone: form.phone,
         checkIn: searchParams.checkIn,
         checkOut: searchParams.checkOut,
-        adults: searchParams.adults || searchParams.guests || 2,
-        children: searchParams.children || 0,
-        extraBeds: searchParams.extraBeds || 0,
-        rooms: searchParams.rooms || 1,
+        adults: stayTotals.adults,
+        children: stayTotals.children,
+        extraBeds: 0,
+        rooms: roomLines.length,
+        // Each room with its lead guest
+        roomLines: roomLines.map((r, i) => ({ ...r, guestName: leadGuest(i).trim() })),
         paymentType,
         ...(promoCode && promoStatus?.ok ? { promoCode } : {}),
         ...(rewards?.pointsApplied ? { usePoints: rewards.pointsApplied } : {}),
@@ -383,7 +413,7 @@ const Checkout = () => {
           <button
             type="button"
             onClick={() => {
-              const q = new URLSearchParams({ checkin: searchParams.checkIn || '', checkout: searchParams.checkOut || '', guests: String(searchParams.guests || 2), rooms: String(searchParams.rooms || 1) });
+              const q = new URLSearchParams({ checkin: searchParams.checkIn || '', checkout: searchParams.checkOut || '', ...occParams(stayRooms.map((r) => ({ adults: r.adults, children: r.children || 0 }))) });
               navigate(`/hotel/${selectedHotel.id}?${q}`);
             }}
             className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-brand-700"
@@ -468,6 +498,27 @@ const Checkout = () => {
                 </div>
               </div>
 
+              {/* Several rooms: the lead guest of each (the hotel checks each room in under this name) */}
+              {multiRoom && (
+                <fieldset className="mt-8">
+                  <legend className="text-base font-black text-gray-900">Lead guest for each room</legend>
+                  <p className="text-xs text-gray-500 mt-1 mb-4">The hotel checks each room in under this name; the lead guest must be 18 or older. Room 1 is you unless you change it.</p>
+                  <div className="space-y-3">
+                    {stayRooms.map((r, i) => (
+                      <div key={i} className="grid grid-cols-1 md:grid-cols-[11rem_1fr] gap-2 md:items-center">
+                        <label htmlFor={`room-guest-${i}`} className="text-sm">
+                          <span className="font-bold text-gray-900">Room {i + 1}</span>
+                          <span className="block text-xs text-gray-500">{r.roomType?.name} · {roomGuestsLabel(r)}</span>
+                        </label>
+                        <input id={`room-guest-${i}`} type="text" required value={leadGuest(i)} onChange={(e) => setLeadGuest(i, e.target.value)}
+                          placeholder="Lead guest's full name" autoComplete="off" maxLength={120}
+                          className="w-full bg-gray-50 border-b-2 border-b-gray-200 rounded-t-xl px-4 py-3 focus:bg-white focus:border-b-brand-700 outline-none font-medium" />
+                      </div>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
               {/* Optional: GST invoice in a company's name */}
               <label className="mt-6 flex items-center gap-3 cursor-pointer select-none">
                 <input type="checkbox" checked={withCompany} onChange={e => setWithCompany(e.target.checked)} className="w-4 h-4 accent-brand-700" />
@@ -537,7 +588,7 @@ const Checkout = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Privacy Policy</a> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking.
+                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Privacy Policy</a> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking, and confirm that {multiRoom ? 'the lead guest of each room is' : 'the guest checking in is'} 18 or older (guests aged 13–17 stay only with an adult).
                 </p>
               </label>
             </section>
@@ -593,20 +644,23 @@ const Checkout = () => {
                 </div>
 
                 <div className="space-y-4 py-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-700">
-                      <BedDouble size={16} />
+                  {stayRooms.map((r, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-700 shrink-0">
+                        <BedDouble size={16} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-gray-900">{multiRoom && <span className="text-gray-500 font-semibold">Room {i + 1}: </span>}{r.roomType?.name}</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase">{r.ratePlan?.name} · {roomGuestsLabel(r)}</p>
+                      </div>
+                      {multiRoom && preview?.roomsBreakdown?.[i] && <p className="text-sm font-semibold text-gray-900 tabular-nums">₹{Number(preview.roomsBreakdown[i].subtotal).toLocaleString('en-IN')}</p>}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{selectedHotel.selectedRoomType?.name}</p>
-                      <p className="text-xs text-gray-400 font-bold uppercase">{selectedHotel.selectedRatePlan?.name}</p>
-                    </div>
-                  </div>
+                  ))}
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-700">
                       <Users size={16} />
                     </div>
-                    <p className="text-sm font-bold text-gray-900">{preview?.rooms || searchParams.rooms} Room, {searchParams.guests} Guests</p>
+                    <p className="text-sm font-bold text-gray-900">{stayRooms.length} room{stayRooms.length > 1 ? 's' : ''}, {stayTotals.adults + stayTotals.children} guest{stayTotals.adults + stayTotals.children === 1 ? '' : 's'}</p>
                   </div>
                 </div>
 
@@ -744,7 +798,7 @@ const Checkout = () => {
                     )}
                   </div>
                   <div className="flex justify-between text-gray-500 font-medium">
-                    <span>GST{taxPercentage != null ? ` (${taxPercentage}%)` : ''}</span>
+                    <span>GST{preview?.taxBreakdown?.length > 1 ? ` (${preview.taxBreakdown.map((t) => `${t.percentage}%`).join(" + ")})` : taxPercentage != null ? ` (${taxPercentage}%)` : ''}</span>
                     <span className="text-gray-900">₹{taxes.toLocaleString()}</span>
                   </div>
                 </div>

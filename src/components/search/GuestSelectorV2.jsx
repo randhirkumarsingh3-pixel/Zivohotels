@@ -1,10 +1,31 @@
 import React, { useEffect, useRef } from 'react';
-import { Users, Plus, Minus } from 'lucide-react';
+import { Users, Plus, Minus, Trash2 } from 'lucide-react';
 import { track } from '../../utils/analytics';
+import { MAX_ROOMS, MAX_ADULTS_PER_ROOM, MAX_CHILDREN_PER_ROOM, occTotals } from '../../utils/occupancy';
 
-const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen }) => {
+const Counter = ({ label, value, onMinus, onPlus, minusDisabled, plusDisabled }) => (
+  <div className="flex items-center space-x-3">
+    <button type="button" aria-label={`Fewer ${label}`} onClick={onMinus} disabled={minusDisabled}
+      className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+      <Minus className="h-4 w-4" />
+    </button>
+    <span className="w-5 text-center font-semibold text-gray-900 tabular-nums" aria-live="polite">{value}</span>
+    <button type="button" aria-label={`More ${label}`} onClick={onPlus} disabled={plusDisabled}
+      className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+      <Plus className="h-4 w-4" />
+    </button>
+  </div>
+);
+
+/**
+ * Rooms and who stays in each: adults and children per room, up to 8 rooms.
+ * occupancy = [{ adults, children }]; setOccupancy gets the new list.
+ */
+const GuestSelectorV2 = ({ occupancy, setOccupancy, isOpen, setIsOpen, align = 'right' }) => {
   const wrapperRef = useRef(null);
-  
+  const rooms = occupancy?.length ? occupancy : [{ adults: 2, children: 0 }];
+  const { guests } = occTotals(rooms);
+
   // Handle outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -18,28 +39,13 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, setIsOpen]);
 
-  const updateCount = (type, operation) => {
-    if (type === 'guests') {
-      const newVal = operation === 'add' ? guests + 1 : guests - 1;
-      if (newVal >= 1 && newVal <= 20) {
-        setGuests(newVal);
-      }
-    } else if (type === 'rooms') {
-      const newVal = operation === 'add' ? rooms + 1 : rooms - 1;
-      // Rule: At least 1 room, max 10 rooms
-      if (newVal >= 1 && newVal <= 10) {
-        setRooms(newVal);
-        // Business Rule: Ensure there is at least 1 guest per room
-        if (guests < newVal) {
-          setGuests(newVal);
-        }
-      }
-    }
-  };
+  const change = (i, field, delta) => setOccupancy(rooms.map((r, k) => (k === i ? { ...r, [field]: (r[field] || 0) + delta } : r)));
+  const addRoom = () => setOccupancy([...rooms, { adults: 1, children: 0 }]);
+  const removeRoom = (i) => setOccupancy(rooms.filter((_, k) => k !== i));
 
-  const handleClose = () => {
+  const handleDone = () => {
     setIsOpen(false);
-    track("GUESTS_SELECTED", { guests, rooms });
+    track('GUESTS_SELECTED', { guests, rooms: rooms.length });
   };
 
   return (
@@ -54,78 +60,58 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
         <span className="min-w-0">
           <span className="block text-xs font-semibold text-gray-500">Guests & rooms</span>
           <span className="block text-base font-semibold text-gray-900 whitespace-nowrap truncate">
-            {guests} {guests === 1 ? 'guest' : 'guests'} · {rooms} {rooms === 1 ? 'room' : 'rooms'}
+            {guests} {guests === 1 ? 'guest' : 'guests'} · {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
           </span>
         </span>
       </button>
 
       {isOpen && (
-        <div className="absolute z-[9999] w-72 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 animate-fade-in origin-top right-0">
-          
-          {/* Guests Counter */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="font-semibold text-gray-900 text-sm">Guests</div>
-              <div className="text-xs text-gray-500">Ages 18 or above</div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button 
-                type="button"
-                aria-label="Fewer guests"
-                onClick={() => updateCount('guests', 'sub')}
-                disabled={guests <= 1 || guests <= rooms}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-6 text-center font-semibold text-gray-900 tabular-nums" aria-live="polite">{guests}</span>
-              <button 
-                type="button"
-                aria-label="More guests"
-                onClick={() => updateCount('guests', 'add')}
-                disabled={guests >= 20}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+        <div className={`absolute z-[9999] w-80 max-w-[calc(100vw-2rem)] mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 animate-fade-in origin-top ${align === 'left' ? 'left-0' : 'right-0'}`}>
+          <div className="max-h-[22rem] overflow-y-auto overscroll-contain -mx-1 px-1 divide-y divide-gray-100">
+            {rooms.map((r, i) => (
+              <div key={i} className="py-3 first:pt-0">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-bold text-gray-900 text-sm">Room {i + 1}</p>
+                  {rooms.length > 1 && (
+                    <button type="button" onClick={() => removeRoom(i)} aria-label={`Remove room ${i + 1}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600">
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Remove
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">Adults</div>
+                    <div className="text-xs text-gray-500">Ages 13 or above</div>
+                  </div>
+                  <Counter label={`adults in room ${i + 1}`} value={r.adults}
+                    onMinus={() => change(i, 'adults', -1)} onPlus={() => change(i, 'adults', 1)}
+                    minusDisabled={r.adults <= 1} plusDisabled={r.adults >= MAX_ADULTS_PER_ROOM} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">Children</div>
+                    <div className="text-xs text-gray-500">Ages 0–12</div>
+                  </div>
+                  <Counter label={`children in room ${i + 1}`} value={r.children || 0}
+                    onMinus={() => change(i, 'children', -1)} onPlus={() => change(i, 'children', 1)}
+                    minusDisabled={!r.children} plusDisabled={(r.children || 0) >= MAX_CHILDREN_PER_ROOM} />
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Rooms Counter */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="font-semibold text-gray-900 text-sm">Rooms</div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button 
-                type="button"
-                aria-label="Fewer rooms"
-                onClick={() => updateCount('rooms', 'sub')}
-                disabled={rooms <= 1}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-6 text-center font-semibold text-gray-900 tabular-nums" aria-live="polite">{rooms}</span>
-              <button 
-                type="button"
-                aria-label="More rooms"
-                onClick={() => updateCount('rooms', 'add')}
-                disabled={rooms >= 10}
-                className="p-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-navy-500 hover:text-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+          <p className="pt-3 mt-1 border-t border-gray-100 text-xs text-gray-500">Guests aged 13–17 can stay only with an adult (18 or older) in the room.</p>
+          <div className="pt-3 flex items-center justify-between gap-3">
+            <button type="button" onClick={addRoom} disabled={rooms.length >= MAX_ROOMS}
+              className="text-sm font-semibold text-navy-700 hover:text-navy-900 disabled:text-gray-300 disabled:cursor-not-allowed">
+              + Add room
+            </button>
+            <button type="button" onClick={handleDone}
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors">
+              Done
+            </button>
           </div>
-
-          <button 
-            type="button"
-            onClick={handleClose}
-            className="w-full bg-navy-800 text-white font-semibold py-2.5 rounded-lg hover:bg-navy-900 transition-colors text-sm"
-          >
-            Done
-          </button>
         </div>
       )}
     </div>

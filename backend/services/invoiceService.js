@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import prisma from '../config/db.js';
 import invoiceDomain from '../domains/invoiceDomain.js';
+import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
 
 // Shared browser (falls back to an installed Chrome where the bundled one can't run)
 process.on('SIGINT', async () => {
@@ -51,7 +52,7 @@ export const invoiceService = {
     // 2. Fetch required snapshots and relations
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { hotel: true, user: true }
+      include: { hotel: true, user: true, ...BOOKING_ROOMS_INCLUDE }
     });
 
     if (!booking) throw new Error('Booking not found');
@@ -139,7 +140,7 @@ export const invoiceService = {
 
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
-        include: { hotel: true, user: true }
+        include: { hotel: true, user: true, ...BOOKING_ROOMS_INCLUDE }
       });
 
       const htmlContent = invoiceDomain.generateHTML({

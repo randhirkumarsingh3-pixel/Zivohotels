@@ -152,6 +152,7 @@ model RoomType {
   extraBedAllowed Boolean         @default(false)
   maxExtraBeds    Int?
   bookings        Booking[]
+  bookingRooms    BookingRoom[]
   inventories     Inventory[]
   ratePlans       RatePlan[]
   hotel           Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
@@ -204,6 +205,7 @@ model RatePlan {
   mealPriceChild     Decimal?           @db.Decimal(12, 2)
   isConfigured       Boolean            @default(false)
   bookings           Booking[]
+  bookingRooms       BookingRoom[]
   occupancyPricing   OccupancyPricing[]
   dailyRates         DailyRate[]
   roomType           RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
@@ -293,6 +295,7 @@ model Booking {
   refund              Refund?
   review              Review?
   timelineEvents      BookingTimelineEvent[]
+  bookingRooms        BookingRoom[]
   intelligence        BookingIntelligence?
   notificationSyncs   NotificationSyncLog[]
 
@@ -301,6 +304,32 @@ model Booking {
   @@index([checkIn, checkOut])
   @@index([status])
 }
+/// One room of a booking: its room type and plan (rooms of one booking can differ), who stays in it
+/// and its share of the price. Booking keeps the totals (rooms, adults, children, amounts) and the
+/// first room's type and plan. Bookings made before this table have no rows here.
+model BookingRoom {
+  id                String    @id @default(uuid())
+  bookingId         String
+  roomNumber        Int
+  roomTypeId        String
+  ratePlanId        String?
+  adults            Int       @default(1)
+  children          Int       @default(0)
+  guestName         String
+  roomPrice         Decimal   @default(0) @db.Decimal(12, 2)
+  extraGuestCharges Decimal   @default(0) @db.Decimal(12, 2)
+  mealCharges       Decimal   @default(0) @db.Decimal(12, 2)
+  extraBedCharges   Decimal   @default(0) @db.Decimal(12, 2)
+  subtotal          Decimal   @default(0) @db.Decimal(12, 2)
+  createdAt         DateTime  @default(now())
+  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  roomType          RoomType  @relation(fields: [roomTypeId], references: [id])
+  ratePlan          RatePlan? @relation(fields: [ratePlanId], references: [id])
+
+  @@unique([bookingId, roomNumber])
+  @@index([roomTypeId])
+}
+
 
 model TaxRule {
   id            String    @id @default(uuid())

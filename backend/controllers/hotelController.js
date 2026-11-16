@@ -17,6 +17,8 @@ import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
 import nearbyPlaces from '../services/nearbyPlacesService.js';
+import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
+import { parseLatLng } from '../utils/places.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -935,11 +937,37 @@ export const getHotelById = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data, requestId: req.id });
 });
 
+// Guests in each room of the search: occ=2-0,1-1 (adults-children), else guests over rooms
+const groupRoomsFrom = ({ occ, guests, rooms }) => {
+  const fromOcc = String(occ || '').split(',').filter(Boolean).slice(0, 8)
+    .map((p) => p.split('-').reduce((t, n) => t + (parseInt(n) || 0), 0)).filter((n) => n > 0);
+  if (fromOcc.length) return fromOcc;
+  const r = Math.min(Math.max(parseInt(rooms) || 1, 1), 8);
+  const g = Math.max(parseInt(guests) || 1, r);
+  return Array.from({ length: r }, (_, i) => Math.floor(g / r) + (i < g % r ? 1 : 0));
+};
+
+// Can the hotel give every room of the group a room type big enough with rooms left? Biggest party
+// first, into the smallest room type that fits it (rooms of a booking can be different types).
+export const canHostGroup = (typeRoomsLeft, groupRooms) => {
+  const types = typeRoomsLeft.map((t) => ({ ...t })).sort((a, b) => a.maxGuests - b.maxGuests);
+  for (const size of [...groupRooms].sort((a, b) => b - a)) {
+    const t = types.find((x) => x.maxGuests >= size && x.left > 0);
+    if (!t) return false;
+    t.left -= 1;
+  }
+  return true;
+};
+
 export const searchHotels = asyncHandler(async (req, res) => {
   const { city, checkIn, checkOut, sort, minPrice, maxPrice, minRating, minStars, amenities, includeSoldOut } = req.query;
+  // "Near me": a map point instead of a place name
+  const near = parseLatLng(req.query.lat, req.query.lng);
+  // Guests per room (occ=2-0,1-1); without it, guests split over rooms
+  const groupRooms = groupRoomsFrom(req.query);
 
-  if (!city || !checkIn || !checkOut) {
-    return res.status(400).json({ success: false, message: 'City, checkIn, and checkOut are required' });
+  if ((!city && !near) || !checkIn || !checkOut) {
+    return res.status(400).json({ success: false, message: 'A destination (or your location), checkIn and checkOut are required' });
   }
 
   // Generate cache key
@@ -956,18 +984,19 @@ export const searchHotels = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Check-out must be after check-in' });
   }
 
-  // 1. Fetch active hotels in city (limit to 100 for latency)
+  // 1. The public hotels this search covers (limit to 100 for latency): the city under either of
+  // its names (Bangalore / Bengaluru), an area, landmark or state, or the hotels near a map point.
+  // (Only an exact city name or part of the address matched before, so "Bangalore" missed hotels
+  // saved as "Bengaluru", and "Hotels Near Me" searched for a city called "nearby".)
+  const distances = near ? await hotelsNear(near) : null;
+  const matchedIds = near ? [...distances.keys()] : await hotelIdsForPlace(city);
   const hotels = await prisma.hotel.findMany({
-    where: { 
-      OR: [
-        { city: { equals: city, mode: 'insensitive' } },
-        { location: { contains: city, mode: 'insensitive' } }
-      ],
+    where: {
+      id: { in: matchedIds.slice(0, 100) },
       // Go-live sets LIVE; 'ACTIVE' alone hid every property taken live through the admin flow
       status: { in: PUBLIC_HOTEL_STATUSES },
       isDeleted: false
     },
-    take: 100,
     include: {
       media: { ...COVER_PHOTO_FIRST, select: { url: true } },
       cancellationPolicy: { select: { policyCode: true } },
@@ -1009,6 +1038,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
      let hasFreeCancellation = false;
      const bookablePlans = [];
 
+     const typeRoomsLeft = [];
      hotel.roomTypes.forEach(rt => {
          // Availability over the stay: the lowest available count across the nights; a night with
          // no inventory row sells the physical count; a stop-sell night closes the room type
@@ -1021,6 +1051,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
          }
          availableRooms += Math.max(0, minAvail);
          totalRooms += (rt.totalInventory || 0);
+         if (minAvail > 0 && rt.ratePlans.length) typeRoomsLeft.push({ maxGuests: rt.maxOccupancy || 2, left: minAvail });
 
          // Price shown = average nightly price for these dates (daily rates included), cheapest
          // plan of a room type that can actually be booked
@@ -1069,6 +1100,8 @@ export const searchHotels = asyncHandler(async (req, res) => {
         latitude: hotel.latitude ?? null,
         longitude: hotel.longitude ?? null,
         type: hotel.type || null,
+        ...(distances ? { distanceKm: Math.round(distances.get(hotel.id) * 10) / 10 } : {}),
+        fitsGroup: canHostGroup(typeRoomsLeft, groupRooms),
         bookablePlans
      };
   });
@@ -1090,8 +1123,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
     if (best && best.nightlyPriceAfter < h.price) h.offer = best;
   }));
 
-  // Apply filters
-  let filteredHotels = mappedHotels.filter(h => h.price > 0);
+  // Apply filters. A hotel with rooms left but not enough (or none big enough) for the group is left
+  // out; a fully sold-out one is still listed as sold out.
+  let filteredHotels = mappedHotels.filter(h => h.price > 0 && (h.fitsGroup || h.availableRooms === 0));
+  filteredHotels.forEach(h => { delete h.fitsGroup; });
 
   if (minPrice) {
     filteredHotels = filteredHotels.filter(h => h.price >= parseFloat(minPrice));
@@ -1120,6 +1155,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
   const sortBy = sort || 'RECOMMENDED';
   
   const rankedHotels = rankingService.rankResults(filteredHotels, sortBy, isSoldOutIncluded);
+  // Near me: nearest first (sold out still last) unless another order was chosen
+  if (distances && sortBy === 'RECOMMENDED') {
+    rankedHotels.sort((a, b) => (a.badges?.isSoldOut ? 1 : 0) - (b.badges?.isSoldOut ? 1 : 0) || a.distanceKm - b.distanceKm);
+  }
 
   // The commission rate is used for ranking but is confidential: don't send it to the browser
   const responseData = { hotels: rankedHotels.map(({ commission: _commission, ...h }) => h) };

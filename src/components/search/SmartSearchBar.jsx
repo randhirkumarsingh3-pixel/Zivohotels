@@ -5,27 +5,28 @@ import DestinationAutocomplete from './DestinationAutocomplete';
 import DatePickerV2 from './DatePickerV2';
 import GuestSelectorV2 from './GuestSelectorV2';
 import { track } from '../../utils/analytics';
+import { occupancyOf, occParams, occTotals, occToParam } from '../../utils/occupancy';
 
 // `initial` prefills the bar with the current search (results page); the home page starts empty
 const SmartSearchBar = ({ isMobile, initial = null }) => {
   const navigate = useNavigate();
-  const asDest = (d) => (d ? { label: d, value: d } : null);
+  const asDest = (d) => (!d ? null : typeof d === 'object' ? d : { label: d, value: d });
 
   // Form State
   const [destination, setDestination] = useState(asDest(initial?.destination));
   const [checkIn, setCheckIn] = useState(initial?.checkIn || '');
   const [checkOut, setCheckOut] = useState(initial?.checkOut || '');
-  const [guests, setGuests] = useState(initial?.guests || 2);
-  const [rooms, setRooms] = useState(initial?.rooms || 1);
+  // Rooms and who stays in each: [{ adults, children }]
+  const [occupancy, setOccupancy] = useState(() => occupancyOf(initial || {}));
+  const { guests, rooms } = occTotals(occupancy);
   const [error, setError] = useState(null);
-  const initKey = initial ? [initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms].join('|') : '';
+  const initKey = initial ? [initial.destination?.label || initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms, occToParam(initial.occupancy)].join('|') : '';
   useEffect(() => {
     if (!initial) return;
     setDestination(asDest(initial.destination));
     setCheckIn(initial.checkIn || '');
     setCheckOut(initial.checkOut || '');
-    setGuests(initial.guests || 2);
-    setRooms(initial.rooms || 1);
+    setOccupancy(occupancyOf(initial));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initKey]);
 
@@ -74,20 +75,21 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
       const detailParams = new URLSearchParams({
         checkin: checkIn,
         checkout: checkOut,
-        guests: guests.toString(),
-        rooms: rooms.toString()
+        ...occParams(occupancy)
       });
       navigate(`/hotel/${destination.id}?${detailParams.toString()}`);
       return;
     }
 
-    const searchVal = destination.value || destination.label;
+    // Near me: the location instead of a place name
+    const where = destination.type === 'near' && destination.lat != null
+      ? { lat: String(destination.lat), lng: String(destination.lng) }
+      : { city: destination.value || destination.label };
     const params = new URLSearchParams({
-      city: searchVal,
+      ...where,
       checkin: checkIn,
       checkout: checkOut,
-      guests: guests.toString(),
-      rooms: rooms.toString()
+      ...occParams(occupancy)
     });
 
     navigate(`/hotels?${params.toString()}`);
@@ -121,10 +123,8 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
         <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
 
         <GuestSelectorV2
-          guests={guests}
-          setGuests={setGuests}
-          rooms={rooms}
-          setRooms={setRooms}
+          occupancy={occupancy}
+          setOccupancy={setOccupancy}
           isOpen={openSection === 'guests'}
           setIsOpen={(val) => setOpenSection(val ? 'guests' : null)}
         />

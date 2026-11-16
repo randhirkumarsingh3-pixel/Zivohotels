@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { roomsText, bookingRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   CheckCircle, XCircle, Eye, AlertCircle, Download, Building2, Clock4, UserCheck, X
@@ -133,9 +134,17 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
               <Building2 size={14} /><span className="font-semibold text-gray-900">{booking.hotel?.name}</span>
               <span className="text-gray-400">{booking.hotel?.city}</span>
             </div>
-            <div className="text-sm text-gray-600">{booking.roomType?.name}
-              {booking.ratePlan && <span className="text-gray-400 ml-1">· {booking.ratePlan.name}</span>}
-            </div>
+            {bookingRoomsOf(booking).length > 1 ? (
+              <ul className="text-sm text-gray-600 space-y-1">
+                {bookingRoomsOf(booking).map((r) => (
+                  <li key={r.roomNumber}><span className="font-semibold text-gray-800">Room {r.roomNumber}:</span> {r.roomType?.name} · {r.ratePlan?.name} · {roomGuests(r)} · Lead guest {r.guestName}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-sm text-gray-600">{booking.roomType?.name}
+                {booking.ratePlan && <span className="text-gray-400 ml-1">· {booking.ratePlan.name}</span>}
+              </div>
+            )}
           </div>
 
           {/* Dates */}
@@ -346,7 +355,7 @@ const Bookings = () => {
     const headers = ['Ref', 'Guest', 'Email', 'Phone', 'Property', 'Room', 'CheckIn', 'CheckOut', 'Status', 'Payment', 'Total'];
     const rows = bookings.map(b => [
       b.bookingRef, b.guestName, b.guestEmail, b.guestPhone,
-      b.hotel?.name, b.roomType?.name,
+      b.hotel?.name, roomsText(b),
       fmtDate(b.checkIn), fmtDate(b.checkOut),
       b.status, b.paymentStatus, b.totalAmount,
     ].join(','));
@@ -492,8 +501,8 @@ const Bookings = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-800 text-sm">{b.hotel?.name}</div>
-                        <div className="text-xs text-gray-400">{b.roomType?.name}
-                          {b.ratePlan && <span className="ml-1">· {b.ratePlan.name}</span>}
+                        <div className="text-xs text-gray-400">{roomsText(b)}
+                          {b.ratePlan && !(b.bookingRooms?.length > 1) && <span className="ml-1">· {b.ratePlan.name}</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs">

@@ -76,20 +76,32 @@ export const resolveBest = async (ctx) => {
   if (code && !list.some((p) => p.code === code)) codeStatus = { code, ok: false, message: 'This code isn\'t valid' };
 
   for (const p of list) {
-    const elig = checkEligibility(p, ctx);
+    // Several rooms (ctx.lines: [{ roomTypeId, ratePlanId, subtotal }]): the offer counts the rooms
+    // it is valid for; it applies if at least one is
+    let elig;
+    let roomIndexes = null;
+    let base = ctx.subtotal;
+    if (Array.isArray(ctx.lines) && ctx.lines.length) {
+      const checks = ctx.lines.map((l) => checkEligibility(p, { ...ctx, roomTypeId: l.roomTypeId, ratePlanId: l.ratePlanId }));
+      roomIndexes = checks.map((c, i) => (c.ok ? i : -1)).filter((i) => i >= 0);
+      elig = roomIndexes.length ? { ok: true } : checks[0];
+      base = roomIndexes.reduce((t, i) => t + (Number(ctx.lines[i].subtotal) || 0), 0);
+    } else {
+      elig = checkEligibility(p, ctx);
+    }
     const audienceOk = canUseAudience(ctx.membership, p.audience);
     const problem = !audienceOk
       ? (p.audience === 'MEMBERS' ? 'This offer is for members: sign in with a guest account' : 'This offer is for a membership plan you don\'t have')
       : elig.ok ? await limitProblem(p, ctx.userId) : elig.reason;
     if (code && p.code === code) codeStatus = problem ? { code, ok: false, message: problem } : { code, ok: true };
     if (problem) continue;
-    const discount = discountFor(p, ctx.subtotal);
-    if (discount > 0 && (!best || discount > best.discount)) best = { promotion: p, discount };
+    const discount = discountFor(p, base);
+    if (discount > 0 && (!best || discount > best.discount)) best = { promotion: p, discount, roomIndexes };
   }
   if (codeStatus?.ok && best && best.promotion.code !== code) {
     codeStatus = { code, ok: false, message: `A better offer (${best.promotion.name}) is already applied` };
   }
-  return { promotion: best ? { ...summary(best.promotion, best.discount), raw: best.promotion } : null, codeStatus };
+  return { promotion: best ? { ...summary(best.promotion, best.discount), raw: best.promotion, roomIndexes: best.roomIndexes } : null, codeStatus };
 };
 
 /**

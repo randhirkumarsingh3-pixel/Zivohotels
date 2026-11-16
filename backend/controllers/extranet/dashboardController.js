@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import { roomsSummary } from '../../services/bookingRoomsView.js';
 
 /**
  * GET /extranet/dashboard: what a property needs to know today, from live data.
@@ -26,7 +27,7 @@ export const getDashboard = async (req, res) => {
     const nextMonth = startOf(mm === 12 ? `${yy + 1}-01-01` : `${yy}-${String(mm + 1).padStart(2, '0')}-01`);
     const weekAgo = new Date(Date.now() - 7 * 86400000);
 
-    const booking = { select: { id: true, bookingRef: true, guestName: true, checkIn: true, checkOut: true, rooms: true, status: true, paymentType: true, totalAmount: true, paidAmount: true, roomType: { select: { name: true } } } };
+    const booking = { select: { id: true, bookingRef: true, guestName: true, checkIn: true, checkOut: true, rooms: true, status: true, paymentType: true, totalAmount: true, paidAmount: true, roomType: { select: { name: true } }, bookingRooms: { select: { roomType: { select: { name: true } } } } } };
     const [hotel, arrivals, departures, inHouse, upcoming, monthRows, newWeek, cancelledWeek, tonightInv, roomTypes, awaitingReply, unread, images, bank] = await Promise.all([
       prisma.hotel.findUnique({ where: { id: hotelId }, select: { name: true, status: true, description: true, latitude: true, longitude: true, nearbyPlaces: true, reviewScore: true, reviewCount: true, memberDiscountPercent: true, amenities: true } }),
       prisma.booking.findMany({ where: { hotelId, checkIn: { gte: t0, lt: t1 }, status: { in: ['CONFIRMED', 'CHECKED_IN'] } }, orderBy: { createdAt: 'asc' }, ...booking }),
@@ -51,7 +52,7 @@ export const getDashboard = async (req, res) => {
     const nights = (b) => Math.max(1, Math.round((new Date(b.checkOut) - new Date(b.checkIn)) / 86400000));
     const monthRevenue = monthRows.reduce((s, b) => s + Number(b.totalAmount || 0), 0);
     const monthNights = monthRows.reduce((s, b) => s + nights(b) * (b.rooms || 1), 0);
-    const shape = (b) => ({ ...b, nights: nights(b), roomType: b.roomType?.name || '', dueAtHotel: Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)) });
+    const shape = ({ bookingRooms, ...b }) => ({ ...b, nights: nights(b), roomType: b.roomType?.name || '', roomsLabel: roomsSummary(bookingRooms, b, b.roomType?.name), dueAtHotel: Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)) });
 
     const todo = [
       !roomTypes.length && { key: 'rooms', text: 'Add your rooms and rates', link: '/extranet/rooms' },

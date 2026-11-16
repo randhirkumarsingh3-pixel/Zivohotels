@@ -5,11 +5,24 @@ import { z } from 'zod';
 import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation } from '../services/cancellationService.js';
 import { expireStaleBookings } from '../services/bookingExpiryService.js';
 import voucherService from '../services/voucherService.js';
+import { BOOKING_ROOMS_INCLUDE } from '../services/bookingRoomsView.js';
 
 // --- ZOD SCHEMAS ---
 
+// One room of a booking: its room type, plan, guests and (when booking) the lead guest's name
+const roomLineSchema = z.object({
+  roomTypeId: z.string().uuid('Invalid room type ID'),
+  ratePlanId: z.string().uuid('Invalid rate plan ID'),
+  adults: z.number().int().min(1, 'Each room needs at least one adult').max(20),
+  children: z.number().int().min(0).max(20).optional().default(0),
+  extraBeds: z.number().int().min(0).max(5).optional().default(0),
+  guestName: z.string().trim().max(120).optional(),
+});
+
 const previewSchema = z.object({
   hotelId: z.string().uuid().optional(),
+  // Rooms with their own type, plan and guests; without it, roomTypeId / ratePlanId for all rooms
+  roomLines: z.array(roomLineSchema).min(1).max(8).optional(),
   roomTypeId: z.string().uuid('Invalid room type ID'),
   ratePlanId: z.string().uuid('Invalid rate plan ID'),
   checkIn: z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid check-in date'),
@@ -25,6 +38,7 @@ const previewSchema = z.object({
 
 const createBookingSchema = z.object({
   hotelId: z.string().uuid('Invalid hotel ID'),
+  roomLines: z.array(roomLineSchema.extend({ guestName: z.string().trim().min(2, 'Enter the lead guest\'s name for each room').max(120) })).min(1).max(8).optional(),
   roomTypeId: z.string().uuid('Invalid room type ID'),
   ratePlanId: z.string().uuid('Invalid rate plan ID'),
   guestName: z.string().min(2, 'Guest name is required'),
@@ -99,7 +113,7 @@ export const createBooking = async (req, res, next) => {
     }
 
     const {
-      hotelId, roomTypeId, ratePlanId, checkIn, checkOut,
+      hotelId, roomTypeId, ratePlanId, checkIn, checkOut, roomLines,
       rooms, adults, children, extraBeds, paymentType,
       guestName, guestEmail, guestPhone, promoCode, usePoints, useWallet, agentId,
       companyName, companyGstin, companyAddress
@@ -108,7 +122,7 @@ export const createBooking = async (req, res, next) => {
     const dates = getDatesInRange(checkIn, checkOut);
 
     const pricingParams = {
-      rooms, adults, children, extraBeds
+      roomLines, rooms, adults, children, extraBeds
     };
 
     const serviceContext = {
@@ -209,6 +223,7 @@ export const getBookings = async (req, res, next) => {
           roomType: { select: { id: true, name: true } },
           ratePlan: { select: { id: true, name: true, mealPlan: true } },
           user:     { select: { id: true, name: true, email: true } },
+          ...BOOKING_ROOMS_INCLUDE,
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -475,17 +490,19 @@ export const syncInventoryDrift = async (req, res, next) => {
     const results = [];
     for (const inv of inventory) {
       // Count actual bookings overlapping this date
-      const bookedCount = await prisma.booking.aggregate({
-        where: {
-          roomTypeId,
-          status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] }, // rooms still held
-          checkIn: { lte: inv.date },
-          checkOut: { gt: inv.date }
-        },
-        _sum: { rooms: true }
-      });
+      // Rooms still held that night: each BookingRoom of this type, plus older bookings (no
+      // BookingRoom rows) that hold booking.rooms of this type
+      const held = {
+        status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        checkIn: { lte: inv.date },
+        checkOut: { gt: inv.date }
+      };
+      const [legacy, perRoom] = await Promise.all([
+        prisma.booking.aggregate({ where: { ...held, roomTypeId, bookingRooms: { none: {} } }, _sum: { rooms: true } }),
+        prisma.bookingRoom.count({ where: { roomTypeId, booking: held } }),
+      ]);
 
-      const actualBooked = bookedCount._sum.rooms || 0;
+      const actualBooked = (legacy._sum.rooms || 0) + perRoom;
       const expectedAvailable = inv.totalRooms - actualBooked;
 
       if (inv.availableRooms !== expectedAvailable || inv.bookedRooms !== actualBooked) {
@@ -523,6 +540,7 @@ export const getMyBookings = async (req, res, next) => {
           }
         },
         roomType: { select: { id: true, name: true } },
+        ...BOOKING_ROOMS_INCLUDE,
         ratePlan: { select: { id: true, name: true, mealPlan: true } },
         invoice: { select: { id: true, invoiceRef: true, status: true } },
         timelineEvents: { orderBy: { createdAt: 'asc' } },

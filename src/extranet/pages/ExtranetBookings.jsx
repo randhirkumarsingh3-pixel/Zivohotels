@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { roomsText, bookingRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import {
   ClipboardList, Search, Download, CheckCircle2, Clock, XCircle, AlertCircle, Phone, Mail, Users,
   ChevronDown, BedDouble, Loader2, LogIn, LogOut, UserX,
@@ -42,7 +43,7 @@ const TABS = [
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const exportCsv = (rows, name) => {
   const head = ['Booking ID', 'Status', 'Guest', 'Phone', 'Email', 'Room', 'Rooms', 'Guests', 'Check-in', 'Check-out', 'Nights', 'Payment', 'Total (₹)', 'Paid online (₹)', 'Due at hotel (₹)', 'Booked on'];
-  const lines = rows.map((b) => [b.bookingRef, STATUS[b.status]?.label || b.status, b.guestName, b.guestPhone, b.guestEmail, b.roomType?.name, b.rooms, b.guests, istDay(b.checkIn), istDay(b.checkOut), nightsOf(b), PAY[b.paymentType] || b.paymentType, Number(b.totalAmount || 0), Number(b.paidAmount || 0), Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)), istDay(b.createdAt)].map(csvCell).join(','));
+  const lines = rows.map((b) => [b.bookingRef, STATUS[b.status]?.label || b.status, b.guestName, b.guestPhone, b.guestEmail, roomsText(b), b.rooms, b.guests, istDay(b.checkIn), istDay(b.checkOut), nightsOf(b), PAY[b.paymentType] || b.paymentType, Number(b.totalAmount || 0), Number(b.paidAmount || 0), Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)), istDay(b.createdAt)].map(csvCell).join(','));
   const blob = new Blob([String.fromCharCode(0xfeff) + [head.map(csvCell).join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' }); // BOM: Excel reads ₹ correctly
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name; a.click();
@@ -151,7 +152,7 @@ const ExtranetBookings = () => {
                       {b.metadata?.membership?.isPaid && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold">{b.metadata.membership.plan}{b.metadata.membership.prioritySupport ? ' · priority' : ''}</span>}
                     </p>
                     <p className="text-sm text-gray-600 mt-0.5">
-                      <span className="font-mono text-gray-800">{b.bookingRef}</span> · {b.roomType?.name || 'Room'}{b.rooms > 1 ? ` × ${b.rooms}` : ''} · {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} ({nights} night{nights === 1 ? '' : 's'})
+                      <span className="font-mono text-gray-800">{b.bookingRef}</span> · {roomsText(b)} · {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} ({nights} night{nights === 1 ? '' : 's'})
                     </p>
                   </div>
                 </div>
@@ -174,6 +175,17 @@ const ExtranetBookings = () => {
                     <div><dt className="flex items-center gap-1.5 text-gray-500"><Users size={14} aria-hidden="true" /> Guests</dt><dd className="font-semibold text-gray-900">{b.guests || b.adults || '—'}</dd></div>
                     <div><dt className="flex items-center gap-1.5 text-gray-500"><BedDouble size={14} aria-hidden="true" /> Payment</dt><dd className="font-semibold text-gray-900">{PAY[b.paymentType] || '—'} · {inr(b.paidAmount)} paid</dd></div>
                   </dl>
+                  {/* Each room: type, plan, guests and the lead guest it is checked in under */}
+                  {bookingRoomsOf(b).length > 0 && (
+                    <div className="text-sm">
+                      <p className="font-semibold text-gray-900 mb-1">Rooms</p>
+                      <ul className="space-y-1">
+                        {bookingRoomsOf(b).map((r) => (
+                          <li key={r.roomNumber} className="text-gray-700"><span className="font-semibold">Room {r.roomNumber}:</span> {r.roomType?.name} · {r.ratePlan?.name} · {roomGuests(r)} · Lead guest <span className="font-semibold text-gray-900">{r.guestName}</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {confirmCancel === b.id ? (
                     <div role="alertdialog" aria-label="Cancel this booking?" className="rounded-lg border border-red-200 bg-red-50 p-4">

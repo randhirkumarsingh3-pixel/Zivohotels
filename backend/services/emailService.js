@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
 import { queueService } from './queueService.js';
 
 
@@ -11,6 +12,8 @@ import { queueService } from './queueService.js';
  * @param {object} ratePlan - Rate plan details
  * @returns {string} - HTML body
  */
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
   const checkInDate = new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   const checkOutDate = new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
@@ -21,10 +24,14 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
   const formattedTotal = booking.totalAmount.toLocaleString('en-IN');
   const formattedRemaining = booking.remainingAmount.toLocaleString('en-IN');
   
-  // Calculate discount (original rate estimate vs booked rate)
-  const roomPrice = booking.totalAmount * 0.85; // Est room charge subtotal
-  const taxes = booking.totalAmount * 0.15; // Est tax
-  const savings = Math.round(booking.totalAmount * 0.2); // Est saving 20%
+  // The booking's own amounts (these were estimates: 85% / 15% of the total and a made-up 20%
+  // saving, with GST always shown as 12%)
+  const inr = (v) => Math.round(Number(v) || 0).toLocaleString('en-IN');
+  const taxes = Number(booking.taxAmount) || 0;
+  const roomPrice = Number(booking.baseAmount) || Math.max(0, Number(booking.totalAmount) - taxes);
+  const savings = Math.round(Number(booking.metadata?.discountAmount) || 0);
+  const taxBreakdown = booking.metadata?.taxBreakdown;
+  const gstLabel = taxBreakdown?.length > 1 ? taxBreakdown.map((t) => `${t.percentage}%`).join(' + ') : `${booking.metadata?.taxPercentage ?? 5}%`;
   
   // Dynamic QR Code url
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(booking.bookingRef)}`;
@@ -429,7 +436,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
       <div class="stay-row">
         <div class="stay-col">
           <div class="stay-label">🏨 Room Type</div>
-          <div class="stay-value">${roomType.name}</div>
+          <div class="stay-value">${esc(roomType.name)}</div>
         </div>
         <div class="stay-col">
           <div class="stay-label">🍽️ Meal Plan</div>
@@ -449,6 +456,10 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
           <div class="stay-value">${booking.rooms} Room x ${nights} Night${nights > 1 ? 's' : ''}</div>
         </div>
       </div>
+      ${(booking.bookingRooms || []).length > 1 ? `
+      <div class="divider"></div>
+      <div class="stay-label">🛏️ Rooms and lead guests</div>
+      ${booking.bookingRooms.map((r) => `<div class="stay-value" style="margin-top:6px">Room ${r.roomNumber}: ${esc(r.roomType?.name || 'Room')} · ${esc(r.ratePlan?.name || '')} · ${esc(guestsLabel(r.adults, r.children))}<br><span style="font-weight:400">Lead guest: ${esc(r.guestName)}</span></div>`).join('')}` : ''}
     </div>
 
     <!-- 4. PRICE BREAKDOWN -->
@@ -457,12 +468,12 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
       
       <table class="pricing-table">
         <tr class="pricing-row">
-          <td>Room Charges (${booking.rooms} Room x ${nights} Night)</td>
-          <td style="text-align: right; font-weight: 700;">₹${roomPrice.toLocaleString('en-IN')}</td>
+          <td>Room Charges (${booking.rooms} Room${booking.rooms > 1 ? 's' : ''} x ${nights} Night${nights > 1 ? 's' : ''}${savings > 0 ? ', after discounts' : ''})</td>
+          <td style="text-align: right; font-weight: 700;">₹${inr(roomPrice)}</td>
         </tr>
         <tr class="pricing-row">
-          <td>Taxes & GST (${booking.taxPercentage || 12}%)</td>
-          <td style="text-align: right; font-weight: 700;">₹${taxes.toLocaleString('en-IN')}</td>
+          <td>GST (${gstLabel})</td>
+          <td style="text-align: right; font-weight: 700;">₹${inr(taxes)}</td>
         </tr>
         <tr class="pricing-row">
           <td>Service Fees</td>
@@ -474,9 +485,9 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
         </tr>
       </table>
       
-      <div class="savings-banner">
-        🎉 You are saving ₹${savings.toLocaleString('en-IN')} on this booking!
-      </div>
+      ${savings > 0 ? `<div class="savings-banner">
+        🎉 You are saving ₹${inr(savings)} on this booking!
+      </div>` : ''}
       
       <div class="divider"></div>
       
@@ -591,7 +602,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
         </tr>
         <tr>
           <td style="color: #64748b; font-weight: 700;">Room Type</td>
-          <td style="font-weight: 700; color: #0f172a;">${roomType.name}</td>
+          <td style="font-weight: 700; color: #0f172a;">${esc(roomType.name)}</td>
         </tr>
         <tr>
           <td style="color: #64748b; font-weight: 700;">Rooms & Guests</td>
@@ -646,7 +657,8 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
       include: {
         hotel: true,
         roomType: true,
-        ratePlan: true
+        ratePlan: true,
+        ...BOOKING_ROOMS_INCLUDE
       }
     });
 
@@ -655,7 +667,9 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
       return false;
     }
 
-    const emailHtml = generateEmailHtml(booking, booking.hotel, booking.roomType, booking.ratePlan);
+    // Several rooms: "2 × Premium Suite, 1 × Standard Room"
+    const roomLabel = { ...booking.roomType, name: roomsSummary(booking.bookingRooms, booking, booking.roomType?.name) };
+    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan);
 
     console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
     

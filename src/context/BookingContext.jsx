@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 // The search (dates, guests, rooms) survives a reload of any page in this tab
 const STORAGE_KEY = 'zivo_search';
-const DEFAULT_SEARCH = { destination: '', checkIn: '', checkOut: '', guests: 2, rooms: 1 };
+// occupancy: who stays in each room [{ adults, children }]; guests / rooms are its totals
+const DEFAULT_SEARCH = { destination: '', checkIn: '', checkOut: '', guests: 2, rooms: 1, occupancy: [{ adults: 2, children: 0 }] };
 const todayYmd = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const loadSearch = () => {
   try {
