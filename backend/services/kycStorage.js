@@ -15,6 +15,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isLocalStorageDriver } from '../config/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOCAL_DIR = path.join(__dirname, '../private_uploads');
@@ -32,8 +33,8 @@ const SIGNATURES = [
 export const detectFileType = (buffer) =>
   SIGNATURES.find(({ magic }) => buffer.length >= magic.length && magic.every((b, i) => buffer[i] === b)) || null;
 
-const storeOnLocalDisk = () =>
-  process.env.NODE_ENV !== 'production' && !process.env.GOOGLE_APPLICATION_CREDENTIALS;
+// Same choice as hotel photos: STORAGE_DRIVER, see config/storage.js
+const storeOnLocalDisk = () => isLocalStorageDriver();
 
 let gcsBucket = null;
 const getBucket = async () => {

@@ -1,0 +1,89 @@
+# ZivoHotels app on the VPS: a separate Docker Compose project ("zivohotels-app").
+# Its own database, API, website, networks and volumes; nothing is shared with any other
+# project. The server's existing Caddy reaches our website through OUR network
+# "zivohotels-app-edge": caddy-link.sh attaches the Caddy container to it. Nothing of ours
+# joins the other project's network, so its deploys (including `docker compose down`) are
+# never blocked by us.
+#
+# Settings: deploy/vps/.env (copy from .env.example). Run everything via deploy.sh.
+name: zivohotels-app
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zivohotels
+      POSTGRES_USER: zivohotels
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/vps/.env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zivohotels -d zivohotels"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  api:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "5100"
+      # Caddy -> web container -> API: two proxies, so rate limits see the real visitor IP
+      TRUST_PROXY: "2"
+      STORAGE_DRIVER: local
+      DATABASE_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels
+      DIRECT_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels
+      CORS_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN in deploy/vps/.env}
+      FRONTEND_URL: https://${APP_DOMAIN}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/vps/.env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?Set RAZORPAY_KEY_ID in deploy/vps/.env}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?Set RAZORPAY_KEY_SECRET in deploy/vps/.env}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-ZivoHotels <noreply@zivohotels.com>}
+    volumes:
+      - uploads:/app/public/uploads            # hotel photos (public)
+      - private-uploads:/app/private_uploads   # KYC documents (private)
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5100/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks: [internal]
+
+  # Named uniquely: Caddy finds it by this name on the zivohotels-app-edge network.
+  zivohotels-app-web:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/web.Dockerfile
+      args:
+        VITE_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+      - edge
+
+networks:
+  internal: {}
+  # Shared only with the Caddy container (attached by caddy-link.sh); only the website is on it
+  edge:
+    name: zivohotels-app-edge
+
+volumes:
+  db-data: {}
+  uploads: {}
+  private-uploads: {}

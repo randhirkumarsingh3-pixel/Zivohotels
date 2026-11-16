@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { isAllowedOrigin } from '../config/origins.js';
 import jwt from 'jsonwebtoken';
 import { eventBus } from './eventBus.js';
 
@@ -14,9 +15,8 @@ class SocketService {
   init(server) {
     this.io = new Server(server, {
       cors: {
-        origin: process.env.NODE_ENV === 'production' 
-          ? ['https://zivohotels.com', 'https://www.zivohotels.com', 'https://admin.zivohotels.com', 'https://partner.zivohotels.com'] 
-          : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        // Same list as the HTTP API (built-in domains + CORS_ORIGINS)
+        origin: (origin, callback) => callback(null, !origin || isAllowedOrigin(origin)),
         credentials: true,
         methods: ['GET', 'POST']
       },

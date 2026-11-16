@@ -1,3 +1,4 @@
+import { isLocalStorageDriver } from '../config/storage.js';
 import { GoogleStorageProvider } from './providers/GoogleStorageProvider.js';
 import { LocalDiskProvider } from './providers/LocalDiskProvider.js';
 import crypto from 'crypto';
@@ -5,7 +6,8 @@ import crypto from 'crypto';
 export class MediaService {
   constructor() {
     // Factory: Use local disk if we're missing GCP credentials and not in prod
-    if (process.env.NODE_ENV !== 'production' && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Local disk or Google Cloud Storage: see config/storage.js (STORAGE_DRIVER)
+    if (isLocalStorageDriver()) {
       console.log('MediaService initialized with LocalDiskProvider');
       this.storage = new LocalDiskProvider();
     } else {
