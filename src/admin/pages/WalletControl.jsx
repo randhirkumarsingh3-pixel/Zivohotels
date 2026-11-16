@@ -79,13 +79,53 @@ const GuestDrawer = ({ guest, onClose, onChanged }) => {
   );
 };
 
-const HotelDrawer = ({ hotel, onClose }) => {
+const HotelDrawer = ({ hotel, onClose, onChanged }) => {
   const [data, setData] = useState(null);
-  useEffect(() => { call(`/hotels/${hotel.id}`).then(setData).catch(() => setData({ statement: [] })); }, [hotel.id]);
+  const [due, setDue] = useState(null);
+  const [ref, setRef] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const load = useCallback(() => {
+    call(`/hotels/${hotel.id}`).then(setData).catch(() => setData({ statement: [] }));
+    call(`/hotels/${hotel.id}/payout`).then(setDue).catch(() => setDue(null));
+  }, [hotel.id]);
+  useEffect(() => { load(); }, [load]);
+  // Record a payout after sending the money by bank transfer: the UTR is the proof of payment
+  const pay = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      await call(`/hotels/${hotel.id}/payout`, 'POST', { reference: ref.trim() });
+      setMsg({ ok: true, text: `Payout of ${inr(due.due)} recorded. The property has been notified.` });
+      setRef(''); load(); onChanged?.();
+    } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
+  };
   return (
     <Drawer title={hotel.name} sub={`${hotel.city} · statement`} onClose={onClose}>
       {!data ? <Loader2 className="animate-spin text-brand-700" /> : (
         <>
+          {due && (
+            <section className="rounded-xl border border-gray-200 p-4 space-y-3" aria-labelledby="payout-h">
+              <h3 id="payout-h" className="font-bold text-gray-900">Pay out</h3>
+              {due.count === 0 ? <p className="text-sm text-gray-600">Nothing is due yet. Settlements are due on the property&apos;s payout date after check-out.</p> : (
+                <>
+                  <p className="text-sm text-gray-700">Due now: <strong className={due.due > 0 ? 'text-gray-900' : 'text-red-700'}>{due.due < 0 ? '−' : ''}{inr(Math.abs(due.due))}</strong> from {due.count} settlement{due.count === 1 ? '' : 's'}.</p>
+                  {due.bank
+                    ? <p className="text-sm text-gray-700">To: <strong>{due.bank.accountName}</strong>, {due.bank.bankName} ···· {due.bank.last4} ({due.bank.ifsc})</p>
+                    : <p className="text-sm text-red-700">No bank account on file: ask the property to add it before paying out.</p>}
+                  {due.due > 0 && due.bank && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-600">Send the money by bank transfer first, then record it here with the transfer reference.</p>
+                      <div className="flex gap-2">
+                        <input aria-label="Bank transfer reference (UTR)" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="UTR / transfer reference" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        <button type="button" disabled={busy || ref.trim().length < 6} onClick={pay} className="px-4 py-2 rounded-lg bg-navy-800 hover:bg-navy-900 text-white text-sm font-semibold disabled:opacity-50">{busy ? 'Saving…' : `Record ${inr(due.due)}`}</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {msg && <p role="status" className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>{msg.text}</p>}
+            </section>
+          )}
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[['On hold', data.onHold], ['Ready', data.ready], ['Owed to Zivo', data.owed], ['Paid out', data.paidOut]].map(([k, v]) => (
               <div key={k} className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{k}</p><p className="text-lg font-black">{inr(v)}</p></div>
@@ -193,7 +233,7 @@ const WalletControl = () => {
       )}
 
       {guest && <GuestDrawer guest={guest} onClose={() => setGuest(null)} onChanged={() => { loadGuests(); loadOverview(); }} />}
-      {hotel && <HotelDrawer hotel={hotel} onClose={() => setHotel(null)} />}
+      {hotel && <HotelDrawer hotel={hotel} onClose={() => setHotel(null)} onChanged={loadOverview} />}
     </div>
   );
 };

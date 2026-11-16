@@ -110,6 +110,7 @@ export const getSettlementDetails = async (req, res) => {
       ],
       netPayable,
       payoutEligibility: settlement.holdUntil,
+      payoutDate: settlement.payoutDate,
       status: settlement.status
     };
 
