@@ -7,21 +7,18 @@ import { getImageUrl } from '../utils/image';
 import { useBooking } from '../context/BookingContext';
 import {
   MapPin, Star,
-  CalendarDays, Users, BedDouble, ShieldCheck, ChevronDown, ChevronUp, Flame, CreditCard
+  BedDouble, ShieldCheck, ChevronDown, ChevronUp, Flame, CreditCard
 } from 'lucide-react';
 import { useExperiment, useAllExperiments } from '../context/ExperimentContext';
 import PhotoGallery from '../components/hotel/PhotoGallery';
 import usePageTitle from '../hooks/usePageTitle';
 import { galleryPhotos } from '../components/hotel/galleryPhotos';
 import ReviewsSection from '../components/hotel/ReviewsSection';
+import DatePickerV2 from '../components/search/DatePickerV2';
+import GuestSelectorV2 from '../components/search/GuestSelectorV2';
 import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection, RoomFeatures } from '../components/hotel/HotelSections';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'Select date';
-  try { return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
-  catch { return dateStr; }
-};
 
 const getNights = (checkIn, checkOut) => {
   if (!checkIn || !checkOut) return 1;
@@ -200,20 +197,48 @@ const Detail = () => {
   }, [isAuthenticated, user]);
   const { checkIn, checkOut, guests, rooms } = searchParams;
 
-  // Dates in the link (from search results, a reload or a shared link) take effect here
+  // The link (search results, a reload or a shared link) carries the search: dates, guests, rooms
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    const linked = {
-      checkIn: q.get('checkin') || '',
-      checkOut: q.get('checkout') || '',
-      guests: parseInt(q.get('guests')) || undefined,
-      rooms: parseInt(q.get('rooms')) || undefined,
-    };
-    if (linked.checkIn && linked.checkOut && (linked.checkIn !== checkIn || linked.checkOut !== checkOut)) {
-      updateSearchParams(Object.fromEntries(Object.entries(linked).filter(([, v]) => v !== undefined)));
-    }
+    const linked = {};
+    if (q.get('checkin') && q.get('checkout')) { linked.checkIn = q.get('checkin'); linked.checkOut = q.get('checkout'); }
+    if (parseInt(q.get('guests')) > 0) linked.guests = parseInt(q.get('guests'));
+    if (parseInt(q.get('rooms')) > 0) linked.rooms = parseInt(q.get('rooms'));
+    if (Object.entries(linked).some(([k, v]) => searchParams[k] !== v)) updateSearchParams(linked);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
+
+  // Changes made in the booking panel: kept in the search and in the link (so a reload keeps them).
+  // A new check-in waits for its check-out before it is applied.
+  const [openPicker, setOpenPicker] = useState(null);
+  const [datePickerKey, setDatePickerKey] = useState(0);
+  const pendingCheckIn = useRef(null);
+  const togglePicker = (name, open) => {
+    setOpenPicker(open ? name : null);
+    // Closed after choosing only a check-in: show the stay's dates again
+    if (name === 'dates' && !open && pendingCheckIn.current) { pendingCheckIn.current = null; setDatePickerKey((k) => k + 1); }
+  };
+  // Latest values, so two changes in one click (rooms, then guests) both reach the link
+  const stay = useRef({});
+  stay.current = { checkIn, checkOut, guests: guests || 2, rooms: rooms || 1 };
+  const changeStay = (change) => {
+    let next = change;
+    if ('checkIn' in change) { pendingCheckIn.current = change.checkIn; return; }
+    if ('checkOut' in change) {
+      if (!change.checkOut) return;
+      next = { checkIn: pendingCheckIn.current || stay.current.checkIn, checkOut: change.checkOut };
+      pendingCheckIn.current = null;
+    }
+    const merged = { ...stay.current, ...next };
+    stay.current = merged;
+    updateSearchParams(next);
+    if (merged.checkIn && merged.checkOut) {
+      const q = new URLSearchParams(location.search);
+      q.set('checkin', merged.checkIn); q.set('checkout', merged.checkOut);
+      q.set('guests', String(merged.guests)); q.set('rooms', String(merged.rooms));
+      navigate({ search: `?${q}` }, { replace: true });
+    }
+  };
 
   const [hotel,   setHotel]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -521,35 +546,28 @@ const Detail = () => {
                 </div>
               )}
 
-              {/* Dates & Guests */}
+              {/* Dates & Guests: the search's values, changeable here */}
               <div className="space-y-3 mb-6">
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="flex border-b border-gray-200">
-                    <div className="p-3 w-1/2 border-r border-gray-200">
-                      <span className="flex items-center text-xs font-bold uppercase text-gray-500 mb-1">
-                        <CalendarDays size={12} className="mr-1" /> Check-in
-                      </span>
-                      <span className={`font-medium text-sm ${!checkIn ? 'text-gray-400 italic' : 'text-gray-900'}`}>
-                        {formatDate(checkIn)}
-                      </span>
-                    </div>
-                    <div className="p-3 w-1/2">
-                      <span className="flex items-center text-xs font-bold uppercase text-gray-500 mb-1">
-                        <CalendarDays size={12} className="mr-1" /> Check-out
-                      </span>
-                      <span className={`font-medium text-sm ${!checkOut ? 'text-gray-400 italic' : 'text-gray-900'}`}>
-                        {formatDate(checkOut)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <span className="flex items-center text-xs font-bold uppercase text-gray-500 mb-1">
-                      <Users size={12} className="mr-1" /> Guests &amp; Rooms
-                    </span>
-                    <span className="font-medium text-sm text-gray-900">
-                      {guests || 2} Guest{(guests || 2) > 1 ? 's' : ''}, {nightsN} Room{nightsN > 1 ? 's' : ''}
-                    </span>
-                  </div>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-200">
+                  <DatePickerV2
+                    key={datePickerKey}
+                    checkIn={checkIn}
+                    setCheckIn={(v) => changeStay({ checkIn: v })}
+                    checkOut={checkOut}
+                    setCheckOut={(v) => changeStay({ checkOut: v })}
+                    isOpen={openPicker === 'dates'}
+                    setIsOpen={(o) => togglePicker('dates', o)}
+                    onFocusNext={() => {}}
+                    isMobile
+                  />
+                  <GuestSelectorV2
+                    guests={guests || 2}
+                    setGuests={(v) => changeStay({ guests: v })}
+                    rooms={rooms || 1}
+                    setRooms={(v) => changeStay({ rooms: v })}
+                    isOpen={openPicker === 'guests'}
+                    setIsOpen={(o) => togglePicker('guests', o)}
+                  />
                 </div>
 
                 {/* Price Breakdown */}

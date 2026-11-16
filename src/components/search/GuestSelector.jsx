@@ -70,7 +70,7 @@ const GuestSelector = ({ guests, setGuests, rooms, setRooms }) => {
         <div className="absolute z-50 w-full md:w-80 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in cursor-default">
           <Counter 
             label="Adults" 
-            desc="Ages 13 or above" 
+            desc="Ages 18 or above" 
             value={adults} 
             min={1} 
             max={10} 
@@ -78,7 +78,7 @@ const GuestSelector = ({ guests, setGuests, rooms, setRooms }) => {
           />
           <Counter 
             label="Children" 
-            desc="Ages 0-12" 
+            desc="Ages 0-17" 
             value={children} 
             min={0} 
             max={6} 

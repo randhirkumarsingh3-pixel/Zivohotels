@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
@@ -36,8 +37,11 @@ const hotelSchema = z.object({
   latitude: z.preprocess((val) => (val === '' || val === null ? undefined : parseFloat(val)), z.number().min(-90).max(90).optional()),
   longitude: z.preprocess((val) => (val === '' || val === null ? undefined : parseFloat(val)), z.number().min(-180).max(180).optional()),
   media: z.array(z.object({
-    url: z.string().refine(val => val.startsWith('http') || val.startsWith('blob:'), {
-      message: "URL must be a valid http/https or blob URL"
+    // Full URLs (cloud storage) or this server's own /uploads/<file> paths (STORAGE_DRIVER=local,
+    // e.g. the VPS, where the site calls the API at a relative /api/v1 so photo URLs are relative).
+    // Plain file names only: local storage maps these to files on disk, so no folders or "..".
+    url: z.string().refine(val => val.startsWith('http') || val.startsWith('blob:') || /^\/uploads\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(val) && !val.includes('..'), {
+      message: "URL must be a valid http/https URL or an /uploads/ path"
     }),
     tags: z.array(z.string()).optional().default([])
   })).max(20, "Maximum 20 images allowed").optional(),
@@ -729,9 +733,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
         owner: {
           select: { id: true, name: true, email: true }
         },
-        media: {
-          take: 1
-        },
+        media: COVER_PHOTO_FIRST, // the cover photo for the card
         roomTypes: {
           where: { isActive: true },
           include: {
@@ -967,7 +969,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
     },
     take: 100,
     include: {
-      media: { take: 1, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }], select: { url: true } },
+      media: { ...COVER_PHOTO_FIRST, select: { url: true } },
       cancellationPolicy: { select: { policyCode: true } },
       roomTypes: {
         where: { isActive: true },

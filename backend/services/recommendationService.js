@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import recommendationDomain from '../domains/recommendationDomain.js';
 import cacheUtils from '../utils/cacheUtils.js';
@@ -21,7 +22,7 @@ export const recommendationService = {
       if (userBehavior && userBehavior.lastViewedHotels && userBehavior.lastViewedHotels.length > 0) {
         const rvHotels = await prisma.hotel.findMany({
           where: { id: { in: userBehavior.lastViewedHotels }, status: { in: PUBLIC_HOTEL_STATUSES }, isDeleted: false },
-          include: { roomTypes: { include: { ratePlans: true } } }
+          include: { media: { ...COVER_PHOTO_FIRST, select: { url: true } }, roomTypes: { include: { ratePlans: true } } }
         });
         
         // Map and format
@@ -51,6 +52,7 @@ export const recommendationService = {
         ...(popularTargetCity && { city: { equals: popularTargetCity, mode: 'insensitive' } })
       },
       include: {
+        media: { ...COVER_PHOTO_FIRST, select: { url: true } }, // card photo (none were loaded before)
         roomTypes: {
           where: { isActive: true },
           include: { ratePlans: { where: { isActive: true } } }

@@ -143,6 +143,7 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
             selected={range}
             onSelect={handleSelect}
             numberOfMonths={isMobile ? 1 : 2}
+            defaultMonth={range?.from}
             disabled={{ before: today }}
             pagedNavigation
             showOutsideDays={false}
