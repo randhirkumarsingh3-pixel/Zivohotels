@@ -62,6 +62,7 @@ import { protect, authorizeRoles } from './middleware/authMiddleware.js';
 import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 import prisma from './config/db.js';
+import { isAllowedOrigin } from './config/origins.js';
 
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
@@ -117,28 +118,13 @@ const adminLimiter = rateLimit({
 app.set('trust proxy', 1);
 
 // 3. Security & Logging
-const allowedOrigins = [
-  // Production domains
-  'https://zivohotels.com',
-  'https://www.zivohotels.com',
-  'https://admin.zivohotels.com',
-  'https://partner.zivohotels.com',
-  // Vercel deployments (preview + production)
-  /^https:\/\/zivohotels.*\.vercel\.app$/,
-  // Development
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-];
+// Allowed origins: built-in domains plus CORS_ORIGINS (see config/origins.js)
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
-    const allowed = allowedOrigins.some(o =>
-      typeof o === 'string' ? o === origin : o.test(origin)
-    );
-    if (allowed) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     return callback(new Error(`CORS: Origin ${origin} not allowed`));
   },
   credentials: true
@@ -270,8 +256,10 @@ app.use(errorHandler);
 const server = http.createServer(app);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 ZivoHotels Backend running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+// HOST=127.0.0.1 behind a reverse proxy (e.g. Nginx on a VPS) keeps the port off the internet.
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 ZivoHotels Backend running on ${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
   
   // Initialize Real-time Infrastructure
   socketService.init(server);

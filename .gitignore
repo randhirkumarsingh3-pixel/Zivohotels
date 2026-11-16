@@ -29,3 +29,6 @@ backend/private_uploads/
 
 # Property photos uploaded while running locally (user content, not source)
 public/uploads/*
+
+# Build-time frontend settings on servers (VITE_*); never commit
+.env.*.local
