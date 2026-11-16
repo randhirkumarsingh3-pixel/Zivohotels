@@ -1,5 +1,6 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { z } from 'zod';
 import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation } from '../services/cancellationService.js';
 import { expireStaleBookings } from '../services/bookingExpiryService.js';
@@ -517,11 +518,8 @@ export const getMyBookings = async (req, res, next) => {
             city: true,
             checkInTime: true,
             checkOutTime: true,
-            media: {
-              where: { isPrimary: true },
-              take: 1,
-              select: { url: true }
-            }
+            // Cover photo, or the first upload when none is marked (was: cover only, else none)
+            media: { ...COVER_PHOTO_FIRST, select: { url: true } }
           }
         },
         roomType: { select: { id: true, name: true } },

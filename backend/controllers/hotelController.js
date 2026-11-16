@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
@@ -732,9 +733,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
         owner: {
           select: { id: true, name: true, email: true }
         },
-        media: {
-          take: 1
-        },
+        media: COVER_PHOTO_FIRST, // the cover photo for the card
         roomTypes: {
           where: { isActive: true },
           include: {
@@ -970,7 +969,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
     },
     take: 100,
     include: {
-      media: { take: 1, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }], select: { url: true } },
+      media: { ...COVER_PHOTO_FIRST, select: { url: true } },
       cancellationPolicy: { select: { policyCode: true } },
       roomTypes: {
         where: { isActive: true },

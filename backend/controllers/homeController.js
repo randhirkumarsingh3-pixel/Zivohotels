@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { promotionLabel } from '../domains/promotionDomain.js';
@@ -34,7 +35,7 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
     select: {
       id: true, name: true, city: true, location: true, latitude: true, longitude: true, landmark: true, rating: true, reviewScore: true, reviewCount: true,
       memberDiscountPercent: true, integrationSettings: true,
-      media: { take: 1, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }], select: { url: true } },
+      media: { ...COVER_PHOTO_FIRST, select: { url: true } },
       roomTypes: { where: { isActive: true }, select: { ratePlans: { where: { isActive: true }, select: { basePrice: true } } } },
     },
   });

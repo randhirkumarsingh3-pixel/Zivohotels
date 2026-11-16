@@ -1,4 +1,18 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+
+// The search (dates, guests, rooms) survives a reload of any page in this tab
+const STORAGE_KEY = 'zivo_search';
+const DEFAULT_SEARCH = { destination: '', checkIn: '', checkOut: '', guests: 2, rooms: 1 };
+const todayYmd = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const loadSearch = () => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+    if (!saved || typeof saved !== 'object') return DEFAULT_SEARCH;
+    // Dates in the past are dropped
+    if (saved.checkIn && saved.checkIn < todayYmd()) { saved.checkIn = ''; saved.checkOut = ''; }
+    return { ...DEFAULT_SEARCH, ...saved };
+  } catch { return DEFAULT_SEARCH; }
+};
 
 const BookingContext = createContext();
 
@@ -12,13 +26,10 @@ export const useBooking = () => {
 
 export const BookingProvider = ({ children }) => {
   // Global state for search queries
-  const [searchParams, setSearchParams] = useState({
-    destination: '',
-    checkIn: '',
-    checkOut: '',
-    guests: 2,
-    rooms: 1,
-  });
+  const [searchParams, setSearchParams] = useState(loadSearch);
+  useEffect(() => {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(searchParams)); } catch { /* storage unavailable */ }
+  }, [searchParams]);
 
   // Global state for selected hotel
   const [selectedHotel, setSelectedHotel] = useState(null);

@@ -66,7 +66,7 @@ const GuestSelectorV2 = ({ guests, setGuests, rooms, setRooms, isOpen, setIsOpen
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="font-semibold text-gray-900 text-sm">Guests</div>
-              <div className="text-xs text-gray-500">Ages 12 or above</div>
+              <div className="text-xs text-gray-500">Ages 18 or above</div>
             </div>
             <div className="flex items-center space-x-3">
               <button 
