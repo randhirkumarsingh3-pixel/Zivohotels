@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import { BOOKING_ROOMS_INCLUDE } from '../../services/bookingRoomsView.js';
 import { transitionBookingStatus, TransitionError } from '../../services/bookingStateMachine.js';
 import { CancellationError } from '../../services/cancellationService.js';
 import { eventBus, EVENTS } from '../../services/eventBus.js';
@@ -11,7 +12,9 @@ export const getBookings = async (req, res) => {
       where: { hotelId },
       include: {
         roomType: { select: { name: true } },
-        user: { select: { name: true, email: true, phone: true } }
+        user: { select: { name: true, email: true, phone: true } },
+        // Each room: type, plan, guests and lead guest
+        ...BOOKING_ROOMS_INCLUDE
       },
       orderBy: { createdAt: 'desc' },
       take: 100 // Basic pagination for now

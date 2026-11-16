@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { scheduleRecompute } from '../services/dynamicPricingService.js';
 import Razorpay from 'razorpay';
+import { inventoryRepository } from '../repositories/inventoryRepository.js';
 import prisma from '../config/db.js';
 import eventBus from '../events/eventBus.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
@@ -54,19 +55,22 @@ const restoreInventory = async (booking, tx) => {
   scheduleRecompute(booking.hotelId); // rooms freed up: refresh dynamic prices shortly
   const datesToRestore = getDatesInRange(booking.checkIn, booking.checkOut);
   
-  for (const date of datesToRestore) {
-    await tx.inventory.update({
-      where: {
-        roomTypeId_date: {
-          roomTypeId: booking.roomTypeId,
-          date
+  // Each room type of the booking (rooms of one booking can be different types)
+  for (const group of await inventoryRepository.roomsByType(tx, booking)) {
+    for (const date of datesToRestore) {
+      await tx.inventory.update({
+        where: {
+          roomTypeId_date: {
+            roomTypeId: group.roomTypeId,
+            date
+          }
+        },
+        data: {
+          bookedRooms: { decrement: group.rooms },
+          availableRooms: { increment: group.rooms }
         }
-      },
-      data: {
-        bookedRooms: { decrement: booking.rooms },
-        availableRooms: { increment: booking.rooms }
-      }
-    });
+      });
+    }
   }
 };
 
@@ -329,14 +333,17 @@ export const webhook = asyncHandler(async (req, res) => {
           const dates = booking.status === 'CANCELLED'
             ? []
             : getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
-          for (const date of dates) {
-            await tx.inventory.updateMany({
-              where: { roomTypeId: booking.roomTypeId, date },
-              data: {
-                bookedRooms: { decrement: booking.rooms },
-                availableRooms: { increment: booking.rooms }
-              }
-            });
+          const groups = dates.length ? await inventoryRepository.roomsByType(tx, booking) : [];
+          for (const group of groups) {
+            for (const date of dates) {
+              await tx.inventory.updateMany({
+                where: { roomTypeId: group.roomTypeId, date },
+                data: {
+                  bookedRooms: { decrement: group.rooms },
+                  availableRooms: { increment: group.rooms }
+                }
+              });
+            }
           }
         });
 

@@ -248,6 +248,129 @@ export const pricingDomain = {
         nightlyBreakdowns
       }
     };
+  },
+
+  /**
+   * Price of a stay of one or more rooms, each with its own room type, rate plan and guests
+   * (a suite for 3 and a standard room for 1 in one booking).
+   *
+   * Each room is priced for its own occupancy (extra guests, meals, extra beds). Discounts are
+   * worked out on the whole stay as in calculate(); a promotion only counts the rooms it is valid
+   * for (input.promotionRoomIndexes, default all). GST is per room: each room's tariff after its
+   * share of the discounts picks its slab (a ₹9,000 suite at 18% and a ₹3,000 room at 5% in the
+   * same booking). With every room the same type, plan and occupancy the result equals calculate().
+   *
+   * @param {Object} input  shared fields as calculate(), plus
+   * @param {Array}  input.rooms  [{ roomType, ratePlan, adults, children, extraBeds, dailyRates }]
+   */
+  calculateStay: (input) => {
+    const {
+      rooms: roomInputs = [], taxRules, prepaidDiscountPercent, checkInDate, checkOutDate, paymentType,
+      appliedPromotion = null, promotionRoomIndexes = null,
+      loyaltyDiscountAmount = 0, memberDiscountAmount = 0, dynamicContext = null,
+    } = input;
+    if (!roomInputs.length) throw new Error('Choose at least one room');
+
+    // 1. Each room on its own (no discounts yet)
+    const rooms = roomInputs.map((r, i) => {
+      const occupancy = (Number(r.adults) || 0) + (Number(r.children) || 0);
+      if (occupancy > (r.roomType.maxOccupancy || 2)) {
+        throw new Error(`${r.roomType.name} fits up to ${r.roomType.maxOccupancy || 2} guests; room ${i + 1} has ${occupancy}. Choose a bigger room or add a room.`);
+      }
+      const one = pricingDomain.calculate({
+        roomType: r.roomType, ratePlan: r.ratePlan, taxRules, prepaidDiscountPercent: 0,
+        checkInDate, checkOutDate, rooms: 1, adults: Number(r.adults) || 1, children: Number(r.children) || 0,
+        extraBeds: Number(r.extraBeds) || 0, paymentType: 'PAY_AT_HOTEL', dynamicContext, dailyRates: r.dailyRates || {},
+      });
+      return {
+        roomTypeId: r.roomType.id, ratePlanId: r.ratePlan.id,
+        adults: one.adults, children: one.children, extraBeds: one.extraBeds,
+        roomPrice: one.rawBaseAmount, extraGuestCharges: one.extraGuestCharges, mealCharges: one.mealCharges,
+        extraBedCharges: one.extraBedCharges, subtotal: one.subtotal, pricingType: one.pricingType,
+        nightlyBreakdowns: one.dynamicPricing.nightlyBreakdowns, nights: one.nights,
+      };
+    });
+    const nights = rooms[0].nights;
+    const sum = (k, list = rooms) => list.reduce((t, r) => t + r[k], 0);
+    const rawSubtotal = sum('subtotal');
+
+    // 2. Discounts on the whole stay (same order and limits as calculate())
+    const prepaid = paymentType === 'PREPAID' ? Math.round(rawSubtotal * ((prepaidDiscountPercent || 0) / 100)) : 0;
+    const promoIdx = Array.isArray(promotionRoomIndexes) ? new Set(promotionRoomIndexes) : null;
+    const promoRooms = promoIdx ? rooms.filter((_, i) => promoIdx.has(i)) : rooms;
+    const promotionDiscountAmount = appliedPromotion ? discountFor(appliedPromotion, sum('subtotal', promoRooms)) : 0;
+    const memberDiscount = Math.max(0, Math.min(Math.round(Number(memberDiscountAmount) || 0), rawSubtotal - prepaid - promotionDiscountAmount));
+    const pointsDiscount = Math.max(0, Math.min(Math.round(Number(loyaltyDiscountAmount) || 0), rawSubtotal - prepaid - promotionDiscountAmount - memberDiscount));
+    const totalDiscountAmount = prepaid + promotionDiscountAmount + memberDiscount + pointsDiscount;
+    const baseAmountAfterDiscount = Math.max(0, rawSubtotal - totalDiscountAmount);
+
+    // 3. Each room's share of the discounts (the promotion only over its rooms), exact to the rupee
+    const share = (amount, weights) => {
+      const total = weights.reduce((a, b) => a + b, 0);
+      if (!amount || !total) return weights.map(() => 0);
+      const exact = weights.map((w) => (amount * w) / total);
+      const out = exact.map(Math.floor);
+      let left = amount - out.reduce((a, b) => a + b, 0);
+      exact.map((x, i) => [x - Math.floor(x), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { out[i] += 1; left -= 1; } });
+      return out;
+    };
+    const subs = rooms.map((r) => r.subtotal);
+    const promoShare = share(promotionDiscountAmount, rooms.map((r, i) => (!promoIdx || promoIdx.has(i) ? r.subtotal : 0)));
+    const otherShare = share(prepaid + memberDiscount + pointsDiscount, subs);
+
+    // 4. GST slab per room from its tariff per night after discounts; tax per slab
+    const findRule = (perNight) => taxRules.find((rule) => (rule.maxThreshold !== null
+      ? perNight >= rule.minThreshold && perNight <= rule.maxThreshold
+      : perNight > rule.minThreshold));
+    const taxable = new Map();
+    rooms.forEach((r, i) => {
+      r.discount = promoShare[i] + otherShare[i];
+      r.amountAfterDiscount = Math.max(0, r.subtotal - r.discount);
+      const rule = findRule(r.amountAfterDiscount / nights);
+      if (!rule) throw new Error(`No applicable tax rule found for tariff ₹${(r.amountAfterDiscount / nights).toFixed(2)}`);
+      r.taxPercentage = rule.percentage;
+      taxable.set(rule.percentage, (taxable.get(rule.percentage) || 0) + r.amountAfterDiscount);
+    });
+    const taxAmount = [...taxable.entries()].reduce((t, [pct, amt]) => t + Math.round(amt * (pct / 100)), 0);
+    const totalAmount = Math.round(baseAmountAfterDiscount + taxAmount);
+    const pcts = [...taxable.keys()];
+    const adults = sum('adults');
+    const children = sum('children');
+
+    return {
+      rawBaseAmount: sum('roomPrice'),
+      roomPrice: sum('roomPrice'),
+      discountAmount: totalDiscountAmount,
+      prepaidDiscountAmount: prepaid,
+      couponDiscountAmount: 0,
+      promotionDiscountAmount,
+      loyaltyDiscountAmount: pointsDiscount,
+      memberDiscountAmount: memberDiscount,
+      baseAmount: baseAmountAfterDiscount,
+      taxAmount,
+      totalAmount,
+      finalAmount: totalAmount,
+      subtotal: rawSubtotal,
+      extraGuestCharges: sum('extraGuestCharges'),
+      extraBedCharges: sum('extraBedCharges'),
+      mealCharges: sum('mealCharges'),
+      pricingType: rooms[0].pricingType,
+      // One rate for the booking when all rooms share it; otherwise the highest (each room's is below)
+      taxPercentage: pcts.length === 1 ? pcts[0] : Math.max(...pcts),
+      taxBreakdown: [...taxable.entries()].map(([percentage, amount]) => ({ percentage, taxableAmount: amount, taxAmount: Math.round(amount * (percentage / 100)) })),
+      perNightRate: baseAmountAfterDiscount / (nights * rooms.length),
+      nights,
+      rooms: rooms.length,
+      guests: adults + children,
+      adults,
+      children,
+      extraBeds: sum('extraBeds'),
+      roomsBreakdown: rooms.map(({ nightlyBreakdowns: _n, nights: _nn, ...r }, i) => ({ roomNumber: i + 1, ...r })),
+      dynamicPricing: {
+        applied: !!(dynamicContext && !dynamicContext.safeMode),
+        nightlyBreakdowns: rooms[0].nightlyBreakdowns,
+      },
+    };
   }
 };
 

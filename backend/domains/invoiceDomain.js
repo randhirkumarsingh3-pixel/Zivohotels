@@ -121,7 +121,7 @@ export const invoiceDomain = {
         <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
           <strong>Stay Details:</strong><br>
           Check-in: ${checkInDate} | Check-out: ${checkOutDate}<br>
-          Guests: ${booking.adults} Adults, ${booking.children} Children | Rooms: ${booking.rooms}
+          Guests: ${booking.adults} Adults, ${booking.children} Children | Rooms: ${booking.rooms}${(booking.bookingRooms || []).length > 1 ? booking.bookingRooms.map((r) => `<br>Room ${r.roomNumber}: ${h(r.roomType?.name || 'Room')} (${h(r.ratePlan?.name || '')}), ${r.adults} adult${r.adults === 1 ? '' : 's'}${r.children ? `, ${r.children} child${r.children === 1 ? '' : 'ren'}` : ''}, lead guest ${h(r.guestName)}`).join('') : ''}
         </div>
 
         <table>

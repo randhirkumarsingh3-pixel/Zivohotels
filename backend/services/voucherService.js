@@ -51,18 +51,21 @@ export const canDownloadVoucher = (booking, hotel, user, type) => {
   return type === 'guest' && booking.userId === user.id;
 };
 
+import { loadBookingRooms, roomsSummary, guestsLabel } from './bookingRoomsView.js';
+
 export const loadVoucherData = async (bookingId) => {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!booking) return null;
-  const [hotel, roomType, ratePlan, policy, settlement, timeline] = await Promise.all([
+  const [hotel, roomType, ratePlan, policy, settlement, timeline, rooms] = await Promise.all([
     prisma.hotel.findUnique({ where: { id: booking.hotelId } }),
     prisma.roomType.findUnique({ where: { id: booking.roomTypeId }, select: { name: true } }),
     booking.ratePlanId ? prisma.ratePlan.findUnique({ where: { id: booking.ratePlanId }, select: { name: true, mealPlan: true } }) : null,
     prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }),
     prisma.settlement.findUnique({ where: { bookingId } }),
     prisma.bookingTimelineEvent.findFirst({ where: { bookingId, status: 'CONFIRMED' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+    loadBookingRooms(bookingId),
   ]);
-  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt };
+  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt, rooms };
 };
 
 // ── shared pieces ─────────────────────────────────────────────────────────────
@@ -168,7 +171,18 @@ const stayCard = (d) => {
 };
 
 const roomBlock = (d) => {
-  const { booking, roomType, ratePlan } = d;
+  const { booking, roomType, ratePlan, rooms = [] } = d;
+  // Each room with its type, plan, guests and lead guest
+  if (rooms.length) return `
+    <div class="section">
+      <h2>${rooms.length} room${rooms.length > 1 ? 's' : ''}</h2>
+      ${rooms.map((r) => `
+      <div class="card" style="margin-bottom:8px">
+        <div class="big">Room ${r.roomNumber}: ${h(r.roomType?.name || 'Room')}</div>
+        <div class="muted">${h(r.ratePlan?.name || 'Standard rate')} · ${h(MEAL[r.ratePlan?.mealPlan] || 'Room only')} · ${h(guestsLabel(r.adults, r.children))}</div>
+        <div>Lead guest: <b>${h(r.guestName)}</b></div>
+      </div>`).join('')}
+    </div>`;
   return `
     <div class="section">
       <h2>${booking.rooms} room${booking.rooms > 1 ? 's' : ''}</h2>
@@ -372,7 +386,7 @@ export const hotelierVoucherHtml = (d, f) => {
       <table>
         <thead><tr><th>Night</th><th>Room (R)</th><th>Extras (E)</th><th>GST (T)</th><th>Gross (G=R+E+T)</th><th>Commission incl. GST (C)</th><th>Net (G−C)</th></tr></thead>
         <tbody>
-          <tr><td colspan="7" style="color:#f43f5e;font-weight:600">${h(roomType?.name || 'Room')} · ${booking.rooms} room${booking.rooms > 1 ? 's' : ''}</td></tr>
+          <tr><td colspan="7" style="color:#f43f5e;font-weight:600">${h(roomsSummary(d.rooms, booking, roomType?.name))}</td></tr>
           ${days.map((day, i) => `<tr><td>${fmtDate(day)}</td><td>${R[i].toFixed(2)}</td><td>${E[i].toFixed(2)}</td><td>${T[i].toFixed(2)}</td><td>${G[i].toFixed(2)}</td><td>${C[i].toFixed(2)}</td><td>${(G[i] - C[i]).toFixed(2)}</td></tr>`).join('')}
           <tr class="total"><td>Total</td><td>${f.roomCharges.toFixed(2)}</td><td>${f.extras.toFixed(2)}</td><td>${f.tax.toFixed(2)}</td><td>${f.gross.toFixed(2)}</td><td>${commissionInclGst.toFixed(2)}</td><td>${(f.gross - commissionInclGst).toFixed(2)}</td></tr>
         </tbody>

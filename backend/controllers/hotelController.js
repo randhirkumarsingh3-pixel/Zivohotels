@@ -937,10 +937,34 @@ export const getHotelById = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data, requestId: req.id });
 });
 
+// Guests in each room of the search: occ=2-0,1-1 (adults-children), else guests over rooms
+const groupRoomsFrom = ({ occ, guests, rooms }) => {
+  const fromOcc = String(occ || '').split(',').filter(Boolean).slice(0, 8)
+    .map((p) => p.split('-').reduce((t, n) => t + (parseInt(n) || 0), 0)).filter((n) => n > 0);
+  if (fromOcc.length) return fromOcc;
+  const r = Math.min(Math.max(parseInt(rooms) || 1, 1), 8);
+  const g = Math.max(parseInt(guests) || 1, r);
+  return Array.from({ length: r }, (_, i) => Math.floor(g / r) + (i < g % r ? 1 : 0));
+};
+
+// Can the hotel give every room of the group a room type big enough with rooms left? Biggest party
+// first, into the smallest room type that fits it (rooms of a booking can be different types).
+export const canHostGroup = (typeRoomsLeft, groupRooms) => {
+  const types = typeRoomsLeft.map((t) => ({ ...t })).sort((a, b) => a.maxGuests - b.maxGuests);
+  for (const size of [...groupRooms].sort((a, b) => b - a)) {
+    const t = types.find((x) => x.maxGuests >= size && x.left > 0);
+    if (!t) return false;
+    t.left -= 1;
+  }
+  return true;
+};
+
 export const searchHotels = asyncHandler(async (req, res) => {
   const { city, checkIn, checkOut, sort, minPrice, maxPrice, minRating, minStars, amenities, includeSoldOut } = req.query;
   // "Near me": a map point instead of a place name
   const near = parseLatLng(req.query.lat, req.query.lng);
+  // Guests per room (occ=2-0,1-1); without it, guests split over rooms
+  const groupRooms = groupRoomsFrom(req.query);
 
   if ((!city && !near) || !checkIn || !checkOut) {
     return res.status(400).json({ success: false, message: 'A destination (or your location), checkIn and checkOut are required' });
@@ -1014,6 +1038,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
      let hasFreeCancellation = false;
      const bookablePlans = [];
 
+     const typeRoomsLeft = [];
      hotel.roomTypes.forEach(rt => {
          // Availability over the stay: the lowest available count across the nights; a night with
          // no inventory row sells the physical count; a stop-sell night closes the room type
@@ -1026,6 +1051,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
          }
          availableRooms += Math.max(0, minAvail);
          totalRooms += (rt.totalInventory || 0);
+         if (minAvail > 0 && rt.ratePlans.length) typeRoomsLeft.push({ maxGuests: rt.maxOccupancy || 2, left: minAvail });
 
          // Price shown = average nightly price for these dates (daily rates included), cheapest
          // plan of a room type that can actually be booked
@@ -1075,6 +1101,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
         longitude: hotel.longitude ?? null,
         type: hotel.type || null,
         ...(distances ? { distanceKm: Math.round(distances.get(hotel.id) * 10) / 10 } : {}),
+        fitsGroup: canHostGroup(typeRoomsLeft, groupRooms),
         bookablePlans
      };
   });
@@ -1096,8 +1123,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
     if (best && best.nightlyPriceAfter < h.price) h.offer = best;
   }));
 
-  // Apply filters
-  let filteredHotels = mappedHotels.filter(h => h.price > 0);
+  // Apply filters. A hotel with rooms left but not enough (or none big enough) for the group is left
+  // out; a fully sold-out one is still listed as sold out.
+  let filteredHotels = mappedHotels.filter(h => h.price > 0 && (h.fitsGroup || h.availableRooms === 0));
+  filteredHotels.forEach(h => { delete h.fitsGroup; });
 
   if (minPrice) {
     filteredHotels = filteredHotels.filter(h => h.price >= parseFloat(minPrice));

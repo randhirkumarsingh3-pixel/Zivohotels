@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { roomsText, bookingRoomsOf, roomGuests } from '../utils/bookingRooms';
 import { 
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
   RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
@@ -530,7 +531,7 @@ const MyBookings = () => {
                   <div className="grid grid-cols-3 gap-4">
                     {[
                       { label: 'Guests', value: `${activeBooking.guests} pax` },
-                      { label: 'Rooms',  value: `${activeBooking.rooms} Unit` },
+                      { label: 'Rooms',  value: `${activeBooking.rooms} room${activeBooking.rooms === 1 ? '' : 's'}` },
                       { label: 'Nights', value: `${Math.ceil(Math.abs(new Date(activeBooking.checkOut) - new Date(activeBooking.checkIn)) / 86400000)} Nights` }
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50 text-center">
@@ -545,8 +546,20 @@ const MyBookings = () => {
                     <div className="grid grid-cols-2 gap-4 text-xs">
                       <div><span className="text-gray-400">Guest Name</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestName}</p></div>
                       <div><span className="text-gray-400">Contact</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestPhone}</p></div>
-                      <div className="col-span-2"><span className="text-gray-400">Room Type</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.roomType?.name}</p></div>
-                      <div className="col-span-2"><span className="text-gray-400">Rate Plan</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.ratePlan?.name} ({activeBooking.ratePlan?.mealPlan || 'No Meal'})</p></div>
+                      {bookingRoomsOf(activeBooking).length > 1 ? (
+                        <div className="col-span-2"><span className="text-gray-400">Rooms</span>
+                          <ul className="mt-0.5 space-y-1">
+                            {bookingRoomsOf(activeBooking).map((r) => (
+                              <li key={r.roomNumber} className="font-bold text-gray-800">Room {r.roomNumber}: {r.roomType?.name} · {r.ratePlan?.name} <span className="font-medium text-gray-500">· {roomGuests(r)} · {r.guestName}</span></li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="col-span-2"><span className="text-gray-400">Room Type</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.roomType?.name}</p></div>
+                          <div className="col-span-2"><span className="text-gray-400">Rate Plan</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.ratePlan?.name} ({activeBooking.ratePlan?.mealPlan || 'No Meal'})</p></div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -917,7 +930,7 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
           <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-700 transition-colors mb-0.5">{booking.hotel?.name}</h3>
           <p className="text-gray-500 text-xs flex items-center gap-1 mb-3">
             <MapPin size={12} className="text-gray-400" />
-            {booking.hotel?.city} · {booking.roomType?.name}
+            {booking.hotel?.city} · {roomsText(booking)}
           </p>
 
           <div className="grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50">

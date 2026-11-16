@@ -16,6 +16,7 @@ import { galleryPhotos } from '../components/hotel/galleryPhotos';
 import ReviewsSection from '../components/hotel/ReviewsSection';
 import DatePickerV2 from '../components/search/DatePickerV2';
 import GuestSelectorV2 from '../components/search/GuestSelectorV2';
+import { occupancyOf, occParams, occToParam, occTotals, parseOcc, roomGuestsLabel } from '../utils/occupancy';
 import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection, RoomFeatures } from '../components/hotel/HotelSections';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,15 +75,16 @@ const offerDiscount = (offer, subtotal) => {
 };
 
 // ─── Rate Plan Card ───────────────────────────────────────────────────────────
-const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
+const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect, disabled = false }) => {
   const meal = MEAL_LABELS[plan.mealPlan] || MEAL_LABELS.NONE;
   const totalPerNight = nightlyPrice(plan);
   const total = totalPerNight * nights * rooms;
 
   return (
     <div
-      onClick={() => onSelect(plan)}
-      className={`cursor-pointer border-2 rounded-xl p-4 transition-all ${isSelected
+      onClick={() => !disabled && onSelect(plan)}
+      aria-disabled={disabled || undefined}
+      className={`border-2 rounded-xl p-4 transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${isSelected
         ? 'border-brand-600 bg-brand-50 shadow-md shadow-brand-100'
         : 'border-gray-200 hover:border-brand-300 hover:bg-gray-50'
       }`}
@@ -120,22 +122,24 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect }) => {
         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-600' : 'border-gray-300'}`}>
           {isSelected && <div className="w-2 h-2 bg-brand-600 rounded-full" />}
         </div>
-        {isSelected ? 'Selected' : 'Select this plan'}
+        {isSelected ? 'Selected' : disabled ? 'Too small for this room' : 'Select this plan'}
       </div>
     </div>
   );
 };
 
 // ─── Room Type Section ────────────────────────────────────────────────────────
-const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nights, rooms, onSelect }) => {
-  const isExpanded = selectedRoomTypeId === roomType.id;
+const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nights, rooms, onSelect, tooSmallFor = null }) => {
+  const [peek, setPeek] = useState(false);
+  // A room type too small for the room being chosen for can be looked at but not chosen
+  const isExpanded = selectedRoomTypeId === roomType.id || peek;
   const roomPhoto = (roomType.images?.find((i) => i.isPrimary) || roomType.images?.[0])?.url;
 
   return (
     <div className={`border rounded-xl overflow-hidden transition-all ${isExpanded ? 'border-brand-300 shadow-sm' : 'border-gray-200'}`}>
       {/* Room type header */}
       <button
-        onClick={() => onSelect(roomType, roomType.ratePlans?.[0])}
+        onClick={() => (tooSmallFor ? setPeek((v) => !v) : onSelect(roomType, roomType.ratePlans?.[0]))}
         className={`w-full flex items-start justify-between gap-3 p-4 text-left transition-colors ${isExpanded ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
       >
         <div className="flex items-start gap-4 min-w-0">
@@ -155,6 +159,11 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
               {roomType.ratePlans?.length > 1 && ` · ${roomType.ratePlans.length} rate plans`}
             </p>
             <RoomFeatures roomType={roomType} />
+            {tooSmallFor && (
+              <p className="text-xs font-semibold text-amber-800">
+                Fits up to {roomType.maxOccupancy || 2} guests: too small for {tooSmallFor.multi ? `room ${tooSmallFor.room} ` : ''}({tooSmallFor.guests} guests){tooSmallFor.multi ? '' : '. Add a room for the others'}
+              </p>
+            )}
           </div>
         </div>
         {isExpanded ? <ChevronUp size={16} className="text-brand-700" /> : <ChevronDown size={16} className="text-gray-400" />}
@@ -170,7 +179,8 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
                 plan={plan}
                 nights={nights}
                 rooms={rooms}
-                isSelected={selectedRatePlanId === plan.id}
+                isSelected={selectedRatePlanId === plan.id && selectedRoomTypeId === roomType.id}
+                disabled={!!tooSmallFor}
                 onSelect={(p) => onSelect(roomType, p)}
               />
             ))
@@ -182,6 +192,28 @@ const RoomTypeSection = ({ roomType, selectedRoomTypeId, selectedRatePlanId, nig
     </div>
   );
 };
+
+// ─── Rooms of the stay ───────────────────────────────────────────────────────
+const guestsIn = (r) => (r?.adults || 0) + (r?.children || 0);
+const fitsRoom = (rt, r) => (rt?.maxOccupancy || 2) >= guestsIn(r);
+const bookable = (rt) => rt && rt.availableForStay !== 0 && rt.ratePlans?.length > 0;
+
+/**
+ * A room type and plan for every room of the stay: [{ roomTypeId, ratePlanId } | null].
+ * Keeps each room's current choice while it still exists and fits; a new room takes room 1's
+ * choice when it fits, else the first room type big enough.
+ */
+const chooseRooms = (roomTypes = [], occupancy, current = []) => occupancy.map((r, i) => {
+  const valid = (c) => {
+    const rt = c && roomTypes.find((t) => t.id === c.roomTypeId);
+    const plan = rt?.ratePlans?.find((p) => p.id === c.ratePlanId);
+    return rt && plan && fitsRoom(rt, r) ? c : null;
+  };
+  const kept = valid(current[i]) || valid(current[0]);
+  if (kept) return kept;
+  const rt = roomTypes.find((t) => bookable(t) && fitsRoom(t, r)) || roomTypes.find((t) => fitsRoom(t, r) && t.ratePlans?.length);
+  return rt ? { roomTypeId: rt.id, ratePlanId: rt.ratePlans[0].id } : null;
+});
 
 // ─── Detail Page ──────────────────────────────────────────────────────────────
 const Detail = () => {
@@ -204,7 +236,18 @@ const Detail = () => {
     if (q.get('checkin') && q.get('checkout')) { linked.checkIn = q.get('checkin'); linked.checkOut = q.get('checkout'); }
     if (parseInt(q.get('guests')) > 0) linked.guests = parseInt(q.get('guests'));
     if (parseInt(q.get('rooms')) > 0) linked.rooms = parseInt(q.get('rooms'));
-    if (Object.entries(linked).some(([k, v]) => searchParams[k] !== v)) updateSearchParams(linked);
+    const occ = parseOcc(q.get('occ'));
+    if (occ) Object.assign(linked, { occupancy: occ, ...occTotals(occ) });
+    else if (linked.guests || linked.rooms) {
+      // An older link with totals only: keep the rooms already chosen when the totals agree
+      const cur = occupancyOf(searchParams);
+      const t = occTotals(cur);
+      const same = (linked.guests || t.guests) === t.guests && (linked.rooms || t.rooms) === t.rooms;
+      linked.occupancy = same ? cur : occupancyOf({ guests: linked.guests || guests, rooms: linked.rooms || rooms });
+    }
+    delete linked.adults; delete linked.children;
+    const differs = ([k, v]) => (k === 'occupancy' ? occToParam(v) !== occToParam(occupancyOf(searchParams)) : searchParams[k] !== v);
+    if (Object.entries(linked).some(differs)) updateSearchParams(linked);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
@@ -220,7 +263,7 @@ const Detail = () => {
   };
   // Latest values, so two changes in one click (rooms, then guests) both reach the link
   const stay = useRef({});
-  stay.current = { checkIn, checkOut, guests: guests || 2, rooms: rooms || 1 };
+  stay.current = { checkIn, checkOut, occupancy: occupancyOf(searchParams) };
   const changeStay = (change) => {
     let next = change;
     if ('checkIn' in change) { pendingCheckIn.current = change.checkIn; return; }
@@ -229,13 +272,15 @@ const Detail = () => {
       next = { checkIn: pendingCheckIn.current || stay.current.checkIn, checkOut: change.checkOut };
       pendingCheckIn.current = null;
     }
+    // Rooms and guests: the list per room, with its totals for older code
+    if (next.occupancy) next = { ...next, guests: occTotals(next.occupancy).guests, rooms: next.occupancy.length };
     const merged = { ...stay.current, ...next };
     stay.current = merged;
     updateSearchParams(next);
     if (merged.checkIn && merged.checkOut) {
       const q = new URLSearchParams(location.search);
       q.set('checkin', merged.checkIn); q.set('checkout', merged.checkOut);
-      q.set('guests', String(merged.guests)); q.set('rooms', String(merged.rooms));
+      Object.entries(occParams(merged.occupancy)).forEach(([k, v]) => q.set(k, v));
       navigate({ search: `?${q}` }, { replace: true });
     }
   };
@@ -243,10 +288,24 @@ const Detail = () => {
   const [hotel,   setHotel]   = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Selection state
-  const [selectedRoomType, setSelectedRoomType] = useState(null);
-  const [selectedRatePlan, setSelectedRatePlan] = useState(null);
+  // Selection: a room type and plan for each room of the stay (rooms can differ). The room being
+  // chosen for is "active"; the list on the left picks for it.
+  const occupancy = occupancyOf(searchParams);
+  const occKey = occToParam(occupancy);
+  const [roomChoices, setRoomChoices] = useState([]);
+  const [activeRoom, setActiveRoom] = useState(0);
+  const touchedRooms = useRef(new Set());
   const [error, setError] = useState(null);
+  const typeById = (tid) => hotel?.roomTypes?.find((t) => t.id === tid) || null;
+  const activeIdx = Math.min(activeRoom, occupancy.length - 1);
+  const activeChoice = roomChoices[activeIdx] || null;
+  const selectedRoomType = activeChoice ? typeById(activeChoice.roomTypeId) : null;
+  const selectedRatePlan = selectedRoomType?.ratePlans?.find((p) => p.id === activeChoice.ratePlanId) || null;
+  const chosenRooms = occupancy.map((r, i) => {
+    const c = roomChoices[i];
+    const rt = c ? typeById(c.roomTypeId) : null;
+    return { ...r, roomType: rt, ratePlan: rt?.ratePlans?.find((p) => p.id === c.ratePlanId) || null };
+  });
 
   // A/B Experiments
   const badgeVariant = useExperiment('badge_urgency');
@@ -254,8 +313,8 @@ const Detail = () => {
 
   // Re-fetched when the stay dates change (prices and availability depend on them). Intentionally
   // not on experiment changes, to avoid loops.
-  const selectionRef = useRef({});
-  selectionRef.current = { room: selectedRoomType?.id, plan: selectedRatePlan?.id };
+  const selectionRef = useRef([]);
+  selectionRef.current = roomChoices;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Only the latest request may update the page: the first load (before the link's dates are
@@ -266,20 +325,13 @@ const Detail = () => {
         const data = await getHotelById(id, { checkIn, checkOut });
         if (stale) return;
         setHotel(data);
-        // Pre-select first room type + cheapest rate plan
-        if (data.roomTypes?.length > 0) {
-          // Keep the current choice (date change), or the one made before checkout ("Change room
-          // or meal plan")
-          const wanted = selectionRef.current.room
-            ? selectionRef.current
-            : previousSelection?.id === data.id ? { room: previousSelection.selectedRoomType?.id, plan: previousSelection.selectedRatePlan?.id } : {};
-          const prevRoom = wanted.room ? data.roomTypes.find(rt => rt.id === wanted.room) : null;
-          const room = prevRoom || data.roomTypes[0];
-          setSelectedRoomType(room);
-          const prevPlan = prevRoom ? room.ratePlans?.find(rp => rp.id === wanted.plan) : null;
-          if (prevPlan) setSelectedRatePlan(prevPlan);
-          else if (room.ratePlans?.length > 0) setSelectedRatePlan(room.ratePlans[0]);
-        }
+        // Keep the current choices (date change), or the ones made before checkout ("Change room
+        // or meal plan"); otherwise the first room type that fits each room
+        const previous = previousSelection?.id === data.id
+          ? (previousSelection.roomSelections || [{ roomType: previousSelection.selectedRoomType, ratePlan: previousSelection.selectedRatePlan }])
+            .map((r) => (r.roomType && r.ratePlan ? { roomTypeId: r.roomType.id, ratePlanId: r.ratePlan.id } : null))
+          : [];
+        setRoomChoices(chooseRooms(data.roomTypes, occupancyOf(searchParams), selectionRef.current.length ? selectionRef.current : previous));
         
         // Analytics
         trackEvent('HOTEL_VIEWED', { hotelName: data.name }, data.id, data.city, allExperiments);
@@ -294,41 +346,87 @@ const Detail = () => {
     return () => { stale = true; };
   }, [id, checkIn, checkOut]);
 
+  // Rooms added, removed or with other guests: keep what still fits
+  useEffect(() => {
+    if (!hotel?.roomTypes) return;
+    setRoomChoices((prev) => chooseRooms(hotel.roomTypes, occupancy, prev));
+    setActiveRoom((a) => Math.min(a, occupancy.length - 1));
+    touchedRooms.current = new Set([...touchedRooms.current].filter((i) => i < occupancy.length));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [occKey, hotel?.roomTypes]);
+
   // The price shown here comes from the same server calculation as checkout (offers, member
   // prices, pay-now saving, GST), so the total doesn't change between this page and checkout.
   // The local estimate below is only shown until it arrives, or if it fails.
   usePageTitle(hotel ? [hotel.name, hotel.city].filter(Boolean).join(', ') : 'Hotel', hotel?.description ? String(hotel.description).slice(0, 155) : undefined);
   const [quote, setQuote] = useState(null);
-  const quoteRoomId = selectedRoomType?.id;
-  const quotePlanId = selectedRatePlan?.id;
+  const [quoteError, setQuoteError] = useState('');
+  const roomLines = chosenRooms.every((r) => r.roomType && r.ratePlan)
+    ? chosenRooms.map((r) => ({ roomTypeId: r.roomType.id, ratePlanId: r.ratePlan.id, adults: r.adults, children: r.children || 0 }))
+    : null;
+  const linesKey = roomLines ? JSON.stringify(roomLines) : '';
   useEffect(() => {
     setQuote(null);
-    if (!hotel?.id || !quoteRoomId || !quotePlanId || !checkIn || !checkOut) return undefined;
+    setQuoteError('');
+    if (!hotel?.id || !roomLines || !checkIn || !checkOut) return undefined;
     let live = true;
     const t = setTimeout(() => {
+      const totals = occTotals(roomLines);
       previewBookingApi({
-        hotelId: hotel.id, roomTypeId: quoteRoomId, ratePlanId: quotePlanId, checkIn, checkOut,
-        adults: searchParams.adults || guests || 2, children: searchParams.children || 0, extraBeds: 0,
-        rooms: rooms || 1, paymentType: 'PREPAID',
-      }).then((r) => { if (live) setQuote(r?.data || null); }).catch(() => { if (live) setQuote(null); });
+        hotelId: hotel.id, roomTypeId: roomLines[0].roomTypeId, ratePlanId: roomLines[0].ratePlanId, checkIn, checkOut,
+        adults: totals.adults, children: totals.children, extraBeds: 0, rooms: roomLines.length, roomLines, paymentType: 'PREPAID',
+      }).then((r) => { if (live) setQuote(r?.data || null); })
+        .catch((e) => { if (live) { setQuote(null); setQuoteError(e?.message || ''); } });
     }, 250);
     return () => { live = false; clearTimeout(t); };
-  }, [hotel?.id, quoteRoomId, quotePlanId, checkIn, checkOut, guests, rooms, searchParams.adults, searchParams.children, isAuthenticated]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotel?.id, linesKey, checkIn, checkOut, isAuthenticated]);
 
+  // Picks the room type and plan for the room being chosen for. The first pick with several rooms
+  // also goes to the rooms not chosen yet (when it fits them), so the usual case is one click.
   const handleRoomSelect = (roomType, ratePlan) => {
-    setSelectedRoomType(roomType);
-    setSelectedRatePlan(ratePlan || null);
+    if (!roomType || !ratePlan) return;
+    const idx = activeIdx;
+    if (!fitsRoom(roomType, occupancy[idx])) return;
+    setError(null);
+    setRoomChoices((prev) => occupancy.map((r, i) => {
+      const choice = { roomTypeId: roomType.id, ratePlanId: ratePlan.id };
+      if (i === idx) return choice;
+      if (!touchedRooms.current.has(i) && fitsRoom(roomType, r)) return choice;
+      return prev[i] || null;
+    }));
+    touchedRooms.current.add(idx);
+  };
+  const chooseFor = (i) => {
+    setActiveRoom(i);
+    document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleBookNow = () => {
     setError(null);
-    if (!selectedRoomType || !selectedRatePlan) {
-      setError('Please select a room type and rate plan to continue.');
+    const missing = chosenRooms.findIndex((r) => !r.roomType || !r.ratePlan);
+    if (missing >= 0) {
+      setError(occupancy.length > 1 ? `Choose a room and plan for room ${missing + 1}.` : 'Please select a room type and rate plan to continue.');
       return;
     }
-    if (selectedRoomType.availableForStay === 0) {
-      setError(`${selectedRoomType.name} is sold out for these dates. Choose another room or other dates.`);
+    const tooSmall = chosenRooms.findIndex((r) => !fitsRoom(r.roomType, r));
+    if (tooSmall >= 0) {
+      setError(`${chosenRooms[tooSmall].roomType.name} fits up to ${chosenRooms[tooSmall].roomType.maxOccupancy || 2} guests. Choose a bigger room for room ${tooSmall + 1}.`);
       return;
+    }
+    // Enough rooms of each type left for the dates
+    const perType = new Map();
+    chosenRooms.forEach((r) => perType.set(r.roomType.id, (perType.get(r.roomType.id) || 0) + 1));
+    for (const [tid, n] of perType) {
+      const rt = typeById(tid);
+      if (rt.availableForStay === 0) {
+        setError(`${rt.name} is sold out for these dates. Choose another room or other dates.`);
+        return;
+      }
+      if (rt.availableForStay != null && rt.availableForStay < n) {
+        setError(`Only ${rt.availableForStay} ${rt.name} left for your dates. Choose another room type for the other room${n - rt.availableForStay > 1 ? 's' : ''}.`);
+        return;
+      }
     }
     // Without dates the checkout showed "Invalid Date" and a ₹0 total
     if (!checkIn || !checkOut) {
@@ -336,13 +434,16 @@ const Detail = () => {
       return;
     }
     // Pass full booking context including ratePlanId
+    const first = chosenRooms[0];
     setSelectedHotel({
       ...hotel,
-      price: nightlyPrice(selectedRatePlan),
-      defaultRoomTypeId: selectedRoomType.id,
-      defaultRatePlanId: selectedRatePlan.id,
-      selectedRoomType,
-      selectedRatePlan,
+      price: nightlyPrice(first.ratePlan),
+      defaultRoomTypeId: first.roomType.id,
+      defaultRatePlanId: first.ratePlan.id,
+      selectedRoomType: first.roomType,
+      selectedRatePlan: first.ratePlan,
+      // Every room: its type, plan and guests (checkout asks a lead guest for each)
+      roomSelections: chosenRooms.map((r) => ({ roomType: r.roomType, ratePlan: r.ratePlan, adults: r.adults, children: r.children || 0 })),
     });
     navigate('/checkout');
   };
@@ -364,9 +465,12 @@ const Detail = () => {
   const ratingNum = Number(hotel.rating) || 0;
   const stars = Number.isInteger(ratingNum) && ratingNum >= 1 && ratingNum <= 5 ? ratingNum : 0;
   const nights    = getNights(checkIn, checkOut);
-  const nightsN   = rooms || 1;
+  const nightsN   = occupancy.length;
+  const multiRoom = nightsN > 1;
   const pricePerNight = selectedRatePlan ? nightlyPrice(selectedRatePlan) : 0;
-  const baseTotal = pricePerNight * nights * nightsN;
+  // Estimate until the server price arrives: each room's plan for the nights
+  const baseTotal = chosenRooms.reduce((t, r) => t + (r.ratePlan ? nightlyPrice(r.ratePlan) : 0), 0) * nights;
+  const allChosen = chosenRooms.every((r) => r.ratePlan);
   const offer     = selectedRatePlan?.offer || null;
   const offerOff  = offerDiscount(offer, baseTotal);
   const memberPct = Number(hotel.memberDiscountPercent) || 0;
@@ -483,7 +587,21 @@ const Detail = () => {
             {/* Room Type & Rate Plan Selection */}
             <div id="rooms" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-28">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Select Your Room & Plan</h2>
-              <p className="text-sm text-gray-500 mb-6">Choose a room type and your preferred meal plan / rate.</p>
+              <p className="text-sm text-gray-500 mb-4">Choose a room type and your preferred meal plan / rate.{multiRoom && ' Each room can be a different type.'}</p>
+              {multiRoom && (
+                <div className="mb-5" role="group" aria-label="Room you are choosing for">
+                  <div className="flex flex-wrap gap-2">
+                    {occupancy.map((r, i) => (
+                      <button key={i} type="button" onClick={() => setActiveRoom(i)} aria-pressed={i === activeIdx}
+                        className={`px-3 py-2 rounded-lg border text-left text-sm transition-colors ${i === activeIdx ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
+                        <span className="block font-bold">Room {i + 1}</span>
+                        <span className="block text-xs">{roomGuestsLabel(r)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-navy-800">Choosing for room {activeIdx + 1} ({roomGuestsLabel(occupancy[activeIdx])})</p>
+                </div>
+              )}
 
               {hotel.roomTypes?.length > 0 ? (
                 <div className="space-y-3">
@@ -494,7 +612,8 @@ const Detail = () => {
                       selectedRoomTypeId={selectedRoomType?.id}
                       selectedRatePlanId={selectedRatePlan?.id}
                       nights={nights}
-                      rooms={nightsN}
+                      rooms={1}
+                      tooSmallFor={fitsRoom(rt, occupancy[activeIdx]) ? null : { room: activeIdx + 1, guests: guestsIn(occupancy[activeIdx]), multi: multiRoom }}
                       onSelect={handleRoomSelect}
                     />
                   ))}
@@ -528,8 +647,33 @@ const Detail = () => {
           <div className="w-full lg:w-[400px]">
             <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 lg:sticky lg:top-32">
 
-              {/* Selected plan summary */}
-              {selectedRatePlan ? (
+              {/* Several rooms: each with its type, plan and price; "Change" picks it on the left */}
+              {multiRoom ? (
+                <div className="mb-4 border-b border-gray-100 pb-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Your rooms</p>
+                  <ol className="space-y-2">
+                    {chosenRooms.map((r, i) => {
+                      const line = quote?.roomsBreakdown?.[i];
+                      return (
+                        <li key={i} className={`rounded-lg border px-3 py-2 ${i === activeIdx ? 'border-brand-300 bg-brand-50' : 'border-gray-200'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900">Room {i + 1} <span className="font-normal text-gray-500">· {roomGuestsLabel(r)}</span></p>
+                              <p className="text-sm text-gray-700 truncate">{r.roomType ? `${r.roomType.name} · ${r.ratePlan?.name || ''}` : <span className="text-amber-700">Not chosen yet</span>}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              {line && <p className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(line.subtotal)}</p>}
+                              {i !== activeIdx
+                                ? <button type="button" onClick={() => chooseFor(i)} className="text-xs font-semibold text-navy-700 hover:underline">Change</button>
+                                : <span className="text-xs font-semibold text-brand-700">Choosing</span>}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              ) : selectedRatePlan ? (
                 <div className="mb-4 border-b border-gray-100 pb-4">
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Selected Plan</p>
                   <p className="font-semibold text-gray-900 text-sm">{selectedRatePlan.name}</p>
@@ -561,22 +705,28 @@ const Detail = () => {
                     isMobile
                   />
                   <GuestSelectorV2
-                    guests={guests || 2}
-                    setGuests={(v) => changeStay({ guests: v })}
-                    rooms={rooms || 1}
-                    setRooms={(v) => changeStay({ rooms: v })}
+                    occupancy={occupancy}
+                    setOccupancy={(occ) => changeStay({ occupancy: occ })}
+                    align="left"
                     isOpen={openPicker === 'guests'}
                     setIsOpen={(o) => togglePicker('guests', o)}
                   />
                 </div>
 
                 {/* Price Breakdown */}
-                {checkIn && checkOut && selectedRatePlan && quote ? (
+                {checkIn && checkOut && allChosen && quote ? (
                   <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 tabular-nums">
-                    <div className="flex justify-between text-gray-600">
-                      <span>{fmt(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''} × {nightsN} room{nightsN > 1 ? 's' : ''}</span>
-                      <span>{fmt((quote.roomPrice || 0) + (quote.extraGuestCharges || 0) + (quote.extraBedCharges || 0) + (quote.mealCharges || 0))}</span>
-                    </div>
+                    {multiRoom ? (
+                      <div className="flex justify-between text-gray-600">
+                        <span>{nightsN} rooms × {nights} night{nights > 1 ? 's' : ''}</span>
+                        <span>{fmt(quote.subtotal || 0)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-gray-600">
+                        <span>{fmt(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''}{guestsIn(occupancy[0]) > (selectedRoomType?.baseOccupancy || 2) ? ' · extra guest' : ''}</span>
+                        <span>{fmt((quote.roomPrice || 0) + (quote.extraGuestCharges || 0) + (quote.extraBedCharges || 0) + (quote.mealCharges || 0))}</span>
+                      </div>
+                    )}
                     {quote.promotionDiscountAmount > 0 && (
                       <div className="flex justify-between text-green-700 font-medium"><span>{quote.promotion?.name || 'Offer'}</span><span>− {fmt(quote.promotionDiscountAmount)}</span></div>
                     )}
@@ -592,7 +742,7 @@ const Detail = () => {
                       </p>
                     )}
                     <div className="flex justify-between text-gray-600">
-                      <span>GST ({quote.taxPercentage ?? Math.round(taxRate * 100)}%)</span>
+                      <span>GST {quote.taxBreakdown?.length > 1 ? `(${quote.taxBreakdown.map((t) => `${t.percentage}%`).join(' + ')})` : `(${quote.taxPercentage ?? Math.round(taxRate * 100)}%)`}</span>
                       <span>{fmt(quote.taxAmount || 0)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
@@ -601,7 +751,9 @@ const Detail = () => {
                     </div>
                     <p className="text-xs text-gray-500">Part-payment and pay-at-hotel options are at checkout.</p>
                   </div>
-                ) : checkIn && checkOut && selectedRatePlan ? (
+                ) : checkIn && checkOut && allChosen && quoteError ? (
+                  <p className="text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg" role="alert">{quoteError}</p>
+                ) : checkIn && checkOut && allChosen ? (
                   <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2" aria-busy="true">
                     <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
                     <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
@@ -614,12 +766,14 @@ const Detail = () => {
                 )}
               </div>
 
+              {/* The reason Book now didn't go ahead, next to the button */}
+              {error && <p role="alert" className="mb-3 text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <button
                 onClick={handleBookNow}
-                disabled={!selectedRatePlan}
+                disabled={!allChosen}
                 className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {checkIn && checkOut && selectedRatePlan && quote
+                {checkIn && checkOut && allChosen && quote
                   ? `Book now · ${fmt(grandTotal)}`
                   : 'Book now'}
               </button>
@@ -638,10 +792,10 @@ const Detail = () => {
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(6,44,77,0.08)] px-4 py-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto">
           <div className="min-w-0">
-            {checkIn && checkOut && selectedRatePlan && quote ? (
+            {checkIn && checkOut && allChosen && quote ? (
               <>
                 <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">{fmt(grandTotal)}</p>
-                <p className="text-xs text-gray-500 truncate">{selectedRoomType?.name} · {nights} night{nights > 1 ? 's' : ''} · incl. GST</p>
+                <p className="text-xs text-gray-500 truncate">{multiRoom ? `${nightsN} rooms` : selectedRoomType?.name} · {nights} night{nights > 1 ? 's' : ''} · incl. GST</p>
               </>
             ) : fromPrice > 0 ? (
               <>
@@ -650,7 +804,7 @@ const Detail = () => {
               </>
             ) : <p className="text-sm text-gray-600">Choose your dates</p>}
           </div>
-          {selectedRatePlan && checkIn && checkOut ? (
+          {allChosen && checkIn && checkOut ? (
             <button type="button" onClick={handleBookNow} className="shrink-0 px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">Book now</button>
           ) : (
             <button type="button" onClick={goRooms} className="shrink-0 px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">See rooms</button>

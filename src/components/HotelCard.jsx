@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Star, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { occupancyOf, occParams } from '../utils/occupancy';
 import { useBooking } from '../context/BookingContext';
 import { getImageUrl } from '../utils/image';
 import { amenityLabels } from '../utils/amenityLabels';
@@ -19,7 +20,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const [imgError, setImgError] = useState(false);
   const { searchParams } = useBooking();
   const detailQuery = searchParams?.checkIn && searchParams?.checkOut
-    ? `?${new URLSearchParams({ checkin: searchParams.checkIn, checkout: searchParams.checkOut, guests: String(searchParams.guests || 2), rooms: String(searchParams.rooms || 1) })}`
+    ? `?${new URLSearchParams({ checkin: searchParams.checkIn, checkout: searchParams.checkOut, ...occParams(occupancyOf(searchParams)) })}`
     : '';
   const href = `/hotel/${hotel.id}${detailQuery}`;
 

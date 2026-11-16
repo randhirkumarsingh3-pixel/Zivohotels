@@ -282,6 +282,7 @@ export const bookingsForChannel = async (integ, { since, limit }) => {
       where: { hotelId: integ.hotelId, updatedAt: { gt: from }, status: { not: 'PENDING' } },
       orderBy: { updatedAt: 'asc' },
       take,
+      include: { bookingRooms: { orderBy: { roomNumber: 'asc' }, select: { roomNumber: true, roomTypeId: true, ratePlanId: true, adults: true, children: true, guestName: true, subtotal: true } } },
     }),
     prisma.channelMapping.findMany({ where: { hotelId: integ.hotelId, externalProvider: integ.provider } }),
   ]);
@@ -297,6 +298,10 @@ export const bookingsForChannel = async (integ, { since, limit }) => {
       checkIn: indiaDay(b.checkIn), checkOut: indiaDay(b.checkOut),
       roomCode: roomCode(b.roomTypeId), rateCode: rateCode(b.ratePlanId),
       rooms: b.rooms, adults: b.adults, children: b.children,
+      // Each room with its own room / rate code, guests and lead guest (rooms of a booking can be
+      // different types). roomCode / rateCode above are the first room's.
+      roomStays: (b.bookingRooms?.length ? b.bookingRooms : Array.from({ length: b.rooms }, (_, i) => ({ roomNumber: i + 1, roomTypeId: b.roomTypeId, ratePlanId: b.ratePlanId, adults: null, children: null, guestName: b.guestName })))
+        .map((r) => ({ roomNumber: r.roomNumber, roomCode: roomCode(r.roomTypeId), rateCode: rateCode(r.ratePlanId), adults: r.adults, children: r.children, guestName: r.guestName, amountBeforeTax: r.subtotal != null ? toMoney(r.subtotal) : null })),
       guest: { name: b.guestName, email: b.guestEmail, phone: b.guestPhone },
       company: b.guestCompanyName ? { name: b.guestCompanyName, gstin: b.guestCompanyGstin, address: b.guestCompanyAddress } : null,
       amounts: { currency: 'INR', total, tax: toMoney(b.taxAmount) || 0, paidOnline: paid, payAtHotel: Math.max(0, Math.round((total - paid) * 100) / 100), refunded: toMoney(b.refundAmount) || 0 },

@@ -96,16 +96,19 @@ export const inventoryRepository = {
 
     const dates = getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
     
-    await tx.inventory.updateMany({
-      where: {
-        roomTypeId: booking.roomTypeId,
-        date: { in: dates },
-      },
-      data: {
-        bookedRooms: { decrement: booking.rooms },
-        availableRooms: { increment: booking.rooms },
-      },
-    });
+    // Each room type of the booking gets its rooms back
+    for (const group of await inventoryRepository.roomsByType(tx, booking)) {
+      await tx.inventory.updateMany({
+        where: {
+          roomTypeId: group.roomTypeId,
+          date: { in: dates },
+        },
+        data: {
+          bookedRooms: { decrement: group.rooms },
+          availableRooms: { increment: group.rooms },
+        },
+      });
+    }
 
     await tx.auditLog.create({
       data: {
@@ -120,6 +123,18 @@ export const inventoryRepository = {
         }
       }
     });
+  },
+
+  /**
+   * Rooms a booking holds per room type: [{ roomTypeId, rooms }]. From its BookingRoom rows (rooms
+   * can be different types); bookings made before those existed hold booking.rooms of one type.
+   */
+  roomsByType: async (tx, booking) => {
+    const rows = await tx.bookingRoom.findMany({ where: { bookingId: booking.id }, select: { roomTypeId: true } });
+    if (!rows.length) return [{ roomTypeId: booking.roomTypeId, rooms: booking.rooms }];
+    const counts = new Map();
+    for (const r of rows) counts.set(r.roomTypeId, (counts.get(r.roomTypeId) || 0) + 1);
+    return [...counts.entries()].map(([roomTypeId, rooms]) => ({ roomTypeId, rooms }));
   },
 
   /**

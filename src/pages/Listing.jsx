@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { getHotels, trackEvent } from '../services/api';
 import { defaultStay } from '../components/home/searchLinks';
+import { occupancyOf, occParams, occToParam } from '../utils/occupancy';
 
 const NEAR_ME = 'Hotels near me';
 import { useAllExperiments } from '../context/ExperimentContext';
@@ -86,6 +87,8 @@ const Listing = () => {
         checkOut: params.get('checkout') || stay.checkout,
         guests: parseInt(params.get('guests')) || 2,
         rooms: parseInt(params.get('rooms')) || 1,
+        // Who stays in each room (occ=2-0,1-1); older links only have guests and rooms
+        occupancy: occupancyOf({ occ: params.get('occ'), guests: params.get('guests'), rooms: params.get('rooms') }),
       };
     }
     return searchParams;
@@ -97,10 +100,10 @@ const Listing = () => {
     const { lat: _lat, lng: _lng, ...a } = activeSearchParams;
     // (Near me isn't kept as a place name: searching for "Hotels near me" as a city finds nothing)
     const next = { ...a, destination: _lat != null ? '' : a.destination };
-    if (next.destination !== searchParams.destination || next.checkIn !== searchParams.checkIn || next.checkOut !== searchParams.checkOut || next.guests !== searchParams.guests || next.rooms !== searchParams.rooms) {
+    if (next.destination !== searchParams.destination || next.checkIn !== searchParams.checkIn || next.checkOut !== searchParams.checkOut || next.guests !== searchParams.guests || next.rooms !== searchParams.rooms || occToParam(next.occupancy) !== occToParam(searchParams.occupancy)) {
       updateSearchParams(next);
     }
-  }, [location.search, activeSearchParams, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, updateSearchParams]);
+  }, [location.search, activeSearchParams, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, searchParams.occupancy, updateSearchParams]);
 
   const isNear = activeSearchParams.lat != null;
   const searchBarInitial = useMemo(() => (isNear
@@ -176,7 +179,7 @@ const Listing = () => {
   ].filter(Boolean);
 
   const detailQuery = activeSearchParams.checkIn && activeSearchParams.checkOut
-    ? `?${new URLSearchParams({ checkin: activeSearchParams.checkIn, checkout: activeSearchParams.checkOut, guests: String(activeSearchParams.guests || 2), rooms: String(activeSearchParams.rooms || 1) })}`
+    ? `?${new URLSearchParams({ checkin: activeSearchParams.checkIn, checkout: activeSearchParams.checkOut, ...occParams(activeSearchParams.occupancy) })}`
     : '';
 
   const filterPanel = (

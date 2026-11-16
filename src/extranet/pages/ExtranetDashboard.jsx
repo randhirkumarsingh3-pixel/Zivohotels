@@ -55,7 +55,7 @@ const GuestRow = ({ b, kind }) => (
   <li className="flex items-center justify-between gap-3 py-3">
     <div className="min-w-0">
       <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
-      <p className="text-xs text-gray-500 truncate">{b.bookingRef} · {b.roomType}{b.rooms > 1 ? ` × ${b.rooms}` : ''} · {b.nights} night{b.nights === 1 ? '' : 's'}{kind === 'upcoming' ? ` · ${day(b.checkIn)}` : ''}</p>
+      <p className="text-xs text-gray-500 truncate">{b.bookingRef} · {b.roomsLabel || `${b.roomType}${b.rooms > 1 ? ` × ${b.rooms}` : ''}`} · {b.nights} night{b.nights === 1 ? '' : 's'}{kind === 'upcoming' ? ` · ${day(b.checkIn)}` : ''}</p>
     </div>
     <div className="text-right shrink-0">
       {b.dueAtHotel > 0 && b.status !== 'COMPLETED'
