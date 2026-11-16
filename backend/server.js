@@ -115,7 +115,10 @@ const adminLimiter = rateLimit({
 });
 
 // 2. Proxy Hardening
-app.set('trust proxy', 1);
+// Number of reverse proxies in front of the API, so req.ip is the real visitor (rate limits, logs).
+// 1 = one proxy (default: Cloud Run, or Nginx on a VPS). Caddy -> web container -> API = 2.
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY ?? '1', 10);
+app.set('trust proxy', Number.isNaN(trustProxyHops) ? 1 : trustProxyHops);
 
 // 3. Security & Logging
 // Allowed origins: built-in domains plus CORS_ORIGINS (see config/origins.js)

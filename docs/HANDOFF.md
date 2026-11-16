@@ -500,3 +500,16 @@ settlement. Fixed along the way:
   AirPlay Receiver can also hold port 5000.
 - Signing in to the extranet as the admin redirects to onboarding. Use the owner account.
 - After `git pull`, run `npm install` in the root and in `backend/` if the package files changed.
+
+## Staging on the Hostinger VPS (added 16 Nov 2026)
+- **Server:** `srv2151205` (Ubuntu 24.04, Docker, IP 189.72.151.212). It already runs a **different**
+  ZivoHotels platform (microservices, `/opt/zivo`, Docker project `zivo-staging`). The owner wants
+  that kept **completely separate**: never modify it.
+- **Our app** runs there as its own Docker project `zivohotels-app` in `/opt/zivohotels-app`, at
+  https://zivohotels.189-72-151-212.sslip.io. Setup, updates, backups and removal:
+  `deploy/vps/README.md`.
+- **The only links** with the other project are a Caddy site file plus one `import` line, and the
+  Caddy container attached to our network `zivohotels-app-edge`. `deploy/vps/caddy-link.sh`
+  manages both, and cron re-runs it every 5 minutes because the other project's deploys reset them.
+- **Backend settings for self-hosting:** `STORAGE_DRIVER=local`, `CORS_ORIGINS`, `HOST`,
+  `TRUST_PROXY=2` (Caddy, then the web container, then the API).
