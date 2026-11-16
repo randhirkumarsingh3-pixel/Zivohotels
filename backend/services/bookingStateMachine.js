@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import eventBus from '../events/eventBus.js';
 import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import { logActivity } from './activityService.js';
 import { createNotification } from './notificationService.js';
@@ -128,6 +129,12 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
 
     return updated;
   });
+
+  // Check-out: make sure the guest has an invoice (pay-at-hotel stays are invoiced here;
+  // generation is idempotent, so bookings invoiced at payment are skipped)
+  if (newStatus === 'COMPLETED') {
+    eventBus.emitEvent('CHECKOUT_COMPLETED', { bookingId });
+  }
 
 
   // Zivo Rewards: points for a completed stay become available; cancelled / no-show earn nothing

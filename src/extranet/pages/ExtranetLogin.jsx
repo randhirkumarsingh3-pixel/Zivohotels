@@ -9,12 +9,14 @@ const ExtranetLogin = () => {
   usePageTitle('Extranet log in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const location = useLocation();
+  const [error, setError] = useState(
+    location.state?.wrongAccount ? 'Your account does not have partner access. Sign in with a hotel partner account.' : ''
+  );
   const [loading, setLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   
   const from = location.state?.from?.pathname || "/extranet";
 
@@ -23,7 +25,10 @@ const ExtranetLogin = () => {
     setError('');
     setLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(email, password, {
+      allowedRoles: ['OWNER', 'ADMIN'], // same as the /extranet routes
+      wrongRoleMessage: 'This is the hotel partner login. Guests sign in on the main website.',
+    });
     
     if (result.success) {
       navigate(from, { replace: true });

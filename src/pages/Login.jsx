@@ -33,12 +33,7 @@ const Login = () => {
     }
   };
 
-  const isOwnerLogin = location.pathname.includes('/owner');
-  const isAdminLogin = location.pathname.includes('/admin');
-  
-  let portalName = "Welcome back";
-  if (isAdminLogin) portalName = "Admin Portal Login";
-  else if (isOwnerLogin) portalName = "Partner Portal Login";
+  const portalName = "Welcome back";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-start sm:justify-center pt-28 pb-12 sm:py-12 px-4 sm:px-6 lg:px-8">
@@ -127,6 +122,12 @@ const Login = () => {
             </button>
           </form>
         </div>
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Own a hotel?{' '}
+          <Link to="/extranet/login" className="font-semibold text-navy-700 hover:text-navy-900">
+            Partner login
+          </Link>
+        </p>
       </div>
     </div>
   );
