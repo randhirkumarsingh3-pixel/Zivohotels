@@ -480,6 +480,19 @@ settlement. Fixed along the way:
 - Live updates: `useSocketEvent` calls back whenever its callback changes, so callbacks must be
   stable and guard against handling the same event twice (the bell feed added events in a loop).
 
+## Operations flow and payouts (Nov 2026)
+- Checked end to end with test data: member price + automatic offer -> bookings (Zivo Cash prepaid,
+  pay at hotel, guest cancellation) -> check-in/out -> settlements (commission on pre-GST amount,
+  GST on commission, TCS 0.5% online only, TDS 0.1%) -> Finance Hub and Wallet -> review, reply,
+  report -> promotion and member-price stats -> payout. All figures matched.
+- Payouts: there is no bank integration, so a payout records a bank transfer the admin has made.
+  Admin -> Wallet Control -> Hotel wallets -> Statement shows what is due now (settlements past
+  their payout date) and the bank account, and "Record payout" takes the transfer reference (UTR).
+  Refused without a bank account or a reference; the hotel is notified and settlements become PAID.
+  API: `GET/POST /api/v1/admin/wallets/hotels/:hotelId/payout`. Nothing pays out automatically.
+- Finance Hub "Payouts" lists payouts with their reference and the next due amount; the payout
+  breakdown dialog explains online vs at-hotel collection, charges, and when it is or was paid.
+
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
   the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.

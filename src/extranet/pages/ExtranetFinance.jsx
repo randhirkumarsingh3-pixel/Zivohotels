@@ -134,9 +134,9 @@ const ExtranetFinance = () => {
                            <p className={`text-lg font-bold tabular-nums ${Number(s.netPayable) < 0 ? 'text-orange-800' : 'text-slate-900'}`}>{Number(s.netPayable) < 0 ? '−' : ''}₹{Math.abs(Number(s.netPayable)).toLocaleString('en-IN')}</p>
                            <button 
                              onClick={() => setSelectedSettlement(s)}
-                             className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline"
+                             className="text-sm font-semibold text-navy-700 hover:underline"
                            >
-                             View Breakdown
+                             View breakdown
                            </button>
                         </div>
                      </div>
@@ -156,23 +156,28 @@ const ExtranetFinance = () => {
         <div className="space-y-8">
            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
               <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center justify-between">
-                 Payout Queue
-                 <Clock className="text-blue-500" size={18} />
+                 Payouts
+                 <Clock className="text-navy-600" size={18} aria-hidden="true" />
               </h3>
               
-              <div className="space-y-6">
-                {payouts.slice(0, 3).map((p, i) => (
-                  <div key={i} className="relative pl-6 border-l-2 border-slate-100">
-                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
-                    <p className="text-xs font-black text-slate-900">₹ {Number(p.totalAmount).toLocaleString()}</p>
-                    <p className="text-xs text-slate-500 font-medium mb-2">{p.status} • Ref: {p.reference || 'N/A'}</p>
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100">
-                       Processing
+              <div className="space-y-5">
+                {overview?.metrics?.pendingAmount > 0 && overview?.metrics?.nextPayoutDate && (
+                  <div className="rounded-lg bg-navy-50 border border-navy-100 p-3 text-sm text-navy-900">
+                    Next: <strong>₹{Number(overview.metrics.pendingAmount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong> on {new Date(overview.metrics.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </div>
+                )}
+                {payouts.slice(0, 5).map((p) => (
+                  <div key={p.id} className="relative pl-5 border-l-2 border-gray-200">
+                    <div className={`absolute -left-[7px] top-1 w-3 h-3 rounded-full ${p.status === 'SUCCESS' ? 'bg-green-600' : p.status === 'FAILED' ? 'bg-red-600' : 'bg-amber-500'}`} aria-hidden="true" />
+                    <p className="text-sm font-bold text-gray-900 tabular-nums">₹{Number(p.totalAmount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-gray-600">{new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · Ref {p.reference || '—'}</p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold ${p.status === 'SUCCESS' ? 'bg-green-50 text-green-800' : p.status === 'FAILED' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-900'}`}>
+                       {p.status === 'SUCCESS' ? 'Sent to your bank' : p.status === 'FAILED' ? 'Failed' : 'Processing'}
                     </span>
                   </div>
                 ))}
                 {payouts.length === 0 && (
-                  <p className="text-xs text-slate-400 font-medium text-center py-4 italic">No payouts currently in queue.</p>
+                  <p className="text-sm text-gray-600 py-2">No payouts yet. Stays are paid on your payout date after check-out.</p>
                 )}
               </div>
            </div>

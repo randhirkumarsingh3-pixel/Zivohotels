@@ -1,3 +1,4 @@
+import payoutService from '../services/finance/payoutService.js';
 import prisma from '../config/db.js';
 import wallets from '../services/finance/walletService.js';
 
@@ -33,4 +34,7 @@ export const adminGuest = (req, res) => adminOnly(req, res) && send(res, req, as
   return { user, ...(await wallets.guestWallet(user.id, { limit: 200 })) };
 });
 export const adminAdjust = (req, res) => adminOnly(req, res) && send(res, req, () => wallets.adminAdjust({ userId: req.params.id, amount: req.body?.amount, reason: req.body?.reason, direction: req.body?.direction }, req.user.id), 201);
+// Payouts: what a hotel is due now, and recording a payout made by bank transfer (with its UTR)
+export const adminPayoutDue = (req, res) => adminOnly(req, res) && send(res, req, () => payoutService.dueFor(req.params.hotelId));
+export const adminRecordPayout = (req, res) => adminOnly(req, res) && send(res, req, () => payoutService.processPayout(req.params.hotelId, { reference: req.body?.reference, adminId: req.user.id }), 201);
 export const adminHotel = (req, res) => adminOnly(req, res) && send(res, req, () => wallets.hotelWallet(req.params.hotelId, req.query));
