@@ -502,7 +502,7 @@ const Checkout = () => {
               {multiRoom && (
                 <fieldset className="mt-8">
                   <legend className="text-base font-black text-gray-900">Lead guest for each room</legend>
-                  <p className="text-xs text-gray-500 mt-1 mb-4">The hotel checks each room in under this name. Room 1 is you unless you change it.</p>
+                  <p className="text-xs text-gray-500 mt-1 mb-4">The hotel checks each room in under this name; the lead guest must be 18 or older. Room 1 is you unless you change it.</p>
                   <div className="space-y-3">
                     {stayRooms.map((r, i) => (
                       <div key={i} className="grid grid-cols-1 md:grid-cols-[11rem_1fr] gap-2 md:items-center">
@@ -588,7 +588,7 @@ const Checkout = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Privacy Policy</a> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking.
+                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">Privacy Policy</a> and the <a href="/help#cancellations" target="_blank" rel="noopener noreferrer" className="text-navy-800 font-bold underline">cancellation rules</a> for this booking, and confirm that {multiRoom ? 'the lead guest of each room is' : 'the guest checking in is'} 18 or older (guests aged 13–17 stay only with an adult).
                 </p>
               </label>
             </section>

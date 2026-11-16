@@ -82,7 +82,7 @@ const GuestSelectorV2 = ({ occupancy, setOccupancy, isOpen, setIsOpen, align = '
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">Adults</div>
-                    <div className="text-xs text-gray-500">Ages 18 or above</div>
+                    <div className="text-xs text-gray-500">Ages 13 or above</div>
                   </div>
                   <Counter label={`adults in room ${i + 1}`} value={r.adults}
                     onMinus={() => change(i, 'adults', -1)} onPlus={() => change(i, 'adults', 1)}
@@ -101,7 +101,8 @@ const GuestSelectorV2 = ({ occupancy, setOccupancy, isOpen, setIsOpen, align = '
             ))}
           </div>
 
-          <div className="pt-3 mt-1 border-t border-gray-100 flex items-center justify-between gap-3">
+          <p className="pt-3 mt-1 border-t border-gray-100 text-xs text-gray-500">Guests aged 13–17 can stay only with an adult (18 or older) in the room.</p>
+          <div className="pt-3 flex items-center justify-between gap-3">
             <button type="button" onClick={addRoom} disabled={rooms.length >= MAX_ROOMS}
               className="text-sm font-semibold text-navy-700 hover:text-navy-900 disabled:text-gray-300 disabled:cursor-not-allowed">
               + Add room
