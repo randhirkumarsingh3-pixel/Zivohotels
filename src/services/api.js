@@ -269,7 +269,10 @@ export const nearbyDestinations = (lat, lng, options = {}) => apiFetch(`${PUBLIC
 
 export const getHotels = async (searchParams = {}, filters = {}) => {
   const params = new URLSearchParams();
-  if (searchParams.destination) params.set('city', searchParams.destination);
+  // Near me sends the location; otherwise the place typed (city, area, hotel's state...)
+  const near = searchParams.lat != null && searchParams.lng != null;
+  if (near) { params.set('lat', searchParams.lat); params.set('lng', searchParams.lng); }
+  else if (searchParams.destination) params.set('city', searchParams.destination);
   if (searchParams.checkIn) params.set('checkIn', searchParams.checkIn);
   if (searchParams.checkOut) params.set('checkOut', searchParams.checkOut);
   if (searchParams.guests) params.set('guests', searchParams.guests);
@@ -279,7 +282,7 @@ export const getHotels = async (searchParams = {}, filters = {}) => {
   if (filters.sortBy) params.set('sort', filters.sortBy);
   if (filters.includeSoldOut !== undefined) params.set('includeSoldOut', filters.includeSoldOut);
 
-  const hasSearch = searchParams.destination && searchParams.checkIn && searchParams.checkOut;
+  const hasSearch = (near || searchParams.destination) && searchParams.checkIn && searchParams.checkOut;
   const baseUrl   = hasSearch ? `${PUBLIC_BASE}/hotels/search` : `${PUBLIC_BASE}/hotels`;
   const url       = `${baseUrl}${params.toString() ? '?' + params.toString() : ''}`;
   

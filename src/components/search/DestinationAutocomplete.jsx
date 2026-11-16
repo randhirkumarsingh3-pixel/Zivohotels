@@ -24,7 +24,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     const saved = localStorage.getItem('zivo_recent_searches');
     if (saved) {
       try {
-        setRecentSearches(JSON.parse(saved));
+        // "Hotels Near Me" entries from the old placeholder searched a city called "nearby"
+        setRecentSearches((JSON.parse(saved) || []).filter((r) => r && r.value !== 'nearby' && r.type !== 'near'));
       } catch (e) {
         console.error('Failed to parse recent searches');
       }
@@ -89,7 +90,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     setIsOpen(false);
     trackEvent("DESTINATION_SELECTED", { type: item.type, label: item.label });
 
-    // Update Recent Searches
+    // Update Recent Searches (not "near me": a location is only right for the moment it was taken)
+    if (item.type === 'near') { onFocusNext(); return; }
     const getUniqueKey = (x) => x.id || x.value || x.label;
     const updatedRecent = [item, ...recentSearches.filter(r => getUniqueKey(r) !== getUniqueKey(item))].slice(0, 3);
     setRecentSearches(updatedRecent);
@@ -99,27 +101,30 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
     onFocusNext();
   };
 
+  // "Use current location": hotels near the guest (within 50 km), nearest first
+  const [nearNote, setNearNote] = useState('');
   const handleNearMe = () => {
-    if (!navigator.geolocation) return;
-    
+    setNearNote('');
+    if (!navigator.geolocation) { setNearNote('Your browser can’t share your location. Type a city instead.'); return; }
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const data = await nearbyDestinations(pos.coords.latitude, pos.coords.longitude);
-          if (data && data.length > 0) {
-            handleSelect(data[0]); // Select first nearby result
-          }
+          if (data?.[0]?.type === 'near') handleSelect(data[0]);
+          else setNearNote('No ZivoHotels within 50 km of you yet. Type a city instead.');
         } catch (error) {
-          console.error("Geolocation search failed", error);
+          console.error('Geolocation search failed', error);
+          setNearNote('Couldn’t search near you. Please try again.');
         } finally {
           setIsLoading(false);
         }
       },
-      (error) => {
-        console.error("Geolocation denied", error);
+      () => {
         setIsLoading(false);
-      }
+        setNearNote('Allow location access in your browser to search near you.');
+      },
+      { timeout: 10000, maximumAge: 300000 }
     );
   };
 
@@ -128,6 +133,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
       case 'city': return <MapIcon className="h-4 w-4 text-brand-500" />;
       case 'hotel': return <Building className="h-4 w-4 text-brand-500" />;
       case 'area': return <MapPin className="h-4 w-4 text-brand-500" />;
+      case 'near': return <Navigation className="h-4 w-4 text-brand-500" />;
       default: return <MapPin className="h-4 w-4 text-gray-400" />;
     }
   };
@@ -184,6 +190,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
             </div>
             <span className="font-semibold text-blue-600 text-sm">Use Current Location</span>
           </div>
+          {nearNote && <p role="status" className="px-4 py-2 text-xs text-amber-800 bg-amber-50 border-b border-amber-100">{nearNote}</p>}
 
           <div className="max-h-[300px] overflow-y-auto overscroll-contain">
             {/* Loading State: Skeletons */}
@@ -262,7 +269,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-gray-900 text-sm">{loc.label}</span>
-                      <span className="text-xs text-gray-500 capitalize">{loc.type}</span>
+                      <span className="text-xs text-gray-500">{loc.sublabel ? `Hotel · ${loc.sublabel}` : ({ city: 'City', area: 'Area', hotel: 'Hotel' }[loc.type] || '')}</span>
                     </div>
                   </li>
                 ))}

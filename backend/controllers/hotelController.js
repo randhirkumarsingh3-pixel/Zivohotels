@@ -17,6 +17,8 @@ import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
 import nearbyPlaces from '../services/nearbyPlacesService.js';
+import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
+import { parseLatLng } from '../utils/places.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -937,9 +939,11 @@ export const getHotelById = asyncHandler(async (req, res) => {
 
 export const searchHotels = asyncHandler(async (req, res) => {
   const { city, checkIn, checkOut, sort, minPrice, maxPrice, minRating, minStars, amenities, includeSoldOut } = req.query;
+  // "Near me": a map point instead of a place name
+  const near = parseLatLng(req.query.lat, req.query.lng);
 
-  if (!city || !checkIn || !checkOut) {
-    return res.status(400).json({ success: false, message: 'City, checkIn, and checkOut are required' });
+  if ((!city && !near) || !checkIn || !checkOut) {
+    return res.status(400).json({ success: false, message: 'A destination (or your location), checkIn and checkOut are required' });
   }
 
   // Generate cache key
@@ -956,18 +960,19 @@ export const searchHotels = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Check-out must be after check-in' });
   }
 
-  // 1. Fetch active hotels in city (limit to 100 for latency)
+  // 1. The public hotels this search covers (limit to 100 for latency): the city under either of
+  // its names (Bangalore / Bengaluru), an area, landmark or state, or the hotels near a map point.
+  // (Only an exact city name or part of the address matched before, so "Bangalore" missed hotels
+  // saved as "Bengaluru", and "Hotels Near Me" searched for a city called "nearby".)
+  const distances = near ? await hotelsNear(near) : null;
+  const matchedIds = near ? [...distances.keys()] : await hotelIdsForPlace(city);
   const hotels = await prisma.hotel.findMany({
-    where: { 
-      OR: [
-        { city: { equals: city, mode: 'insensitive' } },
-        { location: { contains: city, mode: 'insensitive' } }
-      ],
+    where: {
+      id: { in: matchedIds.slice(0, 100) },
       // Go-live sets LIVE; 'ACTIVE' alone hid every property taken live through the admin flow
       status: { in: PUBLIC_HOTEL_STATUSES },
       isDeleted: false
     },
-    take: 100,
     include: {
       media: { ...COVER_PHOTO_FIRST, select: { url: true } },
       cancellationPolicy: { select: { policyCode: true } },
@@ -1069,6 +1074,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
         latitude: hotel.latitude ?? null,
         longitude: hotel.longitude ?? null,
         type: hotel.type || null,
+        ...(distances ? { distanceKm: Math.round(distances.get(hotel.id) * 10) / 10 } : {}),
         bookablePlans
      };
   });
@@ -1120,6 +1126,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
   const sortBy = sort || 'RECOMMENDED';
   
   const rankedHotels = rankingService.rankResults(filteredHotels, sortBy, isSoldOutIncluded);
+  // Near me: nearest first (sold out still last) unless another order was chosen
+  if (distances && sortBy === 'RECOMMENDED') {
+    rankedHotels.sort((a, b) => (a.badges?.isSoldOut ? 1 : 0) - (b.badges?.isSoldOut ? 1 : 0) || a.distanceKm - b.distanceKm);
+  }
 
   // The commission rate is used for ranking but is confidential: don't send it to the browser
   const responseData = { hotels: rankedHotels.map(({ commission: _commission, ...h }) => h) };

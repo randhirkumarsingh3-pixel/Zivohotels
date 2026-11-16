@@ -17,7 +17,7 @@ const QuickChips = ({ cities = [] }) => {
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    try { setRecent((JSON.parse(localStorage.getItem('zivo_recent_searches') || '[]') || []).slice(0, 3)); } catch { setRecent([]); }
+    try { setRecent((JSON.parse(localStorage.getItem('zivo_recent_searches') || '[]') || []).filter((r) => r && r.value !== 'nearby' && r.type !== 'near').slice(0, 3)); } catch { setRecent([]); }
   }, []);
 
   const go = (item) => {
@@ -27,18 +27,16 @@ const QuickChips = ({ cities = [] }) => {
     } else navigate(cityLink(item.value || item.label));
   };
 
-  // Nearest city with hotels (within 80 km), from each city's average hotel map pin
+  // Hotels within 50 km of the visitor, nearest first (the results page says if there are none)
   const nearMe = () => {
     if (!navigator.geolocation) { setNote('Your browser can’t share your location.'); return; }
     setLocating(true); setNote('');
     navigator.geolocation.getCurrentPosition((pos) => {
       setLocating(false);
-      const { latitude: la, longitude: ln } = pos.coords;
-      const km = (c) => { const r = (d) => (d * Math.PI) / 180; const a = Math.sin(r(c.lat - la) / 2) ** 2 + Math.cos(r(la)) * Math.cos(r(c.lat)) * Math.sin(r(c.lng - ln) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(a)); };
-      const nearest = cities.filter((c) => c.lat != null && c.lng != null).map((c) => ({ ...c, d: km(c) })).sort((a, b) => a.d - b.d)[0];
-      if (nearest && nearest.d <= 80) navigate(cityLink(nearest.name));
-      else setNote('No ZivoHotels near you yet. Try a city below.');
-    }, () => { setLocating(false); setNote('Allow location access to search near you.'); }, { timeout: 10000 });
+      const { checkin, checkout } = defaultStay();
+      const { latitude, longitude } = pos.coords;
+      navigate(`/hotels?${new URLSearchParams({ lat: latitude.toFixed(5), lng: longitude.toFixed(5), checkin, checkout, guests: '2', rooms: '1' })}`);
+    }, () => { setLocating(false); setNote('Allow location access to search near you.'); }, { timeout: 10000, maximumAge: 300000 });
   };
 
   const recentKeys = new Set(recent.map((r) => String(r.value || r.label).toLowerCase()));

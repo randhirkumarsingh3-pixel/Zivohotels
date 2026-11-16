@@ -32,7 +32,8 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   // A struck-through price only when there really was a higher one
   const originalPrice = offer ? offer.nightlyPriceBefore : (hotel.originalPrice > displayPrice ? hotel.originalPrice : null);
   const amenities = amenityLabels(hotel.amenities);
-  const place = hotel.location || hotel.city || '';
+  // Near-me results also say how far away the hotel is
+  const place = [hotel.location || hotel.city, hotel.distanceKm != null ? `${hotel.distanceKm} km away` : ''].filter(Boolean).join(' · ');
   const freeCancel = hotel.freeCancellation || hotel.badges?.isFreeCancellation;
   const soldOut = hotel.badges?.isSoldOut;
   const row = layout === 'row';

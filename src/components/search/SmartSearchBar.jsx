@@ -9,7 +9,7 @@ import { track } from '../../utils/analytics';
 // `initial` prefills the bar with the current search (results page); the home page starts empty
 const SmartSearchBar = ({ isMobile, initial = null }) => {
   const navigate = useNavigate();
-  const asDest = (d) => (d ? { label: d, value: d } : null);
+  const asDest = (d) => (!d ? null : typeof d === 'object' ? d : { label: d, value: d });
 
   // Form State
   const [destination, setDestination] = useState(asDest(initial?.destination));
@@ -18,7 +18,7 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
   const [guests, setGuests] = useState(initial?.guests || 2);
   const [rooms, setRooms] = useState(initial?.rooms || 1);
   const [error, setError] = useState(null);
-  const initKey = initial ? [initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms].join('|') : '';
+  const initKey = initial ? [initial.destination?.label || initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms].join('|') : '';
   useEffect(() => {
     if (!initial) return;
     setDestination(asDest(initial.destination));
@@ -81,9 +81,12 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
       return;
     }
 
-    const searchVal = destination.value || destination.label;
+    // Near me: the location instead of a place name
+    const where = destination.type === 'near' && destination.lat != null
+      ? { lat: String(destination.lat), lng: String(destination.lng) }
+      : { city: destination.value || destination.label };
     const params = new URLSearchParams({
-      city: searchVal,
+      ...where,
       checkin: checkIn,
       checkout: checkOut,
       guests: guests.toString(),

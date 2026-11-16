@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { getHotels, trackEvent } from '../services/api';
+import { defaultStay } from '../components/home/searchLinks';
+
+const NEAR_ME = 'Hotels near me';
 import { useAllExperiments } from '../context/ExperimentContext';
 import SmartSearchBar from '../components/search/SmartSearchBar';
 import HotelCard from '../components/HotelCard';
@@ -69,11 +72,18 @@ const Listing = () => {
   const activeSearchParams = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const city = params.get('city');
-    if (city !== null) {
+    const lat = parseFloat(params.get('lat'));
+    const lng = parseFloat(params.get('lng'));
+    const near = Number.isFinite(lat) && Number.isFinite(lng);
+    if (city !== null || near) {
+      // A link without dates (shared, typed) searches tonight. Without dates every hotel in every
+      // city used to be listed.
+      const stay = defaultStay();
       return {
-        destination: city,
-        checkIn: params.get('checkin') || '',
-        checkOut: params.get('checkout') || '',
+        destination: near ? NEAR_ME : city,
+        ...(near ? { lat, lng } : {}),
+        checkIn: params.get('checkin') || stay.checkin,
+        checkOut: params.get('checkout') || stay.checkout,
         guests: parseInt(params.get('guests')) || 2,
         rooms: parseInt(params.get('rooms')) || 1,
       };
@@ -83,16 +93,23 @@ const Listing = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const city = params.get('city');
-    if (city === null) return;
-    const next = { destination: city, checkIn: params.get('checkin') || '', checkOut: params.get('checkout') || '', guests: parseInt(params.get('guests')) || 2, rooms: parseInt(params.get('rooms')) || 1 };
+    if (params.get('city') === null && params.get('lat') === null) return;
+    const { lat: _lat, lng: _lng, ...a } = activeSearchParams;
+    // (Near me isn't kept as a place name: searching for "Hotels near me" as a city finds nothing)
+    const next = { ...a, destination: _lat != null ? '' : a.destination };
     if (next.destination !== searchParams.destination || next.checkIn !== searchParams.checkIn || next.checkOut !== searchParams.checkOut || next.guests !== searchParams.guests || next.rooms !== searchParams.rooms) {
       updateSearchParams(next);
     }
-  }, [location.search, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, updateSearchParams]);
+  }, [location.search, activeSearchParams, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, updateSearchParams]);
 
-  usePageTitle(activeSearchParams.destination ? `Hotels in ${activeSearchParams.destination}` : 'All hotels',
-    activeSearchParams.destination ? `Compare hotels in ${activeSearchParams.destination} on ZivoHotels: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
+  const isNear = activeSearchParams.lat != null;
+  const searchBarInitial = useMemo(() => (isNear
+    ? { ...activeSearchParams, destination: { type: 'near', label: NEAR_ME, value: 'near', lat: activeSearchParams.lat, lng: activeSearchParams.lng } }
+    : activeSearchParams), [isNear, activeSearchParams]);
+  const placeName = isNear ? '' : activeSearchParams.destination;
+  const heading = isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
+  usePageTitle(heading,
+    placeName ? `Compare hotels in ${placeName} on ZivoHotels: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
 
   const minStars = f.stars.length ? Math.min(...f.stars) : null;
   const serverFilters = useMemo(() => ({
@@ -118,7 +135,7 @@ const Listing = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchHotels();
-    trackEvent('SEARCH_STARTED', { filters: serverFilters }, null, activeSearchParams.destination, allExperiments);
+    trackEvent('SEARCH_STARTED', { filters: serverFilters }, null, isNear ? 'near-me' : activeSearchParams.destination, allExperiments);
   }, [fetchHotels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Options for the filters, from the results
@@ -220,9 +237,9 @@ const Listing = () => {
       <div className="bg-navy-900 pb-8 pt-8 px-4 sm:px-6 lg:px-8 mb-6">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-5">
-            {activeSearchParams.destination ? `Hotels in ${activeSearchParams.destination}` : 'All hotels'}
+            {heading}
           </h1>
-          <SmartSearchBar isMobile={isMobile} initial={activeSearchParams} />
+          <SmartSearchBar isMobile={isMobile} initial={searchBarInitial} />
         </div>
       </div>
 
@@ -272,7 +289,7 @@ const Listing = () => {
             <div className="bg-white rounded-card p-12 text-center border border-gray-200">
               <SearchX className="mx-auto text-gray-400 mb-3" size={40} aria-hidden="true" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">{hotels.length ? 'No hotels match these filters' : 'No hotels found'}</h3>
-              <p className="text-gray-600 mb-4">{hotels.length ? 'Remove a filter to see more.' : 'Try another destination or different dates.'}</p>
+              <p className="text-gray-600 mb-4">{hotels.length ? 'Remove a filter to see more.' : (isNear ? 'No ZivoHotels within 50 km of you yet. Search for a city instead.' : 'Try another destination or different dates.')}</p>
               {chips.length > 0 && <button type="button" onClick={() => setF(EMPTY)} className="text-navy-700 font-semibold underline">Clear all filters</button>}
             </div>
           ) : view === 'map' ? (
