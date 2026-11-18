@@ -47,7 +47,10 @@ export const searchAll = async (req, res, next) => {
     for (const h of rows) {
       const city = titleCase(h.city);
       if (!isPlaceholder(city) && (hit(city) || cityNames(city).some((n) => hit(n)))) {
-        cities.set(city.toLowerCase(), { type: 'city', label: city, value: city });
+        // One suggestion per city, whichever of its names its hotels use (Bangalore / Bengaluru):
+        // the current official name when it's one of a pair
+        const key = cityNames(city)[0].toLowerCase();
+        if (!cities.has(key)) cities.set(key, { type: 'city', label: cityNames(city)[0], value: cityNames(city)[0] });
       }
       const area = titleCase(h.area);
       if (area && hit(area)) {
@@ -72,8 +75,9 @@ export const getPopularCities = async (req, res, next) => {
     });
     const counts = new Map();
     for (const { city } of rows) {
+      // Bangalore and Bengaluru hotels count as one city, under its current name
       const c = titleCase(city);
-      if (!isPlaceholder(c)) counts.set(c, (counts.get(c) || 0) + 1);
+      if (!isPlaceholder(c)) { const name = cityNames(c)[0]; counts.set(name, (counts.get(name) || 0) + 1); }
     }
     const popular = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6)
       .map(([city, count]) => ({ type: 'city', label: city, value: city, count }));
