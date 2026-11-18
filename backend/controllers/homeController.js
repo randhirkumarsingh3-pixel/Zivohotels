@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { cityNames } from '../utils/places.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
@@ -44,7 +45,8 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   // (with the average map pin of its hotels, so "Near me" can pick the nearest city)
   const byCity = new Map();
   for (const h of hotels) {
-    const c = titleCase(h.city);
+    // Bangalore / Bengaluru hotels are one city, under its current name
+    const c = cityNames(titleCase(h.city))[0] || '';
     if (!c || /^default/i.test(c)) continue;
     const e = byCity.get(c) || { count: 0, lat: 0, lng: 0, pins: 0 };
     e.count += 1;
@@ -55,7 +57,7 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   const byArea = new Map();
   for (const h of hotels) {
     const area = String(h.integrationSettings?.addressDetails?.area || '').trim();
-    const city = titleCase(h.city);
+    const city = cityNames(titleCase(h.city))[0] || '';
     if (!area || !city || /^default/i.test(city)) continue;
     const k = `${area}|${city}`;
     byArea.set(k, (byArea.get(k) || 0) + 1);

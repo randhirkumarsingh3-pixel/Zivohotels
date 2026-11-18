@@ -9,7 +9,10 @@ import { cityNames, distanceKm, NEAR_ME_RADIUS_KM } from '../utils/places.js';
 
 const escapeLike = (s) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-/** Ids of public hotels whose city, address, area, landmark or state matches the place. */
+/**
+ * Ids of public hotels whose city, address, area, landmark, state or name matches the place (a
+ * locality is often only in the hotel's name, e.g. "Z Stays Marathahalli").
+ */
 export const hotelIdsForPlace = async (place) => {
   const names = cityNames(place);
   if (!names.length) return [];
@@ -21,6 +24,7 @@ export const hotelIdsForPlace = async (place) => {
       AND "status"::text IN (${Prisma.join(PUBLIC_HOTEL_STATUSES)})
       AND (
         city ILIKE ANY(${contains}::text[])
+        OR name ILIKE ANY(${contains}::text[])
         OR location ILIKE ANY(${contains}::text[])
         OR landmark ILIKE ANY(${contains}::text[])
         OR "integrationSettings"->'addressDetails'->>'area' ILIKE ANY(${contains}::text[])
