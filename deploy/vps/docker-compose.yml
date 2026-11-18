@@ -47,6 +47,15 @@ services:
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-ZivoHotels <noreply@zivohotels.com>}
+      # Company details on invoices and vouchers, and the support contacts in emails
+      ZIVO_LEGAL_NAME: ${ZIVO_LEGAL_NAME:-}
+      ZIVO_GSTIN: ${ZIVO_GSTIN:-}
+      ZIVO_GST_STATE_CODE: ${ZIVO_GST_STATE_CODE:-}
+      ZIVO_PAN: ${ZIVO_PAN:-}
+      ZIVO_CIN: ${ZIVO_CIN:-}
+      ZIVO_ADDRESS: ${ZIVO_ADDRESS:-}
+      ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-}
+      ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-}
     volumes:
       - uploads:/app/public/uploads            # hotel photos (public)
       - private-uploads:/app/private_uploads   # KYC documents (private)

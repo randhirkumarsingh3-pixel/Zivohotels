@@ -127,6 +127,15 @@ Then pick one.
   $ZC run --rm --no-deps api node scripts/createAdmin.js --email you@zivohotels.com --name "Your Name"
   ```
 
+- **Before real people use it:** create your own admin (above), then switch off the test logins from the sample data (their passwords are in the code). The first command only lists them:
+  ```bash
+  $ZC run --rm --no-deps api node scripts/disableTestAccounts.js
+  ```
+  ```bash
+  $ZC run --rm --no-deps api node scripts/disableTestAccounts.js --apply
+  ```
+- **Company and support details** for invoices, vouchers and emails: fill `ZIVO_LEGAL_NAME`, `ZIVO_GSTIN`, `ZIVO_PAN`, `ZIVO_CIN`, `ZIVO_ADDRESS`, `ZIVO_SUPPORT_EMAIL` and `ZIVO_SUPPORT_PHONE` in `.env`, then run `deploy.sh`.
+
 ### 7. Check it
 - [ ] **The other platform** still opens: https://app.189-72-151-212.sslip.io
 - [ ] **The API is healthy:** https://zivohotels.189-72-151-212.sslip.io/ready shows `"READY"`.

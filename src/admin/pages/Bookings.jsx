@@ -125,7 +125,7 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
           <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge value={booking.status} />
             <StatusBadge value={booking.paymentStatus} map={PAYMENT_STYLES} />
-            <span className="text-xs text-gray-400 font-medium">{booking.paymentType?.replace('_', ' ')}</span>
+            <span className="text-xs text-gray-400 font-medium">{booking.paymentType?.replaceAll('_', ' ')}</span>
           </div>
 
           {/* Property */}
@@ -423,7 +423,7 @@ const Bookings = () => {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-brand-500 bg-white">
             <option value="">All Statuses</option>
             {['PENDING','CONFIRMED','CHECKED_IN','COMPLETED','CANCELLED','NO_SHOW'].map(s =>
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+              <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}
           </select>
 
           {/* Payment */}
@@ -512,7 +512,7 @@ const Bookings = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="font-bold text-gray-900">{fmt(b.totalAmount)}</div>
-                        <div className="text-xs text-gray-400">{b.paymentType?.replace('_', ' ')}</div>
+                        <div className="text-xs text-gray-400">{b.paymentType?.replaceAll('_', ' ')}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap"><StatusBadge value={b.status} /></td>
                       <td className="px-4 py-3 whitespace-nowrap"><StatusBadge value={b.paymentStatus} map={PAYMENT_STYLES} /></td>

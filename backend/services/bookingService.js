@@ -15,6 +15,7 @@ import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
 import { roomLinesFrom, roomsPerType } from '../domains/roomLines.js';
+import { uniqueBookingRef } from '../utils/bookingRef.js';
 
 /**
  * Loads what pricing needs for each room of a stay: its room type (of this hotel) and rate plan (of
@@ -206,7 +207,7 @@ export const bookingService = {
       // C. Create Booking
       const expiresAt = new Date(Date.now() + (paymentType === 'PAY_AT_HOTEL' ? 24 * 60 : 30) * 60 * 1000);
       const bookingData = {
-        bookingRef: `ZIVO-${Math.floor(100000 + Math.random() * 900000)}`,
+        bookingRef: await uniqueBookingRef(tx),
         guestName, guestEmail, guestPhone,
         guestCompanyName: company?.name || null,
         guestCompanyGstin: company?.gstin || null,
@@ -365,22 +366,9 @@ export const bookingService = {
         }
       });
 
-      // Generate trip intelligence snapshot
-      const airportDistance = `${Math.floor(15 + Math.random() * 20)} mins`;
-      const peakCheckIn = '12:00 PM - 2:00 PM';
-      const wifiRating = Math.random() > 0.3 ? 'Excellent' : 'Good';
-      const aiTags = ['Business Friendly', 'High WiFi Speed', 'Clean Room Guarantee'];
-      if (adults + children > 2) aiTags.push('Family Pick');
+      // (The "trip intelligence" saved here was made up: a random airport distance and WiFi
+      // rating. Removed.)
 
-      await tx.bookingIntelligence.create({
-        data: {
-          bookingId: booking.id,
-          wifiRating,
-          peakCheckIn,
-          airportDistance,
-          aiTags
-        }
-      });
 
 
       // E. Save Pricing Snapshot (with versioning)

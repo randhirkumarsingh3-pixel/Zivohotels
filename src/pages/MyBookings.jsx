@@ -4,7 +4,7 @@ import {
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
   RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
   User, Sparkles, ArrowRightLeft, Clock, Printer, Download,
-  ExternalLink, Wifi, ShieldAlert, Award, ArrowRight, Star, Lock
+  ExternalLink, Mail, Award, ArrowRight, Star, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -140,6 +140,15 @@ const AspectStars = ({ value, onChange }) => {
 };
 
 /* ─── Main Component ──────────────────────────────────────────────────── */
+// The hotel's front desk number (from the property's contact details)
+const hotelPhone = (b) => b?.hotel?.contact?.phone || '';
+// WhatsApp needs the number with country code: 10-digit Indian numbers get 91 in front
+const whatsappNumber = (b) => {
+  const d = hotelPhone(b).replace(/\D/g, '');
+  if (!d) return '';
+  return d.length === 10 ? `91${d}` : d.replace(/^0+/, '');
+};
+
 const MyBookings = () => {
   usePageTitle('My bookings');
   useAuth();
@@ -165,8 +174,6 @@ const MyBookings = () => {
       .catch(err => { if (active) setCancelPreviewError(err.message || 'Could not load the refund details.'); });
     return () => { active = false; };
   }, [cancelTarget]);
-  const [conciergeActionLoading, setConciergeActionLoading] = useState('');
-  const [conciergeSuccess, setConciergeSuccess] = useState('');
 
   // Review state
   const [reviewRating, setReviewRating] = useState(0);
@@ -244,14 +251,6 @@ const MyBookings = () => {
     }
   };
 
-  const handleConciergeRequest = (type) => {
-    setConciergeActionLoading(type);
-    setTimeout(() => {
-      setConciergeActionLoading('');
-      setConciergeSuccess(type);
-      setTimeout(() => setConciergeSuccess(''), 4000);
-    }, 1500);
-  };
 
   const resetReviewForm = () => {
     setReviewRating(0); setReviewComment(''); setReviewTitle(''); setTripType('');
@@ -453,33 +452,27 @@ const MyBookings = () => {
 
           {/* Side panel (1/3) */}
           <div className="space-y-6">
-            {/* AI Trip Assistant */}
+            {/* Help (the old "AI Trip Assistant" showed success but sent nothing) */}
             <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
-              <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                <Sparkles size={20} className="text-brand-700" />
-                AI Trip Assistant
+              <h3 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
+                <Phone size={20} className="text-brand-700" />
+                Need something for your stay?
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                Need immediate help? Tell Zivo AI to notify the hotel of a late check-in or request amenities.
+                For a late arrival, early check-in, airport pickup or parking, contact the hotel directly. Open a booking and choose <span className="font-semibold text-gray-700">Contact hotel</span> for its phone number.
               </p>
-              <div className="space-y-3">
-                <button onClick={() => handleConciergeRequest('general')} className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
-                  <span>Request Airport Transfer Setup</span><ChevronRight size={14} />
-                </button>
-                <button onClick={() => handleConciergeRequest('general')} className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
-                  <span>Inquire about Parking Availability</span><ChevronRight size={14} />
-                </button>
-              </div>
+              <Link to="/help" className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
+                <span>Help centre: changes, cancellations, refunds</span><ChevronRight size={14} />
+              </Link>
             </div>
 
-            {/* Rebook card */}
+            {/* Next stay (no made-up discount: member prices and rewards are real) */}
             <div className="bg-gradient-to-br from-navy-800 to-navy-950 text-white rounded-3xl p-6 shadow-lg border border-navy-700/50 relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 opacity-10"><ArrowRightLeft size={200} /></div>
-              <span className="bg-white/10 text-white/90 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-white/10">Loyalty Perk</span>
-              <h3 className="text-xl font-bold text-white mt-4 mb-2">Ready for your next stay?</h3>
-              <p className="text-xs text-brand-200 leading-relaxed mb-6">Enjoy a flat 10% loyalty discount at any Zivo partner property when you rebook today.</p>
+              <h3 className="text-xl font-bold text-white mb-2">Ready for your next stay?</h3>
+              <p className="text-xs text-brand-200 leading-relaxed mb-6">Member prices and Zivo Rewards points apply on every booking.</p>
               <Link to="/hotels" className="w-full bg-white text-brand-950 font-extrabold text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 hover:bg-brand-50 transition-colors">
-                Apply Rebook Discount<ArrowRight size={16} />
+                Search hotels<ArrowRight size={16} />
               </Link>
             </div>
           </div>
@@ -507,10 +500,9 @@ const MyBookings = () => {
               {[
                 { id: 'overview',  label: 'Overview',    icon: <User size={14} /> },
                 { id: 'timeline',  label: 'Timeline',    icon: <Clock size={14} /> },
-                { id: 'concierge', label: 'AI Concierge',icon: <Sparkles size={14} /> },
                 { id: 'billing',   label: 'Financials',  icon: <FileText size={14} /> },
                 { id: 'review',    label: 'Rate & Review',icon: <Star size={14} /> },
-                { id: 'support',   label: 'Support',     icon: <Phone size={14} /> }
+                { id: 'support',   label: 'Contact hotel', icon: <Phone size={14} /> }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -620,50 +612,6 @@ const MyBookings = () => {
                 </div>
               )}
 
-              {/* AI CONCIERGE */}
-              {activeTab === 'concierge' && (
-                <div className="space-y-6">
-                  {conciergeSuccess && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-800 flex items-start gap-2.5 text-xs">
-                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                      <div><p className="font-bold">Request Transmitted</p><p className="text-emerald-700 mt-0.5">Property manager alerted via Extranet.</p></div>
-                    </div>
-                  )}
-                  <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex gap-4">
-                    <Sparkles className="text-brand-700 mt-0.5 shrink-0" size={24} />
-                    <div className="text-xs">
-                      <h4 className="font-bold text-brand-900 mb-1">AI Concierge Services</h4>
-                      <p className="text-brand-700 leading-relaxed mb-4">Send check-in requests or stay modifications directly to reception.</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => handleConciergeRequest('late')} disabled={conciergeActionLoading === 'late' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
-                          {conciergeActionLoading === 'late' ? <RefreshCw size={12} className="animate-spin" /> : <Clock size={12} />}Alert Late Arrival
-                        </button>
-                        <button onClick={() => handleConciergeRequest('early')} disabled={conciergeActionLoading === 'early' || activeBooking.status !== 'CONFIRMED'} className="bg-white border border-brand-200 hover:border-brand-600 text-brand-950 font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
-                          {conciergeActionLoading === 'early' ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}Early Check-in
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2"><ExternalLink size={16} className="text-brand-700" />Stay Intelligence</h4>
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      {[
-                        { icon: <Clock size={16} className="text-brand-500" />, label: 'Peak Check-in', val: activeBooking.intelligence?.peakCheckIn || '12 PM - 2 PM' },
-                        { icon: <Wifi size={16} className="text-emerald-500" />,label: 'WiFi Score', val: activeBooking.intelligence?.wifiRating || 'Excellent' },
-                        { icon: <Compass size={16} className="text-blue-500" />, label: 'Airport Distance', val: activeBooking.intelligence?.airportDistance || '18 mins' },
-                        { icon: <ShieldAlert size={16} className="text-amber-500" />, label: 'Traffic / Access', val: activeBooking.intelligence?.trafficAlert || 'Clear Route' }
-                      ].map(item => (
-                        <div key={item.label} className="bg-gray-50/70 p-3 rounded-xl border border-gray-50 flex items-start gap-2">
-                          {item.icon}
-                          <div><span className="text-gray-400 font-medium">{item.label}</span><p className="font-bold text-gray-800 mt-0.5">{item.val}</p></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* BILLING */}
               {activeTab === 'billing' && (
                 <div className="space-y-6">
@@ -748,18 +696,31 @@ const MyBookings = () => {
                     {activeBooking.metadata?.membership?.prioritySupport && (
                       <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{activeBooking.metadata.membership.plan} booking: you get priority support. Mention your booking ID when you call.</p>
                     )}
-                    <p className="text-xs text-gray-500">Connect directly with the team or navigate to the property.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-bold text-gray-800">
-                      <a href={`tel:${activeBooking.guestPhone}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors">
-                        <Phone size={16} className="text-gray-500" />Call Property Desk
-                      </a>
-                      <a href={`https://wa.me/${activeBooking.guestPhone}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl hover:border-emerald-500 transition-colors text-emerald-800">
-                        <MessageSquare size={16} className="text-emerald-500" />WhatsApp Concierge
-                      </a>
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((activeBooking.hotel?.name || '') + ' ' + (activeBooking.hotel?.city || ''))}`} target="_blank" rel="noreferrer" className="col-span-1 md:col-span-2 flex items-center justify-center gap-2 p-3 bg-blue-50/30 border border-blue-100 rounded-xl hover:border-blue-500 transition-colors text-blue-700">
-                        <Compass size={16} className="text-blue-500" />Launch Google Maps Navigation
-                      </a>
-                    </div>
+                    <p className="text-xs text-gray-500">For a late arrival, early check-in, airport pickup, parking or other requests, contact the hotel. Requests are confirmed by the hotel, not guaranteed.</p>
+                    {hotelPhone(activeBooking) || activeBooking.hotel?.contact?.email ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-bold text-gray-800">
+                        {hotelPhone(activeBooking) && (
+                          <a href={`tel:${hotelPhone(activeBooking)}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors">
+                            <Phone size={16} className="text-gray-500" /><span>Call the hotel <span className="block font-mono font-semibold text-gray-600 select-all">{hotelPhone(activeBooking)}</span></span>
+                          </a>
+                        )}
+                        {whatsappNumber(activeBooking) && (
+                          <a href={`https://wa.me/${whatsappNumber(activeBooking)}?text=${encodeURIComponent(`Hi, I have booking ${activeBooking.bookingRef}`)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl hover:border-emerald-500 transition-colors text-emerald-800">
+                            <MessageSquare size={16} className="text-emerald-500" />WhatsApp the hotel
+                          </a>
+                        )}
+                        {activeBooking.hotel?.contact?.email && (
+                          <a href={`mailto:${activeBooking.hotel.contact.email}?subject=${encodeURIComponent(`Booking ${activeBooking.bookingRef}`)}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors md:col-span-2">
+                            <Mail size={16} className="text-gray-500" /><span className="break-all">{activeBooking.hotel.contact.email}</span>
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. <Link to="/help" className="font-bold text-brand-700 underline">Contact ZivoHotels support</Link> with your booking ID and we&apos;ll reach the hotel.</p>
+                    )}
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeBooking.hotel?.latitude && activeBooking.hotel?.longitude ? `${activeBooking.hotel.latitude},${activeBooking.hotel.longitude}` : `${activeBooking.hotel?.name || ''} ${activeBooking.hotel?.location || ''} ${activeBooking.hotel?.city || ''}`)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 bg-blue-50/30 border border-blue-100 rounded-xl hover:border-blue-500 transition-colors text-blue-700 text-xs font-bold">
+                      <Compass size={16} className="text-blue-500" />Directions in Google Maps
+                    </a>
                   </div>
                   <div className="bg-navy-900 text-white rounded-2xl p-5 space-y-3">
                     <h4 className="font-bold text-white text-sm">Recommended Stays Nearby</h4>
@@ -914,11 +875,6 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
                 Refunded
               </span>
             )}
-            {booking.intelligence?.aiTags?.slice(0, 1).map((tag, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-50 text-gray-500 border border-gray-100 flex items-center gap-0.5">
-                <Sparkles size={8} className="text-brand-500" />{tag}
-              </span>
-            ))}
             {reviewReady && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
                 <Star size={9} className="fill-amber-500 text-amber-500" />
