@@ -4,6 +4,21 @@ import path from 'path';
 import prisma from '../config/db.js';
 import invoiceDomain from '../domains/invoiceDomain.js';
 import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
+import { getSupportContacts } from '../config/supportContacts.js';
+
+// The company that runs ZivoHotels (the booking platform), printed on every invoice
+const platformDetails = async () => {
+  const support = await getSupportContacts();
+  return {
+    name: process.env.ZIVO_LEGAL_NAME || '',
+    gstin: process.env.ZIVO_GSTIN || '',
+    cin: process.env.ZIVO_CIN || '',
+    pan: process.env.ZIVO_PAN || '',
+    address: process.env.ZIVO_ADDRESS || '',
+    email: support.email,
+    phone: support.phone,
+  };
+};
 
 // Shared browser (falls back to an installed Chrome where the bundled one can't run)
 process.on('SIGINT', async () => {
@@ -67,7 +82,8 @@ export const invoiceService = {
         booking,
         hotel: booking.hotel,
         invoiceRef,
-        issueDate: new Date()
+        issueDate: new Date(),
+        platform: await platformDetails()
       });
 
       // Generate PDF using Puppeteer
@@ -147,7 +163,8 @@ export const invoiceService = {
         booking,
         hotel: booking.hotel,
         invoiceRef: existingInvoice.invoiceRef,
-        issueDate: new Date()
+        issueDate: new Date(),
+        platform: await platformDetails()
       });
 
       const browser = await getBrowser();
