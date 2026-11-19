@@ -133,6 +133,7 @@ model Hotel {
   @@index([state])
   @@index([country])
   @@index([pincode])
+  stayRequests          StayRequest[]
 }
 
 model RoomType {
@@ -296,6 +297,7 @@ model Booking {
   review              Review?
   timelineEvents      BookingTimelineEvent[]
   bookingRooms        BookingRoom[]
+  stayRequests        StayRequest[]
   intelligence        BookingIntelligence?
   notificationSyncs   NotificationSyncLog[]
 
@@ -329,6 +331,32 @@ model BookingRoom {
   @@unique([bookingId, roomNumber])
   @@index([roomTypeId])
 }
+/// A guest's request to the hotel about a booking (late arrival, early check-in, airport pickup…).
+/// The hotel confirms or declines it with a reply; both sides are told by email and notification.
+model StayRequest {
+  id            String    @id @default(uuid())
+  bookingId     String
+  hotelId       String
+  userId        String?
+  /// LATE_ARRIVAL, EARLY_CHECKIN, LATE_CHECKOUT, AIRPORT_PICKUP, AIRPORT_DROP, PARKING, SPECIAL_OCCASION, OTHER
+  type          String
+  details       String    @default("")
+  /// Arrival / flight / check-in time the guest gave, as typed ("23:30", "6E 512 at 10:40")
+  requestedTime String?
+  /// PENDING, CONFIRMED, DECLINED, CANCELLED
+  status        String    @default("PENDING")
+  hotelReply    String?
+  respondedAt   DateTime?
+  respondedBy   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotel         Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, status])
+  @@index([bookingId])
+}
+
 
 
 model TaxRule {

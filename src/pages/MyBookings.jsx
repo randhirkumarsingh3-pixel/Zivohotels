@@ -4,8 +4,10 @@ import {
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
   RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
   User, Sparkles, ArrowRightLeft, Clock, Printer, Download,
-  ExternalLink, Mail, Award, ArrowRight, Star, Lock
+  ExternalLink, Mail, Award, Send, ArrowRight, Star, Lock
 } from 'lucide-react';
+import StayRequests from '../components/booking/StayRequests';
+import SupportContacts from '../components/SupportContacts';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
@@ -459,8 +461,10 @@ const MyBookings = () => {
                 Need something for your stay?
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                For a late arrival, early check-in, airport pickup or parking, contact the hotel directly. Open a booking and choose <span className="font-semibold text-gray-700">Contact hotel</span> for its phone number.
+                For a late arrival, early check-in, airport pickup or parking, open a booking (<span className="font-semibold text-gray-700">Manage</span>) and choose <span className="font-semibold text-gray-700">Requests to hotel</span>. The hotel answers there and by email.
               </p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ZivoHotels support</p>
+              <div className="mb-3"><SupportContacts compact /></div>
               <Link to="/help" className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
                 <span>Help centre: changes, cancellations, refunds</span><ChevronRight size={14} />
               </Link>
@@ -500,6 +504,7 @@ const MyBookings = () => {
               {[
                 { id: 'overview',  label: 'Overview',    icon: <User size={14} /> },
                 { id: 'timeline',  label: 'Timeline',    icon: <Clock size={14} /> },
+                { id: 'requests',  label: 'Requests to hotel', icon: <Send size={14} /> },
                 { id: 'billing',   label: 'Financials',  icon: <FileText size={14} /> },
                 { id: 'review',    label: 'Rate & Review',icon: <Star size={14} /> },
                 { id: 'support',   label: 'Contact hotel', icon: <Phone size={14} /> }
@@ -612,6 +617,9 @@ const MyBookings = () => {
                 </div>
               )}
 
+              {/* REQUESTS TO THE HOTEL (concierge) */}
+              {activeTab === 'requests' && <StayRequests booking={activeBooking} />}
+
               {/* BILLING */}
               {activeTab === 'billing' && (
                 <div className="space-y-6">
@@ -716,7 +724,10 @@ const MyBookings = () => {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. <Link to="/help" className="font-bold text-brand-700 underline">Contact ZivoHotels support</Link> with your booking ID and we&apos;ll reach the hotel.</p>
+                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. Send a request in <span className="font-semibold">Requests to hotel</span>, or contact ZivoHotels support with your booking ID and we&apos;ll reach the hotel.</p>
+                    )}
+                    {!(hotelPhone(activeBooking) || activeBooking.hotel?.contact?.email) && (
+                      <SupportContacts bookingRef={activeBooking.bookingRef} compact />
                     )}
                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeBooking.hotel?.latitude && activeBooking.hotel?.longitude ? `${activeBooking.hotel.latitude},${activeBooking.hotel.longitude}` : `${activeBooking.hotel?.name || ''} ${activeBooking.hotel?.location || ''} ${activeBooking.hotel?.city || ''}`)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 bg-blue-50/30 border border-blue-100 rounded-xl hover:border-blue-500 transition-colors text-blue-700 text-xs font-bold">
                       <Compass size={16} className="text-blue-500" />Directions in Google Maps

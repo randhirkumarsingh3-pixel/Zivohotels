@@ -98,8 +98,17 @@ const bookingLimiter = rateLimit({
   // a 429 there means a paid booking is never confirmed.
   // Price previews have their own, looser limit: checkout re-prices each time the guest switches
   // payment option, and counting those here locked guests out ("busy") before they could book.
-  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook') || req.path === '/preview',
+  // Requests to the hotel (/:id/requests) have their own limit below.
+  skip: (req) => req.method === 'GET' || req.path.startsWith('/webhook') || req.path === '/preview' || /^\/[^/]+\/requests(\/|$)/.test(req.path),
   message: { success: false, message: 'Booking system is busy. Please wait a minute.' }
+});
+
+// Requests to the hotel (late arrival, pickup…): sending or withdrawing, per IP
+const stayRequestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  skip: (req) => req.method === 'GET',
+  message: { success: false, message: 'Too many requests to the hotel at once. Please wait a minute.' }
 });
 
 const previewLimiter = rateLimit({
@@ -203,6 +212,7 @@ app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed); // home page: cities, top-rated hotels, offers, reviews
 app.use('/api/v1/bookings/preview', previewLimiter);
+app.use(/^\/api\/v1\/bookings\/[^/]+\/requests/, stayRequestLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/loyalty', loyaltyRoutes);

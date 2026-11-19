@@ -47,15 +47,17 @@ services:
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-ZivoHotels <noreply@zivohotels.com>}
-      # Company details on invoices and vouchers, and the support contacts in emails
-      ZIVO_LEGAL_NAME: ${ZIVO_LEGAL_NAME:-}
-      ZIVO_GSTIN: ${ZIVO_GSTIN:-}
+      # Company details on invoices and vouchers (the company's own, printed on every invoice), and
+      # the support contacts used until they are changed in Admin → Platform Settings → Support.
+      # A value in .env overrides these.
+      ZIVO_LEGAL_NAME: ${ZIVO_LEGAL_NAME:-ZIVO TECHNOLOGIES SOLUTIONS PRIVATE LIMITED}
+      ZIVO_GSTIN: ${ZIVO_GSTIN:-10AADCZ1700C1Z8}
       ZIVO_GST_STATE_CODE: ${ZIVO_GST_STATE_CODE:-}
-      ZIVO_PAN: ${ZIVO_PAN:-}
-      ZIVO_CIN: ${ZIVO_CIN:-}
+      ZIVO_PAN: ${ZIVO_PAN:-AADCZ1700C}
+      ZIVO_CIN: ${ZIVO_CIN:-U62099BR2026PTC087845}
       ZIVO_ADDRESS: ${ZIVO_ADDRESS:-}
-      ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-}
-      ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-}
+      ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-support@zivohotels.com}
+      ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-9663035520}
     volumes:
       - uploads:/app/public/uploads            # hotel photos (public)
       - private-uploads:/app/private_uploads   # KYC documents (private)

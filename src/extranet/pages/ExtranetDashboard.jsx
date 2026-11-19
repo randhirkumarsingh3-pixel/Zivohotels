@@ -88,7 +88,7 @@ const ExtranetDashboard = () => {
   const onLiveEvent = useCallback((e) => {
     if (!e || lastEvent.current === e) return;
     lastEvent.current = e;
-    if (['BOOKING_CREATED', 'BOOKING_UPDATED', 'BOOKING_CANCELLED', 'SETTLEMENT_CREATED'].includes(e.event)) load();
+    if (['BOOKING_CREATED', 'BOOKING_UPDATED', 'BOOKING_CANCELLED', 'SETTLEMENT_CREATED', 'GUEST_REQUEST'].includes(e.event)) load();
   }, [load]);
   useSocketEvent('*', onLiveEvent);
 

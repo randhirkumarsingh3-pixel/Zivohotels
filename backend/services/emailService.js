@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { getSupportContacts, whatsappDigits } from '../config/supportContacts.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
 import { queueService } from './queueService.js';
@@ -15,7 +16,7 @@ import { queueService } from './queueService.js';
  */
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
+const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => {
   const checkInDate = new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   const checkOutDate = new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   
@@ -45,9 +46,10 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
   // The hotel's front desk, then ZivoHotels support (was a placeholder +91 99999 99999)
   const contact = hotel.integrationSettings?.contactInfo || {};
   const hotelPhone = contact.receptionPhone || contact.guestLandline || '';
-  const supportPhone = process.env.ZIVO_SUPPORT_PHONE || '';
-  const supportEmail = process.env.ZIVO_SUPPORT_EMAIL || '';
-  const waDigits = (() => { const d = String(hotelPhone || supportPhone).replace(/\D/g, ''); return d.length === 10 ? `91${d}` : d.replace(/^0+/, ''); })();
+  // ZivoHotels support: Admin → Platform Settings → Support (or the server's ZIVO_SUPPORT_* settings)
+  const supportPhone = support.phone || '';
+  const supportEmail = support.email || '';
+  const waDigits = whatsappDigits(hotelPhone || support.whatsapp || supportPhone);
   const mapsQuery = hotel.latitude && hotel.longitude ? `${hotel.latitude},${hotel.longitude}` : `${hotel.name}, ${hotel.city}`;
 
   return `
@@ -674,7 +676,7 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 
     // Several rooms: "2 × Premium Suite, 1 × Standard Room"
     const roomLabel = { ...booking.roomType, name: roomsSummary(booking.bookingRooms, booking, booking.roomType?.name) };
-    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan);
+    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan, await getSupportContacts());
 
     console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
     

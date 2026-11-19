@@ -1,4 +1,5 @@
 import { getBrowser } from '../utils/browser.js';
+import { getSupportContacts } from '../config/supportContacts.js';
 import prisma from '../config/db.js';
 import { escapeHtml as h } from '../utils/html.js';
 import { toMoney, roundMoney } from '../utils/money.js';
@@ -42,6 +43,8 @@ const company = () => ({
   email: process.env.ZIVO_SUPPORT_EMAIL || '',
   phone: process.env.ZIVO_SUPPORT_PHONE || '',
 });
+// With the support contacts from Admin → Platform Settings → Support (d.support, loaded with the voucher)
+const companyWithSupport = (support) => ({ ...company(), ...(support?.email ? { email: support.email } : {}), ...(support?.phone ? { phone: support.phone } : {}) });
 
 /** Who may download which voucher. Guests: their own; owners: their hotels'; admins: any. */
 export const canDownloadVoucher = (booking, hotel, user, type) => {
@@ -65,7 +68,7 @@ export const loadVoucherData = async (bookingId) => {
     prisma.bookingTimelineEvent.findFirst({ where: { bookingId, status: 'CONFIRMED' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
     loadBookingRooms(bookingId),
   ]);
-  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt, rooms };
+  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt, rooms, support: await getSupportContacts() };
 };
 
 // ── shared pieces ─────────────────────────────────────────────────────────────
@@ -147,8 +150,8 @@ const baseCss = `
   .foot { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 10px; }
 `;
 
-const companyLines = () => {
-  const c = company();
+const companyLines = (support) => {
+  const c = companyWithSupport(support);
   const reg = [c.pan && `PAN ${h(c.pan)}`, c.gstin && `GSTIN ${h(c.gstin)}`, c.cin && `CIN ${h(c.cin)}`].filter(Boolean).join(' · ');
   const contact = [c.email && h(c.email), c.phone && h(c.phone)].filter(Boolean).join(' · ');
   return `<div class="foot"><b>${h(c.name)}</b>${c.address ? ` · ${h(c.address)}` : ''}${reg ? `<br>${reg}` : ''}${contact ? `<br>Support: ${contact}` : ''}</div>`;
@@ -292,7 +295,7 @@ export const guestVoucherHtml = (d) => {
         <li>The tax invoice for the stay is issued by the property${booking.guestCompanyGstin ? ' in the company name and GSTIN above' : ''}.</li>
       </ul>
     </div>
-    ${companyLines()}
+    ${companyLines(d.support)}
   </body></html>`;
 };
 
@@ -422,7 +425,7 @@ export const hotelierVoucherHtml = (d, f) => {
         <li>If the guest cancels or changes this booking, you will be notified and this voucher will no longer be valid.</li>
       </ul>
     </div>
-    ${companyLines()}
+    ${companyLines(d.support)}
   </body></html>`;
 };
 

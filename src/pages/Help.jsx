@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import SupportContacts from '../components/SupportContacts';
 import { Link, useLocation } from 'react-router-dom';
 import { Mail, CalendarX2, CreditCard, Wallet, Award, Building2, ChevronRight } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
@@ -71,12 +72,8 @@ const Help = () => {
       </Section>
 
       <Section id="contact" icon={Mail} title="Contact us">
-        <p>Write to us and include your booking ID (for example ZIVO-123456) so we can help faster.</p>
-        <ul className="space-y-1">
-          <li>Bookings and refunds: <span className="font-semibold text-navy-800 select-all">bookings@zivohotels.com</span></li>
-          <li>Hotel partners: <span className="font-semibold text-navy-800 select-all">partners@zivohotels.com</span></li>
-          <li>Payments and invoices: <span className="font-semibold text-navy-800 select-all">finance@zivohotels.com</span></li>
-        </ul>
+        <p>Call, WhatsApp or write to us and include your booking ID (for example ZIVO-7KQ3MX9P) so we can help faster. For requests about your stay (late arrival, early check-in, airport pickup), use <span className="font-semibold">Requests to the hotel</span> in My Bookings.</p>
+        <div className="max-w-md"><SupportContacts /></div>
       </Section>
     </div>
   </div>
