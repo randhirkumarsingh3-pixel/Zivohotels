@@ -27,3 +27,12 @@ describe('places: city names and distances', () => {
     expect(parseLatLng(undefined, '1')).to.equal(null);
   });
 });
+
+import { newBookingRef } from '../../utils/bookingRef.js';
+describe('booking references', () => {
+  it('are ZIVO- and 8 unambiguous characters, and differ', () => {
+    const refs = new Set(Array.from({ length: 2000 }, newBookingRef));
+    expect(refs.size).to.equal(2000);
+    for (const r of refs) expect(r).to.match(/^ZIVO-[A-HJKMNP-Z2-9]{8}$/);
+  });
+});

@@ -420,3 +420,8 @@ export const getAdminAnalytics = async (days = 30) => {
 
 // ─── PUBLIC SYSTEM CONFIG ─────────────────────────────────────────────────────
 export const getPublicConfig = () => apiFetch(`${PUBLIC_BASE}/system/config`);
+
+// Requests to the hotel (late arrival, early check-in, airport pickup…) for a booking
+export const getStayRequests = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests`).then(res => res?.data || []);
+export const createStayRequest = (bookingId, body) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests`, { method: 'POST', body: JSON.stringify(body) }).then(res => res?.data);
+export const cancelStayRequest = (bookingId, requestId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests/${requestId}/cancel`, { method: 'POST' }).then(res => res?.data);

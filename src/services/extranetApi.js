@@ -110,3 +110,7 @@ export const getOnboardingProgress = (hotelId) => extranetFetch(`/onboarding/${h
 export const saveOnboardingStep = (hotelId, step, data) => extranetFetch(`/onboarding/${hotelId}/step/${step}`, { method: 'PUT', body: JSON.stringify(data) });
 export const submitPropertyForReview = (hotelId) => extranetFetch(`/onboarding/${hotelId}/submit`, { method: 'POST' });
 
+
+// --- GUEST REQUESTS (concierge) ---
+/** Confirm or decline a guest's request: status CONFIRMED | DECLINED, reply shown to the guest. */
+export const respondToStayRequest = (requestId, status, reply) => extranetFetch(`/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify({ status, reply }) });

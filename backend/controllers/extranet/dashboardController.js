@@ -54,7 +54,10 @@ export const getDashboard = async (req, res) => {
     const monthNights = monthRows.reduce((s, b) => s + nights(b) * (b.rooms || 1), 0);
     const shape = ({ bookingRooms, ...b }) => ({ ...b, nights: nights(b), roomType: b.roomType?.name || '', roomsLabel: roomsSummary(bookingRooms, b, b.roomType?.name), dueAtHotel: Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)) });
 
+    // Guest requests (late arrival, pickup…) waiting for an answer
+    const openRequests = await prisma.stayRequest.count({ where: { hotelId, status: 'PENDING' } }).catch(() => 0);
     const todo = [
+      openRequests > 0 && { key: 'requests', text: `${openRequests} guest request${openRequests === 1 ? '' : 's'} waiting for your answer`, link: '/extranet/bookings' },
       !roomTypes.length && { key: 'rooms', text: 'Add your rooms and rates', link: '/extranet/rooms' },
       roomTypes.length > 0 && roomTypes.some((r) => !r.ratePlans.length) && { key: 'rates', text: 'A room type has no rate plan, so it can’t be booked', link: '/extranet/rooms' },
       images < 5 && { key: 'photos', text: `Add more photos (${images} so far; listings with 5+ get more bookings)`, link: 'EDIT_LISTING' },

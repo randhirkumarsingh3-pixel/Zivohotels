@@ -535,6 +535,11 @@ export const getMyBookings = async (req, res, next) => {
             city: true,
             checkInTime: true,
             checkOutTime: true,
+            location: true,
+            latitude: true,
+            longitude: true,
+            // Reception phone / email for the guest (only those are passed on, below)
+            integrationSettings: true,
             // Cover photo, or the first upload when none is marked (was: cover only, else none)
             media: { ...COVER_PHOTO_FIRST, select: { url: true } }
           }
@@ -544,7 +549,6 @@ export const getMyBookings = async (req, res, next) => {
         ratePlan: { select: { id: true, name: true, mealPlan: true } },
         invoice: { select: { id: true, invoiceRef: true, status: true } },
         timelineEvents: { orderBy: { createdAt: 'asc' } },
-        intelligence: true,
         notificationSyncs: true,
         review: { select: { id: true, rating: true, comment: true } }
       },
@@ -590,23 +594,15 @@ export const getMyBookings = async (req, res, next) => {
         });
       }
 
-      if (!booking.intelligence) {
-        // Initialize intelligence snapshot
-        const airportDistance = `${Math.floor(15 + Math.random() * 20)} mins`;
-        const peakCheckIn = '12:00 PM - 2:00 PM';
-        const wifiRating = 'Excellent';
-        const aiTags = ['Business Friendly', 'High WiFi Speed', 'Clean Room Guarantee'];
-        if (booking.guests > 2) aiTags.push('Family Pick');
-
-        booking.intelligence = await prisma.bookingIntelligence.create({
-          data: {
-            bookingId: booking.id,
-            wifiRating,
-            peakCheckIn,
-            airportDistance,
-            aiTags
-          }
-        });
+      // The hotel's front desk, from the property's contact details; nothing else from its
+      // settings (bank, commercials) leaves the server
+      if (booking.hotel) {
+        const contact = booking.hotel.integrationSettings?.contactInfo || {};
+        booking.hotel.contact = {
+          phone: contact.receptionPhone || contact.guestLandline || null,
+          email: contact.receptionEmail || null,
+        };
+        delete booking.hotel.integrationSettings;
       }
     }
 

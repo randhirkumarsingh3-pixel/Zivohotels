@@ -7,6 +7,7 @@ import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 import { getProperty, updateProperty } from '../controllers/extranet/propertyController.js';
 import { getRooms } from '../controllers/extranet/roomController.js';
 import { getBookings, updateBookingStatus } from '../controllers/extranet/bookingController.js';
+import { listHotelRequests, respondHotelRequest } from '../controllers/stayRequestController.js';
 import { listHotelReviews, replyToReview, deleteReply, reportReview } from '../controllers/reviewController.js';
 import { fetchNotifications, markNotificationsRead } from '../controllers/extranet/notificationController.js';
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
@@ -67,6 +68,9 @@ router.get('/rooms', getRooms);
 // Bookings
 router.get('/bookings', getBookings);
 router.put('/bookings/:bookingId/status', updateBookingStatus);
+// Guest requests (concierge): see them and confirm or decline with a reply
+router.get('/requests', listHotelRequests);
+router.patch('/requests/:requestId', respondHotelRequest);
 
 // Reviews
 router.get('/reviews', listHotelReviews);

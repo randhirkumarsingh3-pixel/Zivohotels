@@ -22,7 +22,7 @@ export const invoiceDomain = {
    * @returns {String} HTML string
    */
   generateHTML: (input) => {
-    const { booking, hotel, invoiceRef, issueDate } = input;
+    const { booking, hotel, invoiceRef, issueDate, platform = {} } = input;
 
     const timeZoneOptions = { timeZone: 'Asia/Kolkata' };
 
@@ -186,7 +186,8 @@ export const invoiceDomain = {
 
         <div class="footer">
           <p>Thank you for booking with ZivoHotels.<br>
-          If you have any questions concerning this invoice, please contact support.</p>
+          If you have any questions concerning this invoice, please contact support${platform.email || platform.phone ? `: ${[platform.email, platform.phone].filter(Boolean).map(h).join(' · ')}` : ''}.</p>
+          ${platform.name ? `<p style="margin-top:8px">Booked through ZivoHotels, operated by ${h(platform.name)}${platform.gstin ? ` · GSTIN ${h(platform.gstin)}` : ''}${platform.cin ? ` · CIN ${h(platform.cin)}` : ''}${platform.address ? `<br>${h(platform.address)}` : ''}</p>` : ''}
         </div>
       </div>
     </body>

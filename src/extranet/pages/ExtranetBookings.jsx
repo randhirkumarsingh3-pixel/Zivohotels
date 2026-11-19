@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import GuestRequestsPanel from '../components/GuestRequestsPanel';
 import { roomsText, bookingRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import {
   ClipboardList, Search, Download, CheckCircle2, Clock, XCircle, AlertCircle, Phone, Mail, Users,
@@ -30,8 +31,12 @@ const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric',
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 const nightsOf = (b) => Math.max(1, Math.round((new Date(b.checkOut) - new Date(b.checkIn)) / 86400000));
 
+// Guest requests (late arrival, pickup…) still waiting for the hotel's answer
+const pendingRequests = (b) => (b.stayRequests || []).filter((r) => r.status === 'PENDING').length;
+
 const TABS = [
   ['ALL', 'All', () => true],
+  ['REQUESTS', 'Guest requests', (b) => pendingRequests(b) > 0],
   ['TODAY', 'Arriving today', (b, t) => istDay(b.checkIn) === t && ['CONFIRMED', 'CHECKED_IN', 'PENDING'].includes(b.status)],
   ['UPCOMING', 'Upcoming', (b, t) => istDay(b.checkIn) > t && ['CONFIRMED', 'PENDING'].includes(b.status)],
   ['CHECKED_IN', 'In house', (b) => b.status === 'CHECKED_IN'],
@@ -149,6 +154,7 @@ const ExtranetBookings = () => {
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-gray-900">{b.guestName}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${st.cls}`}>{st.label}</span>
+                      {pendingRequests(b) > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-900 border-amber-300">{pendingRequests(b)} request{pendingRequests(b) > 1 ? 's' : ''} to answer</span>}
                       {b.metadata?.membership?.isPaid && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold">{b.metadata.membership.plan}{b.metadata.membership.prioritySupport ? ' · priority' : ''}</span>}
                     </p>
                     <p className="text-sm text-gray-600 mt-0.5">
@@ -175,6 +181,7 @@ const ExtranetBookings = () => {
                     <div><dt className="flex items-center gap-1.5 text-gray-500"><Users size={14} aria-hidden="true" /> Guests</dt><dd className="font-semibold text-gray-900">{b.guests || b.adults || '—'}</dd></div>
                     <div><dt className="flex items-center gap-1.5 text-gray-500"><BedDouble size={14} aria-hidden="true" /> Payment</dt><dd className="font-semibold text-gray-900">{PAY[b.paymentType] || '—'} · {inr(b.paidAmount)} paid</dd></div>
                   </dl>
+                  <GuestRequestsPanel requests={b.stayRequests} onChanged={() => load(true)} addToast={addToast} />
                   {/* Each room: type, plan, guests and the lead guest it is checked in under */}
                   {bookingRoomsOf(b).length > 0 && (
                     <div className="text-sm">

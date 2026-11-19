@@ -14,7 +14,9 @@ export const getBookings = async (req, res) => {
         roomType: { select: { name: true } },
         user: { select: { name: true, email: true, phone: true } },
         // Each room: type, plan, guests and lead guest
-        ...BOOKING_ROOMS_INCLUDE
+        ...BOOKING_ROOMS_INCLUDE,
+        // Guest requests (concierge) to answer
+        stayRequests: { orderBy: { createdAt: 'desc' } }
       },
       orderBy: { createdAt: 'desc' },
       take: 100 // Basic pagination for now

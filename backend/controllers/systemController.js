@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { supportFrom } from '../config/supportContacts.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import systemCache from '../utils/systemCache.js';
 import { z } from 'zod';
@@ -149,16 +150,37 @@ export const getPublicConfig = asyncHandler(async (req, res) => {
   if (configMap.partialPaymentPercent === undefined) configMap.partialPaymentPercent = 30;
   if (configMap.prepaidDiscountPercent === undefined) configMap.prepaidDiscountPercent = 5;
 
+  // Guest support contacts (help page, My Bookings)
+  const saved = await prisma.systemConfig.findUnique({ where: { key: 'support_settings' } });
+  configMap.support = supportFrom(saved?.value || {});
+
   res.status(200).json({ success: true, data: configMap });
 });
 
 // --- PUT /api/v1/admin/system/config ---
 const configSchema = z.record(z.any());
 
+const phoneRule = z.string().trim().max(20).refine((v) => !v || /^\+?[\d\s-]{10,15}$/.test(v), 'Enter a phone number with at least 10 digits');
+const supportSettingsSchema = z.object({
+  phone: phoneRule.optional().default(''),
+  whatsapp: phoneRule.optional().default(''),
+  email: z.string().trim().max(120).refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Enter a valid email address').optional().default(''),
+  hours: z.string().trim().max(120).optional().default(''),
+});
+
 export const updateConfig = asyncHandler(async (req, res) => {
   const validation = configSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(422).json({ success: false, errors: validation.error.format() });
+  }
+
+  // Support contacts are shown to every guest: check them before saving
+  if (req.body.support_settings !== undefined) {
+    const sup = supportSettingsSchema.safeParse(req.body.support_settings);
+    if (!sup.success) {
+      return res.status(422).json({ success: false, message: sup.error.issues[0]?.message || 'Check the support details', errors: sup.error.format() });
+    }
+    req.body.support_settings = sup.data;
   }
 
   const operations = Object.entries(req.body).map(([key, value]) => {

@@ -37,7 +37,7 @@ const PropertyWizard = lazy(() => import('./admin/pages/PropertyWizard'));
 const Configuration = lazy(() => import('./admin/pages/Configuration'));
 const InventoryPricing = lazy(() => import('./admin/pages/InventoryPricing'));
 const Agreements = lazy(() => import('./admin/pages/Agreements'));
-const _Bookings = lazy(() => import('./admin/pages/Bookings'));
+const AdminBookings = lazy(() => import('./admin/pages/Bookings'));
 const ChannelManager = lazy(() => import('./admin/pages/ChannelManager'));
 const Users = lazy(() => import('./admin/pages/Users'));
 const Reports = lazy(() => import('./admin/pages/Reports'));
@@ -146,6 +146,7 @@ function App() {
               <Route path="properties/review" element={<PropertyReview />} />
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
+              <Route path="bookings" element={<AdminBookings />} />
 
               {/* Inventory & Distro */}
               <Route path="configuration" element={<Configuration />} />

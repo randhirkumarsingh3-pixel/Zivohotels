@@ -30,6 +30,11 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'User no longer exists' });
     }
 
+    // A blocked or deleted account is signed out everywhere, not just refused at the next login
+    if (currentUser.status === 'BLOCKED' || currentUser.status === 'DELETED') {
+      return res.status(401).json({ success: false, message: 'This account is not active' });
+    }
+
     // JWT Hardening: Check if token version matches (Revocation support)
     // Tokens issued before versioning carry no tokenVersion: treat them as version 1 (the
     // schema default) so they stop working once the user's tokenVersion is bumped

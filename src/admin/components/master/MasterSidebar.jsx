@@ -23,7 +23,8 @@ import {
   FlaskConical,
   Activity,
   AlertTriangle,
-  X
+  X,
+  BookOpenCheck
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import Logo from '../../../components/brand/Logo';
@@ -87,6 +88,10 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem name="Properties" path="/admin/properties" icon={<Building2 size={18} />} />
           <NavItem name="Property Review" path="/admin/properties/review" icon={<ClipboardCheck size={18} />} />
           <NavItem name="Agreements" path="/admin/agreements" icon={<FileSignature size={18} />} />
+        </NavGroup>
+
+        <NavGroup title="Bookings">
+          <NavItem name="Bookings" path="/admin/bookings" icon={<BookOpenCheck size={18} />} />
         </NavGroup>
 
         <NavGroup title="Inventory & Distribution">

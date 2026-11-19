@@ -1,4 +1,6 @@
 import prisma from '../config/db.js';
+import { getSupportContacts, whatsappDigits } from '../config/supportContacts.js';
+import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
 import { queueService } from './queueService.js';
 
@@ -14,7 +16,7 @@ import { queueService } from './queueService.js';
  */
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
+const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => {
   const checkInDate = new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   const checkOutDate = new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   
@@ -36,8 +38,19 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
   // Dynamic QR Code url
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(booking.bookingRef)}`;
   
-  // Fallback hotel image
-  const hotelImg = hotel.images?.[0]?.url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
+  // The hotel's cover photo (it looked for hotel.images, which doesn't exist, so every email showed
+  // the same stock photo). Uploaded photos are site paths, so the site address goes in front.
+  const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const coverUrl = hotel.media?.[0]?.url || '';
+  const hotelImg = /^https?:\/\//.test(coverUrl) ? coverUrl : coverUrl && site ? `${site}${coverUrl.startsWith('/') ? '' : '/'}${coverUrl}` : '';
+  // The hotel's front desk, then ZivoHotels support (was a placeholder +91 99999 99999)
+  const contact = hotel.integrationSettings?.contactInfo || {};
+  const hotelPhone = contact.receptionPhone || contact.guestLandline || '';
+  // ZivoHotels support: Admin → Platform Settings → Support (or the server's ZIVO_SUPPORT_* settings)
+  const supportPhone = support.phone || '';
+  const supportEmail = support.email || '';
+  const waDigits = whatsappDigits(hotelPhone || support.whatsapp || supportPhone);
+  const mapsQuery = hotel.latitude && hotel.longitude ? `${hotel.latitude},${hotel.longitude}` : `${hotel.name}, ${hotel.city}`;
 
   return `
 <!DOCTYPE html>
@@ -392,7 +405,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
 
     <!-- 2. HERO HOTEL SECTION -->
     <div class="hero-section">
-      <img src="${hotelImg}" alt="${hotel.name}" class="hotel-image">
+      ${hotelImg ? `<img src="${esc(hotelImg)}" alt="${esc(hotel.name)}" class="hotel-image">` : ''}
     </div>
     
     <div class="hotel-details">
@@ -403,16 +416,10 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
       </div>
       <p class="hotel-address">${hotel.location}, ${hotel.city}</p>
       
-      <div class="tags-container">
-        <span class="tag">Top Rated Business Stay</span>
-        <span class="tag">Couple Friendly</span>
-        <span class="tag">Near Metro</span>
-        <span class="tag">High Guest Satisfaction</span>
-      </div>
       
       <div style="display: flex; gap: 8px;" class="no-print">
-        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + ', ' + hotel.city)}" class="btn btn-secondary" style="flex: 1; padding: 10px 12px; font-size: 13px;">Get Directions</a>
-        <a href="https://wa.me/919999999999?text=Hi%2C%20I%20have%20a%20booking%20at%20${encodeURIComponent(hotel.name)}%20with%20reference%20${booking.bookingRef}" class="btn btn-primary" style="flex: 1; padding: 10px 12px; font-size: 13px; background-color: #16a34a;">Chat on WhatsApp</a>
+        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}" class="btn btn-secondary" style="flex: 1; padding: 10px 12px; font-size: 13px;">Get Directions</a>
+        ${waDigits ? `<a href="https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi, I have a booking at ${hotel.name} with reference ${booking.bookingRef}`)}" class="btn btn-primary" style="flex: 1; padding: 10px 12px; font-size: 13px; background-color: #16a34a;">${hotelPhone ? 'WhatsApp the hotel' : 'WhatsApp ZivoHotels'}</a>` : ''}
       </div>
     </div>
 
@@ -551,11 +558,11 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan) => {
 
     <!-- 7. GUEST SUPPORT BLOCK -->
     <div style="padding: 0 24px; text-align: center;">
-      <h4 style="margin: 0 0 4px 0; color: #475569; font-size: 14px;">Need help with check-in or modifications?</h4>
-      <p style="margin: 0 0 16px 0; color: #64748b; font-size: 12px;">Our dedicated guest support team is available 24/7.</p>
-      <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 24px;">
-        📞 +91 99999 99999 &nbsp;|&nbsp; ✉️ bookings@zivohotels.com
-      </div>
+      <h4 style="margin: 0 0 4px 0; color: #475569; font-size: 14px;">Need help with check-in or changes?</h4>
+      <p style="margin: 0 0 16px 0; color: #64748b; font-size: 12px;">${hotelPhone ? `The hotel: ${esc(hotelPhone)}. ` : ''}${site ? `Manage or cancel your booking in My Bookings: ${esc(site)}/my-bookings` : ''}</p>
+      ${supportPhone || supportEmail ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 24px;">
+        ZivoHotels support: ${[supportPhone && `📞 ${esc(supportPhone)}`, supportEmail && `✉️ ${esc(supportEmail)}`].filter(Boolean).join(' &nbsp;|&nbsp; ')}
+      </div>` : ''}
     </div>
 
     <!-- 8. ACTIONS -->
@@ -655,7 +662,7 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        hotel: true,
+        hotel: { include: { media: { ...COVER_PHOTO_FIRST, select: { url: true } } } },
         roomType: true,
         ratePlan: true,
         ...BOOKING_ROOMS_INCLUDE
@@ -669,7 +676,7 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 
     // Several rooms: "2 × Premium Suite, 1 × Standard Room"
     const roomLabel = { ...booking.roomType, name: roomsSummary(booking.bookingRooms, booking, booking.roomType?.name) };
-    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan);
+    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan, await getSupportContacts());
 
     console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
     
