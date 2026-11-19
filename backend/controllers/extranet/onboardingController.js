@@ -212,8 +212,7 @@ export const submitForReview = async (req, res, next) => {
     // Validation Check before submission
     const errors = [];
     if (!hotel.gstin) errors.push('Missing GSTIN');
-    if (hotel.media.length < 5) errors.push('At least 5 property images required');
-    if (hotel.roomTypes.length === 0) errors.push('At least one room type must be configured');
+    // Photos, rooms with a price, map pin and area: checkPropertyReadiness (same rules as admin review)
     errors.push(...await checkPropertyReadiness(hotel, 'submit'));
 
     if (errors.length > 0) {

@@ -1,12 +1,9 @@
 name: Backend Enterprise CI/CD
 
+# Old Google Cloud / Firebase setup (staging now runs on the Hostinger VPS: deploy/vps).
+# Manual runs only, so pushes to main don't try to deploy there.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

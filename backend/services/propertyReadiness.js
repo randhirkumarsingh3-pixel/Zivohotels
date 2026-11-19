@@ -66,13 +66,37 @@ export const evaluateReadiness = ({ hotel, bankDetail, kycRecords = [] }, stage)
   return problems;
 };
 
+export const MIN_PHOTOS = 5;
+
+/**
+ * What guests need to find and book the property: its map pin (near-me search, directions), its
+ * area (search by locality), photos, and a room with a price (a hotel with no priced room never
+ * appears in search results). Pure, for unit tests.
+ */
+export const listingProblems = ({ hotel, photoCount = 0, pricedRoomTypes = 0 }) => {
+  const problems = [];
+  const lat = Number(hotel?.latitude);
+  const lng = Number(hotel?.longitude);
+  if (!(Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng))) problems.push('Set the property on the map (Location step)');
+  if (!String(hotel?.integrationSettings?.addressDetails?.area || '').trim()) problems.push('Add the area or locality (Location step), e.g. Marathahalli');
+  if (photoCount < MIN_PHOTOS) problems.push(`Add at least ${MIN_PHOTOS} photos (${photoCount} so far)`);
+  if (pricedRoomTypes < 1) problems.push('Add at least one room type with a rate plan that has a price');
+  return problems;
+};
+
 export const checkPropertyReadiness = async (hotel, stage) => {
-  const [bankDetail, kycRecords] = await Promise.all([
+  const [bankDetail, kycRecords, full, photoCount, pricedRoomTypes] = await Promise.all([
     prisma.bankDetail.findUnique({ where: { hotelId: hotel.id } }),
     prisma.kYCRecord.findMany({
       where: { hotelId: hotel.id },
       select: { documentType: true, documentStatus: true },
     }),
+    prisma.hotel.findUnique({ where: { id: hotel.id }, select: { latitude: true, longitude: true, integrationSettings: true } }),
+    prisma.hotelImage.count({ where: { hotelId: hotel.id } }),
+    prisma.roomType.count({ where: { hotelId: hotel.id, isActive: { not: false }, ratePlans: { some: { isActive: true, basePrice: { gt: 0 } } } } }),
   ]);
-  return evaluateReadiness({ hotel, bankDetail, kycRecords }, stage);
+  return [
+    ...listingProblems({ hotel: { ...hotel, ...full }, photoCount, pricedRoomTypes }),
+    ...evaluateReadiness({ hotel, bankDetail, kycRecords }, stage),
+  ];
 };

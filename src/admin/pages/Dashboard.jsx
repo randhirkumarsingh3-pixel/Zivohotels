@@ -71,7 +71,7 @@ const BarChart = ({ data, loading }) => {
     <div className="flex items-end gap-1 h-36 px-2">
       {Array.from({ length: 14 }).map((_, i) => (
         <div key={i} className="flex-1 bg-gray-100 animate-pulse rounded-t"
-          style={{ height: `${Math.random() * 60 + 20}%` }} />
+          style={{ height: `${30 + ((i * 37) % 50)}%` }} />
       ))}
     </div>
   );

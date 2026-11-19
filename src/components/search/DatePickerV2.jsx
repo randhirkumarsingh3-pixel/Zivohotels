@@ -8,6 +8,8 @@ import { track } from '../../utils/analytics';
 // "2026-12-10" -> local date (new Date("2026-12-10") is UTC midnight: the day before in the Americas)
 const parseYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
 const label = (d) => (d ? format(d, d.getFullYear() === new Date().getFullYear() ? 'EEE, d MMM' : 'EEE, d MMM yyyy') : null);
+// Phones: "20 Dec" (with the weekday the dates were cut off as "Sun, 20 …")
+const shortLabel = (d) => (d ? format(d, d.getFullYear() === new Date().getFullYear() ? 'd MMM' : 'd MMM yy') : null);
 
 const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpen, setIsOpen, onFocusNext, isMobile }) => {
   const wrapperRef = useRef(null);
@@ -125,12 +127,12 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
         <span className="flex-1 min-w-0 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <span className="min-w-0">
             <span className="block text-xs font-semibold text-gray-500">Check-in</span>
-            <span className={`block text-base font-semibold whitespace-nowrap truncate ${range.from ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>{label(range.from) || 'Add date'}</span>
+            <span className={`block text-base font-semibold whitespace-nowrap truncate ${range.from ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>{range.from ? <><span className="sm:hidden">{shortLabel(range.from)}</span><span className="hidden sm:inline">{label(range.from)}</span></> : 'Add date'}</span>
           </span>
           <span className={`text-xs font-semibold rounded-full px-2 py-0.5 whitespace-nowrap ${nights ? 'bg-navy-50 text-navy-800' : 'text-gray-400'}`}>{nights ? `${nights} night${nights === 1 ? '' : 's'}` : '→'}</span>
           <span className="min-w-0">
             <span className="block text-xs font-semibold text-gray-500">Check-out</span>
-            <span className={`block text-base font-semibold whitespace-nowrap truncate ${range.to ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>{label(range.to) || 'Add date'}</span>
+            <span className={`block text-base font-semibold whitespace-nowrap truncate ${range.to ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>{range.to ? <><span className="sm:hidden">{shortLabel(range.to)}</span><span className="hidden sm:inline">{label(range.to)}</span></> : 'Add date'}</span>
           </span>
         </span>
       </button>

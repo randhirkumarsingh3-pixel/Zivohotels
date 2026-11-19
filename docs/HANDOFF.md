@@ -113,7 +113,6 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
    - react-router 6 → 7 (moderate advisory)
    - review the 14 hook-dependency warnings one by one (the ESLint config warns that mechanical fixes
      can cause infinite loops)
-   - `backend/seed_automation_user.js` is broken (it uses `require` in an ES module); delete or fix it
 
 ## Booking pricing (decided and fixed)
 - **Customers pay the price they were shown.** The owner chose this: booking uses the same pricing as

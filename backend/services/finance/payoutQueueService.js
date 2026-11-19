@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/db.js';
-import ledgerService from './ledgerService.js';
 
 export const payoutQueueService = {
   /**
@@ -21,62 +20,16 @@ export const payoutQueueService = {
   },
 
   /**
-   * Processes the next batch of payouts (Respecting Hold Buffer)
+   * Automatic payouts are not connected to a bank yet. This used to mark queued payouts as paid
+   * after a simulated bank call (a random 90% "success"), which would record money as sent that
+   * never left the account. Until a payout provider (e.g. RazorpayX) is integrated, nothing is
+   * paid here: hotels are paid by bank transfer and recorded in Admin → Wallet Control with the
+   * transfer reference (payoutService.processPayout).
    */
   processBatch: async () => {
-    const queue = await prisma.payoutQueue.findMany({
-      where: { 
-        status: { in: ['QUEUED', 'FAILED'] }, 
-        retries: { lt: 3 },
-        holdUntil: { lte: new Date() } // Only process if hold period is over
-      },
-      take: 10
-    });
-
-    for (const item of queue) {
-      try {
-        await prisma.payoutQueue.update({ where: { id: item.id }, data: { status: 'PROCESSING' } });
-
-        // SIMULATED BANK CALL
-        // await razorpay.payouts.create(...)
-        const success = Math.random() > 0.1; // 90% success rate for simulation
-
-        if (!success) throw new Error('Bank API Timeout');
-
-        // On Success
-        await prisma.$transaction(async (tx) => {
-          await tx.payoutQueue.update({ where: { id: item.id }, data: { status: 'SUCCESS' } });
-          
-          // Finalize payout record and ledger
-          const payout = await tx.payout.create({
-            data: {
-              hotelId: item.hotelId,
-              totalAmount: item.amount,
-              status: 'SUCCESS',
-              reference: `AUTO-PAY-${item.id.slice(0, 8)}`
-            }
-          });
-
-          await ledgerService.record([{
-            referenceId: payout.id,
-            account: 'HOTEL',
-            type: 'DEBIT',
-            amount: item.amount,
-            description: `Automated payout ${payout.id}`
-          }], tx);
-        });
-
-      } catch (error) {
-        await prisma.payoutQueue.update({
-          where: { id: item.id },
-          data: { 
-            status: 'FAILED', 
-            retries: { increment: 1 },
-            error: error.message
-          }
-        });
-      }
-    }
+    const waiting = await prisma.payoutQueue.count({ where: { status: { in: ['QUEUED', 'FAILED'] } } });
+    if (waiting) console.warn(`[Payouts] ${waiting} queued payout(s): automatic payouts are not connected to a bank. Pay them by transfer and record them in Admin → Wallet Control.`);
+    return { processed: 0, waiting };
   }
 };
 

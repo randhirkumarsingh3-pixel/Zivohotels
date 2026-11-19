@@ -83,8 +83,12 @@ const RatePlanCard = ({ plan, nights, rooms, isSelected, onSelect, disabled = fa
   return (
     <div
       onClick={() => !disabled && onSelect(plan)}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) { e.preventDefault(); onSelect(plan); } }}
+      role="radio"
+      aria-checked={isSelected}
+      tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled || undefined}
-      className={`border-2 rounded-xl p-4 transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${isSelected
+      className={`border-2 rounded-xl p-4 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${isSelected
         ? 'border-brand-600 bg-brand-50 shadow-md shadow-brand-100'
         : 'border-gray-200 hover:border-brand-300 hover:bg-gray-50'
       }`}

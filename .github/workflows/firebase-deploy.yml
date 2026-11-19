@@ -1,16 +1,9 @@
 name: Deploy Frontend to Firebase Hosting
 
+# Old Google Cloud / Firebase setup (staging now runs on the Hostinger VPS: deploy/vps).
+# Manual runs only, so pushes to main don't try to deploy there.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'index.html'
-      - 'vite.config.js'
-      - 'package.json'
-      - 'firebase.json'
+  workflow_dispatch:
 
 jobs:
   deploy:

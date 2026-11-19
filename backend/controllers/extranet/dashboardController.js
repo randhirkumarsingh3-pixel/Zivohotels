@@ -38,7 +38,7 @@ export const getDashboard = async (req, res) => {
       prisma.booking.count({ where: { hotelId, createdAt: { gte: weekAgo }, status: { in: [...LIVE, 'CANCELLED', 'NO_SHOW'] } } }),
       prisma.booking.count({ where: { hotelId, status: 'CANCELLED', updatedAt: { gte: weekAgo } } }).catch(() => 0),
       prisma.inventory.findMany({ where: { date: { gte: t0, lt: t1 }, roomType: { hotelId, isActive: { not: false } } }, select: { totalRooms: true, availableRooms: true, stopSell: true } }),
-      prisma.roomType.findMany({ where: { hotelId, isActive: { not: false } }, select: { totalInventory: true, ratePlans: { where: { isActive: true }, select: { id: true } } } }),
+      prisma.roomType.findMany({ where: { hotelId, isActive: { not: false } }, select: { totalInventory: true, ratePlans: { where: { isActive: true }, select: { id: true, basePrice: true } } } }),
       prisma.review.count({ where: { hotelId, status: 'APPROVED', reply: null } }),
       prisma.notification.count({ where: { hotelId, isRead: false } }),
       prisma.hotelImage.count({ where: { hotelId } }),
@@ -60,6 +60,8 @@ export const getDashboard = async (req, res) => {
       openRequests > 0 && { key: 'requests', text: `${openRequests} guest request${openRequests === 1 ? '' : 's'} waiting for your answer`, link: '/extranet/bookings' },
       !roomTypes.length && { key: 'rooms', text: 'Add your rooms and rates', link: '/extranet/rooms' },
       roomTypes.length > 0 && roomTypes.some((r) => !r.ratePlans.length) && { key: 'rates', text: 'A room type has no rate plan, so it can’t be booked', link: '/extranet/rooms' },
+      // No priced plan at all: the property never appears in search results
+      roomTypes.length > 0 && !roomTypes.some((r) => r.ratePlans.some((p) => Number(p.basePrice) > 0)) && { key: 'price', text: 'Not bookable: no rate plan has a price, so guests can’t find your property in search. Add a price.', link: '/extranet/rooms' },
       images < 5 && { key: 'photos', text: `Add more photos (${images} so far; listings with 5+ get more bookings)`, link: 'EDIT_LISTING' },
       String(hotel.description || '').trim().length < 80 && { key: 'description', text: 'Write a fuller description of your property', link: '/extranet/property' },
       !(hotel.latitude && hotel.longitude) && { key: 'pin', text: 'Set your property on the map so guests see where it is', link: 'EDIT_LISTING' },

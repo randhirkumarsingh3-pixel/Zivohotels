@@ -16,7 +16,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
   const [recentSearches, setRecentSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [_focusedIndex, _setFocusedIndex] = useState(-1);
+  // Keyboard: arrow keys move through the visible options, Enter picks one, Escape closes
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const wrapperRef = useRef(null);
 
   // Load recent searches and popular cities on mount
@@ -54,6 +55,8 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
   }, []);
 
   // Smart Search API with Debounce & AbortController
+  useEffect(() => { setFocusedIndex(-1); }, [query]);
+
   useEffect(() => {
     if (!query || query.length < 2) {
       setSuggestions([]);
@@ -141,6 +144,38 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
   // Determine what to show in dropdown
   const showEmptyState = query.length < 2 && !isLoading;
   const hasResults = suggestions.length > 0;
+  // The options in the order they are shown: "Use current location", then recent and popular
+  // places (before typing) or the suggestions (while typing)
+  const options = [
+    { key: 'near', near: true },
+    ...(showEmptyState && !fetchError ? [...recentSearches, ...popularCities] : []),
+    ...(!showEmptyState && !isLoading ? suggestions : []),
+  ];
+  const optionId = (i) => `destination-option-${i}`;
+  const indexOf = (loc) => options.indexOf(loc);
+  const pick = (opt) => (opt.near ? handleNearMe() : handleSelect(opt));
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) setIsOpen(true);
+      const n = options.length;
+      setFocusedIndex((i) => (e.key === 'ArrowDown' ? (i + 1) % n : (i <= 0 ? n - 1 : i - 1)));
+    } else if (e.key === 'Enter' && isOpen && focusedIndex >= 0 && options[focusedIndex]) {
+      e.preventDefault();
+      pick(options[focusedIndex]);
+      setFocusedIndex(-1);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setFocusedIndex(-1);
+    }
+  };
+  const optionProps = (loc, i) => ({
+    id: optionId(i),
+    role: 'option',
+    'aria-selected': focusedIndex === i,
+    onMouseEnter: () => setFocusedIndex(i),
+  });
+  const focusRing = (i) => (focusedIndex === i ? ' bg-gray-100' : '');
 
   return (
     <div className="md:flex-[1.15] relative min-w-0" ref={wrapperRef}>
@@ -157,6 +192,12 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
             autoComplete="off"
             placeholder="City, area or hotel"
             data-destination-input="true"
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls="destination-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={isOpen && focusedIndex >= 0 ? optionId(focusedIndex) : undefined}
+            onKeyDown={onKeyDown}
             className="w-full bg-transparent border-none outline-none p-0 text-base font-semibold text-gray-900 placeholder:text-gray-400 placeholder:font-normal truncate"
             value={query}
             onChange={(e) => {
@@ -178,12 +219,13 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
       </div>
 
       {isOpen && (
-        <div className="absolute z-[9999] w-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in origin-top">
+        <div id="destination-listbox" role="listbox" aria-label="Destinations" className="absolute z-[9999] w-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in origin-top">
           
           {/* Near Me Option (Always Top) */}
           <div 
+            {...optionProps(options[0], 0)}
             onClick={handleNearMe}
-            className="flex items-center px-4 py-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors"
+            className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors${focusRing(0)}`}
           >
             <div className="bg-blue-50 p-2 rounded-lg mr-3">
               <Navigation className="h-4 w-4 text-blue-600" />
@@ -225,8 +267,9 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
                     {recentSearches.map((loc, idx) => (
                       <div 
                         key={`recent-${idx}`} 
+                        {...optionProps(loc, indexOf(loc))}
                         onClick={() => handleSelect(loc)}
-                        className="flex items-center px-4 py-2.5 cursor-pointer hover:bg-gray-50 group"
+                        className={`flex items-center px-4 py-2.5 cursor-pointer hover:bg-gray-50 group${focusRing(indexOf(loc))}`}
                       >
                         <History className="h-4 w-4 text-gray-400 mr-3 group-hover:text-brand-500 transition-colors" />
                         <span className="text-gray-700 font-medium text-sm">{loc.label}</span>
@@ -241,8 +284,9 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
                     {popularCities.map((loc, idx) => (
                       <div 
                         key={`pop-${idx}`} 
+                        {...optionProps(loc, indexOf(loc))}
                         onClick={() => handleSelect(loc)}
-                        className="flex items-center px-4 py-2.5 cursor-pointer hover:bg-gray-50 group"
+                        className={`flex items-center px-4 py-2.5 cursor-pointer hover:bg-gray-50 group${focusRing(indexOf(loc))}`}
                       >
                         <div className="bg-gray-100 p-1.5 rounded mr-3 group-hover:bg-brand-50 transition-colors">
                           <MapIcon className="h-4 w-4 text-gray-500 group-hover:text-brand-700" />
@@ -257,12 +301,13 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
 
             {/* Results State */}
             {!showEmptyState && !isLoading && hasResults && (
-              <ul className="py-2">
-                {suggestions.map((loc, _index) => (
+              <ul className="py-2" role="presentation">
+                {suggestions.map((loc) => (
                   <li 
                     key={loc.id || loc.value}
+                    {...optionProps(loc, indexOf(loc))}
                     onClick={() => handleSelect(loc)}
-                    className="px-4 py-3 cursor-pointer flex items-center hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                    className={`px-4 py-3 cursor-pointer flex items-center hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0${focusRing(indexOf(loc))}`}
                   >
                     <div className="bg-brand-50 p-2 rounded-lg mr-3">
                       {getIcon(loc.type)}
