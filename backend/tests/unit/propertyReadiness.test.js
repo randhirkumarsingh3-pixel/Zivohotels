@@ -50,3 +50,16 @@ describe('propertyReadiness', () => {
     expect(evaluateReadiness({ hotel: {}, bankDetail: bank, kycRecords }, 'approve')).to.deep.equal([]);
   });
 });
+
+import { listingProblems } from '../../services/propertyReadiness.js';
+describe('listing basics before review', () => {
+  it('needs a map pin, an area, 5 photos and a priced room', () => {
+    const p = listingProblems({ hotel: {}, photoCount: 2, pricedRoomTypes: 0 });
+    expect(p).to.have.length(4);
+    expect(p.some((x) => /map/.test(x)) && p.some((x) => /area/.test(x)) && p.some((x) => /2 so far/.test(x)) && p.some((x) => /price/.test(x))).to.equal(true);
+  });
+  it('passes a complete listing', () => {
+    const hotel = { latitude: 12.95, longitude: 77.7, integrationSettings: { addressDetails: { area: 'Marathahalli' } } };
+    expect(listingProblems({ hotel, photoCount: 6, pricedRoomTypes: 1 })).to.deep.equal([]);
+  });
+});

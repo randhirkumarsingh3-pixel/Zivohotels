@@ -1,3 +1,4 @@
+import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard,
@@ -29,16 +30,25 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import Logo from '../../../components/brand/Logo';
 
-const NavGroup = ({ title, children }) => (
+// "Preview" pages show sample data, not real figures: hidden unless the admin chooses to see them
+const PreviewContext = createContext(false);
+const isHiddenPreview = (child, show) => !show && child?.props?.badge === 'Preview';
+
+const NavGroup = ({ title, children }) => {
+  const show = useContext(PreviewContext);
+  const visible = Children.toArray(children).filter((c) => !isHiddenPreview(c, show));
+  if (!visible.length) return null;
+  return (
   <div className="mb-6">
     <h3 className="px-4 mb-2 text-xs font-semibold text-navy-300 uppercase tracking-wider font-sans">
       {title}
     </h3>
     <ul className="space-y-1 px-3">
-      {children}
+      {visible}
     </ul>
   </div>
-);
+  );
+};
 
 const NavItem = ({ name, path, icon, exact, badge }) => (
   <li>
@@ -69,6 +79,8 @@ const NavItem = ({ name, path, icon, exact, badge }) => (
 /** Admin menu: fixed column on large screens, slide-in drawer on phones and tablets. */
 const MasterSidebar = ({ open = false, onClose = () => {} }) => {
   const { user, logout } = useAuth();
+  const [showPreview, setShowPreview] = useState(() => { try { return localStorage.getItem('zivo_admin_show_preview') === '1'; } catch { return false; } });
+  const togglePreview = () => setShowPreview((v) => { try { localStorage.setItem('zivo_admin_show_preview', v ? '0' : '1'); } catch { /* storage unavailable */ } return !v; });
 
   return (
     <>
@@ -79,6 +91,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         <button type="button" onClick={onClose} aria-label="Close menu" className="lg:hidden p-2 rounded-lg text-navy-100 hover:bg-white/10"><X size={20} /></button>
       </div>
 
+      <PreviewContext.Provider value={showPreview}>
       <nav className="flex-1 overflow-y-auto custom-scrollbar pb-6">
         <NavGroup title="Overview">
           <NavItem name="Dashboard" path="/admin" icon={<LayoutDashboard size={18} />} exact />
@@ -137,7 +150,14 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
           <NavItem name="System Health" path="/admin/settings" icon={<Settings size={18} />} badge="Preview" />
         </NavGroup>
+        <div className="px-6 pt-2">
+          <button type="button" onClick={togglePreview} aria-pressed={showPreview}
+            className="text-xs text-navy-300 hover:text-white underline underline-offset-2">
+            {showPreview ? 'Hide preview pages (sample data)' : 'Show preview pages (sample data)'}
+          </button>
+        </div>
       </nav>
+      </PreviewContext.Provider>
 
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center mb-3 px-2">

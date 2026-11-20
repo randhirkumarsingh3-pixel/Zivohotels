@@ -1,14 +1,9 @@
 name: Terraform Validation & Deployment
 
+# Old Google Cloud / Firebase setup (staging now runs on the Hostinger VPS: deploy/vps).
+# Manual runs only, so pushes to main don't try to deploy there.
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
+  workflow_dispatch:
 
 permissions:
   id-token: write

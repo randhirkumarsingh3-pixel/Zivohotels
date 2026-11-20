@@ -137,7 +137,5 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
       cancellation fees.
 - [ ] Login token is kept in `localStorage`; consider httpOnly cookies.
 - [ ] react-router 6 → 7 (moderate security advisory).
-- [ ] `backend/seed_automation_user.js` is broken (uses `require` in an ES-module project); use
-      `scripts/createAdmin.js` instead.
 - [ ] With real Razorpay test keys, complete a prepaid and a 30% booking end to end (not yet tested).
 - [ ] Walk through the admin-creates-property-for-owner path once.

@@ -23,6 +23,7 @@ import ratePlanRoutes from './routes/ratePlanRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import agreementRoutes from './routes/agreementRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { robotsTxt, sitemapXml } from './controllers/seoController.js';
 import systemRoutes from './routes/systemRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
@@ -224,6 +225,9 @@ app.use('/api/v1/payments', bookingLimiter, paymentRoutes);
 app.use('/api/v1/analytics', publicAnalyticsRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/experiments', experimentRoutes);
+// Search engines (served at the site root by the website's Nginx)
+app.get('/robots.txt', robotsTxt);
+app.get('/sitemap.xml', sitemapXml);
 app.get('/api/v1/system/config', (req, res, next) => {
   import('./controllers/systemController.js').then(m => m.getPublicConfig(req, res, next));
 });

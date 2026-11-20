@@ -44,7 +44,10 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   // Cities, case-insensitively grouped
   // (with the average map pin of its hotels, so "Near me" can pick the nearest city)
   const byCity = new Map();
-  for (const h of hotels) {
+  // Only hotels guests can book (a plan with a price): search leaves the others out, so the city
+  // chips' counts would promise hotels that aren't there
+  const bookable = (h) => h.roomTypes.some((rt) => rt.ratePlans.some((p) => Number(p.basePrice) > 0));
+  for (const h of hotels.filter(bookable)) {
     // Bangalore / Bengaluru hotels are one city, under its current name
     const c = cityNames(titleCase(h.city))[0] || '';
     if (!c || /^default/i.test(c)) continue;
@@ -55,7 +58,7 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   }
   // Areas inside cities, for the "Explore hotels" links (e.g. Kurla West, Mumbai)
   const byArea = new Map();
-  for (const h of hotels) {
+  for (const h of hotels.filter(bookable)) {
     const area = String(h.integrationSettings?.addressDetails?.area || '').trim();
     const city = cityNames(titleCase(h.city))[0] || '';
     if (!area || !city || /^default/i.test(city)) continue;
