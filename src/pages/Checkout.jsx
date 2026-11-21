@@ -14,6 +14,8 @@ import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
 import usePageTitle from '../hooks/usePageTitle';
 import { occupancyOf, occParams, roomGuestsLabel } from '../utils/occupancy';
+import { payForBooking, deadlineLabel } from '../utils/payBooking';
+import { payLaterDeadline } from '../utils/payLater';
 
 const useCountdown = (expiresAt) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -98,6 +100,9 @@ const Checkout = () => {
   const handleCompany = (e) => setCompany(c => ({ ...c, [e.target.name]: e.target.name === 'gstin' ? e.target.value.toUpperCase() : e.target.value }));
   const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
   const [confirmedBookingId, setConfirmedBookingId] = useState(null);
+  // Reserve now, pay later: the tentative booking just made (shown with its deadline and Pay now)
+  const [reservation, setReservation] = useState(null);
+  const [payingNow, setPayingNow] = useState(false);
   const [voucherBusy, setVoucherBusy] = useState(false);
 
   const pendingBookingRef = useRef(null);
@@ -107,6 +112,11 @@ const Checkout = () => {
   const [previewError, setPreviewError] = useState('');
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [config, setConfig] = useState({ partialPaymentPercent: 30, prepaidDiscountPercent: 5 });
+  // Reserve now, pay later: when payment would be due for this stay (null: check-in too close)
+  const payLaterBy = searchParams.checkIn && config.payLater?.enabled !== false
+    ? payLaterDeadline({ checkIn: searchParams.checkIn, settings: { enabled: true, hours: config.payLater?.hours || 24 } })
+    : null;
+  useEffect(() => { if (paymentType === 'PAY_AT_HOTEL' && !payLaterBy) setPaymentType('PREPAID'); }, [paymentType, payLaterBy]);
   // Promo code: sent with the preview (and the booking); the best offer the guest qualifies for is
   // applied by the server, automatic offers included
   const [promoInput, setPromoInput] = useState('');
@@ -265,10 +275,11 @@ const Checkout = () => {
       pendingBookingRef.current = bookingId;
       if (booking?.expiresAt) setExpiresAt(booking.expiresAt);
       
-      // Pay at hotel, or fully paid with Zivo Cash: confirmed without an online payment
+      // Reserve now, pay later (tentative until paid by its deadline), or fully paid with Zivo Cash
       if (paymentType === 'PAY_AT_HOTEL' || booking.status === 'CONFIRMED') {
         pendingBookingRef.current = null;
         setConfirmedBookingId(bookingId);
+        if (paymentType === 'PAY_AT_HOTEL') setReservation(booking);
         setSuccess(true);
         setBookingRef(ref);
         setLoading(false);
@@ -345,6 +356,44 @@ const Checkout = () => {
       setLoading(false);
     }
   };
+
+  if (success && reservation) {
+    const payNow = async () => {
+      setPayingNow(true); setError('');
+      try {
+        const r = await payForBooking(reservation, { name: bookerName, email: form.email, phone: form.phone });
+        if (r === 'paid') setReservation(null); // now confirmed: the screen below shows it
+      } catch (err) { setError(err.message); }
+      finally { setPayingNow(false); }
+    };
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-20 px-4 bg-white">
+        <div className="max-w-md w-full text-center">
+          <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 border border-amber-100">
+            <Clock className="h-12 w-12 text-amber-600" aria-hidden="true" />
+          </div>
+          <h2 className="text-3xl font-black text-gray-900 mb-3">Reserved: not confirmed yet</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            We&apos;re holding your rooms at <span className="font-bold text-gray-800">{selectedHotel.name}</span>. Pay <span className="font-bold">₹{Math.round(Number(reservation.totalAmount) || 0).toLocaleString('en-IN')}</span> online by <span className="font-bold text-gray-900">{deadlineLabel(reservation.expiresAt)}</span> to confirm. If it isn&apos;t paid by then, the booking is cancelled automatically.
+          </p>
+          <div className="bg-gray-50 p-6 rounded-3xl mb-6 text-left border border-gray-100">
+            <p className="text-xs text-gray-400 uppercase font-black tracking-widest mb-2">Booking Reference</p>
+            <p className="text-3xl font-mono font-black text-brand-700">{bookingRef}</p>
+            <p className="text-xs text-gray-500 mt-2">We&apos;ve emailed the details to {form.email}, and will remind you before the deadline.</p>
+          </div>
+          {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
+          <button type="button" onClick={payNow} disabled={payingNow}
+            className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl mb-3 disabled:opacity-50">
+            {payingNow ? 'Opening payment…' : `Pay ₹${Math.round(Number(reservation.totalAmount) || 0).toLocaleString('en-IN')} now`}
+          </button>
+          <button type="button" onClick={() => { clearBooking(); navigate('/my-bookings'); }}
+            className="w-full border-2 border-gray-200 text-gray-700 font-bold py-4 rounded-2xl hover:bg-gray-50">
+            Pay later from My Bookings
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -548,7 +597,8 @@ const Checkout = () => {
                 {[
                   { id: 'PREPAID', label: 'Pay now', desc: `Lowest price: ${config.prepaidDiscountPercent}% off`, icon: <CreditCard />, tag: `Save ${config.prepaidDiscountPercent}%` },
                   { id: 'PARTIAL', label: `Pay ${config.partialPaymentPercent}% now`, desc: 'Rest at the hotel', icon: <PieChart /> },
-                  { id: 'PAY_AT_HOTEL', label: 'Pay at the hotel', desc: 'Nothing to pay now', icon: <Building /> }
+                  // Reserve now, pay later: tentative until paid online by the deadline
+                  ...(config.payLater?.enabled === false ? [] : [{ id: 'PAY_AT_HOTEL', label: 'Reserve now, pay later', desc: payLaterBy ? `Pay online by ${deadlineLabel(payLaterBy)}, or the booking is cancelled` : 'Not available: check-in is too close', icon: <Building />, disabled: !payLaterBy }])
                 ].map((opt) => {
                   const on = paymentType === opt.id;
                   return (
@@ -557,8 +607,9 @@ const Checkout = () => {
                       role="radio"
                       aria-checked={on}
                       key={opt.id}
+                      disabled={opt.disabled}
                       onClick={() => setPaymentType(opt.id)}
-                      className={`relative text-left p-5 rounded-2xl border-2 transition-colors ${on ? 'border-navy-700 bg-navy-50/60' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                      className={`relative text-left p-5 rounded-2xl border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${on ? 'border-navy-700 bg-navy-50/60' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
                     >
                       {opt.tag && <span className="absolute -top-3 right-4 bg-green-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">{opt.tag}</span>}
                       <div className={`mb-3 w-10 h-10 rounded-xl flex items-center justify-center ${on ? 'bg-navy-800 text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -569,7 +620,7 @@ const Checkout = () => {
                       {on && preview && !fetchingPreview && (
                         <p className="mt-3 pt-3 border-t border-navy-100 text-sm text-gray-900 tabular-nums">
                           <strong>₹{Math.round(payableNow).toLocaleString('en-IN')}</strong> now
-                          {total - payableNow > 0 && <span className="block text-xs text-gray-600">₹{Math.round(total - payableNow).toLocaleString('en-IN')} at the hotel</span>}
+                          {total - payableNow > 0 && <span className="block text-xs text-gray-600">₹{Math.round(total - payableNow).toLocaleString('en-IN')} {opt.id === 'PAY_AT_HOTEL' ? `online by ${payLaterBy ? deadlineLabel(payLaterBy) : 'the deadline'}` : 'at the hotel'}</span>}
                         </p>
                       )}
                     </button>
@@ -598,7 +649,7 @@ const Checkout = () => {
               disabled={loading || (countdown && countdown.expired) || fetchingPreview || !preview}
               className="w-full bg-brand-700 hover:bg-brand-800 text-white font-black py-6 rounded-2xl shadow-xl shadow-brand-500/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xl disabled:opacity-50 disabled:grayscale disabled:transform-none"
             >
-              {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Confirm Reservation' : payOnline <= 0 ? `Pay ₹${walletUse.toLocaleString('en-IN')} with Zivo Cash` : `Secure Payment: ₹${payOnline.toLocaleString('en-IN')}${walletUse > 0 ? ` + ₹${walletUse.toLocaleString('en-IN')} Zivo Cash` : ''}`}
+              {fetchingPreview ? 'Calculating...' : paymentType === 'PAY_AT_HOTEL' ? 'Reserve now, pay later' : payOnline <= 0 ? `Pay ₹${walletUse.toLocaleString('en-IN')} with Zivo Cash` : `Secure Payment: ₹${payOnline.toLocaleString('en-IN')}${walletUse > 0 ? ` + ₹${walletUse.toLocaleString('en-IN')} Zivo Cash` : ''}`}
             </button>
           </div>
 

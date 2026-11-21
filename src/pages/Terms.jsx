@@ -48,7 +48,7 @@ const Terms = () => (
     </LegalSection>
 
     <LegalSection id="payment" title="4. Paying">
-      <p>Depending on the hotel you can pay in full now, pay part now and the rest at the hotel, or pay at the hotel. Online payments are processed by Razorpay. You can use Zivo Cash for all or part of an online payment.</p>
+      <p>Depending on the hotel you can pay in full now, pay part now and the rest at the hotel, or reserve now and pay later. A reserved (pay later) booking is tentative: it is confirmed only when paid online by the deadline shown at checkout and in your booking, and is cancelled automatically, with nothing charged, if it isn&apos;t paid in time. Online payments are processed by Razorpay. You can use Zivo Cash for all or part of an online payment.</p>
     </LegalSection>
 
     <LegalSection id="cancel" title="5. Changes, cancellations and refunds">
@@ -59,7 +59,7 @@ const Terms = () => (
         <li>If you don&apos;t arrive and haven&apos;t cancelled, the hotel may treat it as a no-show and charge as its policy says.</li>
         <li>If the hotel can&apos;t honour your booking, we&apos;ll refund you in full and help you find another stay.</li>
       </ul>
-      <p>More detail: <Link to="/help#cancellations" className="text-navy-700 underline">Cancellations &amp; refunds</Link>.</p>
+      <p>More detail: <Link to="/refund-policy" className="text-navy-700 underline">Cancellation &amp; Refund Policy</Link>.</p>
     </LegalSection>
 
     <LegalSection id="stay" title="6. At the hotel">

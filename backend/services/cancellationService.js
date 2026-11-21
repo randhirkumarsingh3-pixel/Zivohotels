@@ -249,7 +249,8 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
   // An unpaid booking abandoned at checkout (payment cancelled / failed) was never confirmed, so
   // the hotel doesn't need to hear about it
-  const abandonedAtCheckout = booking.status === 'PENDING' && paidAmount === 0;
+  // (A pay-later booking was shown to the hotel as tentative, so the hotel is told.)
+  const abandonedAtCheckout = booking.status === 'PENDING' && paidAmount === 0 && booking.paymentType !== 'PAY_AT_HOTEL';
   if (abandonedAtCheckout) {
     return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId, refundToWallet: toWallet, refundToSource: toSource };
   }

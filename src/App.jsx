@@ -23,6 +23,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Account = lazy(() => import('./pages/Account'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // LAYOUTS (LAZY)
@@ -99,6 +100,7 @@ function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Account /></ProtectedRoute>} />

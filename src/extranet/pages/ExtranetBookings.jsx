@@ -24,7 +24,10 @@ const STATUS = {
   CANCELLED: { label: 'Cancelled', cls: 'bg-red-50 text-red-700 border-red-200', icon: XCircle },
   NO_SHOW: { label: 'No-show', cls: 'bg-orange-50 text-orange-800 border-orange-200', icon: AlertCircle },
 };
-const PAY = { PREPAID: 'Paid online', PARTIAL: 'Part paid', PAY_AT_HOTEL: 'Pay at hotel' };
+const PAY = { PREPAID: 'Paid online', PARTIAL: 'Part paid', PAY_AT_HOTEL: 'Pay later (online)' };
+// Reserve now, pay later: tentative until the guest pays online by this time, else cancelled
+const payBy = (b) => (b.status === 'PENDING' && b.paymentType === 'PAY_AT_HOTEL' && b.expiresAt
+  ? new Date(b.expiresAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : null);
 
 const istDay = (d) => new Date(new Date(d).getTime() + 330 * 60000).toISOString().slice(0, 10);
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
@@ -166,7 +169,7 @@ const ExtranetBookings = () => {
                   <div className="text-right">
                     <p className="font-bold text-gray-900 tabular-nums">{inr(b.totalAmount)}</p>
                     <p className={`text-xs font-semibold ${due > 0 && !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(b.status) ? 'text-orange-800' : 'text-green-800'}`}>
-                      {['CANCELLED', 'NO_SHOW'].includes(b.status) ? PAY[b.paymentType] : due > 0 ? (b.status === 'COMPLETED' ? `${inr(due)} collected at hotel` : `${inr(due)} due at hotel`) : 'Paid online'}
+                      {['CANCELLED', 'NO_SHOW'].includes(b.status) ? PAY[b.paymentType] : payBy(b) ? `Tentative: guest pays online by ${payBy(b)}` : due > 0 ? (b.status === 'COMPLETED' ? `${inr(due)} collected at hotel` : `${inr(due)} due at hotel`) : 'Paid online'}
                     </p>
                   </div>
                   {working ? <Loader2 size={18} className="animate-spin text-navy-700" aria-hidden="true" /> : <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />}

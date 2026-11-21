@@ -7,15 +7,17 @@
  */
 export const LEGAL = {
   reviewed: false,
-  lastUpdated: '2026-11-15',
+  lastUpdated: '2026-11-21',
   brand: 'ZivoHotels',
-  legalEntity: null,          // e.g. "Zivo Hospitality Private Limited"
-  registeredAddress: null,    // full registered office address
-  cin: null,                  // company identification number, if a company
-  grievanceOfficer: { name: null, email: null, phone: null },
+  legalEntity: 'ZIVO TECHNOLOGIES SOLUTIONS PRIVATE LIMITED',
+  registeredAddress: 'Makundpur Karpuri Gram, Karpoorigram, Samastipur 848129, Bihar, India',
+  cin: 'U62099BR2026PTC087845',
+  gstin: '10AADCZ1700C1Z8',
+  // The name is required by the IT Rules 2021 / DPDP Act 2023: add it before launch
+  grievanceOfficer: { name: null, email: 'grievance@zivohotels.com', phone: null },
   jurisdictionCity: null,     // courts with jurisdiction, e.g. "Mumbai"
   contacts: {
-    bookings: 'bookings@zivohotels.com',
+    bookings: 'support@zivohotels.com',
     partners: 'partners@zivohotels.com',
     finance: 'finance@zivohotels.com',
   },

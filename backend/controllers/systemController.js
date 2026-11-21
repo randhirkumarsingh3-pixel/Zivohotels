@@ -1,5 +1,6 @@
 import prisma from '../config/db.js';
 import { supportFrom } from '../config/supportContacts.js';
+import { payLaterSettings } from '../domains/payLater.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import systemCache from '../utils/systemCache.js';
 import { z } from 'zod';
@@ -153,6 +154,9 @@ export const getPublicConfig = asyncHandler(async (req, res) => {
   // Guest support contacts (help page, My Bookings)
   const saved = await prisma.systemConfig.findUnique({ where: { key: 'support_settings' } });
   configMap.support = supportFrom(saved?.value || {});
+  // Reserve now, pay later: whether it's offered and how many hours guests get to pay
+  const bookingSettings = await prisma.systemConfig.findUnique({ where: { key: 'booking_settings' } });
+  configMap.payLater = payLaterSettings(bookingSettings?.value || {});
 
   res.status(200).json({ success: true, data: configMap });
 });

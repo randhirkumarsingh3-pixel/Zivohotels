@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const SITE = 'ZivoHotels';
-const DEFAULT_DESCRIPTION = 'Book hotels across India with ZivoHotels. Member prices, free cancellation on many stays, pay at hotel and Zivo Rewards on every booking.';
+const DEFAULT_DESCRIPTION = 'Book hotels across India with ZivoHotels. Member prices, free cancellation on many stays, reserve now and pay later, and Zivo Rewards on every booking.';
 
 /**
  * Sets the browser tab title ("Hotels in Mumbai | ZivoHotels") and, optionally, the page's meta
