@@ -13,9 +13,9 @@ export const LEGAL = {
   registeredAddress: 'Makundpur Karpuri Gram, Karpoorigram, Samastipur 848129, Bihar, India',
   cin: 'U62099BR2026PTC087845',
   gstin: '10AADCZ1700C1Z8',
-  // The name is required by the IT Rules 2021 / DPDP Act 2023: add it before launch
-  grievanceOfficer: { name: null, email: 'grievance@zivohotels.com', phone: null },
-  jurisdictionCity: null,     // courts with jurisdiction, e.g. "Mumbai"
+  // Published under the role title, as the company chose; the email reaches the officer
+  grievanceOfficer: { name: 'Grievance Officer', email: 'grievance@zivohotels.com', phone: null },
+  jurisdictionCity: 'Samastipur, Bihar, India', // courts with jurisdiction
   contacts: {
     bookings: 'support@zivohotels.com',
     partners: 'partners@zivohotels.com',

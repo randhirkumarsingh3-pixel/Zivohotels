@@ -6,8 +6,11 @@
 export const bookingRoomsOf = (b) => b?.bookingRooms || [];
 
 /** "2 × Premium Suite, 1 × Standard Room", or "Deluxe × 2" for older bookings */
+/** Rooms still part of the stay (one room can be cancelled on its own) */
+export const activeRoomsOf = (b) => bookingRoomsOf(b).filter((r) => !r.cancelledAt);
+
 export const roomsText = (b) => {
-  const rows = bookingRoomsOf(b);
+  const rows = bookingRoomsOf(b).length ? activeRoomsOf(b) : [];
   if (!rows.length) {
     const name = typeof b?.roomType === 'string' ? b.roomType : b?.roomType?.name || 'Room';
     return `${name}${b?.rooms > 1 ? ` × ${b.rooms}` : ''}`;

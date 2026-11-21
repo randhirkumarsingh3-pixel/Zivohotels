@@ -466,7 +466,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
       ${(booking.bookingRooms || []).length > 1 ? `
       <div class="divider"></div>
       <div class="stay-label">🛏️ Rooms and lead guests</div>
-      ${booking.bookingRooms.map((r) => `<div class="stay-value" style="margin-top:6px">Room ${r.roomNumber}: ${esc(r.roomType?.name || 'Room')} · ${esc(r.ratePlan?.name || '')} · ${esc(guestsLabel(r.adults, r.children))}<br><span style="font-weight:400">Lead guest: ${esc(r.guestName)}</span></div>`).join('')}` : ''}
+      ${booking.bookingRooms.filter((r) => !r.cancelledAt).map((r) => `<div class="stay-value" style="margin-top:6px">Room ${r.roomNumber}: ${esc(r.roomType?.name || 'Room')} · ${esc(r.ratePlan?.name || '')} · ${esc(guestsLabel(r.adults, r.children))}<br><span style="font-weight:400">Lead guest: ${esc(r.guestName)}</span></div>`).join('')}` : ''}
     </div>
 
     <!-- 4. PRICE BREAKDOWN -->

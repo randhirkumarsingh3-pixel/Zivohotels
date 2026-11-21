@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { setSessionCookie } from '../utils/sessionCookie.js';
 import { z } from 'zod';
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -41,7 +42,10 @@ export const changePassword = asyncHandler(async (req, res) => {
   });
   const hotel = ['OWNER', 'MANAGER'].includes(updated.role) ? await prisma.hotel.findFirst({ where: { ownerId: updated.id }, select: { id: true } }) : null;
   await prisma.auditLog.create({ data: { action: 'PASSWORD_CHANGED', entityType: 'USER', entityId: updated.id, userId: updated.id, requestId: req.id, details: {} } }).catch(() => {});
-  res.json({ success: true, message: 'Password changed. Other devices have been signed out.', token: signToken(updated.id, updated.role, hotel?.id || null, updated.tokenVersion), requestId: req.id });
+  // A new session for this device (the old one stopped working with the version bump)
+  const token = signToken(updated.id, updated.role, hotel?.id || null, updated.tokenVersion);
+  setSessionCookie(res, token);
+  res.json({ success: true, message: 'Password changed. Other devices have been signed out.', token, requestId: req.id });
 });
 
 /** POST /api/v1/auth/forgot-password { email } — same answer whether or not the account exists. */

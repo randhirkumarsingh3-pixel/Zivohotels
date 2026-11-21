@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { cookieToken } from '../utils/sessionCookie.js';
 import { isAllowedOrigin } from '../config/origins.js';
 import jwt from 'jsonwebtoken';
 import { eventBus } from './eventBus.js';
@@ -30,7 +31,8 @@ class SocketService {
 
     // Authentication Middleware
     this.io.use((socket, next) => {
-      const token = socket.handshake.auth.token;
+      // The session cookie (sent with the connection), or a token passed by older pages
+      const token = (socket.handshake.auth?.token && !['null', 'undefined'].includes(socket.handshake.auth.token) ? socket.handshake.auth.token : null) || cookieToken(socket.handshake.headers.cookie);
       if (!token) return next(new Error('Authentication error: Token missing'));
 
       try {

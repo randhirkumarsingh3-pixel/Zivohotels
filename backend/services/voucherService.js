@@ -178,10 +178,10 @@ const roomBlock = (d) => {
   // Each room with its type, plan, guests and lead guest
   if (rooms.length) return `
     <div class="section">
-      <h2>${rooms.length} room${rooms.length > 1 ? 's' : ''}</h2>
+      <h2>${rooms.filter((r) => !r.cancelledAt).length} room${rooms.filter((r) => !r.cancelledAt).length > 1 ? 's' : ''}</h2>
       ${rooms.map((r) => `
-      <div class="card" style="margin-bottom:8px">
-        <div class="big">Room ${r.roomNumber}: ${h(r.roomType?.name || 'Room')}</div>
+      <div class="card" style="margin-bottom:8px${r.cancelledAt ? ';opacity:.6' : ''}">
+        <div class="big">Room ${r.roomNumber}: ${h(r.roomType?.name || 'Room')}${r.cancelledAt ? ' (cancelled)' : ''}</div>
         <div class="muted">${h(r.ratePlan?.name || 'Standard rate')} · ${h(MEAL[r.ratePlan?.mealPlan] || 'Room only')} · ${h(guestsLabel(r.adults, r.children))}</div>
         <div>Lead guest: <b>${h(r.guestName)}</b></div>
       </div>`).join('')}

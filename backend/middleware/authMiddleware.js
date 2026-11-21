@@ -1,6 +1,15 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../config/db.js';
 import systemCache from '../utils/systemCache.js';
+import { requestToken } from '../utils/sessionCookie.js';
+import { isAllowedOrigin as isConfiguredOrigin } from '../config/origins.js';
+
+// The page's own address (same-origin requests), or one of the configured site addresses
+const isAllowedOrigin = (origin, req) => {
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  try { if (new URL(origin).host === host) return true; } catch { return false; }
+  return isConfiguredOrigin(origin);
+};
 
 // Protect routes - Ensure user is logged in
 export const protect = async (req, res, next) => {
@@ -10,14 +19,17 @@ export const protect = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied: Your IP is blacklisted.' });
     }
 
-    let token;
-    
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
+    // The session cookie (HTTP-only) or a Bearer header
+    const { token, viaCookie } = requestToken(req);
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'Not authorized: No token provided' });
+    }
+
+    // Signed in by cookie: a change (POST, PUT…) must come from our own site. SameSite already keeps
+    // the cookie off other sites' requests; this also refuses one that names another origin.
+    if (viaCookie && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin && !isAllowedOrigin(req.headers.origin, req)) {
+      return res.status(403).json({ success: false, message: 'Request refused: it did not come from ZivoHotels.' });
     }
 
     // Verify token
@@ -108,11 +120,7 @@ export const authorizeRoles = (...roles) => {
 // Soft-auth middleware - extracts user ID if token exists, but doesn't block if missing
 export const extractUser = async (req, res, next) => {
   try {
-    let token;
-    
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
+    const { token } = requestToken(req);
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });

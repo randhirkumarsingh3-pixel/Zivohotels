@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { roomsText, bookingRoomsOf, roomGuests } from '../utils/bookingRooms';
+import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../utils/bookingRooms';
+import RoomCancel from '../components/booking/RoomCancel';
 import { 
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
   RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
@@ -550,7 +551,15 @@ const MyBookings = () => {
                         <div className="col-span-2"><span className="text-gray-400">Rooms</span>
                           <ul className="mt-0.5 space-y-1">
                             {bookingRoomsOf(activeBooking).map((r) => (
-                              <li key={r.roomNumber} className="font-bold text-gray-800">Room {r.roomNumber}: {r.roomType?.name} · {r.ratePlan?.name} <span className="font-medium text-gray-500">· {roomGuests(r)} · {r.guestName}</span></li>
+                              <li key={r.roomNumber} className={`font-bold ${r.cancelledAt ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <span>Room {r.roomNumber}: {r.roomType?.name} · {r.ratePlan?.name} <span className="font-medium text-gray-500">· {roomGuests(r)} · {r.guestName}</span>{r.cancelledAt && <span className="ml-1 no-underline font-semibold text-red-700">(cancelled)</span>}</span>
+                                  {/* One room can be cancelled while at least one other stays */}
+                                  {!r.cancelledAt && ['CONFIRMED', 'PENDING'].includes(activeBooking.status) && activeRoomsOf(activeBooking).length > 1 && (
+                                    <RoomCancel booking={activeBooking} room={r} onDone={fetchMyBookings} />
+                                  )}
+                                </div>
+                              </li>
                             ))}
                           </ul>
                         </div>

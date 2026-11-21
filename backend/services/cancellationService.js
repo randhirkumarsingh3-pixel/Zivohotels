@@ -3,7 +3,9 @@ import ledgerService from './finance/ledgerService.js';
 import { move as moveWallet } from './finance/walletService.js';
 import { syncBooking as syncLoyalty } from './loyaltyService.js';
 import prisma from '../config/db.js';
-import { calculateRefund, getDefaultPolicy } from '../utils/refundCalculator.js';
+import { getDefaultPolicy } from '../utils/refundCalculator.js';
+import { guestRefund, roomCancellationQuote } from '../domains/cancellationRules.js';
+export { roomCancellationQuote };
 import { roundMoney, toMoney } from '../utils/money.js';
 import { withTimeout } from '../utils/promiseUtils.js';
 import { criticalLogger } from '../middleware/logger.js';
@@ -11,6 +13,8 @@ import inventoryRepository from '../repositories/inventoryRepository.js';
 import settlementService from './finance/settlementService.js';
 import { createNotification } from './notificationService.js';
 import { queueService } from './queueService.js';
+import { getDatesInRange } from '../utils/dateUtils.js';
+import { scheduleRecompute } from './dynamicPricingService.js';
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -43,23 +47,6 @@ const POLICY_LABELS = {
  * What a guest would get back if they cancelled now (same rules as cancelBookingWithRefund).
  * Shown before they confirm; the old dialog always promised a full refund.
  */
-/**
- * The guest's refund under the property's policy, and the membership perk: a paid plan with
- * freeCancelExtraHours (at booking time) lets the guest cancel free for that much longer. The fee
- * the hotel would have kept is then paid to the hotel by Zivo (memberWaiver).
- */
-const guestRefund = (booking, policy, now = new Date()) => {
-  const base = calculateRefund(booking, policy, now);
-  const extra = Number(booking.metadata?.membership?.freeCancelExtraHours) || 0;
-  if (extra > 0) {
-    const asIfEarlier = calculateRefund(booking, policy, new Date(now.getTime() - extra * 60 * 60 * 1000));
-    if (asIfEarlier.refundAmount > base.refundAmount) {
-      return { refundAmount: asIfEarlier.refundAmount, policyApplied: `${asIfEarlier.policyApplied}_MEMBER_EXTENDED`, memberWaiver: roundMoney(asIfEarlier.refundAmount - base.refundAmount) };
-    }
-  }
-  return { ...base, memberWaiver: 0 };
-};
-
 export const previewGuestCancellation = async (booking) => {
   const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
   const paidAmount = toMoney(booking.paidAmount) || 0;
@@ -278,3 +265,139 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 };
 
 export default { cancelBookingWithRefund, initiatorForRole, CancellationError };
+
+// ─── One room of a booking with several rooms ───────────────────────────────────────────────────
+
+const loadForRoomCancel = async (bookingId, roomNumber) => {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { bookingRooms: { orderBy: { roomNumber: 'asc' }, include: { roomType: { select: { name: true } } } } } });
+  if (!booking) throw new CancellationError(404, 'Booking not found');
+  if (!['CONFIRMED', 'PENDING'].includes(booking.status)) throw new CancellationError(400, 'Only a booking that is confirmed or awaiting payment can have a room cancelled');
+  const active = booking.bookingRooms.filter((r) => !r.cancelledAt);
+  const room = active.find((r) => r.roomNumber === Number(roomNumber));
+  if (!room) throw new CancellationError(404, booking.bookingRooms.some((r) => r.roomNumber === Number(roomNumber)) ? 'This room is already cancelled' : 'Room not found in this booking');
+  if (active.length < 2) throw new CancellationError(400, 'This is the last room: cancel the whole booking instead');
+  return { booking, active, room };
+};
+
+/** What the guest would get back for cancelling one room now. */
+export const previewRoomCancellation = async (bookingId, roomNumber, initiatedBy = 'GUEST') => {
+  const { booking, active, room } = await loadForRoomCancel(bookingId, roomNumber);
+  const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
+  const q = roomCancellationQuote({ booking, rooms: active, room, policy, initiatedBy });
+  return {
+    roomNumber: room.roomNumber, roomTypeName: room.roomType?.name, guestName: room.guestName,
+    roomShare: q.shareTotal, paidForRoom: q.sharePaid, refundAmount: q.refundAmount, retainedAmount: q.retainedAmount,
+    memberWaiver: q.memberWaiver, newTotal: roundMoney((toMoney(booking.totalAmount) || 0) - q.shareTotal + q.retainedAmount),
+    policyCode: policy.policyCode, policyLabel: POLICY_LABELS[policy.policyCode] || 'Standard cancellation policy',
+  };
+};
+
+/**
+ * Cancels one room: refunds its share (to Zivo Cash or the original payment), puts the room back
+ * on sale and leaves the rest of the booking as it is, with its totals reduced. A cancellation
+ * charge kept for the room stays in the booking's total and is settled with the stay.
+ */
+export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, userId, requestId, refundTo = 'SOURCE' }) => {
+  const { booking, active, room } = await loadForRoomCancel(bookingId, roomNumber);
+  const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
+  const q = roomCancellationQuote({ booking, rooms: active, room, policy, initiatedBy });
+
+  // Zivo Cash used on the booking is returned first (as for a whole booking); the rest goes to the
+  // card / UPI, or to Zivo Cash when the guest chose that
+  const walletLeft = toMoney(booking.walletAmount) || 0;
+  let toWallet = Math.min(q.refundAmount, walletLeft);
+  if (refundTo === 'WALLET' && initiatedBy === 'GUEST' && booking.userId) toWallet = q.refundAmount;
+  toWallet = roundMoney(toWallet);
+  const toSource = roundMoney(q.refundAmount - toWallet);
+
+  let razorpayRefundId = null;
+  if (toSource > 0) {
+    if (!booking.razorpayPaymentId) throw new CancellationError(400, 'This booking has no online payment to refund to. Choose Zivo Cash.');
+    try {
+      const r = await withTimeout(
+        razorpay.payments.refund(booking.razorpayPaymentId, { amount: Math.round(toSource * 100), notes: { bookingId, roomNumber: String(room.roomNumber), initiatedBy } },
+          { 'X-Razorpay-Idempotency-Key': `${bookingId}-room-${room.roomNumber}` }),
+        10000, 'Razorpay Refund Timed Out');
+      razorpayRefundId = r.id;
+    } catch (apiError) {
+      criticalLogger('REFUND_FAILURE', { bookingId, roomNumber: room.roomNumber, error: apiError.message, amount: toSource }, requestId);
+      throw new CancellationError(502, `Payment refund failed: ${apiError.message}`);
+    }
+  }
+
+  const byLabel = { GUEST: 'the guest', HOTEL: 'the hotel', ADMIN: 'ZivoHotels' }[initiatedBy];
+  const total = toMoney(booking.totalAmount) || 0;
+  const newTotal = roundMoney(total - q.shareTotal + q.retainedAmount);
+  const newPaid = roundMoney((toMoney(booking.paidAmount) || 0) - q.refundAmount);
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.bookingRoom.update({ where: { id: room.id }, data: { cancelledAt: new Date(), refundAmount: q.refundAmount } });
+    // This room's nights back on sale
+    const dates = getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));
+    await tx.inventory.updateMany({
+      where: { roomTypeId: room.roomTypeId, date: { in: dates } },
+      data: { bookedRooms: { decrement: 1 }, availableRooms: { increment: 1 } },
+    });
+    const cancelledRooms = [...(booking.metadata?.cancelledRooms || []), {
+      roomNumber: room.roomNumber, roomTypeName: room.roomType?.name, guestName: room.guestName, at: new Date().toISOString(),
+      by: initiatedBy, roomShare: q.shareTotal, refundAmount: q.refundAmount, retainedAmount: q.retainedAmount, toWallet, toSource, razorpayRefundId,
+    }];
+    const u = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        rooms: active.length - 1,
+        adults: Math.max(1, booking.adults - room.adults),
+        children: Math.max(0, booking.children - room.children),
+        guests: Math.max(1, booking.guests - room.adults - room.children),
+        totalAmount: newTotal,
+        taxAmount: roundMoney((toMoney(booking.taxAmount) || 0) - q.shareTax),
+        baseAmount: roundMoney((toMoney(booking.baseAmount) || 0) - q.shareBase + q.retainedAmount),
+        paidAmount: newPaid,
+        remainingAmount: roundMoney(Math.max(0, newTotal - newPaid)),
+        walletAmount: roundMoney(Math.max(0, walletLeft - Math.min(q.refundAmount, walletLeft))),
+        metadata: { ...(booking.metadata || {}), cancelledRooms },
+      },
+    });
+    if (toWallet > 0) {
+      await moveWallet(tx, { userId: booking.userId, type: 'CREDIT', amount: toWallet, category: 'REFUND', description: `Refund for room ${room.roomNumber} of booking ${booking.bookingRef}`, bookingId });
+    }
+    await tx.bookingTimelineEvent.create({
+      data: {
+        bookingId, status: 'ROOM_CANCELLED', title: `Room ${room.roomNumber} cancelled`,
+        message: `Room ${room.roomNumber} (${room.roomType?.name || 'room'}, ${room.guestName}) was cancelled by ${byLabel}.` +
+          (q.refundAmount > 0 ? ` Refund of ${inr(q.refundAmount)}: ` + [toWallet > 0 && `${inr(toWallet)} to your Zivo Cash`, toSource > 0 && `${inr(toSource)} to your original payment method (5-7 working days)`].filter(Boolean).join(', ') + '.' : '') +
+          (q.retainedAmount > 0 ? ` Cancellation charge: ${inr(q.retainedAmount)}.` : ''),
+      },
+    });
+    await tx.auditLog.create({
+      data: { action: 'CANCEL_BOOKING_ROOM', entityType: 'BOOKING', entityId: bookingId, userId, requestId, details: { roomNumber: room.roomNumber, initiatedBy, ...q, toWallet, toSource, razorpayRefundId } },
+    });
+    return u;
+  });
+
+  scheduleRecompute(booking.hotelId);
+  await syncLoyalty(bookingId).catch((e) => console.error('[ZivoRewards] sync failed:', e.message));
+  // A paid booking's invoice shows the new amount
+  if (booking.status === 'CONFIRMED') {
+    import('./invoiceService.js').then((m) => m.invoiceService.regenerateInvoice(bookingId)).catch(() => {});
+  }
+  await createNotification({
+    hotelId: booking.hotelId, type: 'CANCELLED', title: `Room ${room.roomNumber} of ${booking.bookingRef} cancelled`,
+    message: `${initiatedBy === 'GUEST' ? 'The guest' : `Cancelled by ${byLabel}:`} room ${room.roomNumber} (${room.roomType?.name || 'room'}, ${room.guestName}) of booking ${booking.bookingRef}. The rest of the booking stays.` +
+      (q.retainedAmount > 0 ? ` A charge of ${inr(q.retainedAmount)} is kept and settled with the stay.` : ''),
+    metadata: { bookingId, roomNumber: room.roomNumber },
+  });
+  if (booking.guestEmail) {
+    queueService.enqueue('email', 'SEND_ROOM_CANCELLED', {
+      to: booking.guestEmail,
+      subject: `Room ${room.roomNumber} cancelled · ${booking.bookingRef}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px">
+        <h2 style="font-size:18px">Room ${room.roomNumber} of your booking was cancelled</h2>
+        <p>${room.roomType?.name || 'Room'} for ${room.guestName} is cancelled; the rest of booking <b>${booking.bookingRef}</b> stays as booked.</p>
+        ${q.refundAmount > 0 ? `<p>Refund: <b>${inr(q.refundAmount)}</b>${toWallet > 0 ? ` (${inr(toWallet)} to Zivo Cash)` : ''}${toSource > 0 ? ` (${inr(toSource)} to your original payment method, 5-7 working days)` : ''}.</p>` : ''}
+        ${q.retainedAmount > 0 ? `<p>Cancellation charge under the hotel's policy: ${inr(q.retainedAmount)}.</p>` : ''}
+        <p>New booking total: <b>${inr(newTotal)}</b>.</p></div>`,
+    }, { priority: 2 }).catch(() => {});
+  }
+  return { booking: updated, ...q, toWallet, toSource, razorpayRefundId };
+};
