@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext(null);
@@ -22,57 +21,68 @@ export const SocketProvider = ({ children }) => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
     const socketUrl = apiUrl.startsWith('http') ? new URL(apiUrl).origin : window.location.origin;
 
-    const newSocket = io(socketUrl, {
-      withCredentials: true,
-      // Allow polling first so Socket.IO can do the standard HTTP upgrade.
-      // Forcing websocket-only breaks on Render's CDN proxy.
-      transports: ['polling', 'websocket'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-    });
+    // The library is downloaded only once someone signs in; guests browsing hotels never need it
+    let newSocket = null;
+    let closed = false;
+    import('socket.io-client').then(({ io }) => {
+      if (closed) return;
+      newSocket = io(socketUrl, {
+        withCredentials: true,
+        // Allow polling first so Socket.IO can do the standard HTTP upgrade.
+        // Forcing websocket-only breaks on Render's CDN proxy.
+        transports: ['polling', 'websocket'],
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
+      });
 
-    newSocket.on('connect', () => {
-      console.log('[Socket] Connected to server');
-      setIsConnected(true);
-      connectingRef.current = false;
+      newSocket.on('connect', () => {
+        console.log('[Socket] Connected to server');
+        setIsConnected(true);
+        connectingRef.current = false;
       
-      // Replay buffered events or acknowledge presence
-      if (eventBuffer.current.length > 0) {
-        console.log(`[Socket] Replaying ${eventBuffer.current.length} buffered events`);
-        eventBuffer.current = [];
-      }
-    });
+        // Replay buffered events or acknowledge presence
+        if (eventBuffer.current.length > 0) {
+          console.log(`[Socket] Replaying ${eventBuffer.current.length} buffered events`);
+          eventBuffer.current = [];
+        }
+      });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
-      setIsConnected(false);
+      newSocket.on('disconnect', (reason) => {
+        console.log('[Socket] Disconnected:', reason);
+        setIsConnected(false);
+        connectingRef.current = false;
+      });
+
+      newSocket.on('connect_error', (err) => {
+        console.error('[Socket] Connection error:', err.message);
+        connectingRef.current = false;
+        if (err.message.includes('Authentication error')) {
+          newSocket.close(); // Don't keep retrying with an invalid token
+        }
+      });
+
+      // Unified operational event listener
+      newSocket.on('operational_event', (event) => {
+        console.log('[Socket] Operational Event:', event);
+        setLastEvent(event);
+      });
+
+      newSocket.on('governance_event', (event) => {
+        console.log('[Socket] Governance Event:', event);
+        setLastEvent(event);
+      });
+
+      setSocket(newSocket);
+    }).catch((e) => {
+      console.error('[Socket] Could not load:', e.message);
       connectingRef.current = false;
     });
-
-    newSocket.on('connect_error', (err) => {
-      console.error('[Socket] Connection error:', err.message);
-      connectingRef.current = false;
-      if (err.message.includes('Authentication error')) {
-        newSocket.close(); // Don't keep retrying with an invalid token
-      }
-    });
-
-    // Unified operational event listener
-    newSocket.on('operational_event', (event) => {
-      console.log('[Socket] Operational Event:', event);
-      setLastEvent(event);
-    });
-
-    newSocket.on('governance_event', (event) => {
-      console.log('[Socket] Governance Event:', event);
-      setLastEvent(event);
-    });
-
-    setSocket(newSocket);
 
     return () => {
-      newSocket.close();
+      closed = true;
+      newSocket?.close();
+      setSocket(null);
       connectingRef.current = false;
     };
   }, [token]);
