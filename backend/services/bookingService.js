@@ -16,6 +16,8 @@ import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
 import { roomLinesFrom, roomsPerType } from '../domains/roomLines.js';
 import { uniqueBookingRef } from '../utils/bookingRef.js';
+import { payLaterDeadline, payLaterSettings } from '../domains/payLater.js';
+import { sendPayLaterEmail, payLaterLabel } from './payLaterService.js';
 
 /**
  * Loads what pricing needs for each room of a stay: its room type (of this hotel) and rate plan (of
@@ -164,6 +166,17 @@ export const bookingService = {
     const ratePlan = stayRooms[0].ratePlan;
     const { taxRules, systemConfig, prepaidDiscountPercent } = await pricingSettings();
 
+    // Reserve now, pay later (PAY_AT_HOTEL): tentative until paid online by the deadline
+    let payLaterBy = null;
+    if (paymentType === 'PAY_AT_HOTEL') {
+      payLaterBy = payLaterDeadline({ checkIn: checkInDate, settings: payLaterSettings(systemConfig.booking_settings) });
+      if (!payLaterBy) {
+        throw Object.assign(new Error(payLaterSettings(systemConfig.booking_settings).enabled
+          ? 'Check-in is too close to pay later. Please choose Pay now.'
+          : 'Pay later is not available right now. Please choose Pay now.'), { statusCode: 400 });
+      }
+    }
+
     // 2. Pricing Validation (Double Check)
     // Customers pay exactly the price shown on the hotel page and in the checkout preview, so
     // booking prices the stay the same way as previewBooking: daily rates (manual, channel manager
@@ -205,7 +218,8 @@ export const bookingService = {
 
 
       // C. Create Booking
-      const expiresAt = new Date(Date.now() + (paymentType === 'PAY_AT_HOTEL' ? 24 * 60 : 30) * 60 * 1000);
+      // Unpaid bookings are cancelled at expiresAt: 30 minutes to pay now, or the pay-later deadline
+      const expiresAt = payLaterBy || new Date(Date.now() + 30 * 60 * 1000);
       const bookingData = {
         bookingRef: await uniqueBookingRef(tx),
         guestName, guestEmail, guestPhone,
@@ -230,13 +244,15 @@ export const bookingService = {
         ratePlanId: ratePlan.id,
         paymentType,
         couponCode: promotion?.code || null,
-        status: paymentType === 'PAY_AT_HOTEL' ? 'CONFIRMED' : 'PENDING',
+        // Every booking is tentative (PENDING) until paid; pay later only gets longer to pay
+        status: 'PENDING',
         expiresAt,
         requestId,
         userId: userId || null,
         sessionId: sessionId || null,
         metadata: {
            pricingVersion: 'DDD-V1',
+           ...(payLaterBy ? { payLater: { deadline: payLaterBy.toISOString() } } : {}),
            ratePlanName: ratePlan.name,
            discountAmount: pricing.discountAmount,
            couponDiscountAmount: pricing.couponDiscountAmount,
@@ -332,9 +348,9 @@ export const bookingService = {
         await tx.bookingTimelineEvent.create({
           data: {
             bookingId: booking.id,
-            status: 'CONFIRMED',
-            title: 'Booking Confirmed',
-            message: 'Your stay is confirmed. Payment will be collected at the hotel.'
+            status: 'PENDING_PAYMENT',
+            title: 'Reserved: payment due',
+            message: `Your rooms are held. Pay online by ${payLaterLabel(payLaterBy)} to confirm, or the booking is cancelled.`
           }
         });
       } else if (walletPaidInFull) {
@@ -357,14 +373,17 @@ export const bookingService = {
         });
       }
 
-      await tx.bookingTimelineEvent.create({
-        data: {
-          bookingId: booking.id,
-          status: 'INVOICE_GENERATED',
-          title: 'Invoice Generated',
-          message: 'Booking invoice has been generated.'
-        }
-      });
+      // (An invoice exists only for a paid booking: it is issued when the payment is confirmed)
+      if (booking.status === 'CONFIRMED') {
+        await tx.bookingTimelineEvent.create({
+          data: {
+            bookingId: booking.id,
+            status: 'INVOICE_GENERATED',
+            title: 'Invoice Generated',
+            message: 'Booking invoice has been generated.'
+          }
+        });
+      }
 
       // (The "trip intelligence" saved here was made up: a random airport distance and WiFi
       // rating. Removed.)
@@ -422,11 +441,15 @@ export const bookingService = {
 
     // 8. Loyalty points are recorded inside the transaction above (Zivo Rewards).
 
-    if (paymentType === 'PAY_AT_HOTEL' || bookingResult.status === 'CONFIRMED') {
-      sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] PAY_AT_HOTEL confirmation email dispatch failed:', e));
+    // Pay later: "reserved, pay by …" email (the confirmation follows the payment)
+    if (paymentType === 'PAY_AT_HOTEL') {
+      sendPayLaterEmail(bookingResult.id, 'reserved').catch(e => console.error('[PayLater] reserved email failed:', e.message));
     }
-    // Paid in full with Zivo Cash: issue the invoice now (pay-at-hotel stays get theirs at check-out)
-    if (paymentType !== 'PAY_AT_HOTEL' && bookingResult.status === 'CONFIRMED') {
+    if (bookingResult.status === 'CONFIRMED') {
+      sendBookingConfirmationEmail(bookingResult.id).catch(e => console.error('[EmailService] confirmation email dispatch failed:', e));
+    }
+    // Paid in full with Zivo Cash: issue the invoice now
+    if (bookingResult.status === 'CONFIRMED') {
       eventBus.emitEvent('BOOKING_CONFIRMED', { bookingId: bookingResult.id });
     }
 

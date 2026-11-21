@@ -105,7 +105,7 @@ const paymentSummary = (booking) => {
   const dueAtHotel = roundMoney(Math.max(0, total - paid));
   let label;
   if (booking.status === 'CANCELLED') label = refunded > 0 ? `Cancelled · ${inr(refunded)} refunded` : 'Cancelled';
-  else if (booking.paymentType === 'PAY_AT_HOTEL') label = 'Pay at hotel';
+  else if (booking.paymentType === 'PAY_AT_HOTEL') label = booking.expiresAt ? `Not paid yet · pay online by ${new Date(booking.expiresAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}` : 'Not paid yet';
   else if (paid >= total && total > 0) label = 'Paid online';
   else if (paid > 0) label = 'Part-paid online';
   else label = 'Payment pending';

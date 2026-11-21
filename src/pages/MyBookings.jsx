@@ -6,6 +6,8 @@ import {
   User, Sparkles, ArrowRightLeft, Clock, Printer, Download,
   ExternalLink, Mail, Award, Send, ArrowRight, Star, Lock
 } from 'lucide-react';
+import PayLaterBanner from '../components/booking/PayLaterBanner';
+import { needsPayment } from '../utils/payBooking';
 import StayRequests from '../components/booking/StayRequests';
 import SupportContacts from '../components/SupportContacts';
 import { useAuth } from '../context/AuthContext';
@@ -436,17 +438,17 @@ const MyBookings = () => {
               {activeSection === 'upcoming' && (
                 upcoming.length === 0
                   ? <EmptySection label="upcoming" />
-                  : upcoming.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} />)
+                  : upcoming.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)
               )}
               {activeSection === 'ongoing' && (
                 ongoing.length === 0
                   ? <EmptySection label="ongoing" />
-                  : ongoing.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} />)
+                  : ongoing.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)
               )}
               {activeSection === 'past' && (
                 past.length === 0
                   ? <EmptySection label="past" />
-                  : <div className="opacity-90 space-y-5">{past.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} />)}</div>
+                  : <div className="opacity-90 space-y-5">{past.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)}</div>
               )}
             </div>
 
@@ -525,6 +527,7 @@ const MyBookings = () => {
               {/* OVERVIEW */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
+                  <PayLaterBanner booking={activeBooking} onPaid={fetchMyBookings} />
                   <div className="grid grid-cols-3 gap-4">
                     {[
                       { label: 'Guests', value: `${activeBooking.guests} pax` },
@@ -847,7 +850,7 @@ const EmptySection = ({ label }) => (
   </div>
 );
 
-const BookingCard = ({ booking, onRateStay, onManage }) => {
+const BookingCard = ({ booking, onRateStay, onManage, onPaid }) => {
   const mainImageUrl = getImageUrl(booking.hotel?.media?.[0]?.url) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
 
   const reviewReady = isReviewUnlocked(booking);
@@ -877,9 +880,10 @@ const BookingCard = ({ booking, onRateStay, onManage }) => {
       {/* Card body */}
       <div className="p-5 md:p-7 flex-1 flex flex-col justify-between">
         <div>
+          {needsPayment(booking) && <div className="mb-3"><PayLaterBanner booking={booking} onPaid={onPaid} compact /></div>}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border ${getStatusColor(booking.status)}`}>
-              {booking.status}
+              {booking.status === 'PENDING' ? 'Awaiting payment' : booking.status.replace('_', ' ')}
             </span>
             {booking.paymentStatus === 'REFUNDED' && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-purple-50 text-purple-600 border border-purple-100">

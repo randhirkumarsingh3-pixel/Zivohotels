@@ -8,7 +8,7 @@ import { ChevronDown } from 'lucide-react';
  */
 const FAQS = [
   ['Is the price I see the price I pay?', 'Yes. The total at checkout includes GST and any discounts that apply, and that total is what you pay. Prices on search results are per night before GST, and the hotel page shows the full total for your dates.'],
-  ['Can I pay at the hotel?', 'Yes. You can pay the full amount now (often at a lower price), pay part now and the rest at the hotel, or book now and pay at the hotel. You choose at checkout.'],
+  ['Can I book now and pay later?', 'Yes. Pay the full amount now (often at a lower price), pay part now and the rest at the hotel, or reserve now and pay online later. A reserved booking is confirmed once paid; if it isn\u2019t paid by the deadline shown at checkout (before your check-in day), it is cancelled automatically. You choose at checkout.'],
   ['How do I cancel, and how do refunds work?', 'Open the booking in My Bookings and choose Cancel. You see any cancellation charge and your refund before you confirm. Refunds go back to your payment method (usually 5–7 working days) or, if you prefer, to Zivo Cash instantly.'],
   ['Which rates have free cancellation?', 'Each rate shows its cancellation policy next to the price and again at checkout. Free-cancellation rates can be cancelled at no cost until the time shown. Zivo Prime members get extra time on eligible rates.'],
   ['Are hotels couple-friendly, and is a local ID accepted?', 'This depends on each hotel. Its house rules, including whether unmarried couples are welcome and which IDs are accepted (and whether local IDs are allowed), are shown on the hotel page under Policies.'],

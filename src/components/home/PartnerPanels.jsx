@@ -28,7 +28,7 @@ const PartnerPanels = () => (
       </article>
       <article className="bg-white rounded-card border border-gray-200 p-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Briefcase className="text-navy-700" size={24} aria-hidden="true" /> Stays for your company</h2>
-        <p className="text-gray-600 mt-2">Add your company&apos;s GSTIN at checkout for a GST invoice in its name, and choose to pay now or at the hotel.</p>
+        <p className="text-gray-600 mt-2">Add your company&apos;s GSTIN at checkout for a GST invoice in its name, and choose to pay now or reserve now and pay later.</p>
         <p className="text-sm text-gray-700 mt-4">Ask about business rates: <Email address="bookings@zivohotels.com" /></p>
         <Link to="/help#payments" className="mt-4 inline-block px-5 py-2.5 rounded-lg border border-navy-200 text-navy-800 font-semibold hover:bg-navy-50">How payments work</Link>
       </article>

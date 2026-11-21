@@ -49,7 +49,7 @@ const Help = () => {
       </Section>
 
       <Section id="payments" icon={CreditCard} title="Payments">
-        <p>Depending on the hotel, you can pay the full amount now (often at a lower price), pay part now and the rest at the hotel, or book now and pay at the hotel.</p>
+        <p>Depending on the hotel, you can pay the full amount now (often at a lower price), pay part now and the rest at the hotel, or reserve now and pay later. A reserved booking is <strong>not confirmed</strong> until you pay it online from My Bookings by the deadline shown at checkout (always before your check-in day). We email a reminder; if it isn&apos;t paid in time, it is cancelled automatically and nothing is charged.</p>
         <p>The total at checkout includes GST. What you see before you pay is what you pay. If you need a GST invoice for your company, tick <strong>Add company / GST details</strong> at checkout.</p>
       </Section>
 

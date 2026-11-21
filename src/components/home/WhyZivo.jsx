@@ -4,7 +4,7 @@ import { Receipt, CalendarX2, Building, Wallet, Crown } from 'lucide-react';
 const POINTS = [
   { icon: Receipt, title: 'The price you see', text: 'Totals include GST before you pay. No surprise charges at checkout.' },
   { icon: CalendarX2, title: 'Free cancellation', text: 'On many rates, clearly marked next to the price.' },
-  { icon: Building, title: 'Pay at the hotel', text: 'Book now and pay when you arrive, or pay part now.' },
+  { icon: Building, title: 'Reserve now, pay later', text: 'Hold your rooms now and pay online before the deadline, or pay part now and the rest at the hotel.' },
   { icon: Wallet, title: 'Instant refunds', text: 'Choose Zivo Cash and your refund arrives at once.' },
   { icon: Crown, title: 'Member prices', text: 'Free membership unlocks lower prices and Rewards points.' },
 ];

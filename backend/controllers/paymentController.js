@@ -90,6 +90,10 @@ export const createOrder = asyncHandler(async (req, res) => {
     if (booking.paymentStatus === 'PAID') {
       return res.status(400).json({ success: false, message: 'Booking already paid', requestId: req.id });
     }
+    // Unpaid bookings are cancelled at their deadline (30 minutes, or the pay-later deadline)
+    if (booking.status === 'CANCELLED' || (booking.status === 'PENDING' && booking.expiresAt && new Date(booking.expiresAt) <= new Date())) {
+      return res.status(400).json({ success: false, message: 'The time to pay for this booking has ended, so it was cancelled. Please book again.', requestId: req.id });
+    }
 
     // Determine amount to charge based on Payment Type
     const config = await getSystemConfig();
@@ -118,7 +122,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       console.error('[Payments] Razorpay order creation failed:', gatewayError?.statusCode, gatewayError?.error?.description || gatewayError?.message);
       return res.status(502).json({
         success: false,
-        message: 'Online payment is unavailable right now. Please try again in a few minutes, or choose Pay at Hotel.',
+        message: 'Online payment is unavailable right now. Please try again in a few minutes.',
         requestId: req.id
       });
     }
@@ -211,6 +215,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       data: {
         paymentStatus,
         status: 'CONFIRMED',
+        // Reserve now, pay later: paid online now, so it is a prepaid booking from here on
+        ...(booking.paymentType === 'PAY_AT_HOTEL' ? { paymentType: 'PREPAID' } : {}),
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
         paidAmount: amountPaid,
@@ -284,6 +290,7 @@ export const webhook = asyncHandler(async (req, res) => {
           data: {
             paymentStatus,
             status: 'CONFIRMED',
+            ...(booking.paymentType === 'PAY_AT_HOTEL' ? { paymentType: 'PREPAID' } : {}),
             razorpayPaymentId: payment.id,
             // Card / UPI amount plus any Zivo Cash used on the booking
             paidAmount: roundMoney(payment.amount / 100 + (toMoney(booking.walletAmount) || 0)),

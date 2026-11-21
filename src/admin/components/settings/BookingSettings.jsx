@@ -70,21 +70,24 @@ const BookingSettings = () => {
               <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer ${types.payAtHotel ? 'bg-brand-500' : 'bg-gray-300'}`}></label>
             </div>
           </div>
-          <h4 className="font-bold text-gray-900 mb-1">Pay at Hotel</h4>
-          <p className="text-xs text-gray-500 mb-4 h-8">Guests pay nothing upfront. Status remains &quot;Tentative&quot;.</p>
+          <h4 className="font-bold text-gray-900 mb-1">Reserve now, pay later</h4>
+          <p className="text-xs text-gray-500 mb-4">Guests pay nothing at booking. The booking stays tentative until paid online; if it isn&apos;t paid in time (and always before the check-in day starts), it is cancelled and the rooms are released. Guests get a reminder before the deadline.</p>
           
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Auto-Expiry Window</label>
+              <label htmlFor="pay-later-hours" className="block text-xs font-semibold text-gray-700 mb-1">Time to pay after booking</label>
               <div className="flex items-center">
                 <input 
+                  id="pay-later-hours"
                   type="number" 
+                  min={1}
+                  max={168}
                   value={types.expiryHours} 
                   onChange={(e) => setTypes(p => ({...p, expiryHours: parseInt(e.target.value)}))}
                   disabled={!types.payAtHotel} 
                   className="w-16 px-2 py-1 text-sm border border-gray-300 rounded outline-none disabled:bg-gray-100" 
                 />
-                <span className="ml-2 text-xs text-gray-500">Hours</span>
+                <span className="ml-2 text-xs text-gray-500">hours (1 to 168)</span>
               </div>
             </div>
           </div>
