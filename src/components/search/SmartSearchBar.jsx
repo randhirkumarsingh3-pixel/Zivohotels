@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import HourlySearchFields from './HourlySearchFields';
+import { defaultHourly, hourlyQuery } from '../../utils/hourly';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import DestinationAutocomplete from './DestinationAutocomplete';
@@ -20,6 +22,9 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
   const [occupancy, setOccupancy] = useState(() => occupancyOf(initial || {}));
   const { guests, rooms } = occTotals(occupancy);
   const [error, setError] = useState(null);
+  // Nightly (dates) or hourly (a slot on one day)
+  const [stay, setStay] = useState(initial?.hourly ? 'HOURLY' : 'NIGHTLY');
+  const [hourly, setHourly] = useState(() => initial?.hourly || defaultHourly());
   const initKey = initial ? [initial.destination?.label || initial.destination, initial.checkIn, initial.checkOut, initial.guests, initial.rooms, occToParam(initial.occupancy)].join('|') : '';
   useEffect(() => {
     if (!initial) return;
@@ -54,6 +59,14 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
   const handleSearch = () => {
     if (!destination) {
       setError('destination');
+      return;
+    }
+    if (stay === 'HOURLY') {
+      setError(null);
+      track('SEARCH_SUBMITTED', { destination: destination.label, stay: 'HOURLY', ...hourly });
+      if (destination.type === 'hotel') { navigate(`/hotel/${destination.id}?${hourlyQuery(hourly)}`); return; }
+      const city = destination.type === 'near' ? '' : (destination.value || destination.label);
+      navigate(`/hotels?${hourlyQuery(hourly, city ? { city } : {})}`);
       return;
     }
     if (!checkIn || !checkOut) {
@@ -97,6 +110,14 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
 
   return (
     <div className="w-full max-w-5xl mx-auto relative z-20 text-left">
+      <div role="tablist" aria-label="Type of stay" className="mb-2 inline-flex rounded-xl bg-white/15 backdrop-blur p-1 gap-1">
+        {[['NIGHTLY', 'Nightly'], ['HOURLY', 'Hourly']].map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={stay === k} onClick={() => { setStay(k); setOpenSection(null); setError(null); }}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${stay === k ? 'bg-white text-navy-900 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+            {l}
+          </button>
+        ))}
+      </div>
       <div className="bg-white rounded-2xl shadow-[0_16px_48px_rgba(3,27,49,0.35)] p-2 flex flex-col md:flex-row md:items-stretch gap-1 md:gap-0">
         <DestinationAutocomplete
           destination={destination}
@@ -108,6 +129,7 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
 
         <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
 
+        {stay === 'HOURLY' ? <HourlySearchFields value={hourly} onChange={setHourly} /> : (<>
         <DatePickerV2
           checkIn={checkIn}
           setCheckIn={setCheckIn}
@@ -128,6 +150,8 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
           isOpen={openSection === 'guests'}
           setIsOpen={(val) => setOpenSection(val ? 'guests' : null)}
         />
+
+        </>)}
 
         <button
           type="button"

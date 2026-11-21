@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { 
+  Clock,
   LayoutDashboard, 
   Building2, 
   CalendarDays, 
@@ -65,6 +66,7 @@ const ExtranetSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem name="Add New Property" path="/extranet/onboarding" state={{ resetDraft: true }} icon={<Plus size={18} />} />
           <NavItem name="Rooms & Rate Plans" path="/extranet/rooms" icon={<BedDouble size={18} />} />
           <NavItem name="Inventory Calendar" path="/extranet/inventory" icon={<CalendarDays size={18} />} />
+          <NavItem name="Hourly Stays" path="/extranet/hourly" icon={<Clock size={18} />} />
           <NavItem name="Dynamic Pricing" path="/extranet/pricing" icon={<IndianRupee size={18} />} />
           
           <SectionLabel>Operations</SectionLabel>

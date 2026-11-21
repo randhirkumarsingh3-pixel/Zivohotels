@@ -17,10 +17,15 @@ import { queueService } from './queueService.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => {
-  const checkInDate = new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-  const checkOutDate = new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  // Hourly stays show the slot's times (India time); nightly stays the dates
+  const hourly = booking.stayType === 'HOURLY';
+  const ist = { timeZone: 'Asia/Kolkata' };
+  const at = (d) => new Date(d).toLocaleString('en-IN', { ...ist, weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const checkInDate = hourly ? at(booking.slotStart || booking.checkIn) : new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  const checkOutDate = hourly ? at(booking.slotEnd || booking.checkOut) : new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   
   const nights = Math.max(1, Math.round((new Date(booking.checkOut) - new Date(booking.checkIn)) / (1000 * 60 * 60 * 24)));
+  const lengthText = hourly ? `${booking.hours} Hour${booking.hours === 1 ? '' : 's'} (hourly stay)` : `${nights} Night${nights > 1 ? 's' : ''}`;
   
   const formattedPaid = booking.paidAmount.toLocaleString('en-IN');
   const formattedTotal = booking.totalAmount.toLocaleString('en-IN');
@@ -460,7 +465,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
         </div>
         <div class="stay-col">
           <div class="stay-label">🔑 Booking Summary</div>
-          <div class="stay-value">${booking.rooms} Room x ${nights} Night${nights > 1 ? 's' : ''}</div>
+          <div class="stay-value">${booking.rooms} Room x ${lengthText}</div>
         </div>
       </div>
       ${(booking.bookingRooms || []).length > 1 ? `
@@ -475,7 +480,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
       
       <table class="pricing-table">
         <tr class="pricing-row">
-          <td>Room Charges (${booking.rooms} Room${booking.rooms > 1 ? 's' : ''} x ${nights} Night${nights > 1 ? 's' : ''}${savings > 0 ? ', after discounts' : ''})</td>
+          <td>Room Charges (${booking.rooms} Room${booking.rooms > 1 ? 's' : ''} x ${lengthText}${savings > 0 ? ', after discounts' : ''})</td>
           <td style="text-align: right; font-weight: 700;">₹${inr(roomPrice)}</td>
         </tr>
         <tr class="pricing-row">
@@ -601,11 +606,11 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
         </tr>
         <tr>
           <td style="color: #64748b; font-weight: 700;">Check-in Date</td>
-          <td style="font-weight: 700; color: #0f172a;">${checkInDate} (after 02:00 PM)</td>
+          <td style="font-weight: 700; color: #0f172a;">${checkInDate}${hourly ? '' : ' (after 02:00 PM)'}</td>
         </tr>
         <tr>
           <td style="color: #64748b; font-weight: 700;">Check-out Date</td>
-          <td style="font-weight: 700; color: #0f172a;">${checkOutDate} (before 11:00 AM)</td>
+          <td style="font-weight: 700; color: #0f172a;">${checkOutDate}${hourly ? '' : ' (before 11:00 AM)'}</td>
         </tr>
         <tr>
           <td style="color: #64748b; font-weight: 700;">Room Type</td>
@@ -676,13 +681,18 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 
     // Several rooms: "2 × Premium Suite, 1 × Standard Room"
     const roomLabel = { ...booking.roomType, name: roomsSummary(booking.bookingRooms, booking, booking.roomType?.name) };
-    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, booking.ratePlan, await getSupportContacts());
+    // Hourly stays have no rate plan: room only, with the hourly cancellation rule
+    const hrs = Number(booking.metadata?.hourly?.freeCancelHours ?? 2);
+    const plan = booking.ratePlan || { name: 'Hourly stay', mealPlan: 'NONE', cancellationPolicy: hrs > 0 ? `Free cancellation until ${hrs} hour${hrs === 1 ? '' : 's'} before check-in; no refund after that.` : 'Non-refundable once booked.' };
+    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, plan, await getSupportContacts());
 
     console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
     
     await queueService.enqueue('email', 'SEND_BOOKING_CONFIRMATION', {
       to: booking.guestEmail,
-      subject: `Booking Confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`,
+      subject: booking.stayType === 'HOURLY'
+        ? `Hourly stay confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`
+        : `Booking Confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`,
       html: emailHtml
     }, { priority: 2 });
     

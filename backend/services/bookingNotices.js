@@ -36,11 +36,19 @@ const claim = async (booking, key) => {
   return true;
 };
 
+const hourly = (b) => b.stayType === 'HOURLY';
+const istTime = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+/** "Thu, 10 Dec 2026 to Fri, 11 Dec 2026" or, hourly, "Thu, 10 Dec 2026, 11:00 am – 2:00 pm (3 hours)" */
+const whenText = (b) => (hourly(b)
+  ? `${emailDay(b.slotStart || b.checkIn)}, ${istTime(b.slotStart || b.checkIn)} – ${istTime(b.slotEnd || b.checkOut)} (${b.hours} hours)`
+  : `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`);
+
 const stayRows = (b) => [
   ['Booking', b.bookingRef],
   ['Hotel', b.hotel?.name],
-  ['Check-in', emailDay(b.checkIn)],
-  ['Check-out', emailDay(b.checkOut)],
+  ...(hourly(b)
+    ? [['Hourly stay', whenText(b)]]
+    : [['Check-in', emailDay(b.checkIn)], ['Check-out', emailDay(b.checkOut)]]),
   ['Rooms', roomsSummary(b.bookingRooms, b, b.roomType?.name)],
   ['Guests', guestsLabel(b.adults, b.children)],
 ];
@@ -51,7 +59,7 @@ const guestRows = (b) => [
 export const onBookingConfirmed = async (bookingId) => {
   const b = await load(bookingId);
   if (!b || b.status !== 'CONFIRMED' || !(await claim(b, 'confirmed'))) return;
-  const when = `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`;
+  const when = whenText(b);
 
   if (b.userId) {
     await notifyUser(b.userId, {
@@ -66,13 +74,13 @@ export const onBookingConfirmed = async (bookingId) => {
 
   await notifyHotel(b.hotelId, {
     type: 'NEW_BOOKING',
-    title: `New booking: ${b.guestName}`,
+    title: `${hourly(b) ? 'New hourly booking' : 'New booking'}: ${b.guestName}`,
     message: `${b.bookingRef} · ${when} · ${roomsSummary(b.bookingRooms, b, b.roomType?.name)} · ${inr(b.totalAmount)}`,
     metadata: { bookingId: b.id },
     email: {
       jobType: 'SEND_NEW_BOOKING_HOTEL',
       priority: 2,
-      subject: `New booking ${b.bookingRef}: ${b.guestName}, ${emailDay(b.checkIn)}`,
+      subject: hourly(b) ? `New hourly booking ${b.bookingRef}: ${b.guestName}, ${whenText(b)}` : `New booking ${b.bookingRef}: ${b.guestName}, ${emailDay(b.checkIn)}`,
       html: await emailLayout({
         title: `New booking at ${b.hotel.name}`,
         body: `<p>You have a new confirmed booking${b.paymentStatus === 'PAID' ? ', paid online' : ''}.</p>`,
@@ -127,7 +135,7 @@ export const onBookingCancelled = async (bookingId, { initiatedBy = 'GUEST', ref
     email: {
       jobType: 'SEND_BOOKING_CANCELLED_HOTEL',
       priority: 2,
-      subject: `Booking cancelled ${b.bookingRef}: ${b.guestName}, ${emailDay(b.checkIn)}`,
+      subject: `Booking cancelled ${b.bookingRef}: ${b.guestName}, ${hourly(b) ? whenText(b) : emailDay(b.checkIn)}`,
       html: await emailLayout({
         title: `Booking ${b.bookingRef} was cancelled`,
         body: `<p>${h({ GUEST: 'The guest', HOTEL: 'Your team', ADMIN: 'ZivoHotels', SYSTEM: 'The system (payment not received)' }[initiatedBy] || 'Someone')} cancelled this booking. The rooms are back in your inventory.</p>`,
@@ -171,7 +179,7 @@ export const sendStayMessages = async (now = new Date()) => {
   let sent = 0;
   // Check-in within the next 12-36 hours (tomorrow), still confirmed
   const arriving = await prisma.booking.findMany({
-    where: { status: 'CONFIRMED', checkIn: { gte: new Date(now.getTime() + 12 * HOUR), lte: new Date(now.getTime() + 36 * HOUR) } },
+    where: { status: 'CONFIRMED', stayType: { not: 'HOURLY' }, checkIn: { gte: new Date(now.getTime() + 12 * HOUR), lte: new Date(now.getTime() + 36 * HOUR) } },
     select: { id: true }, take: 300,
   });
   for (const { id } of arriving) {
@@ -194,6 +202,35 @@ export const sendStayMessages = async (now = new Date()) => {
         type: 'CHECKIN_REMINDER', title: `Your stay at ${b.hotel.name} is tomorrow`, message: `${b.bookingRef} · check-in ${emailDay(b.checkIn)}`,
         link: '/my-bookings', metadata: { bookingId: b.id }, email,
         sms: `ZivoHotels: see you tomorrow at ${b.hotel.name}. Booking ${b.bookingRef}. Carry a photo ID.`,
+      });
+    }
+    sent += 1;
+  }
+
+  // Hourly stays starting within the next 2 hours: a short reminder
+  const soon = await prisma.booking.findMany({
+    where: { status: 'CONFIRMED', stayType: 'HOURLY', slotStart: { gt: now, lte: new Date(now.getTime() + 2 * HOUR) } },
+    select: { id: true }, take: 300,
+  });
+  for (const { id } of soon) {
+    const b = await load(id);
+    if (!b || b.metadata?.notices?.hourlyReminder || !(await claim(b, 'hourlyReminder'))) continue;
+    const contact = b.hotel.integrationSettings?.contactInfo || {};
+    if (b.userId) {
+      await notifyUser(b.userId, {
+        type: 'CHECKIN_REMINDER', title: `Check-in at ${istTime(b.slotStart)}: ${b.hotel.name}`, message: `${b.bookingRef} · ${whenText(b)}`,
+        link: '/my-bookings', metadata: { bookingId: b.id },
+        sms: `ZivoHotels: your hourly stay at ${b.hotel.name} starts at ${istTime(b.slotStart)}. Booking ${b.bookingRef}. Carry a photo ID.`,
+        email: b.guestEmail ? {
+          to: b.guestEmail, jobType: 'SEND_CHECKIN_REMINDER',
+          subject: `Your hourly stay starts at ${istTime(b.slotStart)} · ${b.hotel.name}`,
+          html: await emailLayout({
+            title: 'Your hourly stay starts soon',
+            body: `<p>Your room at <b>${h(b.hotel.name)}</b> is ready from <b>${h(istTime(b.slotStart))}</b> to <b>${h(istTime(b.slotEnd))}</b>. Carry a government photo ID for every adult guest. Arriving late does not extend the stay.</p>`,
+            rows: [...stayRows(b), ['Address', [b.hotel.location, b.hotel.city].filter(Boolean).join(', ')], ['Hotel phone', contact.receptionPhone]],
+            cta: { label: 'View booking', href: '/my-bookings' },
+          }),
+        } : null,
       });
     }
     sent += 1;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { hourlyQuery } from '../utils/hourly';
 import { MapPin, Star, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { occupancyOf, occParams } from '../utils/occupancy';
@@ -22,7 +23,10 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const detailQuery = searchParams?.checkIn && searchParams?.checkOut
     ? `?${new URLSearchParams({ checkin: searchParams.checkIn, checkout: searchParams.checkOut, ...occParams(occupancyOf(searchParams)) })}`
     : '';
-  const href = `/hotel/${hotel.id}${detailQuery}`;
+  // Hourly search results link to the hotel's hourly booking for the same slot
+  const href = hotel.hourly
+    ? `/hotel/${hotel.id}?${hourlyQuery({ date: hotel.hourly.date, start: hotel.hourly.start || hotel.hourly.nextStart || '10:00', hours: hotel.hourly.hours, guests: searchParams?.guests || 2 })}`
+    : `/hotel/${hotel.id}${detailQuery}`;
 
   const reviewCount = hotel.reviewCount || 0;
   const reviewScore = Number(hotel.reviewScore ?? hotel.rating) || 0;
@@ -44,7 +48,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
       {hotel.badges?.isTopRated && <span className="absolute top-3 left-3 z-10 bg-navy-800 text-white text-xs font-bold px-2.5 py-1 rounded-md">Top rated</span>}
       {soldOut && (
         <div className="absolute inset-0 z-20 bg-navy-950/60 flex items-center justify-center">
-          <span className="bg-white text-gray-900 font-bold px-4 py-2 rounded-lg text-sm">Sold out for these dates</span>
+          <span className="bg-white text-gray-900 font-bold px-4 py-2 rounded-lg text-sm">{hotel.hourly ? 'Not free at this time' : 'Sold out for these dates'}</span>
         </div>
       )}
       {imgError ? (
@@ -73,7 +77,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const price = displayPrice > 0 ? (
     <div className={row ? 'md:text-right' : ''}>
       {originalPrice && <p className="text-xs text-gray-500 line-through tabular-nums">₹{originalPrice.toLocaleString('en-IN')}</p>}
-      <p className="tabular-nums whitespace-nowrap"><span className="text-xl font-bold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span><span className="text-xs text-gray-500 ml-1">/ night</span></p>
+      <p className="tabular-nums whitespace-nowrap"><span className="text-xl font-bold text-gray-900">₹{displayPrice.toLocaleString('en-IN')}</span><span className="text-xs text-gray-500 ml-1">{hotel.hourly ? `for ${hotel.hourly.hours} hours` : '/ night'}</span></p>
       <p className="text-xs text-gray-500">+ GST</p>
     </div>
   ) : <p className="text-sm font-semibold text-gray-600">Price on request</p>;

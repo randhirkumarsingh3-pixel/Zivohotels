@@ -2,6 +2,7 @@ import express from 'express';
 import { createHotel, updateHotel, deleteHotel, getAllHotels, getHotelById, searchHotels } from '../controllers/hotelController.js';
 import { suggestNearby, lookupNearby } from '../controllers/nearbyController.js';
 import { getHotelReviews } from '../controllers/reviewController.js';
+import { searchHourly, hotelOffer } from '../controllers/hourlyController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -11,6 +12,9 @@ router.route('/')
   .post(protect, authorizeRoles('ADMIN', 'OWNER'), createHotel);
 
 router.get('/search', searchHotels);
+// Hourly stays: hotels offering a slot, and what one hotel offers by the hour on a date
+router.get('/search/hourly', searchHourly);
+router.get('/:id/hourly', hotelOffer);
 
 // What's nearby (Location step): suggestions from OpenStreetMap around a pin, and place lookup
 router.post('/nearby/suggest', protect, authorizeRoles('ADMIN', 'OWNER'), suggestNearby);

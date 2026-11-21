@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { hourlyFromQuery, timeLabel } from '../utils/hourly';
 import { useLocation } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
-import { getHotels, trackEvent } from '../services/api';
+import { getHotels, trackEvent, searchHourlyHotels } from '../services/api';
 import { defaultStay } from '../components/home/searchLinks';
 import { occupancyOf, occParams, occToParam } from '../utils/occupancy';
 
@@ -110,7 +111,10 @@ const Listing = () => {
     ? { ...activeSearchParams, destination: { type: 'near', label: NEAR_ME, value: 'near', lat: activeSearchParams.lat, lng: activeSearchParams.lng } }
     : activeSearchParams), [isNear, activeSearchParams]);
   const placeName = isNear ? '' : activeSearchParams.destination;
-  const heading = isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
+  const hourlyQ = hourlyFromQuery(location.search);
+  const heading = hourlyQ
+    ? `Hourly stays${hourlyQ.city ? ` in ${hourlyQ.city}` : ''}`
+    : isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
   usePageTitle(heading,
     placeName ? `Compare hotels in ${placeName} on ZivoHotels: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
 
@@ -121,10 +125,13 @@ const Listing = () => {
     includeSoldOut: true,
   }), [minStars, sortBy]);
 
+  // Hourly search (?stay=hourly&date=&start=&hours=&guests=)
+  const hourly = useMemo(() => hourlyFromQuery(location.search), [location.search]);
+
   const fetchHotels = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getHotels(activeSearchParams, serverFilters);
+      const data = hourly ? await searchHourlyHotels(hourly) : await getHotels(activeSearchParams, serverFilters);
       setHotels(data?.hotels || data || []);
     } catch (err) {
       console.error('Failed to fetch hotels:', err);
@@ -132,7 +139,7 @@ const Listing = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeSearchParams, serverFilters]);
+  }, [activeSearchParams, serverFilters, hourly]);
 
   // Track once per search (not when the analytics context object changes)
   useEffect(() => {
@@ -242,7 +249,8 @@ const Listing = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-5">
             {heading}
           </h1>
-          <SmartSearchBar isMobile={isMobile} initial={searchBarInitial} />
+          <SmartSearchBar isMobile={isMobile} initial={hourly ? { destination: hourly.city, hourly } : searchBarInitial} />
+          {hourly && <p className="mt-3 text-sm text-navy-100">{`${hourly.hours}-hour stays from ${timeLabel(hourly.start)} on ${new Date(`${hourly.date}T06:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}. Prices before GST.`}</p>}
         </div>
       </div>
 

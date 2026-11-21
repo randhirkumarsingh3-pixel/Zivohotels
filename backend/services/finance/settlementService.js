@@ -162,6 +162,12 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
   if (existing) return existing;
 
   const terms = await settlementTermsForHotel(tx, booking.hotelId);
+  // Hourly stays can have their own commission (Admin → Hourly stays)
+  if (booking.stayType === 'HOURLY') {
+    const cfg = await tx.systemConfig.findUnique({ where: { key: 'hourly_settings' } }).catch(() => null);
+    const pct = cfg?.value?.commissionPercent;
+    if (pct !== null && pct !== undefined && pct !== '' && Number.isFinite(Number(pct))) terms.commissionPercent = Number(pct);
+  }
   const { commissionPercent, sameState, hotelState } = terms;
   const m = computeSettlement({ ...input, ...terms });
 

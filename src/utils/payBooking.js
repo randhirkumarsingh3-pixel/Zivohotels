@@ -47,7 +47,7 @@ export const payForBooking = async (booking, prefill = {}) => {
 /** "Sat, 21 Nov, 6:30 pm" (India time) */
 export const deadlineLabel = (d) => new Date(d).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 
-/** A reserved pay-later booking still waiting for its payment (before the deadline). */
-export const needsPayment = (b) => b?.status === 'PENDING' && b?.paymentType === 'PAY_AT_HOTEL' && b?.paymentStatus !== 'PAID'
+/** A booking still waiting for its payment before its deadline: pay later, or an hourly stay held for 30 minutes. */
+export const needsPayment = (b) => b?.status === 'PENDING' && (b?.paymentType === 'PAY_AT_HOTEL' || b?.stayType === 'HOURLY') && b?.paymentStatus !== 'PAID'
   && b?.expiresAt && new Date(b.expiresAt) > new Date();
 

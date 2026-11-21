@@ -5,6 +5,7 @@ import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
 import { getProperty, updateProperty, updateBookingEmails } from '../controllers/extranet/propertyController.js';
+import { extranetGetSetup, extranetSaveSetup, extranetAllocations, extranetSetAllocation, extranetTimeline } from '../controllers/hourlyController.js';
 import { getRooms } from '../controllers/extranet/roomController.js';
 import { getBookings, updateBookingStatus } from '../controllers/extranet/bookingController.js';
 import { listHotelRequests, respondHotelRequest } from '../controllers/stayRequestController.js';
@@ -83,6 +84,12 @@ router.post('/reviews/:reviewId/report', reportReview);
 // Promotions are managed through /admin/promotions (owners: their own properties).
 
 // Notifications & Activity
+// Hourly stays: settings and room types, rooms per day, the day's timeline
+router.get('/hourly', extranetGetSetup);
+router.put('/hourly', extranetSaveSetup);
+router.get('/hourly/allocations', extranetAllocations);
+router.put('/hourly/allocations', extranetSetAllocation);
+router.get('/hourly/timeline', extranetTimeline);
 router.get('/notifications', fetchNotifications);
 router.put('/notifications/read', markNotificationsRead);
 router.get('/activity', fetchActivityTimeline);

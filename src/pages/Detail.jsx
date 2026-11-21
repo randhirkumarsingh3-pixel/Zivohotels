@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getHotelById, trackEvent, getMyMembership, previewBookingApi } from '../services/api';
+import { getHotelById, trackEvent, getMyMembership, previewBookingApi, getHotelHourly } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
@@ -18,6 +18,8 @@ import StayBar from '../components/hotel/StayBar';
 import SectionTabs from '../components/hotel/SectionTabs';
 import OverviewSection from '../components/hotel/OverviewSection';
 import SimilarHotels from '../components/hotel/SimilarHotels';
+import HourlyBooking from '../components/hotel/HourlyBooking';
+import { hourlyFromQuery, defaultHourly, hourlyQuery } from '../utils/hourly';
 
 // Rooms first: they're what guests act on
 const SECTIONS = [['rooms', 'Rooms'], ['overview', 'Overview'], ['amenities', 'Amenities'], ['reviews', 'Reviews'], ['policies', 'Policies'], ['location', 'Location']];
@@ -164,6 +166,29 @@ const Detail = () => {
 
   const [hotel,   setHotel]   = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Hourly stays: shown as a second way to book when the hotel offers them (?stay=hourly opens it)
+  const hourlyInit = useRef(hourlyFromQuery(location.search) || defaultHourly()).current;
+  const [mode, setMode] = useState(hourlyFromQuery(location.search) ? 'HOURLY' : 'NIGHTLY');
+  const [hourlyOffered, setHourlyOffered] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getHotelHourly(id, hourlyInit.date, hourlyInit.hours)
+      .then((o) => { if (live) setHourlyOffered(Boolean(o && (o.roomTypes || []).length)); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [id, hourlyInit]);
+  const switchMode = (m) => {
+    setMode(m);
+    const q = new URLSearchParams(location.search);
+    if (m === 'HOURLY') navigate({ search: `?${hourlyQuery(hourlyInit)}` }, { replace: true });
+    else { ['stay', 'date', 'start', 'hours'].forEach((k) => q.delete(k)); navigate({ search: q.toString() ? `?${q}` : '' }, { replace: true }); }
+  };
+  // The hourly choice stays in the link, so a reload or a shared link keeps it
+  const onHourlySlot = useCallback((slot) => {
+    const next = `?${hourlyQuery(slot)}`;
+    if (window.location.search !== next) navigate({ search: next }, { replace: true });
+  }, [navigate]);
 
   // Selection: a room type and plan for each room of the stay (rooms can differ). The room being
   // chosen for is "active"; the list on the left picks for it.
@@ -422,13 +447,29 @@ const Detail = () => {
         <PhotoGallery hotelName={hotel.name} photos={photos} />
       </div>
 
+      {/* Nightly or hourly (only for hotels offering hourly stays) */}
+      {(hourlyOffered || mode === 'HOURLY') && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3">
+          <div role="tablist" aria-label="Type of stay" className="inline-flex rounded-xl bg-white border border-gray-200 p-1 gap-1">
+            {[['NIGHTLY', 'Nightly stay'], ['HOURLY', 'Hourly stay']].map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => switchMode(k)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${mode === k ? 'bg-navy-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 3. Your stay: dates and guests, changeable here on every screen size */}
-      <div id="stay" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 relative z-30">
-        <StayBar
-          checkIn={checkIn} checkOut={checkOut} occupancy={occupancy}
-          onChange={changeStay} openPicker={openPicker} onToggle={togglePicker} pickerKey={datePickerKey}
-        />
-      </div>
+      {mode === 'HOURLY' ? (
+        <HourlyBooking hotel={hotel} initial={hourlyInit} onSlotChange={onHourlySlot} />
+      ) : (
+        <div id="stay" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 relative z-30">
+          <StayBar
+            checkIn={checkIn} checkOut={checkOut} occupancy={occupancy}
+            onChange={changeStay} openPicker={openPicker} onToggle={togglePicker} pickerKey={datePickerKey}
+          />
+        </div>
+      )}
 
       <SectionTabs sections={SECTIONS} />
 
@@ -437,7 +478,7 @@ const Detail = () => {
           <div className="flex-1 min-w-0 space-y-6">
 
             {/* 4. Rooms and rates */}
-            <section id="rooms" className="scroll-mt-32">
+            {mode !== 'HOURLY' && <section id="rooms" className="scroll-mt-32">
               <div className="flex flex-wrap items-end justify-between gap-2 mb-4">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Choose your room</h2>
@@ -486,7 +527,7 @@ const Detail = () => {
                   <p className="text-sm">No rooms are open for booking yet.</p>
                 </div>
               )}
-            </section>
+            </section>}
 
             {/* 5. Overview */}
             <Section id="overview" title="Overview">
@@ -509,7 +550,7 @@ const Detail = () => {
           </div>
 
           {/* Booking summary: your stay, your rooms, the price from checkout's own calculation */}
-          <aside className="w-full lg:w-[380px]" aria-label="Your booking">
+          {mode !== 'HOURLY' && <aside className="w-full lg:w-[380px]" aria-label="Your booking">
             <div id="summary" className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 lg:sticky lg:top-32 scroll-mt-32">
               <h2 className="text-lg font-bold text-gray-900">Your booking</h2>
               <div className="mt-3 rounded-xl border border-gray-200 divide-y divide-gray-200 text-sm">
@@ -615,7 +656,7 @@ const Detail = () => {
                 {CANCELLATION_TEXT[hotel.cancellationPolicy] || CANCELLATION_TEXT.FREE_CANCEL_24H}
               </p>
             </div>
-          </aside>
+          </aside>}
         </div>
       </div>
 
@@ -623,7 +664,7 @@ const Detail = () => {
       <SimilarHotels hotel={hotel} searchParams={searchParams} />
 
       {/* Phones: price and the next step always in reach */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(6,44,77,0.08)] px-4 py-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+      <div className={`${mode === 'HOURLY' ? 'hidden' : ''} lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(6,44,77,0.08)] px-4 py-3`} style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto">
           <div className="min-w-0">
             {checkIn && checkOut && allChosen && quote ? (

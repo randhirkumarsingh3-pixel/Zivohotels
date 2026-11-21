@@ -139,6 +139,9 @@ model Hotel {
   @@index([country])
   @@index([pincode])
   stayRequests          StayRequest[]
+  /// Hourly stays: { enabled, approved (by ZivoHotels), openFrom "08:00", openTo "21:00",
+  /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
+  hourlySettings        Json?
 }
 
 model RoomType {
@@ -165,6 +168,12 @@ model RoomType {
   images          RoomTypeImage[]
 
   @@unique([hotelId, code])
+  /// Hourly stays for this room type: on/off, rooms set aside for hourly use each day, and the
+  /// price of each duration in hours ({ "3": 1299, "6": 1999 })
+  hourlyEnabled         Boolean            @default(false)
+  hourlyRooms           Int                @default(0)
+  hourlyPrices          Json?
+  hourlyAllocations     HourlyAllocation[]
 }
 
 model HotelImage {
@@ -308,7 +317,13 @@ model Booking {
 
   @@index([hotelId])
   @@index([userId])
+  /// NIGHTLY (dates) or HOURLY (a time slot on one day: slotStart to slotEnd, hours long)
+  stayType            String                 @default("NIGHTLY")
+  slotStart           DateTime?
+  slotEnd             DateTime?
+  hours               Int?
   @@index([checkIn, checkOut])
+  @@index([stayType, roomTypeId, slotStart])
   @@index([status])
 }
 /// One room of a booking: its room type and plan (rooms of one booking can differ), who stays in it
@@ -1647,4 +1662,17 @@ model BackgroundJob {
 
   @@index([status, queue, runAt])
   @@index([priority])
+}
+
+/// Rooms for hourly use on one day for a room type, when it differs from RoomType.hourlyRooms
+/// (more, fewer, or closed for hourly stays that day).
+model HourlyAllocation {
+  id         String   @id @default(uuid())
+  roomTypeId String
+  date       DateTime @db.Date
+  rooms      Int
+  stopSell   Boolean  @default(false)
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, date])
 }

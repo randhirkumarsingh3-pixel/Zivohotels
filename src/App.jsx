@@ -27,6 +27,7 @@ const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const SetPassword = lazy(() => import('./pages/SetPassword'));
 const ListProperty = lazy(() => import('./pages/ListProperty'));
+const HourlyCheckout = lazy(() => import('./pages/HourlyCheckout'));
 import AccountGuard from './components/auth/AccountGuard';
 
 // LAYOUTS (LAZY)
@@ -79,6 +80,8 @@ const ExtranetReviews = lazy(() => import('./extranet/pages/ExtranetReviews'));
 const ExtranetPromotions = lazy(() => import('./extranet/pages/ExtranetPromotions'));
 const ExtranetSettings = lazy(() => import('./extranet/pages/ExtranetSettings'));
 const PropertyOnboarding = lazy(() => import('./extranet/pages/PropertyOnboarding'));
+const ExtranetHourly = lazy(() => import('./extranet/pages/ExtranetHourly'));
+const AdminHourly = lazy(() => import('./admin/pages/Hourly'));
 
 import { ExtranetProvider } from './extranet/context/ExtranetContext';
 
@@ -125,6 +128,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route path="/checkout/hourly" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><HourlyCheckout /></ProtectedRoute>} />
               <Route path="/rewards" element={<Rewards />} />
               <Route path="/membership" element={<Membership />} />
               <Route path="/wallet" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Wallet /></ProtectedRoute>} />
@@ -155,6 +159,7 @@ function App() {
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
               <Route path="bookings" element={<AdminBookings />} />
+              <Route path="hourly" element={<AdminHourly />} />
 
               {/* Inventory & Distro */}
               <Route path="configuration" element={<Configuration />} />
@@ -245,6 +250,7 @@ function App() {
               <Route path="property" element={<ExtranetProperty />} />
               <Route path="rooms" element={<ExtranetRooms />} />
               <Route path="inventory" element={<ExtranetInventory />} />
+              <Route path="hourly" element={<ExtranetHourly />} />
               <Route path="pricing" element={<ExtranetDynamicPricing />} />
               <Route path="bookings" element={<ExtranetBookings />} />
               <Route path="finance" element={<ExtranetFinance />} />

@@ -296,6 +296,9 @@ export const bookingsForChannel = async (integ, { since, limit }) => {
       status: b.status === 'CANCELLED' ? 'CANCELLED' : b.status === 'NO_SHOW' ? 'NO_SHOW' : 'CONFIRMED',
       createdAt: b.createdAt, updatedAt: b.updatedAt,
       checkIn: indiaDay(b.checkIn), checkOut: indiaDay(b.checkOut),
+      // Hourly stays (a slot on one day) use rooms set aside for hourly use, not night inventory
+      stayType: b.stayType || 'NIGHTLY',
+      ...(b.stayType === 'HOURLY' ? { slot: { start: b.slotStart, end: b.slotEnd, hours: b.hours } } : {}),
       roomCode: roomCode(b.roomTypeId), rateCode: rateCode(b.ratePlanId),
       rooms: b.rooms, adults: b.adults, children: b.children,
       // Each room with its own room / rate code, guests and lead guest (rooms of a booking can be
