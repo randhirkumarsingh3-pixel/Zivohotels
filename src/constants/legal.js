@@ -15,7 +15,7 @@ export const LEGAL = {
   gstin: '10AADCZ1700C1Z8',
   // Published under the role title, as the company chose; the email reaches the officer
   grievanceOfficer: { name: 'Grievance Officer', email: 'grievance@zivohotels.com', phone: null },
-  jurisdictionCity: 'Samastipur, Bihar', // courts with jurisdiction
+  jurisdictionCity: 'Samastipur, Bihar, India', // courts with jurisdiction
   contacts: {
     bookings: 'support@zivohotels.com',
     partners: 'partners@zivohotels.com',
