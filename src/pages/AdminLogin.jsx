@@ -45,7 +45,7 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-navy-900 flex flex-col items-center justify-center px-4 pt-24 pb-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center">
