@@ -60,6 +60,18 @@ export const sendPayLaterEmail = async (bookingId, kind) => {
     <p style="font-size:12px;color:#64748b">${kind === 'expired' ? '' : `Or open My Bookings: ${h(site())}/my-bookings`}</p>` : ''}
     ${support.phone || support.email ? `<p style="font-size:12px;color:#64748b">Questions? ZivoHotels support: ${[support.phone, support.email].filter(Boolean).map(h).join(' · ')}</p>` : ''}
   </body></html>`;
+  if (b.userId) {
+    // The bell too (no second email)
+    const { notifyUser } = await import('./notifyService.js');
+    notifyUser(b.userId, {
+      type: `PAY_LATER_${kind.toUpperCase()}`,
+      title: { reserved: `Reserved: pay by ${payLaterLabel(b.expiresAt)}`, reminder: `Pay by ${payLaterLabel(b.expiresAt)} or the booking is cancelled`, expired: 'Booking cancelled: payment not received' }[kind],
+      message: `${b.bookingRef} · ${b.hotel.name} · ${inr(b.totalAmount)}`,
+      link: '/my-bookings',
+      metadata: { bookingId: b.id },
+      sms: kind === 'reminder' ? `ZivoHotels: pay ${inr(b.totalAmount)} by ${payLaterLabel(b.expiresAt)} to keep booking ${b.bookingRef}, or it will be cancelled.` : null,
+    }).catch(() => {});
+  }
   return queueService.enqueue('email', 'SEND_PAY_LATER', { to: b.guestEmail, subject: c.subject, html }, { priority: 2 });
 };
 

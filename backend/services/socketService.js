@@ -55,6 +55,9 @@ class SocketService {
         connectedAt: new Date()
       };
 
+      // Personal room: this person's notifications (the bell)
+      socket.join(`user_${socket.user.id}`);
+
       // Property-Scoped Rooms
       if (socket.user.hotelId) {
         const roomId = `hotel_${socket.user.hotelId}`;
@@ -100,6 +103,11 @@ class SocketService {
     });
 
     console.log('🚀 Socket.io Server Initialized');
+  }
+
+  /** Sends one event to one room (user_<id>, hotel_<id>, admin_global). No-op before start. */
+  emitTo(room, event, data) {
+    if (this.io) this.io.to(room).emit(event, data);
   }
 
   /**

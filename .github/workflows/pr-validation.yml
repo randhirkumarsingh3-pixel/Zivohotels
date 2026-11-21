@@ -42,6 +42,11 @@ jobs:
       PORT: 5000
       # The end-to-end booking test makes more booking requests than the per-minute limit allows
       BOOKING_RATE_LIMIT_PER_MINUTE: 30
+      # The sign-up / sign-in test: codes are shown instead of sent (no email or SMS in CI),
+      # and it makes more sign-in requests than the 15-minute limit allows
+      EMAIL_TEST_MODE: 'true'
+      SMS_PROVIDER: test
+      AUTH_RATE_LIMIT_PER_15_MIN: 200
 
     steps:
       - name: Checkout Code
@@ -80,7 +85,7 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://localhost:5000/ready && break; sleep 1; done
           npm run test:smoke -- --url=http://localhost:5000 || { cat server.log; exit 1; }
 
-      - name: End-to-end booking test (book, pay, cancel, pay later)
+      - name: End-to-end tests (booking, pay, cancel, pay later; sign-up and sign-in)
         run: npm run test:e2e -- --url=http://localhost:5000 || { tail -100 server.log; exit 1; }
 
       - name: Security audit (production dependencies)

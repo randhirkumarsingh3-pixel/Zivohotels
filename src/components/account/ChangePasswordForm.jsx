@@ -9,8 +9,8 @@ import { useAuth } from '../../context/AuthContext';
  */
 const inputCls = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:border-navy-500 focus:ring-2 focus:ring-navy-500/20 outline-none';
 
-const ChangePasswordForm = () => {
-  const { replaceToken } = useAuth();
+const ChangePasswordForm = ({ onChanged }) => {
+  const { replaceToken, updateUser } = useAuth();
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -27,6 +27,8 @@ const ChangePasswordForm = () => {
       replaceToken(res?.token);
       setForm({ current: '', next: '', confirm: '' });
       setMsg({ ok: true, text: res?.message || 'Password changed.' });
+      updateUser({ mustChangePassword: false });
+      onChanged?.();
     } catch (err) {
       setMsg({ ok: false, text: err.message || 'Could not change the password.' });
     } finally { setBusy(false); }

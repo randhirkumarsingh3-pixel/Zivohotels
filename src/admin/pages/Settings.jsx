@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Headphones, Mail, Tag, Globe, Share2, CreditCard, IndianRupee, CalendarDays, Loader2, Save } from 'lucide-react';
 import EmailSettings from '../components/settings/EmailSettings';
+import DeliveryStatus from '../components/settings/DeliveryStatus';
 import DiscountSettings from '../components/settings/DiscountSettings';
 import SEOSettings from '../components/settings/SEOSettings';
 import SocialSettings from '../components/settings/SocialSettings';
@@ -52,7 +53,7 @@ const Settings = () => {
 
   const tabs = [
     { id: 'support', name: 'Guest Support', icon: <Headphones size={18} /> },
-    { id: 'email', name: 'Email Templates', icon: <Mail size={18} /> },
+    { id: 'email', name: 'Email & SMS', icon: <Mail size={18} /> },
     { id: 'discount', name: 'Discount & Loyalty', icon: <Tag size={18} /> },
     { id: 'seo', name: 'SEO Settings', icon: <Globe size={18} /> },
     { id: 'social', name: 'Social Media', icon: <Share2 size={18} /> },
@@ -92,7 +93,7 @@ const Settings = () => {
         {/* Settings Content Area */}
         <div className="flex-1 bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm min-h-[600px]">
           {activeTab === 'support' && <SupportSettings />}
-          {activeTab === 'email' && <EmailSettings />}
+          {activeTab === 'email' && <><DeliveryStatus /><EmailSettings /></>}
           {activeTab === 'discount' && <DiscountSettings />}
           {activeTab === 'seo' && <SEOSettings />}
           {activeTab === 'social' && <SocialSettings />}

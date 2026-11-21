@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import NotificationBell from './shared/NotificationBell';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +48,7 @@ const Header = () => {
             <div className="flex items-center gap-3 ml-2 border-l pl-6 border-gray-200">
               {isAuthenticated ? (
                 <>
+                  <NotificationBell />
                   <Link to="/account" className="flex items-center text-gray-700 font-medium bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200" title="My account">
                     <User className="h-4 w-4 mr-2 text-navy-700" aria-hidden="true" />
                     Hi, {user?.name?.split(' ')[0]}
@@ -65,10 +67,13 @@ const Header = () => {
             </div>
           </div>
 
-          <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}
-            className="lg:hidden p-2 -mr-2 rounded-lg text-navy-800 hover:bg-gray-100">
-            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          <div className="lg:hidden flex items-center gap-1">
+            {isAuthenticated && <NotificationBell />}
+            <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}
+              className="p-2 -mr-2 rounded-lg text-navy-800 hover:bg-gray-100">
+              {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
       </div>
 

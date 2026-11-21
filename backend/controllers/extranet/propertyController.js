@@ -80,3 +80,30 @@ export const updateProperty = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error updating property details' });
   }
 };
+
+/**
+ * Extra addresses that get this property's booking emails (new booking, cancellations, guest
+ * requests), on top of the reception email and the owner's login email. Up to 5.
+ * PUT /extranet/property/booking-emails { emails: [] }
+ */
+export const updateBookingEmails = async (req, res) => {
+  try {
+    const raw = Array.isArray(req.body?.emails) ? req.body.emails : [];
+    const emails = [...new Set(raw.map((e) => String(e || '').trim().toLowerCase()).filter(Boolean))];
+    const bad = emails.find((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (bad) return res.status(422).json({ success: false, message: `"${bad}" is not a valid email address.` });
+    if (emails.length > 5) return res.status(422).json({ success: false, message: 'Add up to 5 booking emails.' });
+    const hotel = await prisma.hotel.findUnique({ where: { id: req.scopedHotelId }, select: { integrationSettings: true } });
+    const settings = hotel?.integrationSettings || {};
+    const updated = await prisma.hotel.update({
+      where: { id: req.scopedHotelId },
+      data: { integrationSettings: { ...settings, contactInfo: { ...(settings.contactInfo || {}), bookingEmails: emails } } },
+      select: { integrationSettings: true },
+    });
+    await logActivity({ hotelId: req.scopedHotelId, userId: req.user.id, action: 'BOOKING_EMAILS_UPDATED', entityType: 'HOTEL', entityId: req.scopedHotelId, details: { count: emails.length } }).catch(() => {});
+    res.json({ success: true, message: 'Booking emails saved.', data: { bookingEmails: updated.integrationSettings.contactInfo.bookingEmails } });
+  } catch (error) {
+    console.error('updateBookingEmails:', error);
+    res.status(500).json({ success: false, message: 'Could not save the booking emails.' });
+  }
+};

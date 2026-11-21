@@ -2,6 +2,7 @@ import { User, Building2, Landmark, LifeBuoy, LogOut, Loader2, KeyRound } from '
 import ChangePasswordForm from '../../components/account/ChangePasswordForm';
 import { useAuth } from '../../context/AuthContext';
 import { useExtranet } from '../context/ExtranetContext';
+import BookingEmailsCard from '../components/BookingEmailsCard';
 
 /**
  * Extranet -> Settings: the signed-in partner's account and the active property's legal, contact
@@ -62,11 +63,13 @@ const ExtranetSettings = () => {
         <div className="px-6 py-5"><ChangePasswordForm /></div>
       </section>
 
-      <Card icon={Building2} title="Property contacts" note="Shown to guests and used for booking alerts. Change these in Property Info.">
+      <Card icon={Building2} title="Property contacts" note="Shown to guests. Change these in Property Info.">
         <Row label="Reception email" value={contact.receptionEmail} />
         <Row label="Reception phone" value={contact.receptionPhone} />
         <Row label="Manager" value={[contact.managerName, contact.managerPhone].filter(Boolean).join(' · ')} />
       </Card>
+
+      <BookingEmailsCard property={property} ownerEmail={user?.email} />
 
       <Card icon={Landmark} title="Legal & payout details" note="Locked after your property is submitted. Write to partner support to change them.">
         <Row label="Legal name" value={property.legalName} />

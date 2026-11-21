@@ -150,6 +150,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         bookingId, error: apiError.message, amount: refundAmount, paymentId: booking.razorpayPaymentId
       }, requestId);
       await prisma.refund.update({ where: { id: refundRecord.id }, data: { status: 'FAILED' } });
+      alertRefundFailure(booking, refundAmount, apiError.message);
       throw new CancellationError(502, `Payment refund failed: ${apiError.message}`);
     }
   }
@@ -250,18 +251,24 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     metadata: { bookingId, initiatedBy, refundAmount, retainedAmount }
   });
 
-  if (initiatedBy !== 'GUEST') {
-    const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId }, include: { owner: { select: { email: true, name: true } } } });
-    if (hotel?.owner?.email) {
-      await queueService.enqueue('email', 'SEND_BOOKING_CANCELLED_OWNER', {
-        to: hotel.owner.email,
-        subject: `Booking ${booking.bookingRef} cancelled — guest refund ${refundAmount > 0 ? 'initiated' : 'not needed'}`,
-        html: `<p>Dear ${hotel.owner.name || 'Partner'},</p><p>${message}</p><p>Guest: ${booking.guestName}<br/>Stay: ${new Date(booking.checkIn).toDateString()} – ${new Date(booking.checkOut).toDateString()}<br/>Property: ${hotel.name}</p><p>The rooms have been released back to your inventory.</p><p>— ZivoHotels</p>`
-      }, { priority: 2 });
-    }
-  }
+  // Guest: bell + email with the refund. Hotel: email to its booking recipients.
+  import('./bookingNotices.js')
+    .then((m) => m.onBookingCancelled(bookingId, { initiatedBy, refundAmount, refundTo: toWallet > 0 && !toSource ? 'wallet' : refundAmount > 0 ? 'source' : null }))
+    .catch((e) => console.error('[Notify] booking cancelled:', e.message));
 
   return { booking: finalizedBooking, refundAmount, retainedAmount, policyApplied, razorpayRefundId, refundToWallet: toWallet, refundToSource: toSource };
+};
+
+/** Admins hear at once when Razorpay refuses a refund: the guest is waiting for their money. */
+const alertRefundFailure = (booking, amount, error) => {
+  import('./notifyService.js').then(({ notifyAdmins }) => notifyAdmins({
+    type: 'REFUND_FAILED',
+    title: `Refund failed: ${booking.bookingRef}`,
+    message: `Razorpay refused a refund of ${inr(amount)}: ${String(error).slice(0, 160)}. Retry it from Admin → Bookings.`,
+    link: '/admin/bookings',
+    metadata: { bookingId: booking.id },
+    email: { jobType: 'SEND_ADMIN_ALERT', priority: 1, subject: `Refund failed for ${booking.bookingRef}`, html: `<p>Razorpay refused a refund of ${inr(amount)} for booking ${booking.bookingRef}.</p><p>Error: ${String(error).replace(/[<>&]/g, '')}</p><p>Retry it from Admin → Bookings.</p>` },
+  })).catch(() => {});
 };
 
 export default { cancelBookingWithRefund, initiatorForRole, CancellationError };
@@ -321,6 +328,7 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
       razorpayRefundId = r.id;
     } catch (apiError) {
       criticalLogger('REFUND_FAILURE', { bookingId, roomNumber: room.roomNumber, error: apiError.message, amount: toSource }, requestId);
+      alertRefundFailure(booking, toSource, apiError.message);
       throw new CancellationError(502, `Payment refund failed: ${apiError.message}`);
     }
   }
@@ -399,5 +407,6 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
         <p>New booking total: <b>${inr(newTotal)}</b>.</p></div>`,
     }, { priority: 2 }).catch(() => {});
   }
+  import('./bookingNotices.js').then((m) => m.onRoomCancelled(bookingId, { roomNumber: room.roomNumber, refundAmount: q.refundAmount, initiatedBy })).catch(() => {});
   return { booking: updated, ...q, toWallet, toSource, razorpayRefundId };
 };

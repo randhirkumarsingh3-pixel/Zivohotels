@@ -1,3 +1,4 @@
+import { sendPasswordChanged } from '../services/accountEmails.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -38,8 +39,9 @@ export const changePassword = asyncHandler(async (req, res) => {
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { password: await bcrypt.hash(newPassword, 12), tokenVersion: { increment: 1 }, mustChangePassword: false, passwordChangedAt: new Date(), passwordResetToken: null, passwordResetExpiry: null },
-    select: { id: true, role: true, tokenVersion: true },
+    select: { id: true, role: true, tokenVersion: true, name: true, email: true },
   });
+  sendPasswordChanged(updated, { ip: req.ip }).catch(() => {});
   const hotel = ['OWNER', 'MANAGER'].includes(updated.role) ? await prisma.hotel.findFirst({ where: { ownerId: updated.id }, select: { id: true } }) : null;
   await prisma.auditLog.create({ data: { action: 'PASSWORD_CHANGED', entityType: 'USER', entityId: updated.id, userId: updated.id, requestId: req.id, details: {} } }).catch(() => {});
   // A new session for this device (the old one stopped working with the version bump)
@@ -62,17 +64,16 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   await prisma.user.update({ where: { id: user.id }, data: { passwordResetToken: hashToken(token), passwordResetExpiry: new Date(Date.now() + RESET_TTL_MS) } });
   const base = process.env.FRONTEND_URL || 'http://localhost:5173';
   const link = `${base}/reset-password?token=${token}`;
+  const { emailLayout } = await import('../services/emailLayout.js');
   await queueService.enqueue('email', 'SEND_PASSWORD_RESET', {
     to: user.email,
     subject: 'Reset your ZivoHotels password',
-    html: `
-      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1b2a3d;">
-        <h2 style="color: #013a67;">Reset your password</h2>
-        <p>Hi ${escapeHtml(user.name || '')},</p>
-        <p>We received a request to reset the password for your ZivoHotels account. The link below works for 1 hour.</p>
-        <p><a href="${link}" style="display: inline-block; background: #e7194a; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">Choose a new password</a></p>
-        <p style="font-size: 13px; color: #5a6b80;">If you didn't ask for this, you can ignore this email: your password stays the same.</p>
-      </div>`,
+    html: await emailLayout({
+      title: 'Reset your password',
+      body: `<p>Hi ${escapeHtml(user.name || 'there')},</p><p>We received a request to reset the password for your ZivoHotels account. The button below works for 1 hour.</p>`,
+      cta: { label: 'Choose a new password', href: link },
+      note: "If you didn't ask for this, you can ignore this email: your password stays the same.",
+    }),
   }, { priority: 1 });
   res.json(answer);
 });
@@ -83,8 +84,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
   if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
   const user = await prisma.user.findFirst({ where: { passwordResetToken: hashToken(parsed.data.token), passwordResetExpiry: { gt: new Date() } }, select: { id: true, status: true } });
   if (!user) return fail(res, req, 400, 'This reset link has expired or was already used. Ask for a new one.');
-  await prisma.user.update({
+  const changed = await prisma.user.update({
     where: { id: user.id },
+    select: { id: true, name: true, email: true },
     data: {
       password: await bcrypt.hash(parsed.data.password, 12),
       passwordResetToken: null, passwordResetExpiry: null, passwordChangedAt: new Date(),
@@ -93,6 +95,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
       ...(user.status === 'INVITED' ? { status: 'ACTIVE', inviteToken: null, inviteExpiry: null } : {}),
     },
   });
+  sendPasswordChanged(changed, { ip: req.ip }).catch(() => {});
   await prisma.auditLog.create({ data: { action: 'PASSWORD_RESET', entityType: 'USER', entityId: user.id, userId: user.id, requestId: req.id, details: {} } }).catch(() => {});
   res.json({ success: true, message: 'Password updated. Log in with your new password.', requestId: req.id });
 });

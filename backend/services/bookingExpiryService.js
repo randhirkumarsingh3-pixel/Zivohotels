@@ -61,6 +61,9 @@ export const startBookingExpiryJob = () => {
     .then((n) => { if (n) console.log(`[BookingExpiry] Released ${n} unpaid booking(s)`); })
     .then(() => sendDueReminders())
     .then((n) => { if (n) console.log(`[BookingExpiry] Sent ${n} pay-later reminder(s)`); })
+    // Day-before check-in reminders and after-stay review requests (each sent once)
+    .then(() => import('./bookingNotices.js').then((m) => m.sendStayMessages()))
+    .then((n) => { if (n) console.log(`[BookingExpiry] Sent ${n} stay message(s)`); })
     .catch((err) => console.error('[BookingExpiry] failed:', err.message));
   run();
   const timer = setInterval(run, FIVE_MINUTES);
