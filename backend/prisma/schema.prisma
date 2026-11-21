@@ -17,6 +17,11 @@ model User {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   phone               String?
+  /// When the email / phone was confirmed with a code (sign-up). Older accounts: null
+  emailVerifiedAt     DateTime?
+  phoneVerifiedAt     DateTime?
+  /// Google account id ("sub") for "Continue with Google"
+  googleId            String?        @unique
   inviteToken         String?
   inviteExpiry        DateTime?
   /// "Forgot password": SHA-256 of the emailed token, valid until passwordResetExpiry (1 hour)
@@ -1063,7 +1068,12 @@ model PayoutQueue {
 
 model EmailOTP {
   id         String    @id @default(uuid())
+  /// Where the code was sent: an email address, or a phone number (+91...) when channel is SMS
   email      String
+  /// EMAIL or SMS
+  channel    String    @default("EMAIL")
+  /// VERIFY (property onboarding), SIGNUP, LOGIN, PHONE (add a phone to an account)
+  purpose    String    @default("VERIFY")
   otpHash    String
   attempts   Int       @default(0)
   verified   Boolean   @default(false)
@@ -1074,6 +1084,24 @@ model EmailOTP {
   createdAt  DateTime  @default(now())
 
   @@index([email])
+  @@index([email, purpose])
+}
+
+/// In-app notifications for one person (guests, admins). Hotels use Notification (by hotel).
+model UserNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  /// Page to open when clicked, e.g. /my-bookings
+  link      String?
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 /// Zivo Rewards points ledger (one row per movement). Balance = sum of AVAILABLE rows.

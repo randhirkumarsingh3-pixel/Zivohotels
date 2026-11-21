@@ -12,6 +12,9 @@ const isAllowedOrigin = (origin, req) => {
 };
 
 // Protect routes - Ensure user is logged in
+/** What an account with a temporary password may still do: see itself, change it, sign out. */
+const PASSWORD_CHANGE_ALLOWED = ['/auth/me', '/auth/password', '/auth/logout', '/auth/logout-all', '/auth/session', '/notifications'];
+
 export const protect = async (req, res, next) => {
   try {
     // 1. IP Blacklist check (Fastest)
@@ -65,6 +68,11 @@ export const protect = async (req, res, next) => {
       }).catch(err => console.error('Failed to create security log:', err));
 
       return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+    }
+
+    // A temporary password (invited accounts) must be changed before anything else
+    if (currentUser.mustChangePassword && !PASSWORD_CHANGE_ALLOWED.some((path) => (req.originalUrl || '').split('?')[0].endsWith(path))) {
+      return res.status(403).json({ success: false, code: 'PASSWORD_CHANGE_REQUIRED', message: 'Set a new password to continue.' });
     }
 
     // Grant access

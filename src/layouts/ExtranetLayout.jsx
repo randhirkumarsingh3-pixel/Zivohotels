@@ -6,7 +6,7 @@ import { LogoMark } from '../components/brand/Logo';
 import usePageTitle from '../hooks/usePageTitle';
 import { ExtranetProvider, useExtranet } from '../extranet/context/ExtranetContext';
 import { useSocketEvent } from '../context/SocketContext';
-import LiveActivityFeed from '../extranet/components/LiveActivityFeed';
+import NotificationBell from '../components/shared/NotificationBell';
 import PresenceAvatarStack from '../extranet/components/PresenceAvatarStack';
 
 const LayoutContent = () => {
@@ -119,7 +119,7 @@ const LayoutContent = () => {
               <HelpCircle size={18} />
               Support
             </a>
-            {hotelId && <LiveActivityFeed hotelId={hotelId} />}
+            {hotelId && <NotificationBell key={hotelId} source="hotel" />}
           </div>
         </header>
         

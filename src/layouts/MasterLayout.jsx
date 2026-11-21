@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import NotificationBell from '../components/shared/NotificationBell';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import MasterSidebar from '../admin/components/master/MasterSidebar';
@@ -28,6 +29,7 @@ const MasterLayout = () => {
             <LogoMark size="sm" className="lg:hidden" />
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <NotificationBell />
             <div className="hidden sm:flex flex-col items-end leading-tight">
               <span className="text-sm font-semibold text-gray-900">{user?.name}</span>
               <span className="text-xs text-gray-500 capitalize">{String(user?.role || '').toLowerCase()}</span>

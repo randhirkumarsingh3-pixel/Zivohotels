@@ -75,6 +75,7 @@ const extranetFetch = async (endpoint, options = {}) => {
 export const fetchMyProperties = () => extranetFetch('/properties', { method: 'GET' });
 export const fetchProperty = () => extranetFetch('/property', { method: 'GET' });
 export const updateProperty = (data) => extranetFetch('/property', { method: 'PUT', body: JSON.stringify(data) });
+export const updateBookingEmails = (emails) => extranetFetch('/property/booking-emails', { method: 'PUT', body: JSON.stringify({ emails }) });
 
 // --- ROOMS ---
 export const fetchRooms = () => extranetFetch('/rooms', { method: 'GET' });

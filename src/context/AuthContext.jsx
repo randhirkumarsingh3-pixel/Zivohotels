@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser } from '../services/api';
 
 /**
@@ -49,19 +49,32 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, options = {}) => {
     try {
       const response = await loginUser({ email, password });
-      const loggedInUser = response.data.user;
-      if (options.allowedRoles && !options.allowedRoles.includes(loggedInUser?.role)) {
-        fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
-        return { success: false, message: options.wrongRoleMessage || 'This account cannot sign in here.' };
-      }
-      setUser(loggedInUser);
-      saveUser(loggedInUser);
-      try { localStorage.removeItem('jwt_token'); } catch { /* ignore */ }
-      return { success: true, user: loggedInUser };
+      return setSession(response.data.user, options);
     } catch (error) {
       return { success: false, message: error.message };
     }
   };
+
+  /**
+   * Keeps the person a sign-in returned (sign-up, code, Google: the server already set the
+   * cookie). Same role check as login.
+   */
+  const setSession = (sessionUser, options = {}) => {
+    if (!sessionUser) return { success: false, message: 'Sign-in failed' };
+    if (options.allowedRoles && !options.allowedRoles.includes(sessionUser.role)) {
+      fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+      return { success: false, message: options.wrongRoleMessage || 'This account cannot sign in here.' };
+    }
+    setUser(sessionUser);
+    saveUser(sessionUser);
+    try { localStorage.removeItem('jwt_token'); } catch { /* ignore */ }
+    return { success: true, user: sessionUser };
+  };
+
+  /** Updates the stored profile (e.g. after adding a phone or changing the password). */
+  const updateUser = useCallback((patch) => {
+    setUser((u) => { const next = u ? { ...u, ...patch } : u; if (next) saveUser(next); return next; });
+  }, []);
 
   // After a password change the server sets a new session cookie itself; nothing to keep here
   const replaceToken = () => {};
@@ -80,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token: null, isAuthenticated: !!user, login, logout, replaceToken }}>
+    <AuthContext.Provider value={{ user, token: null, isAuthenticated: !!user, login, logout, replaceToken, setSession, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

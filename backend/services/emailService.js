@@ -687,6 +687,8 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
     }, { priority: 2 });
     
     console.log(`[EmailService] Booking Confirmation Email enqueued successfully!`);
+    // Bell / SMS for the guest and the "New booking" alert + email for the hotel (once per booking)
+    import('./bookingNotices.js').then((m) => m.onBookingConfirmed(bookingId)).catch((e) => console.error('[Notify] booking confirmed:', e.message));
     return true;
   } catch (error) {
     console.error('[EmailService] Error enqueuing booking confirmation email:', error);
@@ -695,39 +697,23 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 };
 
 /**
- * Send OTP Email using Resend
- * @param {string} to - Recipient email
- * @param {string} otp - 6-digit OTP
- * @param {number} expiryMinutes - Expiry time
+ * Emails a one-time code. `purpose` picks the wording (sign-up, sign-in, hotel email check).
  */
-export const sendOTPEmail = async (to, otp, expiryMinutes = 10) => {
-  const subject = 'Verify Your Email Address – ZivoHotels';
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-      <h2 style="color: #333;">ZivoHotels Verification</h2>
-      <p style="color: #555; font-size: 16px;">Your ZivoHotels verification code is:</p>
-      <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${otp}</span>
-      </div>
-      <p style="color: #555; font-size: 14px;">This code will expire in ${expiryMinutes} minutes.</p>
-      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
-      <p style="color: #999; font-size: 12px; text-align: center;">If you did not request this code, please ignore this email.</p>
-    </div>
-  `;
-
-  try {
-    console.log(`[EmailService] Enqueuing OTP Email for ${to}...`);
-    
-    await queueService.enqueue('email', 'SEND_OTP', {
-      to,
-      subject,
-      html
-    }, { priority: 1 }); // Priority 1 since it's user blocking
-    
-    console.log(`[EmailService] OTP Email enqueued successfully to ${to}`);
-    return { success: true };
-  } catch (error) {
-    console.error('[EmailService] Error enqueuing OTP email:', error);
-    throw error;
-  }
+export const sendOTPEmail = async (to, otp, expiryMinutes = 10, { purpose = 'VERIFY', name } = {}) => {
+  const { emailLayout } = await import('./emailLayout.js');
+  const what = {
+    SIGNUP: { subject: `${otp} is your ZivoHotels sign-up code`, title: 'Confirm your email', line: 'Enter this code to finish creating your ZivoHotels account:' },
+    LOGIN: { subject: `${otp} is your ZivoHotels sign-in code`, title: 'Your sign-in code', line: 'Enter this code to sign in to ZivoHotels:' },
+    PHONE: { subject: `${otp} is your ZivoHotels code`, title: 'Your ZivoHotels code', line: 'Enter this code to continue:' },
+    VERIFY: { subject: `${otp} is your ZivoHotels verification code`, title: 'Verify your email', line: 'Your ZivoHotels verification code is:' },
+  }[purpose] || { subject: `${otp} is your ZivoHotels code`, title: 'Your ZivoHotels code', line: 'Your code is:' };
+  const html = await emailLayout({
+    title: what.title,
+    body: `${name ? `<p>Hi ${esc(name)},</p>` : ''}<p>${what.line}</p>
+      <div style="background:#f1f5f9;border-radius:8px;padding:14px;text-align:center;margin:16px 0;font-size:32px;font-weight:bold;letter-spacing:6px">${esc(otp)}</div>
+      <p>It is valid for ${expiryMinutes} minutes and works once. Never share it: ZivoHotels will never ask you for it.</p>`,
+    note: "If you didn't ask for this code, you can ignore this email.",
+  });
+  await queueService.enqueue('email', 'SEND_OTP', { to, subject: what.subject, html }, { priority: 1 });
+  return { success: true };
 };

@@ -1,5 +1,5 @@
 import prisma from '../config/db.js';
-import { queueService } from './queueService.js';
+import socketService from './socketService.js';
 
 /**
  * Creates a notification for a hotel.
@@ -16,14 +16,8 @@ export const createNotification = async ({ hotelId, type, title, message, metada
       }
     });
     
-    // Enqueue job for push delivery (WebSockets, SMS, push notifications)
-    await queueService.enqueue('notification', 'DELIVER_NOTIFICATION', {
-      hotelId,
-      notificationId: notification.id,
-      type,
-      title,
-      message
-    }, { priority: 3 });
+    // Live to the extranet (the alerts list and bell update without a reload)
+    socketService.emitTo(`hotel_${hotelId}`, 'notification', notification);
 
     return notification;
   } catch (error) {

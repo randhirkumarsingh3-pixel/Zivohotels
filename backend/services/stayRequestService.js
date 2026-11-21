@@ -30,8 +30,7 @@ export class StayRequestError extends Error {
 const site = () => String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
 const fmtDay = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
-/** The hotel's inbox for guest requests: its reception email, else the owner's login email. */
-const hotelInbox = (hotel) => hotel?.integrationSettings?.contactInfo?.receptionEmail || hotel?.owner?.email || null;
+import { hotelEmailRecipients, notifyUser } from './notifyService.js';
 
 const sendEmail = (to, subject, html) => (to
   ? queueService.enqueue('email', 'SEND_STAY_REQUEST', { to, subject, html }, { priority: 3 }).catch((e) => console.error('[StayRequest] email not queued:', e.message))
@@ -95,7 +94,7 @@ export const createRequest = async (bookingId, user, input = {}) => {
     metadata: { bookingId, requestId: request.id },
   });
   eventBus.emitEvent('GUEST_REQUEST', { hotelId: booking.hotelId, bookingId, requestId: request.id }).catch(() => {});
-  sendEmail(hotelInbox(booking.hotel), `Guest request: ${label} · ${booking.bookingRef}`, emailShell(`${h(label)} from ${h(booking.guestName)}`, `
+  for (const to of hotelEmailRecipients(booking.hotel)) sendEmail(to, `Guest request: ${label} · ${booking.bookingRef}`, emailShell(`${h(label)} from ${h(booking.guestName)}`, `
     <p>Booking <b>${h(booking.bookingRef)}</b>, check-in ${fmtDay(booking.checkIn)}, check-out ${fmtDay(booking.checkOut)}.</p>
     ${requestedTime ? `<p><b>Time:</b> ${h(requestedTime)}</p>` : ''}
     ${details ? `<p><b>Details:</b> ${h(details)}</p>` : ''}
@@ -140,6 +139,13 @@ export const respondToRequest = async (hotelId, requestId, { status, reply } = {
     data: { status: next, hotelReply: hotelReply || null, respondedAt: new Date(), respondedBy: user?.id || null },
   });
   eventBus.emitEvent('GUEST_REQUEST', { hotelId, bookingId: request.bookingId, requestId }).catch(() => {});
+  notifyUser(request.userId, {
+    type: 'STAY_REQUEST_ANSWERED',
+    title: `${request.hotel.name} ${next === 'CONFIRMED' ? 'confirmed' : 'replied to'} your request`,
+    message: `${REQUEST_TYPES[request.type] || 'Request'}: ${next === 'CONFIRMED' ? 'confirmed' : 'not possible'}${hotelReply ? `. "${hotelReply.slice(0, 120)}"` : ''}`,
+    link: '/my-bookings',
+    metadata: { bookingId: request.bookingId, requestId },
+  }).catch(() => {});
 
   const label = REQUEST_TYPES[request.type] || 'Your request';
   const verdict = next === 'CONFIRMED' ? 'confirmed' : 'could not arrange';

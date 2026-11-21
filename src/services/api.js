@@ -12,6 +12,7 @@
  * - Request IDs & Correlation Logging
  * - API Versioning & Standardized Response Handling
  */
+import { reportPasswordChangeRequired } from './authEvents';
 
 // ─── BASE URLS ────────────────────────────────────────────────────────────────
 const API_URL     = import.meta.env.VITE_API_URL || '/api/v1';
@@ -136,7 +137,9 @@ const performNetworkRequest = async (url, options, retriesLeft, backoff, dedupeK
     
     const duration = Math.round(performance.now() - startTime);
 
-    if (response.status === 401 && !url.includes('/analytics')) {
+    // A 401 from a sign-in attempt is a wrong password / code, not an ended session
+    const isSignIn = /\/auth\/(login|signup|google|logout)/.test(url);
+    if (response.status === 401 && !url.includes('/analytics') && !isSignIn) {
       localStorage.removeItem('jwt_token');
       localStorage.removeItem('user_data');
       if (window.location.pathname !== '/login') {
@@ -173,6 +176,7 @@ const performNetworkRequest = async (url, options, retriesLeft, backoff, dedupeK
         return performNetworkRequest(url, options, retriesLeft - 1, backoff * 2, dedupeKey, requestId, isBackground);
       }
       
+      if (errorCode === 'PASSWORD_CHANGE_REQUIRED') reportPasswordChangeRequired();
       throw new ApiError(errorMsg, errorCode, status, body?.data);
     }
     
@@ -252,6 +256,18 @@ export const apiFetch = async (url, options = {}, retries = 3, backoff = 500) =>
 // ─── AUTHENTICATION ────────────────────────────────────────────────────────────
 export const loginUser = (credentials) => apiFetch(`${PUBLIC_BASE}/auth/login`, { method: 'POST', body: JSON.stringify(credentials) });
 export const signupUser = (userData) => apiFetch(`${PUBLIC_BASE}/auth/signup`, { method: 'POST', body: JSON.stringify(userData) });
+// Sign up (2 steps), sign in with a code, Google, mobile number, notifications
+const post = (path, body) => apiFetch(`${PUBLIC_BASE}${path}`, { method: 'POST', body: JSON.stringify(body || {}) });
+export const getAuthConfig = () => apiFetch(`${PUBLIC_BASE}/auth/config`).then((r) => r?.data || {});
+export const signupStartApi = (details) => post('/auth/signup/start', details);
+export const loginCodeSendApi = (identifier) => post('/auth/login/code', { identifier });
+export const loginCodeVerifyApi = (identifier, code) => post('/auth/login/code/verify', { identifier, code });
+export const googleSignInApi = (credential) => post('/auth/google', { credential });
+export const phoneCodeSendApi = (phone) => post('/auth/phone/code', { phone });
+export const phoneVerifyApi = (phone, code) => post('/auth/phone/verify', { phone, code });
+export const logoutAllApi = () => post('/auth/logout-all');
+export const getMyNotifications = () => apiFetch(`${PUBLIC_BASE}/notifications?limit=30`, { cache: 'no-store' }).then((r) => r?.data || { items: [], unread: 0 });
+export const markMyNotificationsRead = (ids) => apiFetch(`${PUBLIC_BASE}/notifications/read`, { method: 'PUT', body: JSON.stringify({ ids }) });
 export const sendVerificationOtp = (email) => apiFetch(`${PUBLIC_BASE}/auth/send-otp`, { method: 'POST', body: JSON.stringify({ email, type: 'VERIFICATION' }) });
 export const verifyOtpApi = (email, otp) => apiFetch(`${PUBLIC_BASE}/auth/verify-otp`, { method: 'POST', body: JSON.stringify({ email, otp, type: 'VERIFICATION' }) });
 export const acceptInvite = (token, password) => apiFetch(`${PUBLIC_BASE}/users/accept-invite`, { method: 'POST', body: JSON.stringify({ token, password }) });
@@ -397,6 +413,8 @@ export const getSystemStats = async () => apiFetch(`${ADMIN_BASE}/system/stats`)
 export const getSecurityLogs = async (params = {}) => apiFetch(`${ADMIN_BASE}/system/security-logs?${new URLSearchParams(params).toString()}`);
 export const getIntegrityResult = async () => apiFetch(`${ADMIN_BASE}/system/integrity`).then(res => res?.data);
 export const triggerSystemAction = (actionData) => apiFetch(`${ADMIN_BASE}/system/actions`, { method: 'POST', body: JSON.stringify(actionData) });
+export const getDeliveryStatus = () => apiFetch(`${ADMIN_BASE}/delivery`).then((r) => r?.data);
+export const retryFailedEmails = () => apiFetch(`${ADMIN_BASE}/delivery/retry-failed`, { method: 'POST', body: '{}' });
 export const getSystemConfig = async () => apiFetch(`${ADMIN_BASE}/system/config`).then(res => res?.data);
 export const updateSystemConfig = (config) => apiFetch(`${ADMIN_BASE}/system/config`, { method: 'PUT', body: JSON.stringify(config) });
 export const getTaxRules = async () => apiFetch(`${ADMIN_BASE}/system/tax-rules`).then(res => res?.data);

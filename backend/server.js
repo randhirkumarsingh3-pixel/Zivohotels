@@ -14,6 +14,8 @@ import hotelRoutes from './routes/hotelRoutes.js';
 import { getHomeFeed } from './controllers/homeController.js';
 import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import ariRoutes from './routes/ariRoutes.js';
@@ -86,9 +88,11 @@ const globalLimiter = rateLimit({
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10, // 10 login attempts per 15 mins
-  // Only throttle credential endpoints (login/signup/OTP), not reads like GET /auth/me
-  skip: (req) => req.method !== 'POST' && req.path !== '/password', // password changes count too
+  // 20 sign-in / sign-up / code requests per 15 minutes per address (sign-up and code sign-in take
+  // 2-3 requests each). Codes have their own limit too: 5 per email or phone per 15 minutes.
+  max: Number(process.env.AUTH_RATE_LIMIT_PER_15_MIN) || 20,
+  // Only credential endpoints, not reads (GET /auth/me) or signing out
+  skip: (req) => (req.method !== 'POST' && req.path !== '/password') || ['/logout', '/logout-all', '/session'].includes(req.path),
   message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' }
 });
 
@@ -208,6 +212,7 @@ const searchLimiter = rateLimit({
 });
 
 app.use('/api/v1/auth', loginLimiter, authRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
@@ -244,6 +249,7 @@ app.use('/api/v1/channel-manager', channelManagerApi);
 // ─── ADMIN / OWNER APIS (Legacy Transition) ──────────────────────────────────
 app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter);
 
+app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);
 app.use('/api/v1/admin/rooms',      roomRoutes);
 app.use('/api/v1/admin/inventory',  inventoryRoutes);

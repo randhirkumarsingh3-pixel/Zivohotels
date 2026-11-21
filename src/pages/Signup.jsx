@@ -1,130 +1,146 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { signupUser } from '../services/api';
-import { Lock, Mail, User, ArrowRight, AlertCircle } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff, Mail, Smartphone } from 'lucide-react';
+import { signupStartApi, signupUser, googleSignInApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
+import { AuthShell, ErrorNote, Field, PhoneInput, CodeInput, TestCodeNote, ResendButton, GoogleButton } from '../components/auth/AuthParts';
+import { phoneForApi, inputClass, primaryButton } from '../components/auth/authUtils';
 
+/**
+ * Sign up in two steps:
+ *  1. name, email, mobile, password -> we send a code to the email and one to the phone
+ *  2. both codes -> the account is created and the guest is signed in
+ */
 const Signup = () => {
   usePageTitle('Create an account');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { setSession } = useAuth();
+  const from = location.state?.from?.pathname || '/';
+
+  const [step, setStep] = useState('details');
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [codes, setCodes] = useState({ emailCode: '', phoneCode: '' });
+  const [sent, setSent] = useState({ phone: '', emailTest: '', smsTest: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const set = (k) => (v) => setForm((f) => ({ ...f, [k]: typeof v === 'string' ? v : v.target.value }));
+  const details = () => ({ name: form.name.trim(), email: form.email.trim(), phone: phoneForApi(form.phone), password: form.password });
+
+  const sendCodes = async (only) => {
+    const r = await signupStartApi({ ...details(), ...(only ? { only } : {}) });
+    const d = r?.data || {};
+    setSent((s) => ({
+      phone: d.phone || s.phone,
+      emailTest: only === 'SMS' ? s.emailTest : d.email?.testCode || '',
+      smsTest: only === 'EMAIL' ? s.smsTest : d.sms?.testCode || '',
+    }));
+  };
+
+  const start = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      await signupUser({ name, email, password });
-      // If successful, redirect to login page
-      navigate('/login', { state: { message: 'Account created successfully! Please log in.' } });
+      await sendCodes();
+      setCodes({ emailCode: '', phoneCode: '' });
+      setStep('codes');
     } catch (err) {
-      setError(err.message || 'Failed to create account');
+      setError(err.message || 'Could not send the codes. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
+  const finish = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const r = await signupUser({ ...details(), ...codes });
+      setSession(r?.data?.user);
+      navigate(from, { replace: true, state: { welcome: true } });
+    } catch (err) {
+      setError(err.message || 'Could not create the account.');
+      setLoading(false);
+    }
+  };
+
+  const resend = (only) => sendCodes(only).catch((err) => setError(err.message));
+
+  const onGoogle = async (credential) => {
+    setError('');
+    try {
+      const r = await googleSignInApi(credential);
+      setSession(r?.data?.user);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed.');
+    }
+  };
+
+  if (step === 'codes') {
+    return (
+      <AuthShell title="Confirm it's you" subtitle="We sent a 6-digit code to your email and one to your mobile.">
+        <form className="space-y-5" onSubmit={finish}>
+          <ErrorNote>{error}</ErrorNote>
+          <Field label={<span className="flex items-center gap-1.5"><Mail size={15} aria-hidden="true" /> Code sent to {form.email.trim()}</span>} id="email-code">
+            <CodeInput id="email-code" value={codes.emailCode} onChange={(v) => setCodes((c) => ({ ...c, emailCode: v }))} autoFocus />
+            <TestCodeNote code={sent.emailTest} channel="EMAIL" onUse={(v) => setCodes((c) => ({ ...c, emailCode: v }))} />
+            <div className="mt-1 text-right"><ResendButton onResend={() => resend('EMAIL')} label="Resend email code" /></div>
+          </Field>
+          <Field label={<span className="flex items-center gap-1.5"><Smartphone size={15} aria-hidden="true" /> Code sent to {sent.phone}</span>} id="phone-code">
+            <CodeInput id="phone-code" value={codes.phoneCode} onChange={(v) => setCodes((c) => ({ ...c, phoneCode: v }))} />
+            <TestCodeNote code={sent.smsTest} channel="SMS" onUse={(v) => setCodes((c) => ({ ...c, phoneCode: v }))} />
+            <div className="mt-1 text-right"><ResendButton onResend={() => resend('SMS')} label="Resend SMS code" /></div>
+          </Field>
+          <button type="submit" disabled={loading || codes.emailCode.length !== 6 || codes.phoneCode.length !== 6} className={primaryButton}>
+            {loading ? 'Creating your account…' : <>Create account <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" /></>}
+          </button>
+          <button type="button" onClick={() => { setStep('details'); setError(''); }} className="w-full text-sm font-semibold text-navy-700 hover:text-navy-900">
+            Change my details
+          </button>
+        </form>
+      </AuthShell>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-start sm:justify-center pt-28 pb-12 sm:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <img src="/brand/zivo-mark.png" alt="" aria-hidden="true" className="mx-auto h-12 w-12" />
-        <h1 className="mt-4 text-center text-3xl font-bold text-navy-900">
-          Create an account
-        </h1>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-navy-700 hover:text-navy-900">
-            Sign in instead
-          </Link>
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm rounded-card sm:px-10 border border-gray-100">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            
-            {error && (
-              <div className="bg-red-50 p-4 rounded-lg flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-500 mr-2 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10 block w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-                  placeholder="John Doe"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 block w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 block w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <p className="mt-2 text-xs text-gray-500">At least 8 characters.</p>
-            </div>
-
-            <p className="text-xs text-gray-500">By creating an account you confirm you&apos;re 18 or older and agree to our <Link to="/terms" className="text-navy-700 underline">Terms of Service</Link> and <Link to="/privacy" className="text-navy-700 underline">Privacy Policy</Link>.</p>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-brand-500/30 text-sm font-bold text-white bg-brand-700 hover:bg-brand-800 focus:outline-none transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></span>
-              ) : (
-                <>Create Account <ArrowRight className="ml-2 h-5 w-5" /></>
-              )}
+    <AuthShell
+      title="Create an account"
+      subtitle={<>Already have an account? <Link to="/login" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Sign in instead</Link></>}
+    >
+      <form className="space-y-5" onSubmit={start}>
+        <ErrorNote>{error}</ErrorNote>
+        <Field label="Full name" id="su-name">
+          <input id="su-name" type="text" autoComplete="name" required minLength={2} value={form.name} onChange={set('name')} className={inputClass} placeholder="As on your ID" />
+        </Field>
+        <Field label="Email address" id="su-email" hint="We'll send a code to confirm it.">
+          <input id="su-email" type="email" autoComplete="email" required value={form.email} onChange={set('email')} className={inputClass} placeholder="you@example.com" />
+        </Field>
+        <Field label="Mobile number" id="su-phone" hint="We'll send a code by SMS. Hotels use it to reach you about your stay.">
+          <PhoneInput id="su-phone" value={form.phone} onChange={set('phone')} />
+        </Field>
+        <Field label="Password" id="su-pass" hint="At least 8 characters.">
+          <div className="relative">
+            <input id="su-pass" type={showPw ? 'text' : 'password'} autoComplete="new-password" required minLength={8} value={form.password} onChange={set('password')} className={`${inputClass} pr-11`} placeholder="••••••••" />
+            <button type="button" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? 'Hide password' : 'Show password'} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
-          </form>
-        </div>
-      </div>
-    </div>
+          </div>
+        </Field>
+        <button type="submit" disabled={loading} className={primaryButton}>
+          {loading ? 'Sending codes…' : <>Continue <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" /></>}
+        </button>
+        <p className="text-xs text-gray-500 text-center">
+          By continuing you agree to our <Link to="/terms" className="underline">Terms</Link> and <Link to="/privacy" className="underline">Privacy Policy</Link>.
+        </p>
+      </form>
+      <GoogleButton onCredential={onGoogle} text="signup_with" />
+    </AuthShell>
   );
 };
 

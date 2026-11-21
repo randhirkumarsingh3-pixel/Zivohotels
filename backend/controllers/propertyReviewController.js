@@ -1,3 +1,4 @@
+import { notifyAdmins } from '../services/notifyService.js';
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { queueService } from '../services/queueService.js';
@@ -77,6 +78,14 @@ export const submitForReview = asyncHandler(async (req, res) => {
   });
   
   await logTimeline(id, req.user.id, 'STATUS_SUBMITTED');
+  notifyAdmins({
+    type: 'PROPERTY_SUBMITTED',
+    title: `New property to review: ${hotel.name}`,
+    message: `${hotel.city || ''}${hotel.owner?.email ? ` · ${hotel.owner.email}` : ''}. Review and approve it in Properties.`,
+    link: '/admin/properties',
+    metadata: { hotelId: id },
+    email: { jobType: 'SEND_ADMIN_ALERT', subject: `New property submitted: ${hotel.name}`, html: `<p>${String(hotel.name).replace(/[<>&]/g, '')} (${String(hotel.city || '').replace(/[<>&]/g, '')}) was submitted for review.</p><p>Review it in Admin → Properties.</p>` },
+  }).catch(() => {});
 
   // Send submission confirmation email to owner
   if (hotel.owner?.email) {

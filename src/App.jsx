@@ -25,6 +25,8 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const SetPassword = lazy(() => import('./pages/SetPassword'));
+import AccountGuard from './components/auth/AccountGuard';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -89,6 +91,7 @@ function App() {
   return (
     <ExperimentProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AccountGuard />
         <Suspense fallback={<LoaderFallback />}>
           <Routes>
             {/* PUBLIC & CUSTOMER ROUTES */}
@@ -102,6 +105,7 @@ function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/set-password" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER', 'MANAGER']}><SetPassword /></ProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Account /></ProtectedRoute>} />
               <Route path="/login" element={<Login />} />

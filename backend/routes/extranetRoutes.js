@@ -4,7 +4,7 @@ import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
-import { getProperty, updateProperty } from '../controllers/extranet/propertyController.js';
+import { getProperty, updateProperty, updateBookingEmails } from '../controllers/extranet/propertyController.js';
 import { getRooms } from '../controllers/extranet/roomController.js';
 import { getBookings, updateBookingStatus } from '../controllers/extranet/bookingController.js';
 import { listHotelRequests, respondHotelRequest } from '../controllers/stayRequestController.js';
@@ -59,6 +59,7 @@ router.post('/onboarding/:hotelId/submit', submitForReview);
 // Property Info
 router.get('/property', getProperty);
 router.put('/property', updateProperty);
+router.put('/property/booking-emails', updateBookingEmails);
 
 // Rooms & Rates
 router.get('/rooms', getRooms);
