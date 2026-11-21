@@ -14,7 +14,8 @@ import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { sendCode, checkCode, CodeError, emailTestMode } from '../services/otpService.js';
 import { normalizePhone, maskPhone, smsTestMode, smsProvider } from '../services/smsService.js';
-import { sendWelcome } from '../services/accountEmails.js';
+import { sendWelcome, sendPartnerWelcome } from '../services/accountEmails.js';
+import { notifyAdmins } from '../services/notifyService.js';
 
 // --- Validation ---
 
@@ -24,8 +25,16 @@ const emailField = z.string().trim().email('Enter a valid email address').max(16
 const passwordField = z.string().min(8, 'Use at least 8 characters for the password').max(128);
 const phoneField = z.string().trim().min(8, 'Enter your mobile number').max(20);
 
-const signupStartSchema = z.object({ name: nameField, email: emailField, phone: phoneField, password: passwordField, only: z.enum(['EMAIL', 'SMS']).optional() });
-const signupSchema = z.object({ name: nameField, email: emailField, phone: phoneField, password: passwordField, emailCode: z.string().trim(), phoneCode: z.string().trim() });
+// accountType PARTNER: a hotel owner signing up from "List your property" (role OWNER). Their
+// property goes through admin review before it can take bookings.
+const accountFields = {
+  name: nameField, email: emailField, phone: phoneField, password: passwordField,
+  accountType: z.enum(['GUEST', 'PARTNER']).optional().default('GUEST'),
+  propertyName: z.string().trim().max(120).optional(),
+  propertyCity: z.string().trim().max(80).optional(),
+};
+const signupStartSchema = z.object({ ...accountFields, only: z.enum(['EMAIL', 'SMS']).optional() });
+const signupSchema = z.object({ ...accountFields, emailCode: z.string().trim(), phoneCode: z.string().trim() });
 const loginSchema = z.object({ email: z.string().trim().min(3, 'Enter your email or mobile number'), password: z.string().min(1, 'Enter your password') });
 
 const firstError = (v) => v.error.issues?.[0]?.message || 'Please check the details you entered.';
@@ -167,15 +176,28 @@ export const signup = asyncHandler(async (req, res) => {
   await checkCode({ channel: 'SMS', target: phone, purpose: 'SIGNUP', code: v.data.phoneCode }).catch(() => {});
 
   const now = new Date();
+  const partner = v.data.accountType === 'PARTNER';
+  if (partner && !v.data.propertyName) return res.status(422).json({ success: false, message: 'Enter the name of your property.' });
   const user = await prisma.user.create({
     data: {
-      name: v.data.name, email, phone, role: 'CUSTOMER', // hotel owners join by invitation only
+      name: v.data.name, email, phone, role: partner ? 'OWNER' : 'CUSTOMER',
       password: await bcrypt.hash(v.data.password, 12),
       emailVerifiedAt: now, phoneVerifiedAt: now,
     },
   });
-  awardSignupBonus(user.id).catch(() => {});
-  sendWelcome(user).catch(() => {});
+  if (partner) {
+    sendPartnerWelcome(user, { propertyName: v.data.propertyName }).catch(() => {});
+    notifyAdmins({
+      type: 'PARTNER_SIGNED_UP',
+      title: `New partner: ${v.data.propertyName}`,
+      message: `${user.name} · ${user.email} · ${user.phone}${v.data.propertyCity ? ` · ${v.data.propertyCity}` : ''}. Their property comes to Property Review once submitted.`,
+      link: '/admin/users',
+      metadata: { userId: user.id },
+    }).catch(() => {});
+  } else {
+    awardSignupBonus(user.id).catch(() => {});
+    sendWelcome(user).catch(() => {});
+  }
   return startSession(req, res, user, 201);
 });
 

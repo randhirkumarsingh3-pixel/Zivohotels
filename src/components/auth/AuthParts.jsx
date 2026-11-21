@@ -2,17 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, FlaskConical } from 'lucide-react';
 import { inputClass, useAuthConfig } from './authUtils';
 
-/** Page frame shared by sign-in, sign-up and the account set-up screens. */
-export const AuthShell = ({ title, subtitle, children, footer }) => (
-  <div className="min-h-screen bg-gray-50 flex flex-col justify-start sm:justify-center pt-28 pb-12 sm:py-12 px-4 sm:px-6 lg:px-8">
-    <div className="sm:mx-auto sm:w-full sm:max-w-md">
-      <img src="/brand/zivo-mark.png" alt="" aria-hidden="true" className="mx-auto h-12 w-12" />
-      <h1 className="mt-4 text-center text-3xl font-bold text-navy-900">{title}</h1>
-      {subtitle && <p className="mt-2 text-center text-sm text-gray-600">{subtitle}</p>}
-    </div>
-    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div className="bg-white py-8 px-4 shadow-sm rounded-card sm:px-10 border border-gray-100">{children}</div>
-      {footer && <div className="mt-6 text-center text-sm text-gray-500">{footer}</div>}
+/**
+ * Page frame shared by sign-in, sign-up and the account set-up screens. `aside`: a panel shown
+ * beside the form on wide screens (above it on phones), e.g. what partners get.
+ */
+export const AuthShell = ({ title, subtitle, children, footer, aside }) => (
+  <div className="min-h-screen bg-gray-50 flex flex-col pt-24 sm:pt-28 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className={aside ? 'w-full max-w-5xl mx-auto grid gap-8 lg:grid-cols-[1fr_28rem] lg:items-start' : ''}>
+      {aside && <div className="lg:pt-16">{aside}</div>}
+      <div className={aside ? '' : 'sm:mx-auto sm:w-full sm:max-w-md'}>
+        <div>
+          <img src="/brand/zivo-mark.png" alt="" aria-hidden="true" className="mx-auto h-14 w-14" />
+          <h1 className="mt-4 text-center text-3xl font-bold text-navy-900">{title}</h1>
+          {subtitle && <p className="mt-2 text-center text-sm text-gray-600">{subtitle}</p>}
+        </div>
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow-sm rounded-card sm:px-10 border border-gray-100">{children}</div>
+          {footer && <div className="mt-6 text-center text-sm text-gray-500">{footer}</div>}
+        </div>
+      </div>
     </div>
   </div>
 );

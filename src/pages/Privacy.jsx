@@ -83,6 +83,13 @@ const Privacy = () => (
 
     <LegalSection id="children" title="9. Children">
       <p>You must be 18 or older to create an account or book. Children&apos;s details are collected only as guests on a booking made by an adult.</p>
+      <p>How guests are counted when you book:</p>
+      <ul className="list-disc pl-5 space-y-1">
+        <li><strong>Adults</strong> are guests aged 13 or above; <strong>children</strong> are aged 0–12. Hotels may price and limit rooms by these ages.</li>
+        <li>Every room needs an adult aged 18 or older, who is the lead guest for that room.</li>
+        <li>Guests aged 13–17 count as adults for the room but can stay only with an adult (18 or older) in the same room, never alone.</li>
+        <li>The hotel may ask for photo ID for every guest at check-in, including proof of age.</li>
+      </ul>
     </LegalSection>
 
     <LegalSection id="changes" title="10. Changes to this policy">

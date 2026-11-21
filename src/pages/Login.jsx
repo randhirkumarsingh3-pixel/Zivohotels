@@ -91,7 +91,6 @@ const Login = () => {
     <AuthShell
       title="Welcome back"
       subtitle={<>New to ZivoHotels? <Link to="/signup" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Create an account</Link></>}
-      footer={<>Own a hotel? <Link to="/extranet/login" className="font-semibold text-navy-700 hover:text-navy-900">Partner login</Link></>}
     >
       {notice && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
       <div role="tablist" aria-label="How to sign in" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-6">

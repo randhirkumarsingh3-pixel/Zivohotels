@@ -26,6 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'));
 const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const SetPassword = lazy(() => import('./pages/SetPassword'));
+const ListProperty = lazy(() => import('./pages/ListProperty'));
 import AccountGuard from './components/auth/AccountGuard';
 
 // LAYOUTS (LAZY)
@@ -105,6 +106,7 @@ function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/list-your-property" element={<ListProperty />} />
               <Route path="/set-password" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER', 'MANAGER']}><SetPassword /></ProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Account /></ProtectedRoute>} />

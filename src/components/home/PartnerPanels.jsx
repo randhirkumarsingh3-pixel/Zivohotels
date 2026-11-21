@@ -23,8 +23,11 @@ const PartnerPanels = () => (
       <article className="bg-white rounded-card border border-gray-200 p-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Building2 className="text-navy-700" size={24} aria-hidden="true" /> List your property</h2>
         <p className="text-gray-600 mt-2">Reach guests across India. Manage rooms, rates, bookings, reviews and payouts in the ZivoHotels Extranet, on your laptop or phone.</p>
-        <p className="text-sm text-gray-700 mt-4">Write to our partner team: <Email address="partners@zivohotels.com" /></p>
-        <Link to="/extranet/login" className="mt-4 inline-block px-5 py-2.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white font-semibold">Extranet log in</Link>
+        <p className="text-sm text-gray-700 mt-4">Questions? Write to our partner team: <Email address="partners@zivohotels.com" /></p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+          <Link to="/list-your-property" className="inline-block px-5 py-2.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white font-semibold">List your property</Link>
+          <Link to="/extranet/login" className="text-sm font-semibold text-navy-700 hover:text-navy-900">Already a partner? Log in</Link>
+        </div>
       </article>
       <article className="bg-white rounded-card border border-gray-200 p-6">
         <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Briefcase className="text-navy-700" size={24} aria-hidden="true" /> Stays for your company</h2>

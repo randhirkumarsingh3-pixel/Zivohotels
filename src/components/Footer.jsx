@@ -30,7 +30,7 @@ const Footer = () => (
         </div>
         <Column title="Explore" links={[['/hotels', 'All hotels'], ['/rewards', 'Zivo Rewards'], ['/membership', 'Membership'], ['/my-bookings', 'My bookings']]} />
         <Column title="Help" links={[['/help', 'Help centre'], ['/help#cancellations', 'Cancellations & refunds'], ['/help#payments', 'Payments'], ['/help#contact', 'Contact us']]} />
-        <Column title="For hotels" links={[['/extranet/login', 'Extranet log in'], ['/help#hotels', 'List your property']]} />
+        <Column title="For hotels" links={[['/list-your-property', 'List your property'], ['/extranet/login', 'Partner log in']]} />
       </div>
       <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row justify-between gap-3 text-sm text-navy-200">
         <p>© {new Date().getFullYear()} ZivoHotels. All rights reserved.</p>

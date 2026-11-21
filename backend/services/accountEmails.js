@@ -44,3 +44,27 @@ export const sendPasswordChanged = async (user, { ip } = {}) => notifyUser(user.
     }),
   },
 });
+
+/** A hotel owner who signed up from "List your property": what happens next. */
+export const sendPartnerWelcome = async (user, { propertyName } = {}) => notifyUser(user.id, {
+  type: 'WELCOME',
+  title: 'Welcome to ZivoHotels for partners',
+  message: `Finish registering ${propertyName || 'your property'}: it goes live once our team approves it.`,
+  link: '/extranet/onboarding',
+  email: {
+    jobType: 'SEND_WELCOME',
+    subject: `Welcome to ZivoHotels: let's list ${propertyName || 'your property'}`,
+    html: await emailLayout({
+      title: `Welcome, ${h(String(user.name || '').split(' ')[0] || 'partner')}!`,
+      body: `<p>Your partner account is ready. Next:</p>
+        <ol style="padding-left:18px;margin:8px 0">
+          <li>Finish registering <b>${h(propertyName || 'your property')}</b>: location, photos, rooms, rates and policies.</li>
+          <li>Add your legal and bank details, and accept the partner agreement.</li>
+          <li>Submit it: our team reviews it, usually within 2 working days, and you're live.</li>
+        </ol>
+        <p>Your progress is saved as you go.</p>`,
+      cta: { label: 'Continue registration', href: '/extranet/onboarding' },
+      note: 'Questions? Write to partners@zivohotels.com.',
+    }),
+  },
+});

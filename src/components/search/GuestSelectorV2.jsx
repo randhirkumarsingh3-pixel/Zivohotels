@@ -101,8 +101,7 @@ const GuestSelectorV2 = ({ occupancy, setOccupancy, isOpen, setIsOpen, align = '
             ))}
           </div>
 
-          <p className="pt-3 mt-1 border-t border-gray-100 text-xs text-gray-500">Guests aged 13–17 can stay only with an adult (18 or older) in the room.</p>
-          <div className="pt-3 flex items-center justify-between gap-3">
+          <div className="pt-3 mt-1 border-t border-gray-100 flex items-center justify-between gap-3">
             <button type="button" onClick={addRoom} disabled={rooms.length >= MAX_ROOMS}
               className="text-sm font-semibold text-navy-700 hover:text-navy-900 disabled:text-gray-300 disabled:cursor-not-allowed">
               + Add room
