@@ -328,7 +328,7 @@ const MyBookings = () => {
 
   /* ──────────────────────────────────────────────── */
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
+    <div className="max-w-6xl mx-auto px-4 pt-24 pb-12">
 
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">

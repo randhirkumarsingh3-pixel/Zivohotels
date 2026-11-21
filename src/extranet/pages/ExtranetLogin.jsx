@@ -39,7 +39,7 @@ const ExtranetLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center px-4 pt-24 pb-12">
       
       <div className="mb-10 text-center">
          <div className="flex justify-center mb-4">
