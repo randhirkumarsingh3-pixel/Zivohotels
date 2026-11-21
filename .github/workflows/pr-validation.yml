@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+  # "Run workflow" button on the Actions tab, to run the checks by hand on any branch
+  workflow_dispatch:
 
 jobs:
   backend:
