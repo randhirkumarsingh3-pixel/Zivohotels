@@ -157,7 +157,12 @@ export const PoliciesSection = ({ hotel }) => {
         <div className="rounded-xl border border-gray-200 p-4"><p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cancellation</p><p className={`text-sm font-bold mt-1 ${hotel.cancellationPolicy === 'NON_REFUNDABLE' ? 'text-red-600' : 'text-green-700'}`}>{CANCELLATION_TEXT[hotel.cancellationPolicy] || CANCELLATION_TEXT.FREE_CANCEL_24H}</p></div>
       </div>
 
-      {guestRules.length > 0 && <Block title="Guest profile"><ul className="space-y-3">{guestRules}</ul></Block>}
+      <Block title="Guests & ages">
+        <ul className="space-y-3">
+          {guestRules}
+          <RuleLine icon={Users} text={<>Each room needs a lead guest aged 18 or older. Adults are 13 or above; guests aged 13–17 stay only with an adult in the room. <a href="/privacy#children" className="text-navy-700 underline">Age rules</a></>} />
+        </ul>
+      </Block>
       {(ids.length > 0 || r.sameCityId) && (
         <Block title="ID proof at check-in">
           <ul className="space-y-3">
