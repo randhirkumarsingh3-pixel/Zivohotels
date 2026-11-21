@@ -425,3 +425,7 @@ export const getPublicConfig = () => apiFetch(`${PUBLIC_BASE}/system/config`);
 export const getStayRequests = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests`).then(res => res?.data || []);
 export const createStayRequest = (bookingId, body) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests`, { method: 'POST', body: JSON.stringify(body) }).then(res => res?.data);
 export const cancelStayRequest = (bookingId, requestId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests/${requestId}/cancel`, { method: 'POST' }).then(res => res?.data);
+
+// Cancel one room of a booking with several rooms (the rest of the booking stays)
+export const getRoomCancelPreview = (bookingId, roomNumber) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/rooms/${roomNumber}/cancel-preview`).then(res => res?.data);
+export const cancelBookingRoomApi = (bookingId, roomNumber, refundTo = 'SOURCE') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/rooms/${roomNumber}/cancel`, { method: 'POST', body: JSON.stringify({ refundTo }) });

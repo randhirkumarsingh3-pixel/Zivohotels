@@ -94,7 +94,8 @@ const loginLimiter = rateLimit({
 
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5, // 5 booking requests per minute
+  // 5 booking requests per minute per address (BOOKING_RATE_LIMIT_PER_MINUTE: higher only for automated tests)
+  max: Number(process.env.BOOKING_RATE_LIMIT_PER_MINUTE) || 5,
   // Only throttle writes (create/preview/pay/cancel). Never throttle the Razorpay webhook:
   // a 429 there means a paid booking is never confirmed.
   // Price previews have their own, looser limit: checkout re-prices each time the guest switches

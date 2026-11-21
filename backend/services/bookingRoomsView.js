@@ -16,7 +16,7 @@ export const BOOKING_ROOMS_INCLUDE = {
   bookingRooms: {
     orderBy: { roomNumber: 'asc' },
     select: {
-      roomNumber: true, adults: true, children: true, guestName: true, subtotal: true,
+      roomNumber: true, adults: true, children: true, guestName: true, subtotal: true, cancelledAt: true, refundAmount: true,
       roomTypeId: true, ratePlanId: true,
       roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } },
     },
@@ -29,8 +29,10 @@ export const guestsLabel = (adults, children) => [
 ].filter(Boolean).join(', ');
 
 /** "2 × Premium Suite, 1 × Standard Room" */
-export const roomsSummary = (rows, booking, roomTypeName) => {
-  if (!rows?.length) return `${booking.rooms} × ${roomTypeName || 'Room'}`;
+export const roomsSummary = (allRows, booking, roomTypeName) => {
+  // Rooms cancelled on their own aren't part of the stay any more
+  const rows = (allRows || []).filter((r) => !r.cancelledAt);
+  if (!rows.length) return `${booking.rooms} × ${roomTypeName || 'Room'}`;
   const counts = new Map();
   for (const r of rows) counts.set(r.roomType?.name || 'Room', (counts.get(r.roomType?.name || 'Room') || 0) + 1);
   return [...counts.entries()].map(([name, n]) => `${n} × ${name}`).join(', ');

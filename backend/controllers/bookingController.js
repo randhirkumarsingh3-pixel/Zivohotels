@@ -2,7 +2,7 @@ import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { z } from 'zod';
-import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation } from '../services/cancellationService.js';
+import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation, previewRoomCancellation, cancelBookingRoom } from '../services/cancellationService.js';
 import { expireStaleBookings } from '../services/bookingExpiryService.js';
 import voucherService from '../services/voucherService.js';
 import { BOOKING_ROOMS_INCLUDE } from '../services/bookingRoomsView.js';
@@ -286,6 +286,45 @@ export const updateBookingStatus = async (req, res, next) => {
  * cancelBooking: checks who may cancel, then services/cancellationService does the refund
  * (Razorpay, idempotent, retryable), inventory release, settlement of any fee kept, and notifications.
  */
+// Who may cancel (a room of) a booking: the guest who booked, the hotel's owner, an admin
+const mayCancel = async (bookingId, user) => {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { userId: true, hotel: { select: { ownerId: true } } } });
+  if (!booking) return { status: 404, message: 'Booking not found' };
+  if (user.role === 'ADMIN') return null;
+  if (user.role === 'OWNER' && booking.hotel?.ownerId === user.id) return null;
+  if (user.role === 'CUSTOMER' && booking.userId === user.id) return null;
+  return { status: 403, message: 'Unauthorized' };
+};
+
+/** GET /bookings/:id/rooms/:roomNumber/cancel-preview: the refund for cancelling one room now. */
+export const roomCancelPreview = async (req, res, next) => {
+  try {
+    const denied = await mayCancel(req.params.id, req.user);
+    if (denied) return res.status(denied.status).json({ success: false, message: denied.message, requestId: req.id });
+    const data = await previewRoomCancellation(req.params.id, req.params.roomNumber, initiatorForRole(req.user.role));
+    res.json({ success: true, data, requestId: req.id });
+  } catch (error) {
+    if (error instanceof CancellationError) return res.status(error.status).json({ success: false, message: error.message, requestId: req.id });
+    next(error);
+  }
+};
+
+/** POST /bookings/:id/rooms/:roomNumber/cancel: cancel one room; the rest of the booking stays. */
+export const cancelRoom = async (req, res, next) => {
+  try {
+    const denied = await mayCancel(req.params.id, req.user);
+    if (denied) return res.status(denied.status).json({ success: false, message: denied.message, requestId: req.id });
+    const result = await cancelBookingRoom({
+      bookingId: req.params.id, roomNumber: req.params.roomNumber, initiatedBy: initiatorForRole(req.user.role),
+      userId: req.user.id, requestId: req.id, refundTo: req.body?.refundTo === 'WALLET' ? 'WALLET' : 'SOURCE',
+    });
+    res.json({ success: true, message: `Room ${req.params.roomNumber} cancelled`, data: { refundAmount: result.refundAmount, retainedAmount: result.retainedAmount, toWallet: result.toWallet, toSource: result.toSource, newTotal: Number(result.booking.totalAmount) }, requestId: req.id });
+  } catch (error) {
+    if (error instanceof CancellationError) return res.status(error.status).json({ success: false, message: error.message, requestId: req.id });
+    next(error);
+  }
+};
+
 export const cancelBooking = async (req, res, next) => {
   const { id } = req.params;
   const requestId = req.id;
@@ -499,7 +538,7 @@ export const syncInventoryDrift = async (req, res, next) => {
       };
       const [legacy, perRoom] = await Promise.all([
         prisma.booking.aggregate({ where: { ...held, roomTypeId, bookingRooms: { none: {} } }, _sum: { rooms: true } }),
-        prisma.bookingRoom.count({ where: { roomTypeId, booking: held } }),
+        prisma.bookingRoom.count({ where: { roomTypeId, cancelledAt: null, booking: held } }),
       ]);
 
       const actualBooked = (legacy._sum.rooms || 0) + perRoom;

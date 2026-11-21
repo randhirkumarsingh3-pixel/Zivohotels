@@ -1,6 +1,6 @@
 import express from 'express';
 import { listBookingRequests, createBookingRequest, cancelBookingRequest } from '../controllers/stayRequestController.js';
-import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview, downloadVoucher } from '../controllers/bookingController.js';
+import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview, downloadVoucher, roomCancelPreview, cancelRoom } from '../controllers/bookingController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { bookingSchema } from '../schemas/bookingSchema.js';
@@ -26,6 +26,9 @@ router.route('/cleanup')
 
 // Cancel booking endpoint
 router.get('/:id/cancel-preview', protect, cancelPreview);
+// One room of a booking with several rooms
+router.get('/:id/rooms/:roomNumber/cancel-preview', protect, roomCancelPreview);
+router.post('/:id/rooms/:roomNumber/cancel', protect, cancelRoom);
 // Requests to the hotel (late arrival, early check-in, airport pickup…)
 router.route('/:id/requests')
   .get(protect, listBookingRequests)

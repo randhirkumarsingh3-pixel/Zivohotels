@@ -38,6 +38,8 @@ jobs:
       RAZORPAY_WEBHOOK_SECRET: ci_webhook_secret
       PUPPETEER_SKIP_DOWNLOAD: 'true'
       PORT: 5000
+      # The end-to-end booking test makes more booking requests than the per-minute limit allows
+      BOOKING_RATE_LIMIT_PER_MINUTE: 30
 
     steps:
       - name: Checkout Code
@@ -75,6 +77,9 @@ jobs:
           node server.js > server.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:5000/ready && break; sleep 1; done
           npm run test:smoke -- --url=http://localhost:5000 || { cat server.log; exit 1; }
+
+      - name: End-to-end booking test (book, pay, cancel, pay later)
+        run: npm run test:e2e -- --url=http://localhost:5000 || { tail -100 server.log; exit 1; }
 
       - name: Security audit (production dependencies)
         run: npm audit --omit=dev --audit-level=high

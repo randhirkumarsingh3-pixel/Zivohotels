@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import GuestRequestsPanel from '../components/GuestRequestsPanel';
-import { roomsText, bookingRoomsOf, roomGuests } from '../../utils/bookingRooms';
+import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../../utils/bookingRooms';
+import RoomCancel from '../../components/booking/RoomCancel';
 import {
   ClipboardList, Search, Download, CheckCircle2, Clock, XCircle, AlertCircle, Phone, Mail, Users,
   ChevronDown, BedDouble, Loader2, LogIn, LogOut, UserX,
@@ -191,7 +192,16 @@ const ExtranetBookings = () => {
                       <p className="font-semibold text-gray-900 mb-1">Rooms</p>
                       <ul className="space-y-1">
                         {bookingRoomsOf(b).map((r) => (
-                          <li key={r.roomNumber} className="text-gray-700"><span className="font-semibold">Room {r.roomNumber}:</span> {r.roomType?.name} · {r.ratePlan?.name} · {roomGuests(r)} · Lead guest <span className="font-semibold text-gray-900">{r.guestName}</span></li>
+                          <li key={r.roomNumber} className={r.cancelledAt ? 'text-gray-400' : 'text-gray-700'}>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <span className={r.cancelledAt ? 'line-through' : ''}><span className="font-semibold">Room {r.roomNumber}:</span> {r.roomType?.name} · {r.ratePlan?.name} · {roomGuests(r)} · Lead guest <span className="font-semibold">{r.guestName}</span></span>
+                              {r.cancelledAt ? <span className="text-xs font-semibold text-red-700">Cancelled</span>
+                                : ['CONFIRMED', 'PENDING'].includes(b.status) && activeRoomsOf(b).length > 1 && (
+                                  // The hotel cancelling: the guest gets that room's payment back in full
+                                  <RoomCancel booking={b} room={r} allowWallet={false} onDone={() => { addToast(`Room ${r.roomNumber} cancelled. The guest is refunded for it.`, 'success'); load(true); }} />
+                                )}
+                            </div>
+                          </li>
                         ))}
                       </ul>
                     </div>

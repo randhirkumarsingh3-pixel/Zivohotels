@@ -130,8 +130,10 @@ export const inventoryRepository = {
    * can be different types); bookings made before those existed hold booking.rooms of one type.
    */
   roomsByType: async (tx, booking) => {
-    const rows = await tx.bookingRoom.findMany({ where: { bookingId: booking.id }, select: { roomTypeId: true } });
-    if (!rows.length) return [{ roomTypeId: booking.roomTypeId, rooms: booking.rooms }];
+    const all = await tx.bookingRoom.findMany({ where: { bookingId: booking.id }, select: { roomTypeId: true, cancelledAt: true } });
+    if (!all.length) return [{ roomTypeId: booking.roomTypeId, rooms: booking.rooms }];
+    // Rooms cancelled on their own were already given back
+    const rows = all.filter((r) => !r.cancelledAt);
     const counts = new Map();
     for (const r of rows) counts.set(r.roomTypeId, (counts.get(r.roomTypeId) || 0) + 1);
     return [...counts.entries()].map(([roomTypeId, rooms]) => ({ roomTypeId, rooms }));

@@ -21,7 +21,8 @@
     "worker:analytics": "node workers/runWorker.js analytics",
     "worker:report": "node workers/runWorker.js report",
     "test:unit": "mocha 'tests/unit/**/*.test.js'",
-    "test:smoke": "mocha tests/smoke/smoke.test.js --exit"
+    "test:smoke": "mocha tests/smoke/smoke.test.js --exit",
+    "test:e2e": "mocha tests/e2e/booking.e2e.test.js --exit"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.21.0",
