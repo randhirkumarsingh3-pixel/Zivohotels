@@ -7,10 +7,8 @@
  */
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-const authHeader = () => {
-  const token = localStorage.getItem('jwt_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+// The session cookie is sent by the browser; nothing to add
+const authHeader = () => ({});
 
 export const KYC_DOCUMENT_TYPES = [
   // `required` mirrors backend/services/propertyReadiness.js (needed before submitting for review).

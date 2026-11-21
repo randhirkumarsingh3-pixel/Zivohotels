@@ -2,6 +2,7 @@ import prisma from '../config/db.js';
 import { awardSignupBonus } from '../services/loyaltyService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import systemCache from '../utils/systemCache.js';
 import { z } from 'zod';
@@ -68,6 +69,7 @@ export const signup = asyncHandler(async (req, res) => {
   if (newUser.role === 'CUSTOMER') awardSignupBonus(newUser.id).catch(() => {});
 
   const token = signToken(newUser.id, newUser.role, null, newUser.tokenVersion);
+  setSessionCookie(res, token); // HTTP-only session cookie (the token in the reply is for API clients)
 
   // Async Session Merge
   const sessionId = req.headers['x-session-id'];
@@ -159,6 +161,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const token = signToken(user.id, user.role, hotelId, user.tokenVersion);
+  setSessionCookie(res, token); // HTTP-only session cookie (the token in the reply is for API clients)
 
   // Async Session Merge
   const sessionId = req.headers['x-session-id'];
@@ -317,8 +320,27 @@ export const logoutGlobal = asyncHandler(async (req, res) => {
     }
   });
 
+  clearSessionCookie(res);
   res.status(200).json({ success: true, message: 'Logged out from all devices', requestId: req.id });
 });
+
+/** Logout on this device: clears the session cookie (needs no valid session). */
+export const logout = (req, res) => {
+  clearSessionCookie(res);
+  res.status(200).json({ success: true, message: 'Logged out', requestId: req.id });
+};
+
+/**
+ * Moves a session that a browser still holds as a Bearer token (from before the cookie) into the
+ * HTTP-only cookie, so people already logged in stay logged in. Requires a valid session.
+ */
+export const adoptSession = (req, res) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (token && !['null', 'undefined'].includes(token)) setSessionCookie(res, token);
+  const { id, name, email, phone, role } = req.user;
+  res.status(200).json({ success: true, data: { user: { id, name, email, phone: phone || '', role } }, requestId: req.id });
+};
 
 /**
  * Helper to safely merge anonymous session data

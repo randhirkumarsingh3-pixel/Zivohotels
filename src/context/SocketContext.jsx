@@ -5,7 +5,8 @@ import { useAuth } from './AuthContext';
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
-  const { token } = useAuth();
+  // Signed in: the connection carries the session cookie
+  const { isAuthenticated: token } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
@@ -22,7 +23,7 @@ export const SocketProvider = ({ children }) => {
     const socketUrl = apiUrl.startsWith('http') ? new URL(apiUrl).origin : window.location.origin;
 
     const newSocket = io(socketUrl, {
-      auth: { token },
+      withCredentials: true,
       // Allow polling first so Socket.IO can do the standard HTTP upgrade.
       // Forcing websocket-only breaks on Render's CDN proxy.
       transports: ['polling', 'websocket'],

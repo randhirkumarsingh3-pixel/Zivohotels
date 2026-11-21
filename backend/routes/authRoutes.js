@@ -1,5 +1,5 @@
 import express from 'express';
-import { signup, login, sendOtp, verifyOtp } from '../controllers/authController.js';
+import { signup, login, sendOtp, verifyOtp, logout, adoptSession } from '../controllers/authController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { changePassword, forgotPassword, resetPassword } from '../controllers/passwordController.js';
 
@@ -9,6 +9,9 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
+// Session cookie: log out on this device; move an older Bearer session into the cookie
+router.post('/logout', logout);
+router.post('/session', protect, adoptSession);
 
 // Passwords: change while signed in; "forgot password" emails a 1-hour link to reset it
 router.put('/password', protect, changePassword);

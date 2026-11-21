@@ -30,13 +30,9 @@ export class ApiError extends Error {
 }
 
 // ─── SESSION & AUTH ───────────────────────────────────────────────────────────
-export const getAuthHeaders = () => {
-  const token = localStorage.getItem('jwt_token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
+// The login session travels in an HTTP-only cookie the browser sends by itself (same site), so
+// no token is kept in the page or added here.
+export const getAuthHeaders = () => ({ 'Content-Type': 'application/json' });
 
 const getSessionId = () => {
   let sid = localStorage.getItem('session_id');
