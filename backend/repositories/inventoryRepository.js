@@ -92,6 +92,7 @@ export const inventoryRepository = {
    */
   restoreInventory: async (tx, booking) => {
     if (booking.status === 'CANCELLED') return; // Safety check
+    if (booking.stayType === 'HOURLY') return; // hourly stays never take night rooms
     scheduleRecompute(booking.hotelId); // rooms freed up: refresh dynamic prices shortly
 
     const dates = getDatesInRange(new Date(booking.checkIn), new Date(booking.checkOut));

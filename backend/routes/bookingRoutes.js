@@ -2,6 +2,7 @@ import express from 'express';
 import { listBookingRequests, createBookingRequest, cancelBookingRequest } from '../controllers/stayRequestController.js';
 import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview, downloadVoucher, roomCancelPreview, cancelRoom } from '../controllers/bookingController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
+import { previewHourly, bookHourly } from '../controllers/hourlyController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { bookingSchema } from '../schemas/bookingSchema.js';
 
@@ -9,6 +10,10 @@ const router = express.Router();
 
 router.route('/preview')
   .post(extractUser, previewBooking); // signed-out guests see the same price on the hotel page
+
+// Hourly stays: price for a slot, and booking it (pending payment, 30 minutes)
+router.post('/hourly/preview', extractUser, previewHourly);
+router.post('/hourly', protect, bookHourly);
 
 router.route('/my-bookings')
   .get(protect, getMyBookings);

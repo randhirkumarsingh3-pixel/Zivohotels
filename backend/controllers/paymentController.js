@@ -52,6 +52,7 @@ const refundPaymentSchema = z.object({
  * @param {object} tx - Prisma transaction client
  */
 const restoreInventory = async (booking, tx) => {
+  if (booking.stayType === 'HOURLY') return; // hourly stays never take night rooms
   scheduleRecompute(booking.hotelId); // rooms freed up: refresh dynamic prices shortly
   const datesToRestore = getDatesInRange(booking.checkIn, booking.checkOut);
   

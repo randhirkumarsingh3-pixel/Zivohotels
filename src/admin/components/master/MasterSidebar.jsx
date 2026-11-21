@@ -1,6 +1,6 @@
 import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
+import { Clock, 
   LayoutDashboard,
   Ticket,
   MessageSquareText,
@@ -105,6 +105,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
 
         <NavGroup title="Bookings">
           <NavItem name="Bookings" path="/admin/bookings" icon={<BookOpenCheck size={18} />} />
+          <NavItem name="Hourly Stays" path="/admin/hourly" icon={<Clock size={18} />} />
         </NavGroup>
 
         <NavGroup title="Inventory & Distribution">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { isHourly, slotText } from '../../utils/stay';
 import { roomsText, bookingRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -147,8 +148,9 @@ const BookingDrawer = ({ booking, onClose, onAction, onCancelClick, actionLoadin
             )}
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Dates (hourly: the slot) */}
+          {isHourly(booking) && <p className="rounded-xl bg-navy-50 p-3 text-sm font-semibold text-navy-900">Hourly stay: {slotText(booking)}</p>}
+          <div className={`grid grid-cols-2 gap-3 ${isHourly(booking) ? 'hidden' : ''}`}>
             <div className="bg-brand-50 rounded-xl p-3">
               <p className="text-xs text-brand-700 font-bold uppercase tracking-wider mb-1">Check-In</p>
               <p className="font-bold text-gray-900 text-sm">{fmtDate(booking.checkIn)}</p>
@@ -235,6 +237,7 @@ const Bookings = () => {
   // Filters
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
+  const [stayFilter,     setStayFilter]     = useState('');
   const [paymentFilter,  setPaymentFilter]  = useState('');
   const [dateFrom,       setDateFrom]       = useState('');
   const [dateTo,         setDateTo]         = useState('');
@@ -277,6 +280,7 @@ const Bookings = () => {
       if (hotelFilter)      params.set('hotelId',       hotelFilter);
       if (statusFilter)     params.set('status',        statusFilter);
       if (paymentFilter)    params.set('paymentStatus', paymentFilter);
+      if (stayFilter)       params.set('stayType',      stayFilter);
       if (dateFrom)         params.set('dateFrom',      dateFrom);
       if (dateTo)           params.set('dateTo',        dateTo);
       if (debouncedSearch)  params.set('search',        debouncedSearch);
@@ -301,7 +305,7 @@ const Bookings = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, hotelFilter, statusFilter, paymentFilter, dateFrom, dateTo, debouncedSearch]);
+  }, [page, hotelFilter, statusFilter, paymentFilter, stayFilter, dateFrom, dateTo, debouncedSearch]);
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
@@ -369,10 +373,10 @@ const Bookings = () => {
   };
 
   const resetFilters = () => {
-    setStatusFilter(''); setPaymentFilter(''); setHotelFilter('');
+    setStatusFilter(''); setPaymentFilter(''); setHotelFilter(''); setStayFilter('');
     setDateFrom(''); setDateTo(''); setSearch(''); setDebouncedSearch(''); setPage(1);
   };
-  const hasFilters = statusFilter || paymentFilter || hotelFilter || dateFrom || dateTo || debouncedSearch;
+  const hasFilters = statusFilter || paymentFilter || hotelFilter || stayFilter || dateFrom || dateTo || debouncedSearch;
 
   const start = meta.total === 0 ? 0 : (page - 1) * PAGE_LIMIT + 1;
   const end   = Math.min(page * PAGE_LIMIT, meta.total);
@@ -424,6 +428,14 @@ const Bookings = () => {
             <option value="">All Statuses</option>
             {['PENDING','CONFIRMED','CHECKED_IN','COMPLETED','CANCELLED','NO_SHOW'].map(s =>
               <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}
+          </select>
+
+          {/* Stay type */}
+          <select value={stayFilter} onChange={e => { setStayFilter(e.target.value); setPage(1); }} aria-label="Stay type"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-brand-500 bg-white">
+            <option value="">Nightly &amp; hourly</option>
+            <option value="NIGHTLY">Nightly</option>
+            <option value="HOURLY">Hourly</option>
           </select>
 
           {/* Payment */}
@@ -506,9 +518,19 @@ const Bookings = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        <div className="text-gray-700">{fmtDate(b.checkIn)}</div>
-                        <div className="text-gray-400">→ {fmtDate(b.checkOut)}</div>
-                        <div className="text-gray-400 mt-0.5">{nights}N · {b.rooms}R · {b.guests}G</div>
+                        {isHourly(b) ? (
+                          <>
+                            <div className="font-semibold text-navy-800">Hourly</div>
+                            <div className="text-gray-700">{slotText(b)}</div>
+                            <div className="text-gray-400 mt-0.5">{b.guests}G</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-gray-700">{fmtDate(b.checkIn)}</div>
+                            <div className="text-gray-400">→ {fmtDate(b.checkOut)}</div>
+                            <div className="text-gray-400 mt-0.5">{nights}N · {b.rooms}R · {b.guests}G</div>
+                          </>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="font-bold text-gray-900">{fmt(b.totalAmount)}</div>

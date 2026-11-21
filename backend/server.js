@@ -16,6 +16,7 @@ import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
+import hourlyAdminRoutes from './routes/hourlyAdminRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import ariRoutes from './routes/ariRoutes.js';
@@ -250,6 +251,7 @@ app.use('/api/v1/channel-manager', channelManagerApi);
 app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter);
 
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
+app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);
 app.use('/api/v1/admin/rooms',      roomRoutes);
 app.use('/api/v1/admin/inventory',  inventoryRoutes);

@@ -63,6 +63,7 @@ const createBookingSchema = z.object({
 }).refine(d => !d.companyGstin || d.companyName, { message: 'Company name is required with a GSTIN', path: ['companyName'] });
 
 const getBookingsSchema = z.object({
+  stayType: z.enum(['NIGHTLY', 'HOURLY']).optional(),
   hotelId: z.string().uuid().optional(),
   status: z.enum(['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
   paymentType: z.enum(['PREPAID', 'PAY_AT_HOTEL', 'PARTIAL']).optional(),
@@ -178,7 +179,7 @@ export const getBookings = async (req, res, next) => {
     }
 
     const {
-      hotelId, status, paymentType, paymentStatus,
+      hotelId, status, paymentType, paymentStatus, stayType,
       search, dateFrom, dateTo,
       page, limit
     } = validation.data;
@@ -191,6 +192,7 @@ export const getBookings = async (req, res, next) => {
     if (status)        filter.status        = status;
     if (paymentType)   filter.paymentType   = paymentType;
     if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (stayType)      filter.stayType      = stayType;
 
     // Date range: bookings with checkIn within the window
     if (dateFrom || dateTo) {
@@ -533,6 +535,7 @@ export const syncInventoryDrift = async (req, res, next) => {
       // BookingRoom rows) that hold booking.rooms of this type
       const held = {
         status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        stayType: { not: 'HOURLY' }, // hourly stays use their own rooms
         checkIn: { lte: inv.date },
         checkOut: { gt: inv.date }
       };

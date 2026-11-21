@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { isHourly, slotText } from '../../utils/stay';
 import GuestRequestsPanel from '../components/GuestRequestsPanel';
 import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import RoomCancel from '../../components/booking/RoomCancel';
@@ -41,6 +42,7 @@ const pendingRequests = (b) => (b.stayRequests || []).filter((r) => r.status ===
 const TABS = [
   ['ALL', 'All', () => true],
   ['REQUESTS', 'Guest requests', (b) => pendingRequests(b) > 0],
+  ['HOURLY', 'Hourly stays', (b) => b.stayType === 'HOURLY'],
   ['TODAY', 'Arriving today', (b, t) => istDay(b.checkIn) === t && ['CONFIRMED', 'CHECKED_IN', 'PENDING'].includes(b.status)],
   ['UPCOMING', 'Upcoming', (b, t) => istDay(b.checkIn) > t && ['CONFIRMED', 'PENDING'].includes(b.status)],
   ['CHECKED_IN', 'In house', (b) => b.status === 'CHECKED_IN'],
@@ -52,7 +54,7 @@ const TABS = [
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const exportCsv = (rows, name) => {
   const head = ['Booking ID', 'Status', 'Guest', 'Phone', 'Email', 'Room', 'Rooms', 'Guests', 'Check-in', 'Check-out', 'Nights', 'Payment', 'Total (₹)', 'Paid online (₹)', 'Due at hotel (₹)', 'Booked on'];
-  const lines = rows.map((b) => [b.bookingRef, STATUS[b.status]?.label || b.status, b.guestName, b.guestPhone, b.guestEmail, roomsText(b), b.rooms, b.guests, istDay(b.checkIn), istDay(b.checkOut), nightsOf(b), PAY[b.paymentType] || b.paymentType, Number(b.totalAmount || 0), Number(b.paidAmount || 0), Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)), istDay(b.createdAt)].map(csvCell).join(','));
+  const lines = rows.map((b) => [b.bookingRef, STATUS[b.status]?.label || b.status, b.guestName, b.guestPhone, b.guestEmail, roomsText(b), b.rooms, b.guests, istDay(b.checkIn), isHourly(b) ? slotText(b) : istDay(b.checkOut), isHourly(b) ? `${b.hours}h` : nightsOf(b), PAY[b.paymentType] || b.paymentType, Number(b.totalAmount || 0), Number(b.paidAmount || 0), Math.max(0, Number(b.totalAmount || 0) - Number(b.paidAmount || 0)), istDay(b.createdAt)].map(csvCell).join(','));
   const blob = new Blob([String.fromCharCode(0xfeff) + [head.map(csvCell).join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' }); // BOM: Excel reads ₹ correctly
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name; a.click();
@@ -162,7 +164,9 @@ const ExtranetBookings = () => {
                       {b.metadata?.membership?.isPaid && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold">{b.metadata.membership.plan}{b.metadata.membership.prioritySupport ? ' · priority' : ''}</span>}
                     </p>
                     <p className="text-sm text-gray-600 mt-0.5">
-                      <span className="font-mono text-gray-800">{b.bookingRef}</span> · {roomsText(b)} · {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} ({nights} night{nights === 1 ? '' : 's'})
+                      <span className="font-mono text-gray-800">{b.bookingRef}</span> · {roomsText(b)} · {isHourly(b)
+                        ? <span className="font-semibold text-navy-800">Hourly: {slotText(b)}</span>
+                        : <>{fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} ({nights} night{nights === 1 ? '' : 's'})</>}
                     </p>
                   </div>
                 </div>

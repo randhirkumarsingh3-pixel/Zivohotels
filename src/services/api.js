@@ -304,6 +304,11 @@ export const getHotels = async (searchParams = {}, filters = {}) => {
 };
 
 // With stay dates the response includes each rate plan's price for those nights and room availability
+/** Hourly stays: hotels free for a slot, and one hotel's hourly offer on a date */
+export const searchHourlyHotels = (h) => apiFetch(`${PUBLIC_BASE}/hotels/search/hourly?${new URLSearchParams({ city: h.city || '', date: h.date, start: h.start, hours: String(h.hours), guests: String(h.guests) })}`, { cache: 'no-store' }).then((r) => r?.data || { hotels: [] });
+export const getHotelHourly = (id, date, hours) => apiFetch(`${PUBLIC_BASE}/hotels/${id}/hourly?date=${date}&hours=${hours}`, { cache: 'no-store' }).then((r) => r?.data);
+export const previewHourlyApi = (body) => apiFetch(`${PUBLIC_BASE}/bookings/hourly/preview`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r?.data);
+export const bookHourlyApi = (body) => apiFetch(`${PUBLIC_BASE}/bookings/hourly`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r?.data);
 export const getHotelById = (id, stay = {}) => {
   const q = stay.checkIn && stay.checkOut ? `?${new URLSearchParams({ checkin: stay.checkIn, checkout: stay.checkOut })}` : '';
   return apiFetch(`${PUBLIC_BASE}/hotels/${id}${q}`).then(res => res?.data);
@@ -413,6 +418,9 @@ export const getSystemStats = async () => apiFetch(`${ADMIN_BASE}/system/stats`)
 export const getSecurityLogs = async (params = {}) => apiFetch(`${ADMIN_BASE}/system/security-logs?${new URLSearchParams(params).toString()}`);
 export const getIntegrityResult = async () => apiFetch(`${ADMIN_BASE}/system/integrity`).then(res => res?.data);
 export const triggerSystemAction = (actionData) => apiFetch(`${ADMIN_BASE}/system/actions`, { method: 'POST', body: JSON.stringify(actionData) });
+export const getAdminHourly = () => apiFetch(`${ADMIN_BASE}/hourly`, { cache: 'no-store' }).then((r) => r?.data);
+export const saveAdminHourlySettings = (data) => apiFetch(`${ADMIN_BASE}/hourly/settings`, { method: 'PUT', body: JSON.stringify(data) });
+export const approveHotelHourly = (hotelId, approved) => apiFetch(`${ADMIN_BASE}/hourly/hotels/${hotelId}`, { method: 'PUT', body: JSON.stringify({ approved }) });
 export const getDeliveryStatus = () => apiFetch(`${ADMIN_BASE}/delivery`).then((r) => r?.data);
 export const retryFailedEmails = () => apiFetch(`${ADMIN_BASE}/delivery/retry-failed`, { method: 'POST', body: '{}' });
 export const getSystemConfig = async () => apiFetch(`${ADMIN_BASE}/system/config`).then(res => res?.data);

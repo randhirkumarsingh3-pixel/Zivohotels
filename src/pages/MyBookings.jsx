@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { isHourly, slotText, lengthText } from '../utils/stay';
 import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../utils/bookingRooms';
 import RoomCancel from '../components/booking/RoomCancel';
 import { 
@@ -26,6 +27,12 @@ const today = () => {
 };
 
 const classifyBooking = (booking) => {
+  // Hourly stays: by their actual times (the slot starts and ends on one day)
+  if (booking.stayType === 'HOURLY') {
+    const t = Date.now();
+    if (booking.status === 'CANCELLED' || new Date(booking.slotEnd || booking.checkOut).getTime() <= t) return 'past';
+    return new Date(booking.slotStart || booking.checkIn).getTime() <= t ? 'ongoing' : 'upcoming';
+  }
   const now = today();
   const checkIn  = new Date(booking.checkIn);
   const checkOut = new Date(booking.checkOut);
@@ -533,7 +540,9 @@ const MyBookings = () => {
                     {[
                       { label: 'Guests', value: `${activeBooking.guests} pax` },
                       { label: 'Rooms',  value: `${activeBooking.rooms} room${activeBooking.rooms === 1 ? '' : 's'}` },
-                      { label: 'Nights', value: `${Math.ceil(Math.abs(new Date(activeBooking.checkOut) - new Date(activeBooking.checkIn)) / 86400000)} Nights` }
+                      isHourly(activeBooking)
+                        ? { label: 'Hourly', value: lengthText(activeBooking) }
+                        : { label: 'Nights', value: `${Math.ceil(Math.abs(new Date(activeBooking.checkOut) - new Date(activeBooking.checkIn)) / 86400000)} Nights` }
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50 text-center">
                         <p className="text-xs text-gray-400 font-bold uppercase mb-1">{s.label}</p>
@@ -913,7 +922,13 @@ const BookingCard = ({ booking, onRateStay, onManage, onPaid }) => {
             {booking.hotel?.city} · {roomsText(booking)}
           </p>
 
-          <div className="grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50">
+          {isHourly(booking) && (
+            <div className="bg-navy-50 rounded-2xl p-3 mb-3">
+              <p className="text-xs text-navy-700 font-bold uppercase tracking-wider mb-0.5">Hourly stay</p>
+              <p className="font-extrabold text-navy-900 text-xs">{slotText(booking)}</p>
+            </div>
+          )}
+          <div className={`grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50 ${isHourly(booking) ? 'hidden' : ''}`}>
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-in</p>
               <p className="font-extrabold text-gray-800 text-xs">

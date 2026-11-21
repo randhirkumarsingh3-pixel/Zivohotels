@@ -80,6 +80,12 @@ const address = (hotel) => {
 };
 
 const cancellationText = (booking, policy) => {
+  if (booking.stayType === 'HOURLY') {
+    const hrs = Number(booking.metadata?.hourly?.freeCancelHours ?? 2);
+    return hrs > 0
+      ? [`Free cancellation until ${hrs} hour${hrs === 1 ? '' : 's'} before check-in, from My Bookings. No refund after that, or if the guest does not arrive.`, 'Arriving late does not extend the stay.']
+      : ['This hourly stay is non-refundable once booked.'];
+  }
   const code = policy?.policyCode || 'FREE_CANCEL_24H';
   if (code === 'NON_REFUNDABLE') return ['This booking is non-refundable. No refund is due if it is cancelled or the guest does not arrive.'];
   const { freeCancellationHours } = policyFieldsForCode(code);
@@ -160,6 +166,20 @@ const companyLines = (support) => {
 const stayCard = (d) => {
   const { booking, hotel } = d;
   const nights = nightsBetween(booking.checkIn, booking.checkOut);
+  if (booking.stayType === 'HOURLY') {
+    const t = (x) => new Date(x).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+    const g = `${booking.adults || booking.guests || 1} adult${(booking.adults || 1) > 1 ? 's' : ''}${booking.children ? `, ${booking.children} child${booking.children > 1 ? 'ren' : ''}` : ''}`;
+    return `
+    <div class="card">
+      <h3>Hourly stay</h3>
+      <div class="kv">
+        <div><span>Date</span><b>${fmtDate(booking.slotStart || booking.checkIn, { weekday: 'short' })}</b></div>
+        <div><span>Check-in</span><b>${h(t(booking.slotStart || booking.checkIn))}</b></div>
+        <div><span>Check-out</span><b>${h(t(booking.slotEnd || booking.checkOut))}</b><div class="muted">${booking.hours} hours</div></div>
+        <div><span>Guests</span><b>${h(g)}</b></div>
+      </div>
+    </div>`;
+  }
   const guests = `${booking.adults || booking.guests || 1} adult${(booking.adults || 1) > 1 ? 's' : ''}${booking.children ? `, ${booking.children} child${booking.children > 1 ? 'ren' : ''}` : ''}`;
   return `
     <div class="card">
@@ -191,7 +211,7 @@ const roomBlock = (d) => {
       <h2>${booking.rooms} room${booking.rooms > 1 ? 's' : ''}</h2>
       <div class="card">
         <div class="big">${booking.rooms} × ${h(roomType?.name || 'Room')}</div>
-        <div class="muted">${h(ratePlan?.name || 'Standard rate')} · ${h(MEAL[ratePlan?.mealPlan] || 'Room only')}${booking.extraBeds ? ` · ${booking.extraBeds} extra bed${booking.extraBeds > 1 ? 's' : ''}` : ''}</div>
+        <div class="muted">${h(ratePlan?.name || (booking.stayType === 'HOURLY' ? `Hourly stay · ${booking.hours} hours` : 'Standard rate'))} · ${h(MEAL[ratePlan?.mealPlan] || 'Room only')}${booking.extraBeds ? ` · ${booking.extraBeds} extra bed${booking.extraBeds > 1 ? 's' : ''}` : ''}</div>
       </div>
     </div>`;
 };

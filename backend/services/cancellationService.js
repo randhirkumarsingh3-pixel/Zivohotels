@@ -13,6 +13,7 @@ import inventoryRepository from '../repositories/inventoryRepository.js';
 import settlementService from './finance/settlementService.js';
 import { createNotification } from './notificationService.js';
 import { queueService } from './queueService.js';
+import { hourlyGuestRefund } from './hourlyService.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
 
@@ -48,9 +49,10 @@ const POLICY_LABELS = {
  * Shown before they confirm; the old dialog always promised a full refund.
  */
 export const previewGuestCancellation = async (booking) => {
-  const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
+  const policy = booking.stayType === 'HOURLY' ? null : await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
   const paidAmount = toMoney(booking.paidAmount) || 0;
-  const { refundAmount, policyApplied, memberWaiver } = guestRefund(booking, policy);
+  const hourly = booking.stayType === 'HOURLY' ? hourlyGuestRefund(booking) : null;
+  const { refundAmount, policyApplied, memberWaiver } = hourly || guestRefund(booking, policy);
   // Zivo Cash used on the booking goes back to the wallet; for the rest the guest can choose
   const walletPart = Math.min(refundAmount, toMoney(booking.walletAmount) || 0);
   return {
@@ -62,8 +64,8 @@ export const previewGuestCancellation = async (booking) => {
     memberWaiver,
     memberPlan: memberWaiver > 0 ? booking.metadata?.membership?.plan : null,
     payAtHotel: booking.paymentType === 'PAY_AT_HOTEL',
-    policyCode: policy.policyCode,
-    policyLabel: POLICY_LABELS[policy.policyCode] || 'Standard cancellation policy',
+    policyCode: hourly ? 'HOURLY' : policy.policyCode,
+    policyLabel: hourly ? `Free cancellation until ${hourly.freeCancelHours} hour${hourly.freeCancelHours === 1 ? '' : 's'} before the start` : POLICY_LABELS[policy.policyCode] || 'Standard cancellation policy',
     policyApplied
   };
 };
@@ -101,7 +103,9 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   let refundAmount;
   let policyApplied;
   let memberWaiver = 0;
-  if (initiatedBy === 'GUEST') {
+  if (initiatedBy === 'GUEST' && booking.stayType === 'HOURLY') {
+    ({ refundAmount, policyApplied, memberWaiver } = hourlyGuestRefund(booking));
+  } else if (initiatedBy === 'GUEST') {
     const policy = await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
     ({ refundAmount, policyApplied, memberWaiver } = guestRefund(booking, policy));
   } else {
