@@ -64,6 +64,7 @@ const Terms = () => (
 
     <LegalSection id="stay" title="6. At the hotel">
       <p>Hotels may ask for valid photo ID at check-in and apply their house rules (for example check-in times, ID requirements, couples, pets, smoking), which are shown on the hotel page. Extra charges at the hotel, such as minibar or extra services, are between you and the hotel.</p>
+      <p>Each room needs a lead guest aged 18 or older. Guests aged 13–17 stay only with an adult in the same room; see <Link to="/privacy#children" className="text-navy-700 underline">who counts as an adult or a child</Link>.</p>
     </LegalSection>
 
     <LegalSection id="cash" title="7. Zivo Cash">
