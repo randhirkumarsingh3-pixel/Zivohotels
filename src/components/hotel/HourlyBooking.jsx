@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, BedDouble, Users, ShieldCheck, Check, Loader2, Hourglass } from 'lucide-react';
 import { getHotelHourly, previewHourlyApi } from '../../services/api';
 import { getImageUrl } from '../../utils/image';
+import PhotoViewer from './PhotoViewer';
 import { timeLabel, todayIst } from '../../utils/hourly';
 
 /**
@@ -22,6 +23,7 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
   const [offer, setOffer] = useState(null);
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState('');
+  const [viewer, setViewer] = useState(null);
 
   useEffect(() => {
     let live = true;
@@ -69,6 +71,7 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
 
   return (
     <section id="rooms" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 scroll-mt-32">
+      {viewer && <PhotoViewer photos={viewer.photos} title={viewer.title} filters={false} onClose={() => setViewer(null)} />}
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1 min-w-0 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 grid gap-3 grid-cols-2 md:grid-cols-4">
@@ -89,13 +92,19 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
           {!offer ? <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-brand-600" /></div>
             : !rooms.length ? <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{(offer.roomTypes || []).length ? `No room for ${guests} guests is offered by the hour. Try fewer guests.` : 'No hourly rooms are free on this date. Try another date or duration.'}</p>
               : rooms.map((r) => {
-                const photo = (r.images?.find((i) => i.isPrimary) || r.images?.[0])?.url;
+                const pics = [...(r.images || [])].filter((i) => i?.url).sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary))).map((i) => ({ url: i.url }));
+                const photo = pics[0]?.url;
                 const sel = r.id === roomId;
                 return (
                   <article key={r.id} className={`rounded-xl border bg-white overflow-hidden ${sel ? 'border-brand-300 ring-1 ring-brand-200' : 'border-gray-200'}`}>
                     <div className="flex flex-col sm:flex-row gap-4 p-4">
                       <div className="w-full sm:w-40 h-32 sm:h-28 shrink-0 rounded-lg overflow-hidden bg-gray-100">
-                        {photo ? <img src={getImageUrl(photo)} alt={r.name} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><BedDouble size={28} className="text-gray-300" aria-hidden="true" /></div>}
+                        {photo ? (
+                          <button type="button" onClick={() => setViewer({ photos: pics, title: r.name })} className="relative block w-full h-full" aria-label={`See photos of ${r.name}`}>
+                            <img src={getImageUrl(photo, 800)} alt={r.name} loading="lazy" className="w-full h-full object-cover" />
+                            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-xs font-semibold">{pics.length} photo{pics.length === 1 ? '' : 's'}</span>
+                          </button>
+                        ) : <div className="w-full h-full flex items-center justify-center"><BedDouble size={28} className="text-gray-300" aria-hidden="true" /></div>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap justify-between gap-2">

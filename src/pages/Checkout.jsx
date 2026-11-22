@@ -660,7 +660,7 @@ const Checkout = () => {
                 <div className="flex justify-between items-start mb-6">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/10 border border-white/10">
                     {(selectedHotel.media?.[0]?.url || selectedHotel.image) ? (
-                      <img src={getImageUrl(selectedHotel.media?.[0]?.url || selectedHotel.image)} alt={selectedHotel.name}
+                      <img src={getImageUrl(selectedHotel.media?.[0]?.url || selectedHotel.image, 800)} alt={selectedHotel.name}
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         className="w-full h-full object-cover opacity-80" />
                     ) : <Building className="w-full h-full p-4 text-white/40" />}

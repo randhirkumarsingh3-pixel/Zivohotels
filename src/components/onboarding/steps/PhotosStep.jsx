@@ -400,7 +400,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                       isActive ? 'border-blue-600 scale-[1.02] shadow' : 'border-transparent hover:border-gray-300'
                     }`}
                   >
-                    <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="thumbnail" />
+                    <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="thumbnail" />
                     {!hasTags && (
                       <span className="absolute bottom-1 right-1 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-sm">
                         MISSING
@@ -415,7 +415,7 @@ const PhotosStep = ({ formData, updateForm }) => {
           {/* Central Preview Panel */}
           <div className="lg:col-span-2 space-y-4">
             <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black flex items-center justify-center group shadow-md">
-              <img src={getImageUrl(currentImg.url)} className="max-w-full max-h-full object-contain" alt="Preview" />
+              <img src={getImageUrl(currentImg.url, 1600)} className="max-w-full max-h-full object-contain" alt="Preview" />
               
               {/* Delete Icon Trigger */}
               <button
@@ -549,7 +549,7 @@ const PhotosStep = ({ formData, updateForm }) => {
         
         {coverImage ? (
           <>
-            <img src={getImageUrl(coverImage.url)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
+            <img src={getImageUrl(coverImage.url, 800)} className="w-full h-full object-cover animate-fade-in" alt="Property Cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex flex-col justify-end p-8">
               <span className="text-xs bg-blue-600 text-white font-black px-3 py-1 rounded-md uppercase w-fit tracking-widest shadow-sm mb-3">
                 Property Cover Photo
@@ -623,7 +623,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                     !hasTags ? 'border-red-400 hover:border-red-500' : 'border-slate-200 hover:border-blue-300'
                   }`}
                 >
-                  <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="grid-asset" />
+                  <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="grid-asset" />
                   
                   {/* Hover Tag overlay */}
                   <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-[1px]">
@@ -678,7 +678,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                   {/* Assigned images thumbnails */}
                   {assignedImages.slice(0, 4).map(img => (
                     <div key={img.id} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-slate-50">
-                      <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="assigned" />
+                      <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="assigned" />
                     </div>
                   ))}
                   {assignedImages.length > 4 && (
@@ -752,7 +752,7 @@ const PhotosStep = ({ formData, updateForm }) => {
                         isLinked ? 'border-blue-600 ring-2 ring-blue-100' : 'border-gray-200'
                       }`}
                     >
-                      <img src={getImageUrl(image.url)} className="w-full h-full object-cover" alt="assign-thumb" />
+                      <img src={getImageUrl(image.url, 400)} className="w-full h-full object-cover" alt="assign-thumb" />
                       
                       {/* Checkbox Overlay */}
                       <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded border border-gray-300 bg-white/95">

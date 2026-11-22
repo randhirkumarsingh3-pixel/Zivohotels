@@ -15,6 +15,7 @@ import { getHomeFeed } from './controllers/homeController.js';
 import roomRoutes from './routes/roomRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import { variantFor } from './services/imageVariants.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
 import hourlyAdminRoutes from './routes/hourlyAdminRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
@@ -178,8 +179,23 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Serve uploaded images statically
-app.use('/uploads', express.static(uploadDir));
+// Serve uploaded images statically. Uploaded file names never change (time + hash), so browsers
+// may keep them for a year.
+app.use('/uploads', express.static(uploadDir, { maxAge: '365d', immutable: true, index: false }));
+
+// Photos at the width a page shows them: /img/w800/uploads/<file> -> WebP, made once, then from disk
+app.get(/^\/img\/w(\d+)\/uploads\/(.+)$/, async (req, res) => {
+  try {
+    const file = await variantFor(uploadDir, decodeURIComponent(req.params[1]), Number(req.params[0]));
+    if (!file) return res.status(404).end();
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.type('image/webp');
+    return res.sendFile(file);
+  } catch (e) {
+    console.error('[img] resize failed:', e.message);
+    return res.status(500).end();
+  }
+});
 
 // ─── HEALTH & LIVENESS PROBES ────────────────────────────────────────────────
 app.get('/health', (req, res) => {

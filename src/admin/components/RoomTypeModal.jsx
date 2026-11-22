@@ -282,7 +282,7 @@ const RoomTypeModal = ({ isOpen, onClose, onSubmit, initialData = null, hotelId 
                 <div className="grid grid-cols-2 gap-3">
                   {formData.roomImages.map(img => (
                     <div key={img.id} className="group relative aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm">
-                      <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="Attached" />
+                      <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="Attached" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button 
                           type="button" 

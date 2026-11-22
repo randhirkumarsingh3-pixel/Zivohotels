@@ -1,4 +1,5 @@
 import { isLocalStorageDriver } from '../config/storage.js';
+import { shrinkUpload } from './imageVariants.js';
 import { GoogleStorageProvider } from './providers/GoogleStorageProvider.js';
 import { LocalDiskProvider } from './providers/LocalDiskProvider.js';
 import crypto from 'crypto';
@@ -27,6 +28,8 @@ export class MediaService {
       'image/heic', 'image/heif', 'image/svg+xml'
     ];
     this._validateMimeType(mimeType, ALLOWED_IMAGE_TYPES);
+    // Phone photos are 3-8 MB: store at most 2400 px on the longest side (pages use smaller copies)
+    buffer = await shrinkUpload(buffer, mimeType);
 
     // Normalize extension — HEIC files stored as jpg so browsers can display them
     const MIME_TO_EXT = {
