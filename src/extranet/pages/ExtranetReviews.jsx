@@ -147,7 +147,7 @@ const ExtranetReviews = () => {
                 <p className="text-xs text-gray-500 mt-2">{Object.entries(r.aspectRatings).map(([k, v]) => `${ASPECT_LABEL[k] || k} ${v}`).join(' · ')}</p>
               )}
               {r.tags?.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{r.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600">{t}</span>)}</div>}
-              {r.photos?.length > 0 && <div className="flex gap-2 mt-3">{r.photos.map((p) => <img key={p.url} src={getImageUrl(p.url)} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-100" />)}</div>}
+              {r.photos?.length > 0 && <div className="flex gap-2 mt-3">{r.photos.map((p) => <img key={p.url} src={getImageUrl(p.url, 400)} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-100" />)}</div>}
 
               {r.reply && replyFor !== r.id && (
                 <div className="mt-4 bg-gray-50 border border-gray-100 rounded-lg p-3">

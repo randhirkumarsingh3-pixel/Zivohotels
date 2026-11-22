@@ -43,7 +43,7 @@ const ReviewCard = ({ r }) => {
       {r.photos?.length > 0 && (
         <div className="flex gap-2 mt-3 flex-wrap">
           {r.photos.map((p) => (
-            <a key={p.url} href={getImageUrl(p.url)} target="_blank" rel="noopener noreferrer"><img src={getImageUrl(p.url)} alt="Guest photo" loading="lazy" className="w-20 h-20 rounded-lg object-cover border border-gray-100" /></a>
+            <a key={p.url} href={getImageUrl(p.url, 400)} target="_blank" rel="noopener noreferrer"><img src={getImageUrl(p.url, 400)} alt="Guest photo" loading="lazy" className="w-20 h-20 rounded-lg object-cover border border-gray-100" /></a>
           ))}
         </div>
       )}

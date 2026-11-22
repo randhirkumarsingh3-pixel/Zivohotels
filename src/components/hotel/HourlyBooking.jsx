@@ -101,7 +101,7 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
                       <div className="w-full sm:w-40 h-32 sm:h-28 shrink-0 rounded-lg overflow-hidden bg-gray-100">
                         {photo ? (
                           <button type="button" onClick={() => setViewer({ photos: pics, title: r.name })} className="relative block w-full h-full" aria-label={`See photos of ${r.name}`}>
-                            <img src={getImageUrl(photo)} alt={r.name} loading="lazy" className="w-full h-full object-cover" />
+                            <img src={getImageUrl(photo, 800)} alt={r.name} loading="lazy" className="w-full h-full object-cover" />
                             <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-xs font-semibold">{pics.length} photo{pics.length === 1 ? '' : 's'}</span>
                           </button>
                         ) : <div className="w-full h-full flex items-center justify-center"><BedDouble size={28} className="text-gray-300" aria-hidden="true" /></div>}

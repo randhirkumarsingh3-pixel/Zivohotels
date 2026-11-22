@@ -84,7 +84,7 @@ const PropertyMediaLibrary = ({ hotelId, onSelect, attachedImageIds = [] }) => {
                   ${isAttached ? 'border-brand-500 opacity-60 grayscale' : 'border-transparent hover:border-brand-300'}
                 `}
               >
-                <img src={getImageUrl(img.url)} className="w-full h-full object-cover" alt="Library" />
+                <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="Library" />
                 <div className="absolute inset-x-0 bottom-0 bg-black/50 p-1">
                   <div className="flex flex-wrap gap-0.5">
                     {img.tags.slice(0, 2).map(t => (

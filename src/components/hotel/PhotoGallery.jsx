@@ -8,12 +8,12 @@ import { getImageUrl } from '../../utils/image';
  * photo, filterable by the tags the property gave them at onboarding (Exterior, Lobby, rooms...).
  * photos: [{ url, label }] where label is the tag / room name shown in the viewer.
  */
-const Tile = ({ src, alt, className = '', onClick }) => {
+const Tile = ({ src, alt, className = '', onClick, w = 800, first = false }) => {
   const [failed, setFailed] = useState(false);
   return (
     <button type="button" onClick={onClick} className={`relative overflow-hidden bg-gray-100 group ${className}`} aria-label={`Open photo: ${alt}`}>
       {!failed && (
-        <img src={getImageUrl(src)} alt={alt} onError={() => setFailed(true)} loading="lazy"
+        <img src={getImageUrl(src, w)} alt={alt} onError={() => setFailed(true)} loading={first ? 'eager' : 'lazy'} {...(first ? { fetchpriority: 'high' } : {})} decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
       )}
     </button>
@@ -35,7 +35,7 @@ const PhotoGallery = ({ hotelName, photos }) => {
     <>
       <div className="relative">
         <div className={`grid grid-cols-1 ${grid.length > 1 ? 'md:grid-cols-4 md:grid-rows-2' : ''} gap-2 h-[240px] sm:h-[320px] md:h-[440px] rounded-card overflow-hidden`}>
-          <Tile src={grid[0].url} alt={hotelName} onClick={() => openAt(0)} className={grid.length > 1 ? 'md:col-span-2 md:row-span-2' : 'h-full'} />
+          <Tile src={grid[0].url} alt={hotelName} onClick={() => openAt(0)} w={1600} first className={grid.length > 1 ? 'md:col-span-2 md:row-span-2' : 'h-full'} />
           {grid.slice(1).map((p, i) => (
             <Tile key={p.url + i} src={p.url} alt={`${hotelName}: ${p.label || `photo ${i + 2}`}`} onClick={() => openAt(i + 1)}
               className={`hidden md:block ${grid.length === 2 ? 'md:col-span-2 md:row-span-2' : grid.length === 3 ? 'md:col-span-2' : grid.length === 4 && i === 2 ? 'md:col-span-2' : ''}`} />

@@ -869,7 +869,7 @@ const EmptySection = ({ label }) => (
 );
 
 const BookingCard = ({ booking, onRateStay, onManage, onPaid }) => {
-  const mainImageUrl = getImageUrl(booking.hotel?.media?.[0]?.url) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
+  const mainImageUrl = getImageUrl(booking.hotel?.media?.[0]?.url, 800) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
 
   const reviewReady = isReviewUnlocked(booking);
   const cat = classifyBooking(booking);
@@ -1026,7 +1026,7 @@ const ReviewTab = ({
             <div className="flex flex-wrap gap-1.5">{existingReview.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-600">{t}</span>)}</div>
           )}
           {existingReview.photos?.length > 0 && (
-            <div className="flex gap-2 flex-wrap">{existingReview.photos.map((p) => <img key={p.url} src={getImageUrl(p.url)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />)}</div>
+            <div className="flex gap-2 flex-wrap">{existingReview.photos.map((p) => <img key={p.url} src={getImageUrl(p.url, 400)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />)}</div>
           )}
         </div>
         {existingReview.reply && (
@@ -1128,7 +1128,7 @@ const ReviewTab = ({
   const NEG_TAGS = ['Noise Issue','Slow Service','Poor Cleanliness','AC Issue','Maintenance Issue','Check-in Delay'];
   const TRIP_TYPES = [['BUSINESS', 'Business'], ['COUPLE', 'Couple'], ['FAMILY', 'Family'], ['FRIENDS', 'Friends'], ['SOLO', 'Solo']];
   const toggleTag = (t) => setSelectedTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
-  const hotelImg = getImageUrl(activeBooking.hotel?.media?.[0]?.url) || null;
+  const hotelImg = getImageUrl(activeBooking.hotel?.media?.[0]?.url, 800) || null;
 
   const handlePhotoFiles = (files) => {
     const arr = Array.from(files).filter((f) => f.type.startsWith('image/')).slice(0, 5 - reviewPhotos.length);
@@ -1308,7 +1308,7 @@ const ReviewTab = ({
           <div className="grid grid-cols-3 gap-2">
             {reviewPhotos.map((ph, i) => (
               <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 shadow-sm group">
-                <img src={ph.saved ? getImageUrl(ph.url) : ph.url} alt={ph.name || 'Review photo'} className="w-full h-full object-cover" />
+                <img src={ph.saved ? getImageUrl(ph.url, 400) : ph.url} alt={ph.name || 'Review photo'} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => setReviewPhotos(prev => prev.filter((_,j) => j !== i))}

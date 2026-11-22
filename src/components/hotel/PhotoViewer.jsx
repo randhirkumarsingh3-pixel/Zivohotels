@@ -83,7 +83,7 @@ const PhotoViewer = ({ photos, start = 0, title, onClose, filters = true }) => {
         >
           <img
             key={current.url}
-            src={getImageUrl(current.url)}
+            src={getImageUrl(current.url, 1600)}
             alt={current.label || title}
             className="block max-h-[calc(100vh-220px)] max-w-full object-contain select-none transition-transform duration-200"
             style={{ transform: zoom ? 'scale(2.2)' : 'scale(1)', transformOrigin: origin }}
@@ -100,7 +100,7 @@ const PhotoViewer = ({ photos, start = 0, title, onClose, filters = true }) => {
         {shown.map((p, i) => (
           <button key={p.url + i} type="button" onClick={() => { setIndex(i); setZoom(false); }} aria-label={`Photo ${i + 1}`}
             className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 ${i === pos ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-            <img src={getImageUrl(p.url)} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={getImageUrl(p.url, 400)} alt="" className="w-full h-full object-cover" loading="lazy" />
           </button>
         ))}
       </div>

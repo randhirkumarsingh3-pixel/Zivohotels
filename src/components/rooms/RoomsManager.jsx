@@ -194,7 +194,7 @@ const RoomsManager = ({ hotelId, inventoryLink }) => {
                   <button type="button" className="flex items-center gap-4 text-left" onClick={() => setExpandedRooms((p) => ({ ...p, [room.id]: !p[room.id] }))}>
                     <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
                       {primary?.image?.url ? (
-                        <img src={getImageUrl(primary.image.url)} className="w-full h-full object-cover" alt="" />
+                        <img src={getImageUrl(primary.image.url, 400)} className="w-full h-full object-cover" alt="" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300"><Tag size={16} /></div>
                       )}

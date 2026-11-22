@@ -98,7 +98,7 @@ const ReviewModeration = () => {
               {r.status === 'REJECTED' && r.moderationNote && <p className="mt-3 text-xs text-gray-500">Reason given to the guest: {r.moderationNote}</p>}
               {r.title && <h3 className="font-bold text-gray-900 mt-3">{r.title}</h3>}
               {r.comment && <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{r.comment}</p>}
-              {r.photos?.length > 0 && <div className="flex gap-2 mt-3">{r.photos.map((p) => <a key={p.url} href={getImageUrl(p.url)} target="_blank" rel="noopener noreferrer"><img src={getImageUrl(p.url)} alt="" className="w-16 h-16 rounded-lg object-cover border" /></a>)}</div>}
+              {r.photos?.length > 0 && <div className="flex gap-2 mt-3">{r.photos.map((p) => <a key={p.url} href={getImageUrl(p.url, 400)} target="_blank" rel="noopener noreferrer"><img src={getImageUrl(p.url, 400)} alt="" className="w-16 h-16 rounded-lg object-cover border" /></a>)}</div>}
               {r.reply && (
                 <div className="mt-3 bg-gray-50 border border-gray-100 rounded-lg p-3">
                   <div className="flex justify-between items-center"><p className="text-xs font-bold text-gray-700">Hotel reply</p>

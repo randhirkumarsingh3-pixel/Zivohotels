@@ -73,7 +73,7 @@ const RoomCard = ({ roomType, nights, selectedRatePlanId, onSelect, tooSmallFor 
         <div className="relative w-full sm:w-48 h-40 sm:h-32 shrink-0 rounded-lg overflow-hidden bg-gray-100">
           {photo ? (
             <button type="button" onClick={() => setViewer(0)} className="group block w-full h-full" aria-label={`See ${photos.length} photo${photos.length === 1 ? '' : 's'} of ${roomType.name}`}>
-              <img src={getImageUrl(photo)} alt={roomType.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={getImageUrl(photo, 800)} alt={roomType.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-semibold">
                 <Images size={13} aria-hidden="true" /> {photos.length}
               </span>

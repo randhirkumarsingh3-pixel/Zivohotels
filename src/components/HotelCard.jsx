@@ -56,7 +56,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
           <span className="text-4xl font-black opacity-50">{hotel.name?.charAt(0) || 'Z'}</span>
         </div>
       ) : (
-        <img src={getImageUrl(hotel.image || FALLBACK_IMG)} alt="" loading="lazy" onError={() => setImgError(true)}
+        <img src={getImageUrl(hotel.image || FALLBACK_IMG, 800)} alt="" loading="lazy" onError={() => setImgError(true)}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
       )}
     </div>
