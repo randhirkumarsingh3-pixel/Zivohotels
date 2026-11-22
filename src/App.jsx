@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ExperimentProvider } from './context/ExperimentContext';
 
@@ -25,6 +25,7 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const PlaceLanding = lazy(() => import('./pages/PlaceLanding'));
 const SetPassword = lazy(() => import('./pages/SetPassword'));
 const ListProperty = lazy(() => import('./pages/ListProperty'));
 const HourlyCheckout = lazy(() => import('./pages/HourlyCheckout'));
@@ -83,6 +84,7 @@ const PropertyOnboarding = lazy(() => import('./extranet/pages/PropertyOnboardin
 const ExtranetHourly = lazy(() => import('./extranet/pages/ExtranetHourly'));
 const ExtranetTeam = lazy(() => import('./extranet/pages/ExtranetTeam'));
 const AdminStaff = lazy(() => import('./admin/pages/Staff'));
+const AdminSeo = lazy(() => import('./admin/pages/Seo'));
 const AdminHourly = lazy(() => import('./admin/pages/Hourly'));
 
 import { ExtranetProvider } from './extranet/context/ExtranetContext';
@@ -92,6 +94,8 @@ const LoaderFallback = () => (
     <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
+
+const PlaceOrNotFound = () => (useLocation().pathname.startsWith('/hotels-in-') ? <PlaceLanding /> : <NotFound />);
 
 function App() {
   return (
@@ -107,7 +111,8 @@ function App() {
               <Route path="/hotel/:id" element={<Detail />} />
               <Route path="/help" element={<Help />} />
               <Route path="/privacy" element={<Privacy />} />
-              <Route path="*" element={<NotFound />} />
+              {/* City and area pages (/hotels-in-bengaluru) are matched inside PlaceLanding; anything else is not found */}
+              <Route path="*" element={<PlaceOrNotFound />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -194,6 +199,7 @@ function App() {
               {/* Core Admin */}
               <Route path="users" element={<Users />} />
               <Route path="staff" element={<AdminStaff />} />
+              <Route path="seo" element={<AdminSeo />} />
               <Route path="control-center" element={<SystemControlCenter />} />
               <Route path="live-ops" element={<LiveOpsCommandCenter />} />
               <Route path="settings" element={<SystemHealth />} />

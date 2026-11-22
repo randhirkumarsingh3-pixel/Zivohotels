@@ -18,6 +18,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import { variantFor } from './services/imageVariants.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
+import seoAdminRoutes from './routes/seoAdminRoutes.js';
 import hourlyAdminRoutes from './routes/hourlyAdminRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -29,7 +30,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import agreementRoutes from './routes/agreementRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { acceptInvite } from './controllers/userController.js';
-import { robotsTxt, sitemapXml } from './controllers/seoController.js';
+import { robotsTxt, sitemapXml, sitemapPart, seoPage } from './controllers/seoController.js';
 import systemRoutes from './routes/systemRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
@@ -254,7 +255,15 @@ app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
-app.get('/api/v1/public/home', getHomeFeed); // home page: cities, top-rated hotels, offers, reviews
+app.get('/api/v1/public/home', getHomeFeed);
+// City / area landing pages (/hotels-in-bengaluru): heading, intro and questions
+app.get('/api/v1/public/places/:slug', async (req, res, next) => {
+  try {
+    const place = await (await import('./services/seoService.js')).placeInfo(req.params.slug);
+    if (!place) return res.status(404).json({ success: false, message: 'Place not found' });
+    return res.json({ success: true, data: place });
+  } catch (err) { return next(err); }
+}); // home page: cities, top-rated hotels, offers, reviews
 app.use('/api/v1/bookings/preview', previewLimiter);
 app.use(/^\/api\/v1\/bookings\/[^/]+\/requests/, stayRequestLimiter);
 app.use('/api/v1/bookings', bookingLimiter, bookingRoutes);
@@ -271,6 +280,17 @@ app.use('/api/v1/experiments', experimentRoutes);
 // Search engines (served at the site root by the website's Nginx)
 app.get('/robots.txt', robotsTxt);
 app.get('/sitemap.xml', sitemapXml);
+app.get('/sitemaps/:part.xml', sitemapPart);
+// Public pages with their title, description, structured data and content (the website's Nginx
+// asks here for page requests; see services/seoService.js)
+app.get('/seo/page', seoPage);
+// IndexNow key file (proves to search engines that the notifications come from this site)
+app.get(/^\/indexnow-([0-9a-f]{16,64})\.txt$/, async (req, res) => {
+  const { getSeoSettings } = await import('./services/seoService.js');
+  const key = (await getSeoSettings()).indexNowKey;
+  if (!key || key !== req.params[0]) return res.status(404).end();
+  return res.type('text/plain').send(key);
+});
 app.get('/api/v1/system/config', (req, res, next) => {
   import('./controllers/systemController.js').then(m => m.getPublicConfig(req, res, next));
 });
@@ -288,6 +308,7 @@ app.use('/api/v1/channel-manager', channelManagerApi);
 app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter, permissionGate);
 
 app.use('/api/v1/admin/staff',      staffRoutes);
+app.use('/api/v1/admin/seo',        seoAdminRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);

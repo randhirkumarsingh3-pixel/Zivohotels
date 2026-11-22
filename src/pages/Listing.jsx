@@ -49,15 +49,23 @@ const Group = ({ title, children }) => (
 
 const EMPTY = { maxPrice: null, stars: [], score: null, freeCancel: false, deals: false, types: [], areas: [], amenities: [] };
 
-const Listing = () => {
+const Listing = ({ place = null }) => {
   const { searchParams, updateSearchParams } = useBooking();
   const allExperiments = useAllExperiments();
   const location = useLocation();
+  // City / area landing pages (/hotels-in-bengaluru) search that place unless the address says otherwise
+  const search = useMemo(() => {
+    if (!place) return location.search;
+    const p = new URLSearchParams(location.search);
+    if (!p.get('city') && !p.get('lat')) p.set('city', place.city);
+    if (place.area && !p.get('area')) p.set('area', place.area);
+    return `?${p.toString()}`;
+  }, [place, location.search]);
 
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
   // ?area=Kurla West (from "Explore hotels" links) turns that area filter on
-  const urlArea = new URLSearchParams(location.search).get('area');
+  const urlArea = new URLSearchParams(search).get('area');
   const [f, setF] = useState(() => (urlArea ? { ...EMPTY, areas: [urlArea] } : EMPTY));
   useEffect(() => { if (urlArea) setF((p) => (p.areas.includes(urlArea) ? p : { ...p, areas: [urlArea] })); }, [urlArea]);
   const [sortBy, setSortBy] = useState('recommended');
@@ -73,7 +81,7 @@ const Listing = () => {
 
   // The search comes from the URL (shareable), falling back to the last search in this session
   const activeSearchParams = useMemo(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(search);
     const city = params.get('city');
     const lat = parseFloat(params.get('lat'));
     const lng = parseFloat(params.get('lng'));
@@ -94,10 +102,10 @@ const Listing = () => {
       };
     }
     return searchParams;
-  }, [location.search, searchParams]);
+  }, [search, searchParams]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(search);
     if (params.get('city') === null && params.get('lat') === null) return;
     const { lat: _lat, lng: _lng, ...a } = activeSearchParams;
     // (Near me isn't kept as a place name: searching for "Hotels near me" as a city finds nothing)
@@ -105,17 +113,19 @@ const Listing = () => {
     if (next.destination !== searchParams.destination || next.checkIn !== searchParams.checkIn || next.checkOut !== searchParams.checkOut || next.guests !== searchParams.guests || next.rooms !== searchParams.rooms || occToParam(next.occupancy) !== occToParam(searchParams.occupancy)) {
       updateSearchParams(next);
     }
-  }, [location.search, activeSearchParams, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, searchParams.occupancy, updateSearchParams]);
+  }, [search, activeSearchParams, searchParams.destination, searchParams.checkIn, searchParams.checkOut, searchParams.guests, searchParams.rooms, searchParams.occupancy, updateSearchParams]);
 
   const isNear = activeSearchParams.lat != null;
   const searchBarInitial = useMemo(() => (isNear
     ? { ...activeSearchParams, destination: { type: 'near', label: NEAR_ME, value: 'near', lat: activeSearchParams.lat, lng: activeSearchParams.lng } }
     : activeSearchParams), [isNear, activeSearchParams]);
   const placeName = isNear ? '' : activeSearchParams.destination;
-  const hourlyQ = hourlyFromQuery(location.search);
-  const heading = hourlyQ
-    ? `Hourly stays${hourlyQ.city ? ` in ${hourlyQ.city}` : ''}`
-    : isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
+  const hourlyQ = hourlyFromQuery(search);
+  const heading = place && !hourlyQ
+    ? `Hotels in ${place.area ? `${place.area}, ` : ''}${place.city}`
+    : hourlyQ
+      ? `Hourly stays${hourlyQ.city ? ` in ${hourlyQ.city}` : ''}`
+      : isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
   usePageTitle(heading,
     placeName ? `Compare hotels in ${placeName} on ZivoHotels: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
 
@@ -127,7 +137,7 @@ const Listing = () => {
   }), [minStars, sortBy]);
 
   // Hourly search (?stay=hourly&date=&start=&hours=&guests=)
-  const hourly = useMemo(() => hourlyFromQuery(location.search), [location.search]);
+  const hourly = useMemo(() => hourlyFromQuery(search), [search]);
 
   const fetchHotels = useCallback(async () => {
     setLoading(true);
@@ -250,6 +260,7 @@ const Listing = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-5">
             {heading}
           </h1>
+          {place?.intro && <p className="-mt-3 mb-5 text-navy-100 max-w-3xl">{place.intro}</p>}
           <SmartSearchBar isMobile={isMobile} initial={hourly ? { destination: hourly.city, hourly } : searchBarInitial} />
           {hourly && <p className="mt-3 text-sm text-navy-100">{`${hourly.hours}-hour stays from ${timeLabel(hourly.start)} on ${new Date(`${hourly.date}T06:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}. Prices before GST.`}</p>}
         </div>
@@ -308,11 +319,25 @@ const Listing = () => {
             <ResultsMap hotels={shown} detailQuery={detailQuery} className="h-[70vh] min-h-[420px]" />
           ) : (
             <div className="space-y-4">
-              <ShowInBatches items={shown} resetKey={`${location.search}|${sortBy}|${JSON.stringify(f)}`} render={(hotel) => <HotelCard key={hotel.id} hotel={hotel} layout="row" />} />
+              <ShowInBatches items={shown} resetKey={`${search}|${sortBy}|${JSON.stringify(f)}`} render={(hotel) => <HotelCard key={hotel.id} hotel={hotel} layout="row" />} />
             </div>
           )}
         </div>
       </div>
+
+      {place?.faqs?.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12" aria-labelledby="place-faq">
+          <h2 id="place-faq" className="text-xl font-bold text-gray-900">Questions about {heading.toLowerCase().replace(/^hotels/, 'hotels')}</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {place.faqs.map((q) => (
+              <details key={q.q} className="bg-white rounded-xl border border-gray-200 p-4">
+                <summary className="font-semibold text-gray-900 cursor-pointer">{q.q}</summary>
+                <p className="mt-2 text-sm text-gray-700">{q.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
 
       {mobileFiltersOpen && (
         <div className="fixed inset-0 z-[60] flex lg:hidden" role="dialog" aria-modal="true" aria-label="Filters">

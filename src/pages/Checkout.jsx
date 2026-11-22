@@ -16,6 +16,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import { occupancyOf, occParams, roomGuestsLabel } from '../utils/occupancy';
 import { payForBooking, deadlineLabel } from '../utils/payBooking';
 import { payLaterDeadline } from '../utils/payLater';
+import { hotelPath } from '../utils/hotelPath';
 
 const useCountdown = (expiresAt) => {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -463,7 +464,7 @@ const Checkout = () => {
             type="button"
             onClick={() => {
               const q = new URLSearchParams({ checkin: searchParams.checkIn || '', checkout: searchParams.checkOut || '', ...occParams(stayRooms.map((r) => ({ adults: r.adults, children: r.children || 0 }))) });
-              navigate(`/hotel/${selectedHotel.id}?${q}`);
+              navigate(hotelPath(selectedHotel, q));
             }}
             className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-brand-700"
           >

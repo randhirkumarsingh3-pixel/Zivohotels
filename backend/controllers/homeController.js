@@ -6,6 +6,7 @@ import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { promotionLabel } from '../domains/promotionDomain.js';
 import { getConfig as loyaltyConfig } from '../services/loyaltyService.js';
 import { getShared, setShared } from '../utils/sharedCache.js';
+import { hotelSlug } from '../utils/hotelSlug.js';
 
 /**
  * GET /api/v1/public/home: everything the home page shows, from live data only.
@@ -74,7 +75,7 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
     const prices = h.roomTypes.flatMap((rt) => rt.ratePlans.map((p) => Number(p.basePrice))).filter((n) => n > 0);
     const area = h.integrationSettings?.addressDetails?.area || h.landmark || '';
     return {
-      id: h.id, name: h.name, city: h.city,
+      id: h.id, slug: hotelSlug(h), name: h.name, city: h.city,
       location: [area, h.city].filter(Boolean).join(', ') || h.location,
       image: h.media[0]?.url || null,
       starRating: Number.isInteger(h.rating) && h.rating >= 1 && h.rating <= 5 ? h.rating : null,

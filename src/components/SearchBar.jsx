@@ -6,6 +6,7 @@ import { useBooking } from '../context/BookingContext';
 import DestinationAutocomplete from './search/DestinationAutocomplete';
 import DatePicker from './search/DatePicker';
 import GuestSelector from './search/GuestSelector';
+import { hotelPath } from '../utils/hotelPath';
 
 const SearchBar = ({ inline = false }) => {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ const SearchBar = ({ inline = false }) => {
         guests: guests.toString(),
         rooms: rooms.toString()
       });
-      navigate(`/hotel/${destination.id}?${detailParams.toString()}`);
+      navigate(hotelPath(destination, detailParams.toString()));
       return;
     }
 

@@ -21,6 +21,8 @@ import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
 import { parseLatLng } from '../utils/places.js';
 import { SEARCH_MAX_HOTELS } from '../services/hotelPlaceMatch.js';
 import { managesHotel, managedHotelWhere } from '../utils/hotelAccess.js';
+import { hotelSlug } from '../utils/hotelSlug.js';
+import { seoChanged } from '../services/seoService.js';
 
 const SEARCH_BATCH = 200;
 /** Runs fn over items, `size` at a time (keeps the database pool free for other visitors). */
@@ -648,6 +650,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
 
   await saveCancellationPolicy(id, normalized._cancellationPolicy);
 
+  seoChanged(hotel.id).catch(() => {}); // search pages and IndexNow
   res.status(200).json({ success: true, data: hotel, requestId: req.id });
 });
 
@@ -789,6 +792,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
 
     const listed = {
       ...flattenedHotel,
+      slug: hotelSlug(hotel),
       image: signedImage,
       startingPrice: startingPrice || 0,
       price: startingPrice || 0
@@ -797,7 +801,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
     // commission and credit score. Only admins and the owner (own hotels) get the full record.
     return isAdminOrOwner
       ? listed
-      : { ...publicHotelView(listed), startingPrice: listed.startingPrice, price: listed.price };
+      : { ...publicHotelView(listed), slug: listed.slug, startingPrice: listed.startingPrice, price: listed.price };
   });
 
   const formattedHotelsWithNulls = await Promise.all(formattedHotelsPromises);
@@ -941,7 +945,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
       .map(rt => ({ ...rt, ratePlans: (rt.ratePlans || []).filter(rp => Number(rp.basePrice) > 0) }))
       .filter(rt => rt.ratePlans.length > 0);
   }
-  const data = isPrivileged ? full : publicHotelView(full);
+  const data = { ...(isPrivileged ? full : publicHotelView(full)), slug: hotelSlug(hotel) };
   res.status(200).json({ success: true, data, requestId: req.id });
 });
 
@@ -1089,6 +1093,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
 
      return {
         id: hotel.id,
+        slug: hotelSlug(hotel),
         name: hotel.name,
         price: hotelMinPrice === Infinity ? 0 : hotelMinPrice,
         startingPrice: hotelMinPrice === Infinity ? 0 : hotelMinPrice,

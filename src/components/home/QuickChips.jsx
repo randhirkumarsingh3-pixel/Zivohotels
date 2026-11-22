@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocateFixed, History, Loader2, MapPin } from 'lucide-react';
 import { cityLink, defaultStay } from './searchLinks';
+import { hotelPath } from '../../utils/hotelPath';
 
 /**
  * Under the home search bar: "Near me", the visitor's recent searches (saved in this browser by
@@ -23,7 +24,7 @@ const QuickChips = ({ cities = [] }) => {
   const go = (item) => {
     if (item.type === 'hotel' && item.id) {
       const { checkin, checkout } = defaultStay();
-      navigate(`/hotel/${item.id}?${new URLSearchParams({ checkin, checkout, guests: '2', rooms: '1' })}`);
+      navigate(hotelPath(item, new URLSearchParams({ checkin, checkout, guests: '2', rooms: '1' }).toString()));
     } else navigate(cityLink(item.value || item.label));
   };
 

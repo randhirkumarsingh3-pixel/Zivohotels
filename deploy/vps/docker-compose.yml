@@ -80,6 +80,8 @@ services:
       FRONTEND_URL: https://${APP_DOMAIN}
       # Search engines: keep false on staging (test data); true only on the live site
       ALLOW_INDEXING: ${ALLOW_INDEXING:-false}
+      # The built website page that SEO pages are filled into (served by the website container)
+      SEO_TEMPLATE_URL: http://zivohotels-app-web/index.html
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/vps/.env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?Set RAZORPAY_KEY_ID in deploy/vps/.env}

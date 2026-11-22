@@ -1,4 +1,6 @@
 import express from 'express';
+import { resolveHotelId } from '../services/hotelResolve.js';
+import { isUuid } from '../utils/hotelSlug.js';
 import { createHotel, updateHotel, deleteHotel, getAllHotels, getHotelById, searchHotels } from '../controllers/hotelController.js';
 import { suggestNearby, lookupNearby } from '../controllers/nearbyController.js';
 import { getHotelReviews } from '../controllers/reviewController.js';
@@ -6,6 +8,18 @@ import { searchHourly, hotelOffer } from '../controllers/hourlyController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// /hotels/:id also takes the readable address (/hotel/z-stays-…-5a320d64): turned into the id here,
+// so every handler below works with either
+router.param('id', async (req, res, next, value) => {
+  if (isUuid(value)) return next();
+  try {
+    const id = await resolveHotelId(value);
+    if (!id) return res.status(404).json({ success: false, message: 'Hotel not found' });
+    req.params.id = id;
+    return next();
+  } catch (err) { return next(err); }
+});
 
 router.route('/')
   .get(extractUser, getAllHotels)

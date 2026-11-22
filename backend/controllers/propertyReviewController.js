@@ -5,6 +5,7 @@ import { queueService } from '../services/queueService.js';
 import { mediaService } from '../services/MediaService.js';
 import { checkPropertyReadiness } from '../services/propertyReadiness.js';
 import { managesHotel } from '../utils/hotelAccess.js';
+import { seoChanged } from '../services/seoService.js';
 
 // Helper to log timeline
 const logTimeline = async (hotelId, userId, action, reason = null) => {
@@ -382,6 +383,7 @@ export const goLive = asyncHandler(async (req, res) => {
   });
   
   await logTimeline(id, req.user.id, 'STATUS_LIVE');
+  seoChanged(updated.id).catch(() => {}); // now in search pages and the sitemap
   res.json({ success: true, data: updated });
 });
 
@@ -398,5 +400,6 @@ export const unlistProperty = asyncHandler(async (req, res) => {
   });
   
   await logTimeline(id, req.user.id, 'STATUS_PAUSED');
+  seoChanged(updated.id).catch(() => {});
   res.json({ success: true, data: updated });
 });

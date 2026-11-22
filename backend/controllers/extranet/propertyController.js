@@ -1,6 +1,7 @@
 import prisma from '../../config/db.js';
 import { logActivity } from '../../services/activityService.js';
 import { checkFeatureGate } from '../../services/featureGateService.js';
+import { seoChanged } from '../../services/seoService.js';
 
 export const getProperty = async (req, res) => {
   try {
@@ -74,6 +75,7 @@ export const updateProperty = async (req, res) => {
       after: property
     });
 
+    seoChanged(property.id).catch(() => {}); // search pages and IndexNow
     res.json({ success: true, data: property, message: 'Property details updated successfully.' });
   } catch (error) {
     console.error('Error updating extranet property:', error);
