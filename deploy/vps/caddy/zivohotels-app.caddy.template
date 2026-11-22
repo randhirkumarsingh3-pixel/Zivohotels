@@ -3,5 +3,7 @@
 __APP_DOMAIN__ {
 	encode zstd gzip
 	header -Server
-	reverse_proxy zivohotels-app-web:80
+	reverse_proxy zivohotels-app-web:80 {
+		__TRUSTED_PROXIES__
+	}
 }

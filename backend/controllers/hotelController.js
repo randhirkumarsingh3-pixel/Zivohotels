@@ -4,7 +4,7 @@ import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
-import cacheUtils from '../utils/cacheUtils.js';
+import { getShared, setShared } from '../utils/sharedCache.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { mediaService } from '../services/MediaService.js';
@@ -19,6 +19,13 @@ import { stayNightlyPrice } from '../services/ariService.js';
 import nearbyPlaces from '../services/nearbyPlacesService.js';
 import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
 import { parseLatLng } from '../utils/places.js';
+import { SEARCH_MAX_HOTELS } from '../services/hotelPlaceMatch.js';
+
+const SEARCH_BATCH = 200;
+/** Runs fn over items, `size` at a time (keeps the database pool free for other visitors). */
+const inBatches = async (items, size, fn) => {
+  for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
+};
 
 // --- ZOD SCHEMAS ---
 
@@ -973,7 +980,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // Generate cache key
   const cacheKey = crypto.createHash('md5').update(JSON.stringify(req.query)).digest('hex');
   
-  const cachedData = cacheUtils.getCache(cacheKey);
+  const cachedData = await getShared(`search:${cacheKey}`);
   if (cachedData) {
     return res.status(200).json({ success: true, data: cachedData });
   }
@@ -984,33 +991,36 @@ export const searchHotels = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Check-out must be after check-in' });
   }
 
-  // 1. The public hotels this search covers (limit to 100 for latency): the city under either of
+  // 1. The public hotels this search covers (up to SEARCH_MAX_HOTELS): the city under either of
   // its names (Bangalore / Bengaluru), an area, landmark or state, or the hotels near a map point.
-  // (Only an exact city name or part of the address matched before, so "Bangalore" missed hotels
-  // saved as "Bengaluru", and "Hotels Near Me" searched for a city called "nearby".)
+  // Loaded in batches so a big city doesn't become one huge query; the page shows them a few at
+  // a time.
   const distances = near ? await hotelsNear(near) : null;
-  const matchedIds = near ? [...distances.keys()] : await hotelIdsForPlace(city);
-  const hotels = await prisma.hotel.findMany({
-    where: {
-      id: { in: matchedIds.slice(0, 100) },
-      // Go-live sets LIVE; 'ACTIVE' alone hid every property taken live through the admin flow
-      status: { in: PUBLIC_HOTEL_STATUSES },
-      isDeleted: false
-    },
-    include: {
-      media: { ...COVER_PHOTO_FIRST, select: { url: true } },
-      cancellationPolicy: { select: { policyCode: true } },
-      roomTypes: {
-        where: { isActive: true },
-        include: {
-          ratePlans: { where: { isActive: true } },
-          inventories: {
-             where: { date: { in: stayNights } }
+  const matchedIds = (near ? [...distances.keys()] : await hotelIdsForPlace(city)).slice(0, SEARCH_MAX_HOTELS);
+  const hotels = [];
+  for (let i = 0; i < matchedIds.length; i += SEARCH_BATCH) {
+    hotels.push(...await prisma.hotel.findMany({
+      where: {
+        id: { in: matchedIds.slice(i, i + SEARCH_BATCH) },
+        // Go-live sets LIVE; 'ACTIVE' alone hid every property taken live through the admin flow
+        status: { in: PUBLIC_HOTEL_STATUSES },
+        isDeleted: false
+      },
+      include: {
+        media: { ...COVER_PHOTO_FIRST, select: { url: true } },
+        cancellationPolicy: { select: { policyCode: true } },
+        roomTypes: {
+          where: { isActive: true },
+          include: {
+            ratePlans: { where: { isActive: true } },
+            inventories: {
+               where: { date: { in: stayNights } }
+            }
           }
         }
       }
-    }
-  });
+    }));
+  }
 
   const hotelIds = hotels.map(h => h.id);
   const agreements = await prisma.agreement.findMany({
@@ -1109,7 +1119,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // Best automatic offer per hotel (promotions without a code), on the plan it makes cheapest
   const searchEnd = new Date(stayNights[stayNights.length - 1]);
   searchEnd.setDate(searchEnd.getDate() + 1);
-  await Promise.all(mappedHotels.map(async (h) => {
+  await inBatches(mappedHotels, 20, async (h) => {
     const plans = h.bookablePlans;
     delete h.bookablePlans;
     if (!plans.length) return;
@@ -1121,7 +1131,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
       if (o && (!best || after < best.nightlyPriceAfter)) best = { ...o, nightlyPriceBefore: p.nightlyPrice };
     }
     if (best && best.nightlyPriceAfter < h.price) h.offer = best;
-  }));
+  });
 
   // Apply filters. A hotel with rooms left but not enough (or none big enough) for the group is left
   // out; a fully sold-out one is still listed as sold out.
@@ -1163,7 +1173,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // The commission rate is used for ranking but is confidential: don't send it to the browser
   const responseData = { hotels: rankedHotels.map(({ commission: _commission, ...h }) => h) };
   
-  cacheUtils.setCache(cacheKey, responseData, 60000); // 60s TTL
+  setShared(`search:${cacheKey}`, responseData, 60000); // 60 s, shared by all server processes
 
   res.status(200).json({
     success: true,

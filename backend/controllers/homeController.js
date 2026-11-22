@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { promotionLabel } from '../domains/promotionDomain.js';
 import { getConfig as loyaltyConfig } from '../services/loyaltyService.js';
-import cacheUtils from '../utils/cacheUtils.js';
+import { getShared, setShared } from '../utils/sharedCache.js';
 
 /**
  * GET /api/v1/public/home: everything the home page shows, from live data only.
@@ -27,7 +27,7 @@ const firstAndInitial = (name) => {
 const titleCase = (s) => String(s || '').trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const getHomeFeed = asyncHandler(async (req, res) => {
-  const cached = cacheUtils.getCache(CACHE_KEY);
+  const cached = await getShared(CACHE_KEY);
   if (cached) return res.json({ success: true, data: cached, requestId: req.id });
 
   const now = new Date();
@@ -156,6 +156,6 @@ export const getHomeFeed = asyncHandler(async (req, res) => {
   };
 
   const data = { cities, areas, rewards, topRated, offers, reviews: reviews.length >= 3 ? reviews : [], signup, membership, hotelCount: hotels.length };
-  cacheUtils.setCache(CACHE_KEY, data, 5 * 60 * 1000);
+  setShared(CACHE_KEY, data, 5 * 60 * 1000);
   res.json({ success: true, data, requestId: req.id });
 });

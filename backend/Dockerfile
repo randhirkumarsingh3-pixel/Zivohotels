@@ -29,4 +29,4 @@ RUN mkdir -p public/uploads public/invoices private_uploads
 ENV NODE_ENV=production
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+CMD ["node", "cluster.js"]

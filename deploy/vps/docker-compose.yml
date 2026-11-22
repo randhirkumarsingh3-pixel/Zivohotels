@@ -12,6 +12,25 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Sized for a VPS shared with another project (about 31 GB RAM): room for every server process's
+    # connections (WEB_CONCURRENCY x DB_POOL_PER_PROCESS), 1 GB cache, SSD-friendly planning
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=4GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=1000
+    shm_size: 1gb
     environment:
       POSTGRES_DB: zivohotels
       POSTGRES_USER: zivohotels
@@ -25,6 +44,20 @@ services:
       retries: 20
     networks: [internal]
 
+  # Shared memory for the server processes: rate limits, live updates, blocked IPs
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+
   api:
     build:
       context: ../../backend
@@ -34,9 +67,14 @@ services:
       HOST: 0.0.0.0
       PORT: "5100"
       # Caddy -> web container -> API: two proxies, so rate limits see the real visitor IP
-      TRUST_PROXY: "2"
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      # true once Cloudflare's proxy (orange cloud) is on for APP_DOMAIN (see CLOUDFLARE.md)
+      BEHIND_CLOUDFLARE: ${BEHIND_CLOUDFLARE:-false}
       STORAGE_DRIVER: local
-      DATABASE_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels
+      # Server processes (one per CPU core used); they share state through Redis
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels?connection_limit=${DB_POOL_PER_PROCESS:-10}
       DIRECT_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels
       CORS_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN in deploy/vps/.env}
       FRONTEND_URL: https://${APP_DOMAIN}
@@ -81,6 +119,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5100/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -113,6 +153,7 @@ networks:
 
 volumes:
   db-data: {}
+  redis-data: {}
   uploads: {}
   private-uploads: {}
   invoices: {}

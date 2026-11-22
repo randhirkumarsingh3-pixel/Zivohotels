@@ -350,9 +350,27 @@ const Detail = () => {
     navigate('/checkout');
   };
 
+  // While the hotel loads: the page's shape (photos, name, rooms, price box), not a spinner, so it
+  // feels ready sooner and nothing jumps when the details arrive
   if (loading) return (
-    <div className="min-h-screen pt-24 flex items-center justify-center">
-      <span className="w-12 h-12 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-gray-50 pt-20 md:pt-24" aria-busy="true" aria-label="Loading hotel">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 animate-pulse">
+        <div className="h-4 w-48 bg-gray-200 rounded mb-4" />
+        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-64 md:h-[420px] rounded-xl overflow-hidden">
+          <div className="col-span-4 md:col-span-2 row-span-2 bg-gray-200" />
+          <div className="hidden md:block bg-gray-200" /><div className="hidden md:block bg-gray-200" />
+          <div className="hidden md:block bg-gray-200" /><div className="hidden md:block bg-gray-200" />
+        </div>
+        <div className="mt-6 grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-8 w-2/3 bg-gray-200 rounded" />
+            <div className="h-4 w-1/2 bg-gray-200 rounded" />
+            <div className="flex gap-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-8 w-24 bg-gray-200 rounded-full" />)}</div>
+            {[1, 2].map((i) => <div key={i} className="h-48 bg-white border border-gray-200 rounded-xl" />)}
+          </div>
+          <div className="hidden lg:block h-80 bg-white border border-gray-200 rounded-xl" />
+        </div>
+      </div>
     </div>
   );
 

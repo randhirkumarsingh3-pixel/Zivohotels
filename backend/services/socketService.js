@@ -3,6 +3,8 @@ import { cookieToken } from '../utils/sessionCookie.js';
 import { isAllowedOrigin } from '../config/origins.js';
 import jwt from 'jsonwebtoken';
 import { eventBus } from './eventBus.js';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { redis, redisSubscriber } from '../config/redis.js';
 
 class SocketService {
   constructor() {
@@ -21,13 +23,23 @@ class SocketService {
         credentials: true,
         methods: ['GET', 'POST']
       },
-      // Allow both transports — polling as a fallback for CDN proxies (Render, Cloudflare)
+      // Both transports. The website connects with WebSocket first (works with several server
+      // processes; long-polling needs every request of a connection to reach the same process)
       transports: ['polling', 'websocket'],
       pingTimeout: 60000,
       pingInterval: 25000,
       upgradeTimeout: 30000,
       allowUpgrades: true,
     });
+
+    // Several server processes: live updates go through Redis, so a message sent by one process
+    // reaches people connected to any of them
+    if (redis) {
+      redisSubscriber('socket').then((sub) => {
+        this.io.adapter(createAdapter(redis, sub));
+        console.log('🔁 Live updates shared through Redis');
+      }).catch((err) => console.error('[Socket] Redis adapter not started:', err.message));
+    }
 
     // Authentication Middleware
     this.io.use((socket, next) => {

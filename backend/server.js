@@ -47,6 +47,7 @@ import masterAdminRoutes from './routes/masterAdminRoutes.js';
 import extranetRoutes from './routes/extranetRoutes.js';
 import kycRoutes from './routes/kycRoutes.js';
 import socketService from './services/socketService.js';
+import systemCache from './utils/systemCache.js';
 import orchestrationService from './services/orchestrationService.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import { startBookingExpiryJob } from './services/bookingExpiryService.js';
@@ -69,7 +70,9 @@ import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 import prisma from './config/db.js';
 import { isAllowedOrigin } from './config/origins.js';
 
-import rateLimit from 'express-rate-limit';
+import expressRateLimit from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+import { redis } from './config/redis.js';
 import helmet from 'helmet';
 
 dotenv.config();
@@ -82,6 +85,15 @@ app.use(helmet({
 }));
 
 // 1. Rate Limiter Definitions
+// With Redis, every limit is counted once across all server processes (otherwise each process
+// would allow the full amount). If Redis is unreachable, requests are let through, not blocked.
+let limiterCount = 0;
+const rateLimit = (opts) => expressRateLimit({
+  ...opts,
+  passOnStoreError: true,
+  ...(redis ? { store: new RedisStore({ sendCommand: (...args) => redis.sendCommand(args), prefix: `rl:${++limiterCount}:` }) } : {}),
+});
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // Limit each IP to 1000 requests per windowMs
@@ -134,8 +146,9 @@ const adminLimiter = rateLimit({
 // 2. Proxy Hardening
 // Number of reverse proxies in front of the API, so req.ip is the real visitor (rate limits, logs).
 // 1 = one proxy (default: Cloud Run, or Nginx on a VPS). Caddy -> web container -> API = 2.
+// Behind Cloudflare (BEHIND_CLOUDFLARE=true) there is one more: Cloudflare -> Caddy -> web -> API.
 const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY ?? '1', 10);
-app.set('trust proxy', Number.isNaN(trustProxyHops) ? 1 : trustProxyHops);
+app.set('trust proxy', (Number.isNaN(trustProxyHops) ? 1 : trustProxyHops) + (process.env.BEHIND_CLOUDFLARE === 'true' ? 1 : 0));
 
 // 3. Security & Logging
 // Allowed origins: built-in domains plus CORS_ORIGINS (see config/origins.js)
@@ -308,19 +321,22 @@ server.listen(PORT, HOST, () => {
   
   // Initialize Autonomous Governance
   orchestrationService.init();
+  systemCache.syncBlockedIps();
   
-  // Start email worker in-process (required on Render free tier which only runs one process)
-  // This polls the BackgroundJob queue and sends emails via Resend
-  startEmailWorker().catch(err => {
-    console.error('❌ Email worker failed to start:', err.message);
-  });
-
-  // Release unpaid bookings whose payment window has passed (every 5 minutes)
-  startBookingExpiryJob();
-  startDynamicPricingJob();
-  startLoyaltyJob();
-  startWalletJob();
-  startMembershipJob();
-  startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
-  console.log('✉️  Email worker started in-process');
+  // Timed jobs (emails, unpaid-booking release, points, memberships…) run in ONE process only:
+  // with several server processes (cluster.js), the first one runs them (RUN_JOBS=true) and the
+  // others only answer requests, so no job runs twice.
+  if (process.env.RUN_JOBS !== 'false') {
+    // Polls the BackgroundJob queue and sends emails via Resend
+    startEmailWorker().catch(err => {
+      console.error('❌ Email worker failed to start:', err.message);
+    });
+    startBookingExpiryJob(); // releases unpaid bookings whose payment window has passed
+    startDynamicPricingJob();
+    startLoyaltyJob();
+    startWalletJob();
+    startMembershipJob();
+    startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
+    console.log('✉️  Timed jobs and email worker started in this process');
+  }
 });
