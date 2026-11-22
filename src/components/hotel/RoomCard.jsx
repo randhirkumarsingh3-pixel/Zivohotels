@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { BedDouble, ShieldCheck, Check, Ruler, Eye, Users, Images } from 'lucide-react';
+import PhotoViewer from './PhotoViewer';
 import { getImageUrl } from '../../utils/image';
 import { MEAL_LABELS, nightlyPrice, offerPrice, offerDiscount, fmt } from './ratePlans';
 
@@ -49,8 +51,11 @@ const RatePlanRow = ({ plan, nights, selected, disabled, onSelect }) => {
   );
 };
 
-const RoomCard = ({ roomType, nights, selectedRatePlanId, onSelect, tooSmallFor = null, onPhotos }) => {
-  const photo = (roomType.images?.find((i) => i.isPrimary) || roomType.images?.[0])?.url;
+const RoomCard = ({ roomType, nights, selectedRatePlanId, onSelect, tooSmallFor = null }) => {
+  const [viewer, setViewer] = useState(null);
+  // Primary photo first, then the rest
+  const photos = [...(roomType.images || [])].filter((i) => i?.url).sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary))).map((i) => ({ url: i.url }));
+  const photo = photos[0]?.url;
   const soldOut = roomType.availableForStay === 0;
   const fewLeft = !soldOut && roomType.availableForStay != null && roomType.availableForStay <= 3;
   const facts = [
@@ -67,16 +72,17 @@ const RoomCard = ({ roomType, nights, selectedRatePlanId, onSelect, tooSmallFor 
       <div className="flex flex-col sm:flex-row gap-4 p-4">
         <div className="relative w-full sm:w-48 h-40 sm:h-32 shrink-0 rounded-lg overflow-hidden bg-gray-100">
           {photo ? (
-            <img src={getImageUrl(photo)} alt={roomType.name} loading="lazy" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => setViewer(0)} className="group block w-full h-full" aria-label={`See ${photos.length} photo${photos.length === 1 ? '' : 's'} of ${roomType.name}`}>
+              <img src={getImageUrl(photo)} alt={roomType.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-semibold">
+                <Images size={13} aria-hidden="true" /> {photos.length}
+              </span>
+            </button>
           ) : (
             <div className="w-full h-full flex items-center justify-center"><BedDouble size={32} className="text-gray-300" aria-hidden="true" /></div>
           )}
-          {roomType.images?.length > 1 && onPhotos && (
-            <button type="button" onClick={() => onPhotos(roomType)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-semibold">
-              <Images size={13} aria-hidden="true" /> {roomType.images.length}
-            </button>
-          )}
         </div>
+        {viewer !== null && <PhotoViewer photos={photos} start={viewer} title={roomType.name} filters={false} onClose={() => setViewer(null)} />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <h3 className="text-lg font-bold text-gray-900">{roomType.name}</h3>

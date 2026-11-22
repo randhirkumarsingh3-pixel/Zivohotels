@@ -11,7 +11,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import { galleryPhotos } from '../components/hotel/galleryPhotos';
 import ReviewsSection from '../components/hotel/ReviewsSection';
 import { occupancyOf, occParams, occToParam, occTotals, parseOcc, roomGuestsLabel } from '../utils/occupancy';
-import { Section, AmenitiesSection, PoliciesSection, LocationSection } from '../components/hotel/HotelSections';
+import { Section, Highlights, AmenitiesSection, PoliciesSection, LocationSection } from '../components/hotel/HotelSections';
 import RoomCard from '../components/hotel/RoomCard';
 import { nightlyPrice, offerPrice, offerDiscount } from '../components/hotel/ratePlans';
 import StayBar from '../components/hotel/StayBar';
@@ -385,6 +385,7 @@ const Detail = () => {
   const taxes     = Math.round(afterOffer * taxRate);
   const estimateTotal = afterOffer + taxes;
   const grandTotal = quote?.totalAmount ?? estimateTotal;
+  const extraGuests = chosenRooms.reduce((n, r) => n + Math.max(0, guestsIn(r) - (r.roomType?.baseOccupancy || 2)), 0);
   // Lowest nightly price across rooms (after automatic offers), for the summary at the top
   const allPlans = (hotel.roomTypes || []).filter((rt) => rt.availableForStay !== 0).flatMap((rt) => rt.ratePlans || []);
   const fromPrice = allPlans.length ? Math.min(...allPlans.map(offerPrice).filter((n) => n > 0)) : 0;
@@ -429,6 +430,8 @@ const Detail = () => {
                 </a>
               ) : <span className="text-gray-500">New on ZivoHotels</span>}
             </div>
+            {/* The essentials at a glance, before the rooms (the full overview is further down) */}
+            <div className="mt-3"><Highlights hotel={hotel} /></div>
           </div>
           {fromPrice > 0 && (
             <div className="hidden md:flex items-center gap-4 shrink-0">
@@ -608,14 +611,19 @@ const Detail = () => {
               <div className="mt-4">
                 {checkIn && checkOut && allChosen && quote ? (
                   <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 tabular-nums">
-                    {multiRoom ? (
-                      <div className="flex justify-between text-gray-600"><span>{nightsN} rooms × {nights} night{nights > 1 ? 's' : ''}</span><span>{fmt(quote.subtotal || 0)}</span></div>
-                    ) : (
+                    {/* Room price, then each extra charge on its own line */}
+                    <div className="flex justify-between text-gray-600">
+                      <span>{multiRoom ? `${nightsN} rooms × ${nights} night${nights > 1 ? 's' : ''}` : `${fmt(pricePerNight)} × ${nights} night${nights > 1 ? 's' : ''}`}</span>
+                      <span>{fmt(quote.roomPrice || 0)}</span>
+                    </div>
+                    {quote.extraGuestCharges > 0 && (
                       <div className="flex justify-between text-gray-600">
-                        <span>{fmt(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''}{guestsIn(occupancy[0]) > (selectedRoomType?.baseOccupancy || 2) ? ' · extra guest' : ''}</span>
-                        <span>{fmt((quote.roomPrice || 0) + (quote.extraGuestCharges || 0) + (quote.extraBedCharges || 0) + (quote.mealCharges || 0))}</span>
+                        <span>Extra guest charge{extraGuests > 0 ? ` (${extraGuests} guest${extraGuests > 1 ? 's' : ''} × ${nights} night${nights > 1 ? 's' : ''})` : ''}</span>
+                        <span>{fmt(quote.extraGuestCharges)}</span>
                       </div>
                     )}
+                    {quote.extraBedCharges > 0 && <div className="flex justify-between text-gray-600"><span>Extra bed</span><span>{fmt(quote.extraBedCharges)}</span></div>}
+                    {quote.mealCharges > 0 && <div className="flex justify-between text-gray-600"><span>Meals</span><span>{fmt(quote.mealCharges)}</span></div>}
                     {quote.promotionDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>{quote.promotion?.name || 'Offer'}</span><span>− {fmt(quote.promotionDiscountAmount)}</span></div>}
                     {quote.memberDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Member price</span><span>− {fmt(quote.memberDiscountAmount)}</span></div>}
                     {quote.prepaidDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Pay-now saving</span><span>− {fmt(quote.prepaidDiscountAmount)}</span></div>}

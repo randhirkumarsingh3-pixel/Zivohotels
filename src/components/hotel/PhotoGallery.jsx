@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Images } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import PhotoViewer from './PhotoViewer';
+import { Images } from 'lucide-react';
 import { getImageUrl } from '../../utils/image';
 
 /**
@@ -20,27 +21,14 @@ const Tile = ({ src, alt, className = '', onClick }) => {
 };
 
 const PhotoGallery = ({ hotelName, photos }) => {
-  const [open, setOpen] = useState(null); // index in the filtered list, or null
-  const [filter, setFilter] = useState('All');
-
-  const labels = ['All', ...[...new Set(photos.map((p) => p.label).filter(Boolean))]];
-  const shown = filter === 'All' ? photos : photos.filter((p) => p.label === filter);
-
+  const [open, setOpen] = useState(null); // photo index, or null
   const close = useCallback(() => setOpen(null), []);
-  const move = useCallback((d) => setOpen((i) => (i === null ? i : (i + d + shown.length) % shown.length)), [shown.length]);
-  useEffect(() => {
-    if (open === null) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') move(1); if (e.key === 'ArrowLeft') move(-1); };
-    window.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [open, close, move]);
 
   if (photos.length === 0) {
     return <div className="h-[200px] rounded-card bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Photos coming soon</div>;
   }
 
-  const openAt = (i) => { setFilter('All'); setOpen(i); };
+  const openAt = (i) => setOpen(i);
   const grid = photos.slice(0, 5);
 
   return (
@@ -58,39 +46,7 @@ const PhotoGallery = ({ hotelName, photos }) => {
         </button>
       </div>
 
-      {open !== null && shown[open] && (
-        <div className="fixed inset-0 z-[300] bg-black flex flex-col" role="dialog" aria-modal="true" aria-label={`${hotelName} photos`}>
-          <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
-            <div className="flex gap-2 overflow-x-auto">
-              {labels.length > 2 && labels.map((l) => (
-                <button key={l} type="button" onClick={() => { setFilter(l); setOpen(0); }}
-                  className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${filter === l ? 'bg-white text-gray-900' : 'bg-white/10 hover:bg-white/20'}`}>
-                  {l === 'All' ? `All (${photos.length})` : l}
-                </button>
-              ))}
-            </div>
-            <button type="button" aria-label="Close photos" onClick={close} className="p-2 rounded-full hover:bg-white/10"><X size={22} /></button>
-          </div>
-          <div className="flex-1 flex items-center justify-center relative px-4 min-h-0">
-            {shown.length > 1 && (
-              <button type="button" aria-label="Previous photo" onClick={() => move(-1)} className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"><ChevronLeft size={24} /></button>
-            )}
-            <img src={getImageUrl(shown[open].url)} alt={shown[open].label || hotelName} className="max-h-full max-w-full object-contain rounded-lg" />
-            {shown.length > 1 && (
-              <button type="button" aria-label="Next photo" onClick={() => move(1)} className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"><ChevronRight size={24} /></button>
-            )}
-          </div>
-          <div className="text-center text-white/80 text-sm py-2">{shown[open].label ? `${shown[open].label} · ` : ''}{open + 1} / {shown.length}</div>
-          <div className="flex gap-2 overflow-x-auto px-4 pb-4 justify-center">
-            {shown.map((p, i) => (
-              <button key={p.url + i} type="button" onClick={() => setOpen(i)} aria-label={`Photo ${i + 1}`}
-                className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 ${i === open ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                <img src={getImageUrl(p.url)} alt="" className="w-full h-full object-cover" loading="lazy" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {open !== null && <PhotoViewer photos={photos} start={open} title={hotelName} onClose={close} />}
     </>
   );
 };

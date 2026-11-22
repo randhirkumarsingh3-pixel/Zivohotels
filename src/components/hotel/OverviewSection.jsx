@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Clock, Building2, Star, DoorOpen, CalendarDays, CheckCircle2 } from 'lucide-react';
-import { Highlights } from './HotelSections';
 
-/** Overview: quick highlights, key facts, the description (with "Read more") and top amenities. */
+/** Overview: key facts, the description (with "Read more") and top amenities (highlights are under the name). */
 const fmtTime = (t) => {
   if (!t) return null;
   const [h, m] = String(t).split(':').map(Number);
@@ -27,7 +26,6 @@ const OverviewSection = ({ hotel, stars }) => {
 
   return (
     <div className="space-y-6">
-      <Highlights hotel={hotel} />
       <dl className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {facts.map(([Icon, label, value]) => (
           <div key={label} className="rounded-xl border border-gray-200 p-3">
