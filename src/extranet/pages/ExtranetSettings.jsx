@@ -3,6 +3,7 @@ import ChangePasswordForm from '../../components/account/ChangePasswordForm';
 import { useAuth } from '../../context/AuthContext';
 import { useExtranet } from '../context/ExtranetContext';
 import BookingEmailsCard from '../components/BookingEmailsCard';
+import GoogleHotelsCard from '../components/GoogleHotelsCard';
 
 /**
  * Extranet -> Settings: the signed-in partner's account and the active property's legal, contact
@@ -70,6 +71,7 @@ const ExtranetSettings = () => {
       </Card>
 
       <BookingEmailsCard property={property} ownerEmail={user?.email} />
+      <GoogleHotelsCard />
 
       <Card icon={Landmark} title="Legal & payout details" note="Locked after your property is submitted. Write to partner support to change them.">
         <Row label="Legal name" value={property.legalName} />

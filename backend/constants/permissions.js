@@ -20,7 +20,7 @@ export const ADMIN_PERMISSIONS = {
   'promotions.manage': { group: 'Marketing', label: 'Create and edit offers' },
   'reviews.moderate': { group: 'Marketing', label: 'Moderate guest reviews' },
   'loyalty.manage': { group: 'Marketing', label: 'Zivo Rewards and membership plans' },
-  'seo.manage': { group: 'Marketing', label: 'SEO: page titles, descriptions, redirects, search engine settings' },
+  'seo.manage': { group: 'Marketing', label: 'SEO and Google Hotels: page titles, redirects, search engines, Google price feeds' },
   'finance.view': { group: 'Finance', label: 'See payments, settlements, wallets and ledger' },
   'finance.manage': { group: 'Finance', label: 'Record payouts and adjust wallets' },
   'users.view': { group: 'People', label: 'See guest and partner accounts' },

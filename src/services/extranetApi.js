@@ -133,3 +133,9 @@ export const teamApi = {
   saveRole: (role) => extranetFetch(role.id ? `/team/roles/${role.id}` : '/team/roles', { method: role.id ? 'PUT' : 'POST', body: JSON.stringify(role) }),
   deleteRole: (id) => extranetFetch(`/team/roles/${id}`, { method: 'DELETE' }),
 };
+
+/** Google Hotels: whether this property appears on Google (the hotel's own choice) */
+export const googleHotelsApi = {
+  get: () => extranetFetch('/google', { method: 'GET' }),
+  set: (optIn) => extranetFetch('/google', { method: 'PUT', body: JSON.stringify({ optIn }) }),
+};
