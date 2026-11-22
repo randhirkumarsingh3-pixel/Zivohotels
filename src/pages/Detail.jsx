@@ -677,6 +677,7 @@ const Detail = () => {
                 {checkIn && checkOut && allChosen && quote ? `Book now · ${fmt(grandTotal)}` : 'Book now'}
               </button>
               <p className="text-center text-sm text-gray-500 mt-3">You won&apos;t be charged yet</p>
+              {!isAuthenticated && <p className="text-center text-xs text-gray-600 mt-1">You&apos;ll sign in, or create a free account, before paying. Your choices are kept.</p>}
               <p className="text-center text-xs text-gray-500 mt-2 flex items-center justify-center gap-1">
                 <ShieldCheck size={12} className="text-green-700" aria-hidden="true" />
                 {CANCELLATION_TEXT[hotel.cancellationPolicy] || CANCELLATION_TEXT.FREE_CANCEL_24H}

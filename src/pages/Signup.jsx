@@ -5,7 +5,7 @@ import { signupStartApi, signupUser, googleSignInApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 import { AuthShell, ErrorNote, Field, PhoneInput, CodeInput, TestCodeNote, ResendButton, GoogleButton } from '../components/auth/AuthParts';
-import { phoneForApi, inputClass, primaryButton } from '../components/auth/authUtils';
+import { phoneForApi, inputClass, primaryButton, returnTo } from '../components/auth/authUtils';
 
 /**
  * Sign up in two steps:
@@ -22,7 +22,7 @@ const Signup = ({ partner = false, aside = null }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setSession } = useAuth();
-  const from = location.state?.from?.pathname || '/';
+  const back = returnTo(location);
 
   const [step, setStep] = useState('details');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', propertyName: '', propertyCity: '' });
@@ -83,7 +83,7 @@ const Signup = ({ partner = false, aside = null }) => {
         } catch { /* storage unavailable: the wizard starts empty */ }
         navigate('/extranet/onboarding', { replace: true });
       } else {
-        navigate(from, { replace: true, state: { welcome: true } });
+        navigate(back.path, { replace: true, state: { ...(back.state || {}), welcome: true } });
       }
     } catch (err) {
       setError(err.message || 'Could not create the account.');
@@ -98,7 +98,7 @@ const Signup = ({ partner = false, aside = null }) => {
     try {
       const r = await googleSignInApi(credential);
       setSession(r?.data?.user);
-      navigate(from, { replace: true });
+      navigate(back.path, { replace: true, state: back.state });
     } catch (err) {
       setError(err.message || 'Google sign-in failed.');
     }
@@ -139,6 +139,9 @@ const Signup = ({ partner = false, aside = null }) => {
         : <>Already have an account? <Link to="/login" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Sign in instead</Link></>}
     >
       <form className="space-y-5" onSubmit={start}>
+        {!partner && back.booking && (
+          <p className="rounded-lg bg-navy-50 p-3 text-sm text-navy-900"><strong>Create your free account to finish your booking.</strong> It takes a minute, and your room and dates are kept.</p>
+        )}
         <ErrorNote>{error}</ErrorNote>
         {partner && (
           <div className="grid gap-5 sm:grid-cols-2">
