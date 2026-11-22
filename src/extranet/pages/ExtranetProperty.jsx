@@ -195,6 +195,13 @@ const ExtranetProperty = () => {
                   disabled={!isEditing}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium text-gray-700 leading-relaxed disabled:cursor-default resize-none"
                 />
+                {(() => {
+                  // Search engines rank pages with enough of the hotel's own words higher
+                  const words = String(formValues.description || '').split(/\s+/).filter(Boolean).length;
+                  return words < 150 ? (
+                    <p className="mt-2 text-xs text-amber-800">{words} words. Write at least 150 in your own words (rooms, the area, what guests like) so your page ranks better on Google. Don&apos;t copy text from other websites.</p>
+                  ) : <p className="mt-2 text-xs text-green-700">{words} words: good length for search engines.</p>;
+                })()}
               </div>
             </div>
           </div>

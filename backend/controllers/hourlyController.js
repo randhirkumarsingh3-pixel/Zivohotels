@@ -15,6 +15,7 @@ import {
 import { platformHourly, hotelHourly, isBookable, istYmd } from '../domains/hourly.js';
 import { notifyAdmins, notifyHotel } from '../services/notifyService.js';
 import { extensionOptions, startExtension, verifyExtension } from '../services/hourlyExtension.js';
+import { hotelSlug } from '../utils/hotelSlug.js';
 
 const fail = (res, e) => {
   if (e instanceof HourlyError) return res.status(e.statusCode).json({ success: false, message: e.message });
@@ -66,7 +67,7 @@ export const searchHourly = wrap(async (req, res) => {
     const signed = await mediaService.signHotelUrls(h).catch(() => h);
     const ratingNum = Number(h.rating) || 0;
     out.push({
-      id: h.id, name: h.name, city: h.city, location: h.location,
+      id: h.id, slug: hotelSlug(h), name: h.name, city: h.city, location: h.location,
       image: signed.media?.[0]?.url || '',
       starRating: Number.isInteger(ratingNum) && ratingNum >= 1 && ratingNum <= 5 ? ratingNum : 0,
       reviewScore: h.reviewScore, reviewCount: h.reviewCount, amenities: h.amenities, memberDiscountPercent: h.memberDiscountPercent,

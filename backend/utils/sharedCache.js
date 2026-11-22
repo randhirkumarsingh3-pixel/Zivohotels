@@ -30,4 +30,10 @@ export const setShared = (key, data, ttlMs) => {
   if (redis?.isReady) redis.set(PREFIX + key, JSON.stringify(data), { PX: ttlMs }).catch(() => {});
 };
 
-export default { getShared, setShared };
+/** Forgets a cached value (other processes keep their own copy until it expires). */
+export const delShared = (key) => {
+  cacheUtils.setCache(key, null, 1);
+  if (redis?.isReady) redis.del(PREFIX + key).catch(() => {});
+};
+
+export default { getShared, setShared, delShared };

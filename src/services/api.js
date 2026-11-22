@@ -429,6 +429,16 @@ export const adminTeamApi = {
   deleteRole: (id) => apiFetch(`${STAFF()}/roles/${id}`, { method: 'DELETE' }, 0).then((r) => r?.data),
 };
 
+// ─── SEO (admin console) ─────────────────────────────────────────────────────
+const SEO = () => `${PUBLIC_BASE}/admin/seo`;
+export const adminSeoApi = {
+  get: () => apiFetch(SEO(), { cache: 'no-store' }, 0).then((r) => r?.data),
+  save: (body) => apiFetch(SEO(), jsonBody('PUT', body), 0).then((r) => r?.data),
+  hotels: (q = '') => apiFetch(`${SEO()}/hotels?q=${encodeURIComponent(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  saveHotel: (id, body) => apiFetch(`${SEO()}/hotels/${id}`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  preview: (path) => apiFetch(`${SEO()}/preview?path=${encodeURIComponent(path)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+};
+
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const getAdminHotels = async () => apiFetch(`${ADMIN_BASE}/hotels`).then(res => res?.data);
 export const getAdminBookings = async (params = {}) => apiFetch(`${ADMIN_BASE}/bookings?${new URLSearchParams(params).toString()}`);

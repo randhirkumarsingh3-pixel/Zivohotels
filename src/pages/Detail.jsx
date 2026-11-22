@@ -227,6 +227,10 @@ const Detail = () => {
         const data = await getHotelById(id, { checkIn, checkOut });
         if (stale) return;
         setHotel(data);
+        // Old links (/hotel/<id>) and renamed hotels move to the readable address, keeping the dates
+        if (data?.slug && id !== data.slug) {
+          window.history.replaceState(window.history.state, '', `/hotel/${data.slug}${window.location.search}${window.location.hash}`);
+        }
         // Keep the current choices (date change), or the ones made before checkout ("Change room
         // or meal plan"); otherwise the first room type that fits each room
         const previous = previousSelection?.id === data.id

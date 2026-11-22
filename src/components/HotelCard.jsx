@@ -7,6 +7,7 @@ import { occupancyOf, occParams } from '../utils/occupancy';
 import { useBooking } from '../context/BookingContext';
 import { getImageUrl } from '../utils/image';
 import { amenityLabels } from '../utils/amenityLabels';
+import { hotelPath } from '../utils/hotelPath';
 
 /**
  * A hotel in search results and on the home page.
@@ -26,8 +27,8 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
     : '';
   // Hourly search results link to the hotel's hourly booking for the same slot
   const href = hotel.hourly
-    ? `/hotel/${hotel.id}?${hourlyQuery({ date: hotel.hourly.date, start: hotel.hourly.start || hotel.hourly.nextStart || '10:00', hours: hotel.hourly.hours, guests: searchParams?.guests || 2 })}`
-    : `/hotel/${hotel.id}${detailQuery}`;
+    ? `${hotelPath(hotel)}?${hourlyQuery({ date: hotel.hourly.date, start: hotel.hourly.start || hotel.hourly.nextStart || '10:00', hours: hotel.hourly.hours, guests: searchParams?.guests || 2 })}`
+    : hotelPath(hotel, detailQuery);
 
   // Pointing at (or touching) a card starts loading the hotel page and its details, so the page is
   // usually ready by the time the click lands

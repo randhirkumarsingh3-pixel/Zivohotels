@@ -8,6 +8,7 @@ import DatePickerV2 from './DatePickerV2';
 import GuestSelectorV2 from './GuestSelectorV2';
 import { track } from '../../utils/analytics';
 import { occupancyOf, occParams, occTotals, occToParam } from '../../utils/occupancy';
+import { hotelPath } from '../../utils/hotelPath';
 
 // `initial` prefills the bar with the current search (results page); the home page starts empty
 const SmartSearchBar = ({ isMobile, initial = null }) => {
@@ -64,7 +65,7 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
     if (stay === 'HOURLY') {
       setError(null);
       track('SEARCH_SUBMITTED', { destination: destination.label, stay: 'HOURLY', ...hourly });
-      if (destination.type === 'hotel') { navigate(`/hotel/${destination.id}?${hourlyQuery(hourly)}`); return; }
+      if (destination.type === 'hotel') { navigate(hotelPath(destination, hourlyQuery(hourly))); return; }
       const city = destination.type === 'near' ? '' : (destination.value || destination.label);
       navigate(`/hotels?${hourlyQuery(hourly, city ? { city } : {})}`);
       return;
@@ -90,7 +91,7 @@ const SmartSearchBar = ({ isMobile, initial = null }) => {
         checkout: checkOut,
         ...occParams(occupancy)
       });
-      navigate(`/hotel/${destination.id}?${detailParams.toString()}`);
+      navigate(hotelPath(destination, detailParams.toString()));
       return;
     }
 

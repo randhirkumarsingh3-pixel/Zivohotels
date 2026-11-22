@@ -26,7 +26,8 @@ import { Clock,
   AlertTriangle,
   X,
   BookOpenCheck,
-  ShieldCheck
+  ShieldCheck,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useAccess from '../../../hooks/useAccess';
@@ -124,6 +125,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         <NavGroup title="Pricing & RMS">
           <NavItem perm="properties.view" name="Pricing & RMS" path="/admin/pricing-rms" icon={<TrendingUp size={18} />} />
           <NavItem perm="promotions.manage" name="Promotions" path="/admin/promotions" icon={<Ticket size={18} />} />
+          <NavItem perm="seo.manage" name="SEO" path="/admin/seo" icon={<Globe size={18} />} />
           <NavItem perm="reviews.moderate" name="Guest Reviews" path="/admin/reviews" icon={<MessageSquareText size={18} />} />
           <NavItem perm="loyalty.manage" name="Loyalty (Zivo Rewards)" path="/admin/loyalty" icon={<Award size={18} />} />
           <NavItem perm="loyalty.manage" name="Membership" path="/admin/membership" icon={<Crown size={18} />} />

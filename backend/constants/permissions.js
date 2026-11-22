@@ -20,6 +20,7 @@ export const ADMIN_PERMISSIONS = {
   'promotions.manage': { group: 'Marketing', label: 'Create and edit offers' },
   'reviews.moderate': { group: 'Marketing', label: 'Moderate guest reviews' },
   'loyalty.manage': { group: 'Marketing', label: 'Zivo Rewards and membership plans' },
+  'seo.manage': { group: 'Marketing', label: 'SEO: page titles, descriptions, redirects, search engine settings' },
   'finance.view': { group: 'Finance', label: 'See payments, settlements, wallets and ledger' },
   'finance.manage': { group: 'Finance', label: 'Record payouts and adjust wallets' },
   'users.view': { group: 'People', label: 'See guest and partner accounts' },
@@ -53,7 +54,7 @@ export const PRESET_ROLES = [
   { key: 'admin.super', scope: 'ADMIN', name: 'Super Admin', description: 'Everything, including staff and roles.', permissions: [ALL] },
   {
     key: 'admin.operations', scope: 'ADMIN', name: 'Operations', description: 'Bookings, properties and approvals, offers and reviews.',
-    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'properties.view', 'properties.manage', 'properties.approve', 'hourly.manage', 'promotions.manage', 'reviews.moderate', 'users.view'],
+    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'properties.view', 'properties.manage', 'properties.approve', 'hourly.manage', 'promotions.manage', 'reviews.moderate', 'seo.manage', 'users.view'],
   },
   {
     key: 'admin.finance', scope: 'ADMIN', name: 'Finance', description: 'Payments, refunds, settlements and payouts.',
@@ -65,7 +66,7 @@ export const PRESET_ROLES = [
   },
   {
     key: 'admin.content', scope: 'ADMIN', name: 'Content & SEO', description: 'Property content and photos, offers and reviews.',
-    permissions: ['dashboard.view', 'properties.view', 'properties.manage', 'promotions.manage', 'reviews.moderate'],
+    permissions: ['dashboard.view', 'properties.view', 'properties.manage', 'promotions.manage', 'reviews.moderate', 'seo.manage'],
   },
   {
     key: 'admin.viewer', scope: 'ADMIN', name: 'Read-only', description: 'Can look at everything, change nothing.',
