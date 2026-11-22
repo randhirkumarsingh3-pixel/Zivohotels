@@ -12,7 +12,7 @@ export const AuthShell = ({ title, subtitle, children, footer, aside }) => (
       {aside && <div className="lg:pt-16">{aside}</div>}
       <div className={aside ? '' : 'sm:mx-auto sm:w-full sm:max-w-md'}>
         <div>
-          <img src="/brand/zivo-mark.png" alt="" aria-hidden="true" className="mx-auto h-14 w-14" />
+          <img src="/brand/zivo-mark-112.png" alt="" aria-hidden="true" className="mx-auto h-14 w-14" />
           <h1 className="mt-4 text-center text-3xl font-bold text-navy-900">{title}</h1>
           {subtitle && <p className="mt-2 text-center text-sm text-gray-600">{subtitle}</p>}
         </div>
