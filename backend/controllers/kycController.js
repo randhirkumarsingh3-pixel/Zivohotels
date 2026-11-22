@@ -1,11 +1,12 @@
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import prisma from '../config/db.js';
 import { detectFileType, saveKycFile, readKycFile, KYC_MAX_BYTES } from '../services/kycStorage.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 const DOCUMENT_TYPES = ['GST', 'PAN', 'TRADE_LICENSE', 'OWNERSHIP_PROOF', 'BANK_PROOF', 'FIRE_SAFETY'];
 
 /** Admins may access any hotel's documents; owners only their own hotels'. */
-const canAccessHotel = (user, hotel) => user.role === 'ADMIN' || hotel.ownerId === user.id;
+const canAccessHotel = (user, hotel) => user.role === 'ADMIN' || managesHotel(user, hotel);
 
 /**
  * Never send the private storage key to the browser. Expose only what the UI needs;
@@ -135,7 +136,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 export const downloadDocument = asyncHandler(async (req, res) => {
   const record = await prisma.kYCRecord.findUnique({
     where: { id: req.params.id },
-    include: { hotel: { select: { ownerId: true } } }
+    include: { hotel: { select: { id: true, ownerId: true } } }
   });
   if (!record) return res.status(404).json({ success: false, message: 'Document not found' });
 

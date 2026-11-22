@@ -1,12 +1,14 @@
 import express from 'express';
 import { financeController } from '../controllers/finance/financeController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { permissionGate } from '../middleware/permissionGate.js';
 
 const router = express.Router();
 
 // All finance routes are protected and restricted to Admin/SuperAdmin
 router.use(protect);
 router.use(authorizeRoles('ADMIN', 'SUPER_ADMIN'));
+router.use(permissionGate); // each path's permission (staff roles)
 
 router.get('/dashboard', financeController.getDashboardMetrics);
 router.get('/wallet', financeController.getWallet);

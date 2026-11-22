@@ -122,3 +122,14 @@ export const saveHourlySetup = (data) => extranetFetch('/hourly', { method: 'PUT
 export const fetchHourlyAllocations = (from, days = 14) => extranetFetch(`/hourly/allocations?from=${from}&days=${days}`, { method: 'GET' });
 export const setHourlyAllocation = (data) => extranetFetch('/hourly/allocations', { method: 'PUT', body: JSON.stringify(data) });
 export const fetchHourlyTimeline = (date) => extranetFetch(`/hourly/timeline?date=${date}`, { method: 'GET' });
+
+/** The property's team and roles (Team page); same shape as adminTeamApi in services/api.js */
+export const teamApi = {
+  get: () => extranetFetch('/team', { method: 'GET' }),
+  invite: (body) => extranetFetch('/team/invite', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id, body) => extranetFetch(`/team/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (id) => extranetFetch(`/team/${id}`, { method: 'DELETE' }),
+  resend: (id) => extranetFetch(`/team/${id}/resend`, { method: 'POST' }),
+  saveRole: (role) => extranetFetch(role.id ? `/team/roles/${role.id}` : '/team/roles', { method: role.id ? 'PUT' : 'POST', body: JSON.stringify(role) }),
+  deleteRole: (id) => extranetFetch(`/team/roles/${id}`, { method: 'DELETE' }),
+};

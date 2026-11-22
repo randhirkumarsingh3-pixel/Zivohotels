@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import { managesHotel } from '../../utils/hotelAccess.js';
 import { checkPropertyReadiness } from '../../services/propertyReadiness.js';
 
 /**
@@ -62,7 +63,6 @@ export const initOnboarding = async (req, res, next) => {
 export const getOnboardingProgress = async (req, res, next) => {
   try {
     const { hotelId } = req.params;
-    const userId = req.user.id;
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: hotelId },
@@ -75,7 +75,7 @@ export const getOnboardingProgress = async (req, res, next) => {
       }
     });
 
-    if (!hotel || hotel.ownerId !== userId) {
+    if (!hotel || !managesHotel(req.user, hotel)) {
       return res.status(404).json({ success: false, message: 'Onboarding session not found' });
     }
 
@@ -91,7 +91,6 @@ export const getOnboardingProgress = async (req, res, next) => {
 export const saveOnboardingStep = async (req, res, next) => {
   try {
     const { hotelId, step } = req.params;
-    const userId = req.user.id;
     const stepData = req.body;
 
     console.log(`[Onboarding] Saving Step ${step} for Hotel ${hotelId}. Data:`, JSON.stringify(stepData));
@@ -100,7 +99,7 @@ export const saveOnboardingStep = async (req, res, next) => {
       where: { id: hotelId }
     });
 
-    if (!hotel || hotel.ownerId !== userId) {
+    if (!hotel || !managesHotel(req.user, hotel)) {
       return res.status(404).json({ success: false, message: 'Onboarding session not found' });
     }
 
@@ -194,7 +193,6 @@ export const saveOnboardingStep = async (req, res, next) => {
 export const submitForReview = async (req, res, next) => {
   try {
     const { hotelId } = req.params;
-    const userId = req.user.id;
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: hotelId },
@@ -205,7 +203,7 @@ export const submitForReview = async (req, res, next) => {
       }
     });
 
-    if (!hotel || hotel.ownerId !== userId) {
+    if (!hotel || !managesHotel(req.user, hotel)) {
       return res.status(404).json({ success: false, message: 'Onboarding session not found' });
     }
 

@@ -2,6 +2,7 @@ import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import { mediaService } from '../services/MediaService.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -61,7 +62,7 @@ export const createRoomType = asyncHandler(async (req, res) => {
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
   if (!hotel || hotel.isDeleted) return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
   
-  if (req.user.role === 'OWNER' && hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, hotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
   const clash = await codeTaken(hotelId, normalized.prismaData.code);
@@ -178,7 +179,7 @@ export const updateRoomType = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Room not found', requestId: req.id });
   }
 
-  if (req.user.role === 'OWNER' && existing.hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, existing.hotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
@@ -260,7 +261,7 @@ export const deleteRoomType = asyncHandler(async (req, res) => {
   });
 
   if (!existing) return res.status(404).json({ success: false, message: 'Room not found', requestId: req.id });
-  if (req.user.role === 'OWNER' && existing.hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, existing.hotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
@@ -298,7 +299,7 @@ export const getRoomTypes = asyncHandler(async (req, res) => {
   const hotel = await prisma.hotel.findUnique({ where: { id: finalId } });
   if (!hotel || hotel.isDeleted) return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
   
-  if (req.user.role === 'OWNER' && hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, hotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 

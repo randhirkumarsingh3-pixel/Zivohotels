@@ -4,6 +4,7 @@ import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
+import { managedHotelWhere } from '../utils/hotelAccess.js';
 
 // --- ZOD SCHEMAS ---
 
@@ -23,12 +24,12 @@ const daysAgo = (n) => {
 /** Helper to get scope filter based on user role */
 const getScopeFilter = (req) => {
   if (req.user.role === 'ADMIN') return {};
-  return { hotel: { ownerId: req.user.id } };
+  return { hotel: managedHotelWhere(req.user) };
 };
 
 const getHotelScopeFilter = (req) => {
   if (req.user.role === 'ADMIN') return { isDeleted: false };
-  return { isDeleted: false, ownerId: req.user.id };
+  return { isDeleted: false, ...managedHotelWhere(req.user) };
 };
 
 // ─── GET /api/v1/analytics/kpis ───────────────────────────────────────────────

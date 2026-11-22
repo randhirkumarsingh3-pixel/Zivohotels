@@ -50,11 +50,12 @@ const companyWithSupport = (support) => ({ ...company(), ...(support?.email ? { 
 export const canDownloadVoucher = (booking, hotel, user, type) => {
   if (!booking || !user) return false;
   if (user.role === 'ADMIN') return true;
-  if (user.role === 'OWNER' && hotel?.ownerId === user.id) return true;
+  if (user.role === 'OWNER' && managesHotel(user, { ...hotel, id: hotel?.id || booking.hotelId }, 'bookings.view')) return true;
   return type === 'guest' && booking.userId === user.id;
 };
 
 import { loadBookingRooms, roomsSummary, guestsLabel } from './bookingRoomsView.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 export const loadVoucherData = async (bookingId) => {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });

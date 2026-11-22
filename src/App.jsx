@@ -81,6 +81,8 @@ const ExtranetPromotions = lazy(() => import('./extranet/pages/ExtranetPromotion
 const ExtranetSettings = lazy(() => import('./extranet/pages/ExtranetSettings'));
 const PropertyOnboarding = lazy(() => import('./extranet/pages/PropertyOnboarding'));
 const ExtranetHourly = lazy(() => import('./extranet/pages/ExtranetHourly'));
+const ExtranetTeam = lazy(() => import('./extranet/pages/ExtranetTeam'));
+const AdminStaff = lazy(() => import('./admin/pages/Staff'));
 const AdminHourly = lazy(() => import('./admin/pages/Hourly'));
 
 import { ExtranetProvider } from './extranet/context/ExtranetContext';
@@ -191,6 +193,7 @@ function App() {
 
               {/* Core Admin */}
               <Route path="users" element={<Users />} />
+              <Route path="staff" element={<AdminStaff />} />
               <Route path="control-center" element={<SystemControlCenter />} />
               <Route path="live-ops" element={<LiveOpsCommandCenter />} />
               <Route path="settings" element={<SystemHealth />} />
@@ -260,6 +263,7 @@ function App() {
               <Route path="promotions" element={<ExtranetPromotions />} />
               <Route path="performance" element={<ExtranetPerformance />} />
               <Route path="settings" element={<ExtranetSettings />} />
+              <Route path="team" element={<ExtranetTeam />} />
             </Route>
 
           </Routes>

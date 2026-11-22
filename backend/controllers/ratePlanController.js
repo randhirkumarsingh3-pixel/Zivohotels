@@ -1,5 +1,6 @@
 import prisma from '../config/db.js';
 import { z } from 'zod';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 /**
  * Rate plans of a room type (Admin -> Room Config and Extranet -> Rooms & Rate Plans).
@@ -52,7 +53,7 @@ const checkOccupancy = (occupancyPricing, roomType) => {
 const loadOwned = async (req, res, ratePlanId) => {
   const ratePlan = await prisma.ratePlan.findUnique({ where: { id: ratePlanId }, include: { roomType: { include: { hotel: true } } } });
   if (!ratePlan) { fail(res, 404, 'Rate plan not found', req); return null; }
-  if (req.user.role === 'OWNER' && ratePlan.roomType.hotel.ownerId !== req.user.id) { fail(res, 403, 'You can only manage your own properties', req); return null; }
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, ratePlan.roomType.hotel)) { fail(res, 403, 'You can only manage your own properties', req); return null; }
   return ratePlan;
 };
 
@@ -64,7 +65,7 @@ export const createRatePlan = async (req, res, next) => {
 
     const roomType = await prisma.roomType.findUnique({ where: { id: roomTypeId }, include: { hotel: true } });
     if (!roomType) return fail(res, 404, 'Room type not found', req);
-    if (req.user.role === 'OWNER' && roomType.hotel.ownerId !== req.user.id) return fail(res, 403, 'You can only manage your own properties', req);
+    if (req.user.role === 'OWNER' && !managesHotel(req.user, roomType.hotel)) return fail(res, 403, 'You can only manage your own properties', req);
     if (needsMealPrice(data.mealPlan) && data.mealPriceAdult == null) return fail(res, 400, 'Enter the meal price per adult for this meal plan', req);
     const occError = checkOccupancy(occupancyPricing, roomType);
     if (occError) return fail(res, 400, occError, req);

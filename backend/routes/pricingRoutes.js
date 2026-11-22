@@ -16,6 +16,7 @@ import {
   previewHotelPrices,
 } from '../controllers/pricingController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { permissionGate } from '../middleware/permissionGate.js';
 
 // Mounted at /api/v1/admin/pricing and /api/v1/pricing. Owners are limited to their own
 // properties by the controller; platform settings and the holiday calendar are admin-only.
@@ -23,6 +24,7 @@ const router = express.Router();
 
 router.use(protect);
 router.use(authorizeRoles('ADMIN', 'OWNER'));
+router.use(permissionGate); // each path's permission (staff roles)
 
 router.get('/config', getPricingConfig);
 router.put('/config', updatePricingConfig);

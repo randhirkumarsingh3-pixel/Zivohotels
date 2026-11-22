@@ -17,6 +17,7 @@ import authRoutes from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { variantFor } from './services/imageVariants.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
 import hourlyAdminRoutes from './routes/hourlyAdminRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -27,6 +28,7 @@ import ratePlanRoutes from './routes/ratePlanRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import agreementRoutes from './routes/agreementRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { acceptInvite } from './controllers/userController.js';
 import { robotsTxt, sitemapXml } from './controllers/seoController.js';
 import systemRoutes from './routes/systemRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
@@ -65,6 +67,8 @@ import adminLoyaltyRoutes from './routes/adminLoyaltyRoutes.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { protect, authorizeRoles } from './middleware/authMiddleware.js';
+import { permissionGate } from './middleware/permissionGate.js';
+import { ensureAccessSetup } from './services/accessService.js';
 import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 import prisma from './config/db.js';
@@ -242,6 +246,9 @@ const searchLimiter = rateLimit({
 });
 
 app.use('/api/v1/auth', loginLimiter, authRoutes);
+// Setting a password from an invite link (staff and hotel owners). The page has always called this
+// address, but it was only served under /admin/users, behind sign-in, so no invite could be accepted.
+app.post('/api/v1/users/accept-invite', loginLimiter, acceptInvite);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/rooms', roomRoutes);
@@ -277,8 +284,10 @@ app.use('/api/v1/extranet', extranetRoutes);
 app.use('/api/v1/channel-manager', channelManagerApi);
 
 // ─── ADMIN / OWNER APIS (Legacy Transition) ──────────────────────────────────
-app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter);
+// Staff roles: every admin path needs its permission (middleware/permissionGate.js)
+app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter, permissionGate);
 
+app.use('/api/v1/admin/staff',      staffRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);
@@ -307,6 +316,10 @@ app.use('/api/v1/finance', financeRoutes);
 
 // Error Handling
 app.use(errorHandler);
+
+// Ready-made staff roles, and Super Admin for existing admins on a system that has none yet
+// (before answering requests, so nobody is refused while it runs)
+try { await ensureAccessSetup(); } catch (err) { console.error('❌ Staff roles setup failed:', err.message); }
 
 const server = http.createServer(app);
 

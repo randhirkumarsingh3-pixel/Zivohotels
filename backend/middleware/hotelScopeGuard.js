@@ -1,7 +1,9 @@
 import prisma from '../config/db.js';
+import { canAtHotel } from '../services/accessService.js';
 
 /**
- * Middleware to ensure the authenticated user owns or manages the requested hotel.
+ * Middleware to ensure the authenticated user owns the requested hotel or is on its team (with
+ * the permission the request needs there).
  * Extract `hotelId` from req.params, req.query, or req.body, depending on the route.
  * If hotelId is not explicitly provided, it will check if the user has exactly one hotel
  * and implicitly scope to that.
@@ -24,29 +26,20 @@ export const hotelScopeGuard = async (req, res, next) => {
       return next();
     }
 
-    // Fetch the user's allowed hotels
-    // For OWNER role, it's properties they own. For MANAGER, it might be assigned.
-    // Assuming simple mapping where user owns the hotel for now.
-    const userWithHotels = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { hotels: { select: { id: true, status: true, isDeleted: true } } }
-    });
-
-    if (!userWithHotels || !userWithHotels.hotels || userWithHotels.hotels.length === 0) {
+    // The properties this person may open: the ones they own, and the ones whose team they're on
+    // (services/accessService.js). Owned first, then in name order for a stable default.
+    const allowedIds = Object.keys(req.user.access?.hotels || {});
+    const validHotels = allowedIds.length
+      ? await prisma.hotel.findMany({ where: { id: { in: allowedIds }, isDeleted: false }, select: { id: true, ownerId: true }, orderBy: { name: 'asc' } })
+      : [];
+    if (!validHotels.length) {
       return res.status(403).json({ success: false, message: 'Forbidden: No properties associated with your account.' });
     }
+    validHotels.sort((a, b) => Number(b.ownerId === userId) - Number(a.ownerId === userId));
+    const validHotelIds = validHotels.map((h) => h.id);
 
-    const validHotelIds = userWithHotels.hotels.filter(h => !h.isDeleted).map(h => h.id);
-
-    let targetHotelId = requestedHotelId;
-
-    // If no hotelId provided, but user has at least one hotel, auto-assign the first one
-    if (!targetHotelId && validHotelIds.length > 0) {
-      targetHotelId = validHotelIds[0];
-    } else if (!targetHotelId) {
-      // Every hotel on the account is deleted: same as having none (frontend -> onboarding)
-      return res.status(403).json({ success: false, message: 'Forbidden: No active properties associated with your account.' });
-    }
+    // No property named: the first one
+    const targetHotelId = requestedHotelId || validHotelIds[0];
 
     // Verify scope
     if (!validHotelIds.includes(targetHotelId)) {
@@ -61,6 +54,12 @@ export const hotelScopeGuard = async (req, res, next) => {
         }
       });
       return res.status(403).json({ success: false, message: 'Forbidden: Cross-property data access denied.' });
+    }
+
+    // Their role at THIS property must allow what the request does (permissionGate only checked
+    // that they have it somewhere)
+    if (req.user.permission && !canAtHotel(req.user, targetHotelId, req.user.permission)) {
+      return res.status(403).json({ success: false, code: 'NO_PERMISSION', message: 'Your role at this property doesn\'t allow this. Ask the owner for access.' });
     }
 
     // Pass the validated hotelId down the pipeline

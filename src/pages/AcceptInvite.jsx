@@ -9,6 +9,8 @@ const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
   const _navigate = useNavigate();
   const token = searchParams.get('token');
+  // Where to sign in afterwards: staff invites name the admin console or the Extranet
+  const next = ['/admin/login', '/extranet/login'].includes(searchParams.get('next')) ? searchParams.get('next') : '/login';
 
   const [form, setForm] = useState({ password: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
@@ -55,7 +57,7 @@ const AcceptInvite = () => {
           </div>
           <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Account Activated!</h2>
           <p className="text-gray-500 mb-8 text-sm">Your password has been set. You can now sign in to your account.</p>
-          <Link to="/login"
+          <Link to={next}
             className="w-full inline-block bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-6 rounded-xl transition-colors text-sm">
             Go to Login
           </Link>

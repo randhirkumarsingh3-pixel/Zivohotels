@@ -1,5 +1,6 @@
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 /**
  * bulkUpdateInventory
@@ -23,7 +24,7 @@ export const bulkUpdateInventory = asyncHandler(async (req, res) => {
 
   if (!roomType) return res.status(404).json({ success: false, message: 'RoomType not found', requestId: req.id });
   
-  if (req.user.role === 'OWNER' && roomType.hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, roomType.hotel)) {
     return res.status(403).json({ success: false, message: 'Unauthorized', requestId: req.id });
   }
 

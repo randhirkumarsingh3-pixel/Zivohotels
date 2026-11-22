@@ -25,18 +25,23 @@ import { Clock,
   Activity,
   AlertTriangle,
   X,
-  BookOpenCheck
+  BookOpenCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import useAccess from '../../../hooks/useAccess';
 import Logo from '../../../components/brand/Logo';
 
 // "Preview" pages show sample data, not real figures: hidden unless the admin chooses to see them
 const PreviewContext = createContext(false);
 const isHiddenPreview = (child, show) => !show && child?.props?.badge === 'Preview';
+// Staff roles: each item names the permission it needs; items the person can't use are hidden
+const CanContext = createContext(() => false);
 
 const NavGroup = ({ title, children }) => {
   const show = useContext(PreviewContext);
-  const visible = Children.toArray(children).filter((c) => !isHiddenPreview(c, show));
+  const can = useContext(CanContext);
+  const visible = Children.toArray(children).filter((c) => !isHiddenPreview(c, show) && can(c?.props?.perm));
   if (!visible.length) return null;
   return (
   <div className="mb-6">
@@ -79,6 +84,7 @@ const NavItem = ({ name, path, icon, exact, badge }) => (
 /** Admin menu: fixed column on large screens, slide-in drawer on phones and tablets. */
 const MasterSidebar = ({ open = false, onClose = () => {} }) => {
   const { user, logout } = useAuth();
+  const { can, access } = useAccess();
   const [showPreview, setShowPreview] = useState(() => { try { return localStorage.getItem('zivo_admin_show_preview') === '1'; } catch { return false; } });
   const togglePreview = () => setShowPreview((v) => { try { localStorage.setItem('zivo_admin_show_preview', v ? '0' : '1'); } catch { /* storage unavailable */ } return !v; });
 
@@ -91,65 +97,67 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         <button type="button" onClick={onClose} aria-label="Close menu" className="lg:hidden p-2 rounded-lg text-navy-100 hover:bg-white/10"><X size={20} /></button>
       </div>
 
+      <CanContext.Provider value={can}>
       <PreviewContext.Provider value={showPreview}>
       <nav className="flex-1 overflow-y-auto custom-scrollbar pb-6">
         <NavGroup title="Overview">
-          <NavItem name="Dashboard" path="/admin" icon={<LayoutDashboard size={18} />} exact />
+          <NavItem perm="dashboard.view" name="Dashboard" path="/admin" icon={<LayoutDashboard size={18} />} exact />
         </NavGroup>
 
         <NavGroup title="Supply & Content">
-          <NavItem name="Properties" path="/admin/properties" icon={<Building2 size={18} />} />
-          <NavItem name="Property Review" path="/admin/properties/review" icon={<ClipboardCheck size={18} />} />
-          <NavItem name="Agreements" path="/admin/agreements" icon={<FileSignature size={18} />} />
+          <NavItem perm="properties.view" name="Properties" path="/admin/properties" icon={<Building2 size={18} />} />
+          <NavItem perm="properties.approve" name="Property Review" path="/admin/properties/review" icon={<ClipboardCheck size={18} />} />
+          <NavItem perm="properties.view" name="Agreements" path="/admin/agreements" icon={<FileSignature size={18} />} />
         </NavGroup>
 
         <NavGroup title="Bookings">
-          <NavItem name="Bookings" path="/admin/bookings" icon={<BookOpenCheck size={18} />} />
-          <NavItem name="Hourly Stays" path="/admin/hourly" icon={<Clock size={18} />} />
+          <NavItem perm="bookings.view" name="Bookings" path="/admin/bookings" icon={<BookOpenCheck size={18} />} />
+          <NavItem perm="hourly.manage" name="Hourly Stays" path="/admin/hourly" icon={<Clock size={18} />} />
         </NavGroup>
 
         <NavGroup title="Inventory & Distribution">
-          <NavItem name="Room Config" path="/admin/configuration" icon={<Settings size={18} />} />
-          <NavItem name="Inventory & Rates" path="/admin/inventory-pricing" icon={<CalendarDays size={18} />} />
-          <NavItem name="Channel Manager" path="/admin/channel-manager" icon={<Network size={18} />} />
+          <NavItem perm="properties.view" name="Room Config" path="/admin/configuration" icon={<Settings size={18} />} />
+          <NavItem perm="properties.view" name="Inventory & Rates" path="/admin/inventory-pricing" icon={<CalendarDays size={18} />} />
+          <NavItem perm="properties.view" name="Channel Manager" path="/admin/channel-manager" icon={<Network size={18} />} />
         </NavGroup>
 
         <NavGroup title="Pricing & RMS">
-          <NavItem name="Pricing & RMS" path="/admin/pricing-rms" icon={<TrendingUp size={18} />} />
-          <NavItem name="Promotions" path="/admin/promotions" icon={<Ticket size={18} />} />
-          <NavItem name="Guest Reviews" path="/admin/reviews" icon={<MessageSquareText size={18} />} />
-          <NavItem name="Loyalty (Zivo Rewards)" path="/admin/loyalty" icon={<Award size={18} />} />
-          <NavItem name="Membership" path="/admin/membership" icon={<Crown size={18} />} />
-          <NavItem name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} badge="Preview" />
+          <NavItem perm="properties.view" name="Pricing & RMS" path="/admin/pricing-rms" icon={<TrendingUp size={18} />} />
+          <NavItem perm="promotions.manage" name="Promotions" path="/admin/promotions" icon={<Ticket size={18} />} />
+          <NavItem perm="reviews.moderate" name="Guest Reviews" path="/admin/reviews" icon={<MessageSquareText size={18} />} />
+          <NavItem perm="loyalty.manage" name="Loyalty (Zivo Rewards)" path="/admin/loyalty" icon={<Award size={18} />} />
+          <NavItem perm="loyalty.manage" name="Membership" path="/admin/membership" icon={<Crown size={18} />} />
+          <NavItem perm="dashboard.view" name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} badge="Preview" />
         </NavGroup>
 
         <NavGroup title="Analytics">
-          <NavItem name="Revenue per Search" path="/admin/analytics/rps" icon={<Target size={18} />} badge="Preview" />
-          <NavItem name="Reports" path="/admin/reports" icon={<BarChart3 size={18} />} badge="Preview" />
+          <NavItem perm="dashboard.view" name="Revenue per Search" path="/admin/analytics/rps" icon={<Target size={18} />} badge="Preview" />
+          <NavItem perm="dashboard.view" name="Reports" path="/admin/reports" icon={<BarChart3 size={18} />} badge="Preview" />
         </NavGroup>
 
         <NavGroup title="Experiments">
-          <NavItem name="Experiments" path="/admin/experiments" icon={<FlaskConical size={18} />} badge="Preview" />
+          <NavItem perm="settings.view" name="Experiments" path="/admin/experiments" icon={<FlaskConical size={18} />} badge="Preview" />
         </NavGroup>
 
         <NavGroup title="Finance">
-          <NavItem name="Financial Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} badge="Preview" />
-          <NavItem name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} badge="Preview" />
+          <NavItem perm="finance.view" name="Financial Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} badge="Preview" />
+          <NavItem perm="finance.view" name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} badge="Preview" />
         </NavGroup>
 
         <NavGroup title="Wallet & Credit">
-          <NavItem name="Wallet Control" path="/admin/wallets" icon={<Wallet size={18} />} />
+          <NavItem perm="finance.view" name="Wallet Control" path="/admin/wallets" icon={<Wallet size={18} />} />
         </NavGroup>
 
         <NavGroup title="Risk & Fraud">
-          <NavItem name="Fraud Center" path="/admin/fraud" icon={<AlertTriangle size={18} />} badge="Preview" />
+          <NavItem perm="finance.view" name="Fraud Center" path="/admin/fraud" icon={<AlertTriangle size={18} />} badge="Preview" />
         </NavGroup>
 
         <NavGroup title="Control Center">
-          <NavItem name="System Control" path="/admin/control-center" icon={<Zap size={18} />} badge="Preview" />
-          <NavItem name="Users & Roles" path="/admin/users" icon={<Users size={18} />} />
-          <NavItem name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
-          <NavItem name="System Health" path="/admin/settings" icon={<Settings size={18} />} badge="Preview" />
+          <NavItem perm="settings.manage" name="System Control" path="/admin/control-center" icon={<Zap size={18} />} badge="Preview" />
+          <NavItem perm="staff.manage" name="Staff & Roles" path="/admin/staff" icon={<ShieldCheck size={18} />} />
+          <NavItem perm="users.view" name="Guest & Partner Accounts" path="/admin/users" icon={<Users size={18} />} />
+          <NavItem perm="settings.manage" name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
+          <NavItem perm="settings.view" name="System Health" path="/admin/settings" icon={<Settings size={18} />} badge="Preview" />
         </NavGroup>
         <div className="px-6 pt-2">
           <button type="button" onClick={togglePreview} aria-pressed={showPreview}
@@ -159,6 +167,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         </div>
       </nav>
       </PreviewContext.Provider>
+      </CanContext.Provider>
 
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center mb-3 px-2">
@@ -167,7 +176,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-white truncate">{user?.name}</div>
-            <div className="text-xs text-navy-200 capitalize">{String(user?.role || '').toLowerCase()}</div>
+            <div className="text-xs text-navy-200">{access?.adminRole || (access ? 'No role yet' : '…')}</div>
           </div>
         </div>
         <button

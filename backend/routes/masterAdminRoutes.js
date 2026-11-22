@@ -1,11 +1,13 @@
 import express from 'express';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { permissionGate } from '../middleware/permissionGate.js';
 
 const router = express.Router();
 
 // Master Admin routes are restricted to ADMIN only
 router.use(protect);
 router.use(authorizeRoles('ADMIN'));
+router.use(permissionGate); // each path's permission (staff roles)
 
 /**
  * Master Admin Intelligence Endpoints

@@ -127,6 +127,8 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
 
 export const addUser = asyncHandler(async (req, res) => {
   const { name, email, password, role, phone } = req.body;
+  // ZivoHotels staff get a role: they're invited from Staff & roles
+  if (role === 'ADMIN') return res.status(422).json({ success: false, message: 'Invite ZivoHotels staff from Staff & roles, where you choose their role.', requestId: req.id });
 
   if (!email || !password || !name) {
     return res.status(422).json({ success: false, message: 'Name, email and password are required', requestId: req.id });
@@ -160,6 +162,8 @@ export const addUser = asyncHandler(async (req, res) => {
 
 export const inviteUser = asyncHandler(async (req, res) => {
   const { name, email, role, propertyId } = req.body;
+  // ZivoHotels staff get a role: they're invited from Staff & roles
+  if (role === 'ADMIN') return res.status(422).json({ success: false, message: 'Invite ZivoHotels staff from Staff & roles, where you choose their role.', requestId: req.id });
 
   if (!email) {
     return res.status(422).json({ success: false, message: 'Email is required', requestId: req.id });

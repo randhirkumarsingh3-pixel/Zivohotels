@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { setSessionCookie } from '../utils/sessionCookie.js';
 import { z } from 'zod';
 import prisma from '../config/db.js';
+import { firstHotelFor } from '../services/accessService.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { queueService } from '../services/queueService.js';
 import { escapeHtml } from '../utils/html.js';
@@ -42,7 +43,7 @@ export const changePassword = asyncHandler(async (req, res) => {
     select: { id: true, role: true, tokenVersion: true, name: true, email: true },
   });
   sendPasswordChanged(updated, { ip: req.ip }).catch(() => {});
-  const hotel = ['OWNER', 'MANAGER'].includes(updated.role) ? await prisma.hotel.findFirst({ where: { ownerId: updated.id }, select: { id: true } }) : null;
+  const hotel = ['OWNER', 'MANAGER'].includes(updated.role) ? { id: await firstHotelFor(updated.id) } : null;
   await prisma.auditLog.create({ data: { action: 'PASSWORD_CHANGED', entityType: 'USER', entityId: updated.id, userId: updated.id, requestId: req.id, details: {} } }).catch(() => {});
   // A new session for this device (the old one stopped working with the version bump)
   const token = signToken(updated.id, updated.role, hotel?.id || null, updated.tokenVersion);

@@ -2,6 +2,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import prisma from '../config/db.js';
 import { z } from 'zod';
 import dynamicPricing, { RULE_TYPES, normalizeCondition } from '../services/dynamicPricingService.js';
+import { managesHotel, managedHotelWhere } from '../utils/hotelAccess.js';
 
 /**
  * Pricing & RMS.
@@ -20,7 +21,7 @@ const isAdmin = (req) => req.user.role === 'ADMIN';
 /** Loads a property the caller may manage (admins: any; owners: their own). */
 const loadHotel = async (req, res) => {
   const hotel = await prisma.hotel.findUnique({ where: { id: req.params.hotelId }, select: { id: true, name: true, city: true, ownerId: true, isDeleted: true, integrationMode: true } });
-  if (!hotel || hotel.isDeleted || (!isAdmin(req) && hotel.ownerId !== req.user.id)) {
+  if (!hotel || hotel.isDeleted || !managesHotel(req.user, hotel)) {
     fail(res, req, 404, 'Property not found');
     return null;
   }
@@ -108,7 +109,7 @@ export const deleteHoliday = asyncHandler(async (req, res) => {
 
 /** Admin overview: every property with its dynamic pricing state. */
 export const getDynamicOverview = asyncHandler(async (req, res) => {
-  const where = { isDeleted: false, ...(isAdmin(req) ? {} : { ownerId: req.user.id }) };
+  const where = { isDeleted: false, ...(isAdmin(req) ? {} : managedHotelWhere(req.user)) };
   const [hotels, settings, ruleCounts] = await Promise.all([
     prisma.hotel.findMany({ where, select: { id: true, name: true, city: true, integrationMode: true }, orderBy: { name: 'asc' } }),
     prisma.dynamicPricingSetting.findMany(),

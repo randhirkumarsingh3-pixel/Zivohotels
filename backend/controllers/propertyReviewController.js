@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { queueService } from '../services/queueService.js';
 import { mediaService } from '../services/MediaService.js';
 import { checkPropertyReadiness } from '../services/propertyReadiness.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 // Helper to log timeline
 const logTimeline = async (hotelId, userId, action, reason = null) => {
@@ -56,7 +57,7 @@ export const submitForReview = asyncHandler(async (req, res) => {
   const hotel = await prisma.hotel.findUnique({ where: { id }, include: { owner: true } });
   
   // Owners may only submit their own properties
-  if (!hotel || (req.user.role !== 'ADMIN' && hotel.ownerId !== req.user.id)) {
+  if (!hotel || !managesHotel(req.user, hotel)) {
     return res.status(404).json({ success: false, message: 'Hotel not found' });
   }
   if (!['DRAFT', 'INFORMATION_REQUESTED'].includes(hotel.status)) {

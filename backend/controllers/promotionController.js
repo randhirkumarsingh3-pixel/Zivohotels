@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { performance } from '../services/promotionService.js';
 import { promotionLabel } from '../domains/promotionDomain.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 /**
  * Promotions setup (Admin -> Promotions, Extranet -> Promotions).
@@ -62,7 +63,7 @@ const buildData = async (req, input, existing = null) => {
   if (!hotelId && !isAdmin(req)) bad('Choose your property', 403);
   if (hotelId && !existing) {
     const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { ownerId: true, isDeleted: true } });
-    if (!hotel || hotel.isDeleted || (!isAdmin(req) && hotel.ownerId !== req.user.id)) bad('Property not found', 404);
+    if (!hotel || hotel.isDeleted || !managesHotel(req.user, { ...hotel, id: hotelId })) bad('Property not found', 404);
   }
   if (merged.discountType === 'PERCENT' && Number(merged.value) > 90) bad('A percentage discount can be at most 90%');
   const range = (a, b, msg) => { if (merged[a] && merged[b] && String(merged[b]).slice(0, 10) < String(merged[a]).slice(0, 10)) bad(msg); };
@@ -137,7 +138,7 @@ export const listPromotions = asyncHandler(async (req, res) => {
   if (!hotelId && !isAdmin(req)) return fail(res, req, 400, 'Choose your property');
   if (hotelId) {
     const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { ownerId: true, isDeleted: true } });
-    if (!hotel || hotel.isDeleted || (!isAdmin(req) && hotel.ownerId !== req.user.id)) return fail(res, req, 404, 'Property not found');
+    if (!hotel || hotel.isDeleted || !managesHotel(req.user, { ...hotel, id: hotelId })) return fail(res, req, 404, 'Property not found');
     const rows = await prisma.promotion.findMany({
       where: { OR: [{ hotelId }, { hotelId: null, OR: [{ hotelIds: { isEmpty: true } }, { hotelIds: { has: hotelId } }] }] },
       orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }]
@@ -158,7 +159,7 @@ const loadEditable = async (req, res) => {
   if (!isAdmin(req)) {
     if (!promo.hotelId) { fail(res, req, 403, 'Zivo promotions are managed by ZivoHotels'); return null; }
     const hotel = await prisma.hotel.findUnique({ where: { id: promo.hotelId }, select: { ownerId: true } });
-    if (hotel?.ownerId !== req.user.id) { fail(res, req, 404, 'Promotion not found'); return null; }
+    if (!hotel || !managesHotel(req.user, { ...hotel, id: promo.hotelId })) { fail(res, req, 404, 'Promotion not found'); return null; }
   }
   return promo;
 };
