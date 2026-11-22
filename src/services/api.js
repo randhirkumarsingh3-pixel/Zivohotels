@@ -439,6 +439,16 @@ export const adminSeoApi = {
   preview: (path) => apiFetch(`${SEO()}/preview?path=${encodeURIComponent(path)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 
+// ─── GOOGLE HOTELS (admin console) ──────────────────────────────────────────
+const GH = () => `${PUBLIC_BASE}/admin/google`;
+export const adminGoogleApi = {
+  get: () => apiFetch(GH(), { cache: 'no-store' }, 0).then((r) => r?.data),
+  save: (body) => apiFetch(GH(), jsonBody('PUT', body), 0).then((r) => r?.data),
+  setHotel: (id, excluded) => apiFetch(`${GH()}/hotels/${id}`, jsonBody('PUT', { excluded }), 0).then((r) => r?.data),
+  sample: (id, checkin, nights) => apiFetch(`${GH()}/hotels/${id}/sample?checkin=${checkin || ''}&nights=${nights || 1}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  accuracy: () => apiFetch(`${GH()}/accuracy`, { method: 'POST' }, 0).then((r) => r?.data),
+};
+
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const getAdminHotels = async () => apiFetch(`${ADMIN_BASE}/hotels`).then(res => res?.data);
 export const getAdminBookings = async (params = {}) => apiFetch(`${ADMIN_BASE}/bookings?${new URLSearchParams(params).toString()}`);

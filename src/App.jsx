@@ -85,6 +85,7 @@ const ExtranetHourly = lazy(() => import('./extranet/pages/ExtranetHourly'));
 const ExtranetTeam = lazy(() => import('./extranet/pages/ExtranetTeam'));
 const AdminStaff = lazy(() => import('./admin/pages/Staff'));
 const AdminSeo = lazy(() => import('./admin/pages/Seo'));
+const AdminGoogleHotels = lazy(() => import('./admin/pages/GoogleHotels'));
 const AdminHourly = lazy(() => import('./admin/pages/Hourly'));
 
 import { ExtranetProvider } from './extranet/context/ExtranetContext';
@@ -200,6 +201,7 @@ function App() {
               <Route path="users" element={<Users />} />
               <Route path="staff" element={<AdminStaff />} />
               <Route path="seo" element={<AdminSeo />} />
+              <Route path="google-hotels" element={<AdminGoogleHotels />} />
               <Route path="control-center" element={<SystemControlCenter />} />
               <Route path="live-ops" element={<LiveOpsCommandCenter />} />
               <Route path="settings" element={<SystemHealth />} />

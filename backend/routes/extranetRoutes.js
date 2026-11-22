@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import express from 'express';
 import staffRoutes from './staffRoutes.js';
+import { extranetGet as googleExtranetGet, extranetSet as googleExtranetSet } from '../controllers/googleHotelsController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { permissionGate } from '../middleware/permissionGate.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
@@ -108,6 +109,10 @@ router.get('/finance/payouts', getPayoutHistory);
 router.get('/wallet', getHotelWallet);
 router.get('/membership', getHotelMembership);
 router.put('/membership', putHotelMembership);
+
+// Google Hotels: the property's own choice to appear (needs property.edit)
+router.get('/google', googleExtranetGet);
+router.put('/google', googleExtranetSet);
 
 // The property's team and roles (needs team.manage there)
 router.use('/team', staffRoutes);

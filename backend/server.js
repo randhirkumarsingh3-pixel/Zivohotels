@@ -31,6 +31,8 @@ import agreementRoutes from './routes/agreementRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { acceptInvite } from './controllers/userController.js';
 import { robotsTxt, sitemapXml, sitemapPart, seoPage } from './controllers/seoController.js';
+import { hotelList as googleHotelList, pointOfSale as googlePointOfSale, query as googleQuery, hint as googleHint } from './controllers/googleHotelsController.js';
+import googleAdminRoutes from './routes/googleAdminRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
@@ -284,6 +286,12 @@ app.get('/sitemaps/:part.xml', sitemapPart);
 // Public pages with their title, description, structured data and content (the website's Nginx
 // asks here for page requests; see services/seoService.js)
 app.get('/seo/page', seoPage);
+// Google Hotels feeds (secret token in the address; see services/googleHotelsService.js)
+const googleXmlBody = express.text({ type: () => true, limit: '1mb' });
+app.get('/google/:token/hotel-list.xml', googleHotelList);
+app.get('/google/:token/pos.xml', googlePointOfSale);
+app.post('/google/:token/query', googleXmlBody, googleQuery);
+app.post('/google/:token/hint', googleXmlBody, googleHint);
 // IndexNow key file (proves to search engines that the notifications come from this site)
 app.get(/^\/indexnow-([0-9a-f]{16,64})\.txt$/, async (req, res) => {
   const { getSeoSettings } = await import('./services/seoService.js');
@@ -309,6 +317,7 @@ app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter
 
 app.use('/api/v1/admin/staff',      staffRoutes);
 app.use('/api/v1/admin/seo',        seoAdminRoutes);
+app.use('/api/v1/admin/google',     googleAdminRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);

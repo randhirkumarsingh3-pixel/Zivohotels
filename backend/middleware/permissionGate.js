@@ -18,6 +18,7 @@ const ANY = 'any';
 const RULES = [
   // Staff & roles
   [/^\/admin\/staff/, ['staff.manage', 'staff.manage'], null],
+  [/^\/extranet\/google/, ['properties.view', 'properties.manage'], ['dashboard.view', 'property.edit']],
   [/^\/extranet\/team/, ['properties.manage', 'properties.manage'], ['team.manage', 'team.manage']],
 
   // Extranet (hotel teams; admins acting on a property need properties.*)
@@ -56,7 +57,7 @@ const RULES = [
   [/^\/admin\/(loyalty|membership)/, ['loyalty.manage', 'loyalty.manage'], null],
   [/^\/admin\/wallets/, ['finance.view', 'finance.manage'], null],
   [/^\/admin\/users/, ['users.view', 'users.manage'], null],
-  [/^\/admin\/seo/, ['seo.manage', 'seo.manage'], null],
+  [/^\/admin\/(seo|google)/, ['seo.manage', 'seo.manage'], null],
   [/^\/admin\/(system|delivery)/, ['settings.view', 'settings.manage'], null],
   [/^\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/master\/finance/, ['finance.view', 'finance.manage'], null],
