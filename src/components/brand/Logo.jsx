@@ -11,7 +11,7 @@ const SIZES = {
 
 export const LogoMark = ({ size = 'md', onDark = false, className = '' }) => {
   const s = SIZES[size] || SIZES.md;
-  const img = <img src="/brand/zivo-mark.png" alt="" aria-hidden="true" className={`${s.mark} object-contain shrink-0`} draggable="false" />;
+  const img = <img src="/brand/zivo-mark-112.png" alt="" aria-hidden="true" width="112" height="112" className={`${s.mark} object-contain shrink-0`} draggable="false" />;
   return onDark ? <span className={`bg-white inline-flex shrink-0 ${s.tile} ${className}`}>{img}</span> : <span className={`inline-flex shrink-0 ${className}`}>{img}</span>;
 };
 

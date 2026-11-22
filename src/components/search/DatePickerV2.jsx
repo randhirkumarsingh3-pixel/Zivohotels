@@ -1,15 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { DayPicker } from 'react-day-picker';
-import { format, addDays, startOfToday, differenceInCalendarDays } from 'date-fns';
-import 'react-day-picker/dist/style.css';
+// Small date helpers (the date library is only loaded with the calendar)
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = (n) => String(n).padStart(2, '0');
+const toYmd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const startOfToday = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const differenceInCalendarDays = (a, b) => Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 86400000);
 import { track } from '../../utils/analytics';
+
+const RangeCalendar = lazy(() => import('./RangeCalendar'));
+// Start loading the calendar as soon as the guest points at or focuses the dates
+const preloadCalendar = () => { import('./RangeCalendar'); };
 
 // "2026-12-10" -> local date (new Date("2026-12-10") is UTC midnight: the day before in the Americas)
 const parseYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
-const label = (d) => (d ? format(d, d.getFullYear() === new Date().getFullYear() ? 'EEE, d MMM' : 'EEE, d MMM yyyy') : null);
+const thisYear = (d) => d.getFullYear() === new Date().getFullYear();
+const label = (d) => (d ? `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}${thisYear(d) ? '' : ` ${d.getFullYear()}`}` : null);
 // Phones: "20 Dec" (with the weekday the dates were cut off as "Sun, 20 …")
-const shortLabel = (d) => (d ? format(d, d.getFullYear() === new Date().getFullYear() ? 'd MMM' : 'd MMM yy') : null);
+const shortLabel = (d) => (d ? `${d.getDate()} ${MONTHS[d.getMonth()]}${thisYear(d) ? '' : ` ${String(d.getFullYear()).slice(2)}`}` : null);
 
 const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpen, setIsOpen, onFocusNext, isMobile }) => {
   const wrapperRef = useRef(null);
@@ -24,8 +34,8 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
   // shown but not set, so Search said "choose dates"). Later changes from outside (a prefilled bar on
   // the results page) are shown too.
   useEffect(() => {
-    if (!checkIn && range.from) setCheckIn(format(range.from, 'yyyy-MM-dd'));
-    if (!checkOut && !checkIn && range.to) setCheckOut(format(range.to, 'yyyy-MM-dd'));
+    if (!checkIn && range.from) setCheckIn(toYmd(range.from));
+    if (!checkOut && !checkIn && range.to) setCheckOut(toYmd(range.to));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -68,7 +78,7 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
     setRange(newRange);
     
     if (newRange?.from) {
-      setCheckIn(format(newRange.from, 'yyyy-MM-dd'));
+      setCheckIn(toYmd(newRange.from));
     }
     if (newRange?.from && !newRange?.to) {
       // Don't keep an old check-out that may now be before the new check-in
@@ -77,11 +87,11 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
     
     // Auto-advance if both dates are selected
     if (newRange?.from && newRange?.to) {
-      setCheckOut(format(newRange.to, 'yyyy-MM-dd'));
+      setCheckOut(toYmd(newRange.to));
       setIsOpen(false);
       track("DATES_SELECTED", { 
-        checkIn: format(newRange.from, 'yyyy-MM-dd'),
-        checkOut: format(newRange.to, 'yyyy-MM-dd')
+        checkIn: toYmd(newRange.from),
+        checkOut: toYmd(newRange.to)
       });
       // Move to Guest selector
       onFocusNext();
@@ -91,20 +101,17 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
   const today = startOfToday();
 
   // Custom styling for the day picker to match brand
+  // Brand colours for the calendar (doubled class so it wins over the library's own stylesheet,
+  // which loads after this one)
   const cssStyles = `
-    .rdp {
-      --rdp-cell-size: 40px;
+    .rdp-root.rdp-root {
       --rdp-accent-color: #e7194a; /* brand-600 */
-      --rdp-background-color: #eef5fb; /* navy-50 */
+      --rdp-accent-background-color: #fde3e9; /* brand-100 */
+      --rdp-day-width: 40px;
+      --rdp-day-height: 40px;
+      --rdp-day_button-width: 38px;
+      --rdp-day_button-height: 38px;
       margin: 0;
-    }
-    .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
-      background-color: var(--rdp-accent-color);
-      color: white;
-      font-weight: bold;
-    }
-    .rdp-day_selected:hover {
-      background-color: #c10f3c; /* brand-700 */
     }
   `;
 
@@ -119,6 +126,8 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
       <button
         type="button"
         onClick={toggleCalendar}
+        onPointerEnter={preloadCalendar}
+        onFocus={preloadCalendar}
         aria-expanded={isOpen}
         aria-label={`Dates: ${label(range.from) || 'choose check-in'} to ${label(range.to) || 'choose check-out'}`}
         className={`w-full h-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${isOpen ? 'bg-navy-50 ring-2 ring-navy-500/30' : 'hover:bg-gray-50'} ${error ? 'bg-red-50 ring-2 ring-red-500/40' : ''}`}
@@ -140,16 +149,15 @@ const DatePickerV2 = ({ checkIn, setCheckIn, checkOut, setCheckOut, error, isOpe
       {isOpen && (
         <div className="absolute z-[9999] mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 animate-fade-in origin-top left-0 md:-left-10 lg:left-0">
           <p className="text-sm font-semibold text-gray-700 mb-2 px-1">{range?.from && !range?.to ? 'Now choose your check-out date' : 'Choose your check-in date'}</p>
-          <DayPicker
-            mode="range"
-            selected={range}
-            onSelect={handleSelect}
-            numberOfMonths={isMobile ? 1 : 2}
-            defaultMonth={range?.from}
-            disabled={{ before: today }}
-            pagedNavigation
-            showOutsideDays={false}
-          />
+          <Suspense fallback={<div className={`${isMobile ? 'w-[280px]' : 'w-[560px]'} h-[300px] flex items-center justify-center text-sm text-gray-400`}>Loading calendar…</div>}>
+            <RangeCalendar
+              selected={range}
+              onSelect={handleSelect}
+              numberOfMonths={isMobile ? 1 : 2}
+              defaultMonth={range?.from}
+              disabled={{ before: today }}
+            />
+          </Suspense>
         </div>
       )}
     </div>
