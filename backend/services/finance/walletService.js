@@ -4,7 +4,7 @@ import prisma from '../../config/db.js';
 /**
  * Wallets.
  *
- * Guest wallet ("Zivo Cash", Wallet.userId): stored credit that can only be spent on ZivoHotels
+ * Guest wallet ("Zivo Cash", Wallet.userId): stored credit that can only be spent on ZivoPlus
  * bookings (no top-ups, withdrawals or transfers: a closed-system wallet). Money comes in from
  * refunds the guest chooses to take as Zivo Cash and from admin credits; it goes out when the guest
  * pays for a booking with it. Every movement is a WalletTransaction with the balance after it.
@@ -74,8 +74,8 @@ export const CATEGORY_LABEL = {
   REFUND: 'Refund',
   BOOKING_PAYMENT: 'Paid for booking',
   PAYMENT_RETURNED: 'Returned from booking',
-  ADMIN_CREDIT: 'Credit from ZivoHotels',
-  ADMIN_DEBIT: 'Correction by ZivoHotels',
+  ADMIN_CREDIT: 'Credit from ZivoPlus',
+  ADMIN_DEBIT: 'Correction by ZivoPlus',
   MEMBERSHIP: 'Membership',
   OTHER: 'Other',
 };
@@ -143,7 +143,7 @@ export const startWalletJob = () => {
 const KIND_LABEL = { STAY: 'Stay', CANCELLATION: 'Cancellation fee kept', NO_SHOW: 'No-show charge kept' };
 
 /**
- * A hotel's money with ZivoHotels: on hold until the payout date, ready to be paid, owed to Zivo
+ * A hotel's money with ZivoPlus: on hold until the payout date, ready to be paid, owed to Zivo
  * (commission on pay-at-hotel stays), paid out, and a statement with a running balance.
  */
 export const hotelWallet = async (hotelId, { from, to } = {}) => {

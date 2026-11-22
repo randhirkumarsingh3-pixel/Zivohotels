@@ -23,7 +23,7 @@ if (isProduction && process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32
 
 if (problems.length > 0) {
   console.error(
-    `\n❌ ZivoHotels backend cannot start — configuration problems:\n${problems.join('\n')}\n` +
+    `\n❌ ZivoPlus backend cannot start — configuration problems:\n${problems.join('\n')}\n` +
     '   Add them to backend/.env (local) or the service environment / Secret Manager (cloud).\n'
   );
   process.exit(1);

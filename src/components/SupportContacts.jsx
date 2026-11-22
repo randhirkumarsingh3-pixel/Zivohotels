@@ -2,7 +2,7 @@ import { Phone, Mail, MessageSquare } from 'lucide-react';
 import useSupportContacts from '../hooks/useSupportContacts';
 
 /**
- * ZivoHotels support: phone, WhatsApp and email as tappable links, with the numbers also shown as
+ * ZivoPlus support: phone, WhatsApp and email as tappable links, with the numbers also shown as
  * text (links to phone or mail apps don't open everywhere). Nothing when no contacts are set.
  */
 const SupportContacts = ({ bookingRef = '', compact = false }) => {
@@ -15,7 +15,7 @@ const SupportContacts = ({ bookingRef = '', compact = false }) => {
       {s.phone && (
         <a href={`tel:${s.phone.replace(/\s/g, '')}`} className={item}>
           <Phone size={16} className="text-brand-700 shrink-0" aria-hidden="true" />
-          <span>Call ZivoHotels <span className="font-semibold select-all">{s.phone}</span></span>
+          <span>Call ZivoPlus <span className="font-semibold select-all">{s.phone}</span></span>
         </a>
       )}
       {s.whatsappLink && (

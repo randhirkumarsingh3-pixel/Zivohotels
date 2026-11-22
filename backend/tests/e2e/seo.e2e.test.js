@@ -26,7 +26,7 @@ describe('SEO end to end', function () {
     slug = hotelSlug(hotel);
     savedIntegration = hotel.integrationSettings;
     savedSettings = await prisma.systemConfig.findUnique({ where: { key: 'seo_settings' } });
-    const r = await api.post('/auth/login', { email: 'admin@zivohotels.com', password: process.env.SEED_ADMIN_PASSWORD || 'admin123' });
+    const r = await api.post('/auth/login', { email: 'admin@zivoplus.com', password: process.env.SEED_ADMIN_PASSWORD || 'admin123' });
     admin = { headers: { Authorization: `Bearer ${r.data.data.token}` } };
   });
   after(async () => {
@@ -52,7 +52,7 @@ describe('SEO end to end', function () {
   it('fills a hotel page with its title, description, official address, structured data and content', async () => {
     const r = await page(`/hotel/${slug}`);
     expect(r.status).to.equal(200);
-    expect(r.data).to.match(new RegExp(`<title>${hotel.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^<]*\\| ZivoHotels</title>`));
+    expect(r.data).to.match(new RegExp(`<title>${hotel.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^<]*\\| ZivoPlus</title>`));
     expect(r.data).to.match(/<meta name="description" content="[^"]{40,}"/);
     expect(r.data).to.include(`/hotel/${slug}" />`);
     const types = ld(r.data).map((d) => d['@type']);

@@ -5,5 +5,5 @@ variable "project_id" {
 variable "alert_email" {
   description = "Email address to send critical infrastructure and application alerts"
   type        = string
-  default     = "admin@zivohotels.com"
+  default     = "admin@zivoplus.com"
 }

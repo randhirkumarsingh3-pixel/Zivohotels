@@ -201,7 +201,7 @@ export const runMembershipJob = async () => {
         to: user.email,
         subject: `Your ${m.plan.name} membership ends on ${date}`,
         html: `<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:20px"><h2>Keep your ${escapeHtml(m.plan.name)} benefits</h2>
-          <p>Hi ${escapeHtml((user.name || '').split(' ')[0] || 'there')}, your membership ends on <strong>${date}</strong>. Renew from ZivoHotels → Membership to keep your member savings, extra points and flexible cancellation.</p></div>`,
+          <p>Hi ${escapeHtml((user.name || '').split(' ')[0] || 'there')}, your membership ends on <strong>${date}</strong>. Renew from ZivoPlus → Membership to keep your member savings, extra points and flexible cancellation.</p></div>`,
       }, { priority: 4 }).catch(() => {});
       reminded += 1;
     }

@@ -1,15 +1,15 @@
-# Cloudflare in front of ZivoHotels (free plan)
+# Cloudflare in front of ZivoPlus (free plan)
 
 Cloudflare keeps copies of the site's files and photos in data centres across India and serves
 them from the one nearest each visitor. The VPS then only answers for prices, availability and
 bookings. Nothing changes in how you deploy.
 
 **Takes about 30 minutes. Cost: free.** The only risk is DNS: email and other sites on
-zivohotels.com must keep working, so check step 3 carefully.
+zivoplus.com must keep working, so check step 3 carefully.
 
 ## 1. Add the domain
 
-1. Sign up at https://dash.cloudflare.com and choose **Add a domain** → `zivohotels.com` → **Free** plan.
+1. Sign up at https://dash.cloudflare.com and choose **Add a domain** → `zivoplus.com` → **Free** plan.
 2. Cloudflare scans the domain's current DNS records and lists them.
 
 ## 2. Check the imported records (important)
@@ -27,7 +27,7 @@ The root domain and `www`: leave them **DNS only** until the live site moves to 
 ## 3. Switch the nameservers
 
 Cloudflare shows two nameservers (like `xxx.ns.cloudflare.com`). At Hostinger: Domains →
-zivohotels.com → DNS / Nameservers → **Change nameservers** → enter Cloudflare's two. The switch
+zivoplus.com → DNS / Nameservers → **Change nameservers** → enter Cloudflare's two. The switch
 takes from a few minutes up to a few hours. Cloudflare emails you when the domain is active.
 
 ## 4. Settings in Cloudflare
@@ -42,7 +42,7 @@ takes from a few minutes up to a few hours. Cloudflare emails you when the domai
 
 ## 5. Tell the app
 
-On the VPS, in `/opt/zivohotels-app/deploy/vps/.env`, add or change:
+On the VPS, in `/opt/zivoplus-app/deploy/vps/.env`, add or change:
 
 ```
 BEHIND_CLOUDFLARE=true
@@ -51,7 +51,7 @@ BEHIND_CLOUDFLARE=true
 Then deploy as usual:
 
 ```
-bash /opt/zivohotels-app/deploy/vps/deploy.sh
+bash /opt/zivoplus-app/deploy/vps/deploy.sh
 ```
 
 This makes rate limits and logs see each visitor's real address, not Cloudflare's. Caddy accepts
@@ -60,10 +60,10 @@ publishes, fetched once a day. Anyone else's claim is ignored.
 
 ## 6. Check
 
-Open https://staging.zivohotels.com, and on the VPS run:
+Open https://staging.zivoplus.com, and on the VPS run:
 
 ```
-curl -sI https://staging.zivohotels.com/brand/zivo-mark-112.png | grep -i -E "server|cf-cache-status"
+curl -sI https://staging.zivoplus.com/brand/zivo-mark-112.png | grep -i -E "server|cf-cache-status"
 ```
 
 You should see `server: cloudflare`. A file loaded twice shows `cf-cache-status: HIT`.

@@ -8,18 +8,18 @@
 export const LEGAL = {
   reviewed: false,
   lastUpdated: '2026-11-21',
-  brand: 'ZivoHotels',
+  brand: 'ZivoPlus',
   legalEntity: 'ZIVO TECHNOLOGIES SOLUTIONS PRIVATE LIMITED',
   registeredAddress: 'Makundpur Karpuri Gram, Karpoorigram, Samastipur 848129, Bihar, India',
   cin: 'U62099BR2026PTC087845',
   gstin: '10AADCZ1700C1Z8',
   // Published under the role title, as the company chose; the email reaches the officer
-  grievanceOfficer: { name: 'Grievance Officer', email: 'grievance@zivohotels.com', phone: null },
+  grievanceOfficer: { name: 'Grievance Officer', email: 'grievance@zivoplus.com', phone: null },
   jurisdictionCity: 'Samastipur, Bihar, India', // courts with jurisdiction
   contacts: {
-    bookings: 'support@zivohotels.com',
-    partners: 'partners@zivohotels.com',
-    finance: 'finance@zivohotels.com',
+    bookings: 'support@zivoplus.com',
+    partners: 'partners@zivoplus.com',
+    finance: 'finance@zivoplus.com',
   },
 };
 

@@ -3,7 +3,7 @@ import { Clock, Loader2, CheckCircle2, PauseCircle, Save } from 'lucide-react';
 import { getAdminHourly, saveAdminHourlySettings, approveHotelHourly } from '../../services/api';
 
 /**
- * Admin → Hourly Stays: ZivoHotels' rules for hourly stays (on/off, durations hotels may offer,
+ * Admin → Hourly Stays: ZivoPlus' rules for hourly stays (on/off, durations hotels may offer,
  * maximum hours, commission, default cancellation) and the properties that switched them on,
  * to approve or pause.
  */
@@ -35,14 +35,14 @@ const AdminHourly = () => {
     <div className="space-y-6 max-w-6xl pb-12">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Clock className="text-navy-700" aria-hidden="true" /> Hourly stays</h1>
-        <p className="text-gray-500 mt-1">Rules for hourly stays on ZivoHotels, and the properties offering them.</p>
+        <p className="text-gray-500 mt-1">Rules for hourly stays on ZivoPlus, and the properties offering them.</p>
       </div>
       {msg && <p role="status" className={`text-sm rounded-lg px-4 py-2 ${msg.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>{msg.text}</p>}
 
       <section className="bg-white rounded-card border border-gray-200 p-6 space-y-5">
         <h2 className="text-lg font-bold text-gray-900">Platform rules</h2>
         <label className="flex items-center gap-3 text-sm font-semibold text-gray-900">
-          <input type="checkbox" checked={form.enabled} onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))} className="h-5 w-5 rounded border-gray-300" /> Hourly stays on ZivoHotels (off hides them everywhere)
+          <input type="checkbox" checked={form.enabled} onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))} className="h-5 w-5 rounded border-gray-300" /> Hourly stays on ZivoPlus (off hides them everywhere)
         </label>
         <fieldset>
           <legend className="text-sm font-semibold text-gray-700 mb-2">Durations hotels may offer</legend>

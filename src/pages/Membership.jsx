@@ -62,7 +62,7 @@ const Membership = () => {
       if (!(await loadRazorpay())) throw new Error('Could not load the payment window. Check your connection.');
       new window.Razorpay({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID, amount: order.amount, currency: order.currency, order_id: order.id,
-        name: 'ZivoHotels', description: `${plan.name} membership`,
+        name: 'ZivoPlus', description: `${plan.name} membership`,
         handler: async (r) => {
           try {
             await verifyMembership({ membershipId, ...r });
@@ -155,13 +155,13 @@ const Membership = () => {
               {me.history.map((h) => (
                 <li key={h.id} className="px-6 py-3 flex justify-between text-sm">
                   <div><p className="font-semibold text-gray-900">{h.plan}</p><p className="text-xs text-gray-500">{h.startsAt ? `${new Date(h.startsAt).toLocaleDateString('en-IN')} – ${new Date(h.endsAt).toLocaleDateString('en-IN')}` : ''} · {h.status.toLowerCase()}</p></div>
-                  <p className="text-gray-700">{h.paymentMethod === 'ADMIN' ? 'Gift from ZivoHotels' : `${inr(h.pricePaid)} · ${h.paymentMethod === 'WALLET' ? 'Zivo Cash' : 'online'}`}</p>
+                  <p className="text-gray-700">{h.paymentMethod === 'ADMIN' ? 'Gift from ZivoPlus' : `${inr(h.pricePaid)} · ${h.paymentMethod === 'WALLET' ? 'Zivo Cash' : 'online'}`}</p>
                 </li>
               ))}
             </ul>
           </div>
         )}
-        <p className="text-xs text-gray-400">Member prices are set by each hotel. The extra discount, extra points and longer free cancellation are paid for by ZivoHotels. Non-refundable rates stay non-refundable.</p>
+        <p className="text-xs text-gray-400">Member prices are set by each hotel. The extra discount, extra points and longer free cancellation are paid for by ZivoPlus. Non-refundable rates stay non-refundable.</p>
       </div>
     </div>
   );

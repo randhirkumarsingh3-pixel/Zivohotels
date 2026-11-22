@@ -1,5 +1,5 @@
 /**
- * ZivoHotels guest support contacts: phone, email, WhatsApp and hours.
+ * ZivoPlus guest support contacts: phone, email, WhatsApp and hours.
  *
  * Set in Admin → Platform Settings → Support (stored as system config "support_settings");
  * until then the ZIVO_SUPPORT_PHONE / ZIVO_SUPPORT_EMAIL settings of the server. Used by the help

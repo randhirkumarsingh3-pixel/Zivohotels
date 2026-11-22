@@ -1,9 +1,9 @@
 #!/bin/bash
-# ZivoHotels Migration Sprint 5B Cleanup Script
+# ZivoPlus Migration Sprint 5B Cleanup Script
 
 SA_EMAIL="media-migrator@zivohotels-500807.iam.gserviceaccount.com"
 
-echo "--- Starting ZivoHotels Credential Cleanup ---"
+echo "--- Starting ZivoPlus Credential Cleanup ---"
 
 # 1. Delete all keys associated with the temporary service account
 echo "Fetching active keys for $SA_EMAIL..."

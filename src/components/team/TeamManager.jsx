@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { refreshAccess } from '../../hooks/useAccess';
 
 /**
- * Team members and roles: ZivoHotels staff (admin console) or a property's team (extranet).
+ * Team members and roles: ZivoPlus staff (admin console) or a property's team (extranet).
  * api: adminTeamApi (services/api.js) or teamApi (services/extranetApi.js).
  * The server enforces every rule (no self-changes, nobody gives more access than they have,
  * the last Super Admin stays); this screen explains and shows them.
@@ -93,7 +93,7 @@ const InviteForm = ({ roles, permissions, onInvite, onClose, hotelTeam }) => {
           <ul className="mt-1 list-disc pl-5 text-xs text-navy-800 space-y-0.5">{role.permissions.map((p) => <li key={p}>{labels[p] || p}</li>)}</ul>
         </div>
       )}
-      <p className="text-xs text-gray-500">They get an email to set their password{hotelTeam ? ', or, if they already have a ZivoHotels partner account, to sign in with it' : ''}. Use a work email: an email already used for a guest account can&apos;t be added.</p>
+      <p className="text-xs text-gray-500">They get an email to set their password{hotelTeam ? ', or, if they already have a ZivoPlus partner account, to sign in with it' : ''}. Use a work email: an email already used for a guest account can&apos;t be added.</p>
       {error && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className={`${btn} border border-gray-300`}>Cancel</button>

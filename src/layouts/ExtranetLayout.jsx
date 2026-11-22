@@ -115,7 +115,7 @@ const LayoutContent = () => {
           </div>
 
           <div className="flex items-center gap-1 lg:gap-3 shrink-0">
-            <a href="mailto:partners@zivohotels.com" className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-navy-800 font-semibold text-sm rounded-lg hover:bg-gray-100 transition-colors">
+            <a href="mailto:partners@zivoplus.com" className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-navy-800 font-semibold text-sm rounded-lg hover:bg-gray-100 transition-colors">
               <HelpCircle size={18} />
               Support
             </a>

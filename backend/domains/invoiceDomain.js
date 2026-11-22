@@ -85,7 +85,7 @@ export const invoiceDomain = {
       <div class="invoice-box">
         <div class="header">
           <div>
-            <div class="logo">ZivoHotels</div>
+            <div class="logo">ZivoPlus</div>
             <p style="margin: 5px 0 0; color: #666;">Premium Stays, Delivered.</p>
           </div>
           <div class="invoice-details">
@@ -185,9 +185,9 @@ export const invoiceDomain = {
         <div class="clear"></div>
 
         <div class="footer">
-          <p>Thank you for booking with ZivoHotels.<br>
+          <p>Thank you for booking with ZivoPlus.<br>
           If you have any questions concerning this invoice, please contact support${platform.email || platform.phone ? `: ${[platform.email, platform.phone].filter(Boolean).map(h).join(' · ')}` : ''}.</p>
-          ${platform.name ? `<p style="margin-top:8px">Booked through ZivoHotels, operated by ${h(platform.name)}${platform.gstin ? ` · GSTIN ${h(platform.gstin)}` : ''}${platform.cin ? ` · CIN ${h(platform.cin)}` : ''}${platform.address ? `<br>${h(platform.address)}` : ''}</p>` : ''}
+          ${platform.name ? `<p style="margin-top:8px">Booked through ZivoPlus, operated by ${h(platform.name)}${platform.gstin ? ` · GSTIN ${h(platform.gstin)}` : ''}${platform.cin ? ` · CIN ${h(platform.cin)}` : ''}${platform.address ? `<br>${h(platform.address)}` : ''}</p>` : ''}
         </div>
       </div>
     </body>

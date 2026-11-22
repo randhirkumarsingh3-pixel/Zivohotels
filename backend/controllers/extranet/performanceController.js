@@ -2,7 +2,7 @@ import prisma from '../../config/db.js';
 import { PUBLIC_HOTEL_STATUSES } from '../../constants/hotelStatus.js';
 
 /**
- * GET /extranet/performance?days=30|90: how the property is doing on ZivoHotels, from live data.
+ * GET /extranet/performance?days=30|90: how the property is doing on ZivoPlus, from live data.
  *   funnel     page views (and unique visitors), booking starts, bookings, conversion
  *   money      revenue, room nights, average daily rate (bookings made in the period, cancelled
  *              and no-show excluded), and the cancellation rate

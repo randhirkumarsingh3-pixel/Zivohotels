@@ -1,3 +1,4 @@
+import { siteUrl } from '../config/brand.js';
 import prisma from '../config/db.js';
 import { getSupportContacts, whatsappDigits } from '../config/supportContacts.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
@@ -48,10 +49,10 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
   const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
   const coverUrl = hotel.media?.[0]?.url || '';
   const hotelImg = /^https?:\/\//.test(coverUrl) ? coverUrl : coverUrl && site ? `${site}${coverUrl.startsWith('/') ? '' : '/'}${coverUrl}` : '';
-  // The hotel's front desk, then ZivoHotels support (was a placeholder +91 99999 99999)
+  // The hotel's front desk, then ZivoPlus support (was a placeholder +91 99999 99999)
   const contact = hotel.integrationSettings?.contactInfo || {};
   const hotelPhone = contact.receptionPhone || contact.guestLandline || '';
-  // ZivoHotels support: Admin → Platform Settings → Support (or the server's ZIVO_SUPPORT_* settings)
+  // ZivoPlus support: Admin → Platform Settings → Support (or the server's ZIVO_SUPPORT_* settings)
   const supportPhone = support.phone || '';
   const supportEmail = support.email || '';
   const waDigits = whatsappDigits(hotelPhone || support.whatsapp || supportPhone);
@@ -63,7 +64,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZivoHotels - Booking Confirmation</title>
+  <title>ZivoPlus - Booking Confirmation</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -399,7 +400,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
     
     <!-- 1. HEADER -->
     <div class="header">
-      <a href="https://zivohotels.com" class="brand-logo">ZivoHotels</a><br>
+      <a href="${siteUrl()}" class="brand-logo">ZivoPlus</a><br>
       <div class="status-badge">Confirmed</div>
       <div class="booking-ref-title">Booking Reference</div>
       <div class="booking-ref-val">${booking.bookingRef}</div>
@@ -424,7 +425,7 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
       
       <div style="display: flex; gap: 8px;" class="no-print">
         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}" class="btn btn-secondary" style="flex: 1; padding: 10px 12px; font-size: 13px;">Get Directions</a>
-        ${waDigits ? `<a href="https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi, I have a booking at ${hotel.name} with reference ${booking.bookingRef}`)}" class="btn btn-primary" style="flex: 1; padding: 10px 12px; font-size: 13px; background-color: #16a34a;">${hotelPhone ? 'WhatsApp the hotel' : 'WhatsApp ZivoHotels'}</a>` : ''}
+        ${waDigits ? `<a href="https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi, I have a booking at ${hotel.name} with reference ${booking.bookingRef}`)}" class="btn btn-primary" style="flex: 1; padding: 10px 12px; font-size: 13px; background-color: #16a34a;">${hotelPhone ? 'WhatsApp the hotel' : 'WhatsApp ZivoPlus'}</a>` : ''}
       </div>
     </div>
 
@@ -566,13 +567,13 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
       <h4 style="margin: 0 0 4px 0; color: #475569; font-size: 14px;">Need help with check-in or changes?</h4>
       <p style="margin: 0 0 16px 0; color: #64748b; font-size: 12px;">${hotelPhone ? `The hotel: ${esc(hotelPhone)}. ` : ''}${site ? `Manage or cancel your booking in My Bookings: ${esc(site)}/my-bookings` : ''}</p>
       ${supportPhone || supportEmail ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 24px;">
-        ZivoHotels support: ${[supportPhone && `📞 ${esc(supportPhone)}`, supportEmail && `✉️ ${esc(supportEmail)}`].filter(Boolean).join(' &nbsp;|&nbsp; ')}
+        ZivoPlus support: ${[supportPhone && `📞 ${esc(supportPhone)}`, supportEmail && `✉️ ${esc(supportEmail)}`].filter(Boolean).join(' &nbsp;|&nbsp; ')}
       </div>` : ''}
     </div>
 
     <!-- 8. ACTIONS -->
     <div class="actions-grid no-print">
-      <a href="https://zivohotels.com/my-bookings" class="btn btn-primary">Manage Booking</a>
+      <a href="${siteUrl()}/my-bookings" class="btn btn-primary">Manage Booking</a>
       <button onclick="window.print()" class="btn btn-secondary">Print Voucher</button>
     </div>
 
@@ -580,8 +581,8 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
     <div class="voucher-print">
       <div class="voucher-header">
         <div>
-          <div class="voucher-title">ZivoHotels Voucher</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Booked via ZivoHotels</div>
+          <div class="voucher-title">ZivoPlus Voucher</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Booked via ZivoPlus</div>
           <div style="font-size: 14px; font-weight: 700; color: #2563eb; margin-top: 12px;">CONFIRMED RESERVATION</div>
         </div>
         <img src="${qrCodeUrl}" alt="QR Code" class="voucher-qr">
@@ -639,16 +640,16 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
 
     <!-- 11. FOOTER -->
     <div class="footer">
-      <div style="font-weight: 800; margin-bottom: 8px; color: #ffffff;">ZivoHotels Security</div>
+      <div style="font-weight: 800; margin-bottom: 8px; color: #ffffff;">ZivoPlus Security</div>
       <p style="margin: 0 0 16px 0;">This is an automated, secure booking notification. Your data is protected by Zivo Security standards. A copy of this voucher and tax invoice has been stored in your profile.</p>
       
       <div class="footer-links" style="margin-bottom: 24px;">
-        <a href="https://zivohotels.com/terms">Terms & Conditions</a> &nbsp;·&nbsp;
-        <a href="https://zivohotels.com/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-        <a href="https://zivohotels.com/support">Help Desk</a>
+        <a href="${siteUrl()}/terms">Terms & Conditions</a> &nbsp;·&nbsp;
+        <a href="${siteUrl()}/privacy">Privacy Policy</a> &nbsp;·&nbsp;
+        <a href="${siteUrl()}/support">Help Desk</a>
       </div>
       
-      <div>© 2026 ZivoHotels Private Limited. All Rights Reserved.</div>
+      <div>© 2026 ZivoPlus Private Limited. All Rights Reserved.</div>
     </div>
 
   </div>
@@ -712,16 +713,16 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
 export const sendOTPEmail = async (to, otp, expiryMinutes = 10, { purpose = 'VERIFY', name } = {}) => {
   const { emailLayout } = await import('./emailLayout.js');
   const what = {
-    SIGNUP: { subject: `${otp} is your ZivoHotels sign-up code`, title: 'Confirm your email', line: 'Enter this code to finish creating your ZivoHotels account:' },
-    LOGIN: { subject: `${otp} is your ZivoHotels sign-in code`, title: 'Your sign-in code', line: 'Enter this code to sign in to ZivoHotels:' },
-    PHONE: { subject: `${otp} is your ZivoHotels code`, title: 'Your ZivoHotels code', line: 'Enter this code to continue:' },
-    VERIFY: { subject: `${otp} is your ZivoHotels verification code`, title: 'Verify your email', line: 'Your ZivoHotels verification code is:' },
-  }[purpose] || { subject: `${otp} is your ZivoHotels code`, title: 'Your ZivoHotels code', line: 'Your code is:' };
+    SIGNUP: { subject: `${otp} is your ZivoPlus sign-up code`, title: 'Confirm your email', line: 'Enter this code to finish creating your ZivoPlus account:' },
+    LOGIN: { subject: `${otp} is your ZivoPlus sign-in code`, title: 'Your sign-in code', line: 'Enter this code to sign in to ZivoPlus:' },
+    PHONE: { subject: `${otp} is your ZivoPlus code`, title: 'Your ZivoPlus code', line: 'Enter this code to continue:' },
+    VERIFY: { subject: `${otp} is your ZivoPlus verification code`, title: 'Verify your email', line: 'Your ZivoPlus verification code is:' },
+  }[purpose] || { subject: `${otp} is your ZivoPlus code`, title: 'Your ZivoPlus code', line: 'Your code is:' };
   const html = await emailLayout({
     title: what.title,
     body: `${name ? `<p>Hi ${esc(name)},</p>` : ''}<p>${what.line}</p>
       <div style="background:#f1f5f9;border-radius:8px;padding:14px;text-align:center;margin:16px 0;font-size:32px;font-weight:bold;letter-spacing:6px">${esc(otp)}</div>
-      <p>It is valid for ${expiryMinutes} minutes and works once. Never share it: ZivoHotels will never ask you for it.</p>`,
+      <p>It is valid for ${expiryMinutes} minutes and works once. Never share it: ZivoPlus will never ask you for it.</p>`,
     note: "If you didn't ask for this code, you can ignore this email.",
   });
   await queueService.enqueue('email', 'SEND_OTP', { to, subject: what.subject, html }, { priority: 1 });

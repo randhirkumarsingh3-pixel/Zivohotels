@@ -9,7 +9,7 @@ const titleCase = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase
 const isPlaceholder = (c) => !c || /^default/i.test(c);
 
 /**
- * Suggestions while typing in "Where to?": cities, areas and hotels that are live on ZivoHotels.
+ * Suggestions while typing in "Where to?": cities, areas and hotels that are live on ZivoPlus.
  * A city is suggested under the name its hotels use, whichever name was typed (Bangalore finds
  * Bengaluru). Areas come from the hotels' address details (e.g. Marathahalli, Bengaluru).
  */

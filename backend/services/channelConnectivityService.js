@@ -4,9 +4,9 @@ import { toMoney } from '../utils/money.js';
 import ariService from './ariService.js';
 
 /**
- * Channel manager connectivity, with ZivoHotels as the OTA.
+ * Channel manager connectivity, with ZivoPlus as the OTA.
  *
- * A property either manages rates & availability in the ZivoHotels extranet, or connects its own
+ * A property either manages rates & availability in the ZivoPlus extranet, or connects its own
  * channel manager (STAAH, AxisRooms, eZee Centrix, SiteMinder...). For a connected property:
  *  - the admin records the provider, the property's code there, and maps each room type and rate
  *    plan to the channel manager's room / rate codes;
@@ -194,7 +194,7 @@ export const authenticate = async (apiKey) => {
   if (!apiKey || !String(apiKey).startsWith('zivo_cm_')) throw err(401, 'Missing or invalid API key');
   const integ = await prisma.channelIntegration.findFirst({ where: { apiKeyHash: hashKey(apiKey) } });
   if (!integ) throw err(401, 'Missing or invalid API key');
-  if (integ.status === 'PAUSED') throw err(403, 'This connection is paused in ZivoHotels');
+  if (integ.status === 'PAUSED') throw err(403, 'This connection is paused in ZivoPlus');
   return integ;
 };
 
@@ -215,7 +215,7 @@ export const propertyForChannel = async (integ) => {
 /**
  * Applies an ARI update:
  * { hotelCode, updates: [{ roomCode, rateCode?, from, to, available?, stopSell?, price? }] }
- * available = rooms left to sell on ZivoHotels (rooms to sell becomes booked + available, capped
+ * available = rooms left to sell on ZivoPlus (rooms to sell becomes booked + available, capped
  * at the physical count); price needs a rateCode (base occupancy, before GST).
  */
 export const applyAri = async (integ, body) => {

@@ -156,6 +156,6 @@ module "cloud_scheduler" {
 module "monitoring" {
   source      = "./modules/monitoring"
   project_id  = var.project_id
-  alert_email = "admin@zivohotels.com"
+  alert_email = "admin@zivoplus.com"
 }
 

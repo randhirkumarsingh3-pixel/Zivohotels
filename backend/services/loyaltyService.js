@@ -365,7 +365,7 @@ export const sendExpiryReminders = async () => {
           <p>Hi ${escapeHtml((user.name || '').split(' ')[0] || 'there')},</p>
           <p><strong>${points.toLocaleString('en-IN')} points</strong> (worth ₹${Math.round(points * cfg.pointValue).toLocaleString('en-IN')}) expire on <strong>${date}</strong>.
           Use them on your next booking: tick "Use my points" at checkout.</p>
-          <p style="color:#888;font-size:13px">Zivo Rewards points expire ${cfg.expiryMonths} months after they are added. See your points at ZivoHotels → Zivo Rewards.</p></div>`,
+          <p style="color:#888;font-size:13px">Zivo Rewards points expire ${cfg.expiryMonths} months after they are added. See your points at ZivoPlus → Zivo Rewards.</p></div>`,
       }, { priority: 4 }).catch(() => {});
       sent += 1;
     }

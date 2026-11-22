@@ -1,4 +1,4 @@
-# ZivoHotels Live Migration Log (Sprint 6)
+# ZivoPlus Live Migration Log (Sprint 6)
 
 *Maintain this log during the maintenance window to record the exact timestamp of each critical step. If a rollback is triggered, this artifact will be invaluable for the post-mortem.*
 

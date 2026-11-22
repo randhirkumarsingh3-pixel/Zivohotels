@@ -30,7 +30,7 @@ production starts from a fresh database.
       Do **not** run `npm run db:seed` (it deletes data; it now refuses anything but localhost anyway).
 - [ ] Create the first admin account:
       ```bash
-      ADMIN_PASSWORD='use-a-long-unique-password' node scripts/createAdmin.js --email you@zivohotels.com --name "Your Name"
+      ADMIN_PASSWORD='use-a-long-unique-password' node scripts/createAdmin.js --email you@zivoplus.com --name "Your Name"
       ```
 - [ ] Turn on automated backups and point-in-time recovery for the instance.
 - [ ] Reusing an old database instead of a fresh one? Follow the baseline steps in
@@ -65,10 +65,10 @@ The backend refuses to start if a required one is missing.
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | yes (secret) | **live** keys (only at real launch) |
 | `RAZORPAY_WEBHOOK_SECRET` | yes (secret) | from the webhook created in step 6 |
 | `RESEND_API_KEY` | yes (secret) | from Resend (step 7) |
-| `EMAIL_FROM` | yes | e.g. `ZivoHotels <noreply@zivohotels.com>` |
+| `EMAIL_FROM` | yes | e.g. `ZivoPlus <noreply@zivoplus.com>` |
 | `GCS_KYC_BUCKET` | yes | `zivohotels-kyc-prod` |
-| `FRONTEND_URL` | yes | `https://www.zivohotels.com` |
-| `ZIVO_GSTIN` | yes | ZivoHotels' GSTIN (decides CGST+SGST vs IGST on commission) |
+| `FRONTEND_URL` | yes | `https://www.zivoplus.com` |
+| `ZIVO_GSTIN` | yes | ZivoPlus' GSTIN (decides CGST+SGST vs IGST on commission) |
 
 Do **not** set `GOOGLE_APPLICATION_CREDENTIALS` on Cloud Run; it uses the service account automatically.
 
@@ -95,7 +95,7 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
 - [ ] Make one small real booking end to end, then cancel it, and check that the refund arrives.
 
 ## 7. Email (Resend)
-- [ ] Verify the `zivohotels.com` domain in Resend (add the DNS records it shows).
+- [ ] Verify the `zivoplus.com` domain in Resend (add the DNS records it shows).
 - [ ] Sign up with a real address and confirm the OTP and booking-confirmation emails arrive.
 
 ## 8. Frontend (Firebase Hosting)
@@ -106,7 +106,7 @@ and `deploy.yml` (service `zivohotels-api-prod`, which doesn't exist). Pick one:
       ```
       (or enable `firebase-deploy.yml` with secrets `VITE_API_URL`, `VITE_RAZORPAY_KEY_ID`,
       `FIREBASE_SERVICE_ACCOUNT`)
-- [ ] Domains: `zivohotels.com`/`www` point to Firebase. If you use `admin.`/`partner.`
+- [ ] Domains: `zivoplus.com`/`www` point to Firebase. If you use `admin.`/`partner.`
       subdomains, they're already in the backend's CORS list (`backend/server.js`); any other
       domain must be added there.
 

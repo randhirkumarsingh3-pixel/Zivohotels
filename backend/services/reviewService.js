@@ -326,7 +326,7 @@ export const replyAsHotel = async (reviewId, hotelId, text, userId) => {
         <h2 style="margin:0 0 12px">${escapeHtml(review.hotel.name)} replied to your review</h2>
         <p style="color:#555">Your review: ${'★'.repeat(Math.round(review.rating))}${review.title ? ` · ${escapeHtml(review.title)}` : ''}</p>
         <blockquote style="border-left:3px solid #e11d48;margin:16px 0;padding:8px 16px;color:#111;background:#f9fafb">${escapeHtml(reply).replace(/\n/g, '<br>')}</blockquote>
-        <p style="color:#888;font-size:13px">See it in My Bookings on ZivoHotels.</p></div>`,
+        <p style="color:#888;font-size:13px">See it in My Bookings on ZivoPlus.</p></div>`,
     }, { priority: 3 }).catch(() => {});
   }
   return updated;

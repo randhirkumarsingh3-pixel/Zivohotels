@@ -1,5 +1,5 @@
 /**
- * The common ZivoHotels email look: logo bar, title, text, optional detail rows and button,
+ * The common ZivoPlus email look: logo bar, title, text, optional detail rows and button,
  * support line. Every account and notification email uses it so they read as one brand.
  * Values passed in `rows` and `cta` are escaped here; `body` is trusted HTML (escape user text
  * before putting it in).
@@ -19,7 +19,7 @@ export const emailLayout = async ({ title, body = '', rows = [], cta, note }) =>
   const link = cta?.href ? (cta.href.startsWith('http') ? cta.href : `${site}${cta.href}`) : null;
   return `<!DOCTYPE html><html><body style="margin:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-    <div style="font-size:20px;font-weight:bold;color:#e7194a;margin-bottom:16px">ZivoHotels</div>
+    <div style="font-size:20px;font-weight:bold;color:#e7194a;margin-bottom:16px">ZivoPlus</div>
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px">
       <h1 style="margin:0 0 12px;font-size:20px;line-height:1.3">${h(title)}</h1>
       <div style="font-size:15px;line-height:1.55;color:#334155">${body}</div>
@@ -29,7 +29,7 @@ export const emailLayout = async ({ title, body = '', rows = [], cta, note }) =>
     </div>
     <p style="font-size:12px;color:#64748b;text-align:center;margin:16px 0 0">
       ${support.phone || support.email ? `Need help? ${[support.phone, support.email].filter(Boolean).map(h).join(' · ')}<br>` : ''}
-      ZivoHotels${site ? ` · <a href="${h(site)}" style="color:#64748b">${h(site.replace(/^https?:\/\//, ''))}</a>` : ''}
+      ZivoPlus${site ? ` · <a href="${h(site)}" style="color:#64748b">${h(site.replace(/^https?:\/\//, ''))}</a>` : ''}
     </p>
   </div></body></html>`;
 };

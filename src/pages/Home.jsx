@@ -105,7 +105,7 @@ const Home = () => {
       {topRated.length > 0 && (
         <section className="py-12 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Row icon={Award} iconClass="text-brand-600" title={anyReviewed ? 'Top-rated hotels' : 'Hotels on ZivoHotels'} hotels={topRated}
+            <Row icon={Award} iconClass="text-brand-600" title={anyReviewed ? 'Top-rated hotels' : 'Hotels on ZivoPlus'} hotels={topRated}
               action={<Link to="/hotels" className="hidden sm:flex items-center text-navy-700 font-semibold hover:text-navy-900 whitespace-nowrap">See all hotels <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" /></Link>} />
           </div>
         </section>
@@ -115,7 +115,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-bold text-navy-900 mb-1">Popular destinations</h2>
-            <p className="text-gray-600">Cities with ZivoHotels stays.</p>
+            <p className="text-gray-600">Cities with ZivoPlus stays.</p>
           </div>
           <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0 pb-2 sm:pb-0">
             {cityCards.map((city) => <CityCard key={city.name} city={city} />)}

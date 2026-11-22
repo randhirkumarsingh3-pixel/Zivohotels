@@ -3,8 +3,8 @@ import { X, Info, Loader2 } from 'lucide-react';
 import { fetchSettlementDetails } from '../../services/extranetApi';
 
 /**
- * Payout breakdown of one settlement: what the guest paid and where (online through ZivoHotels or
- * at the hotel), ZivoHotels' commission and the taxes on it, and the result: the amount in the
+ * Payout breakdown of one settlement: what the guest paid and where (online through ZivoPlus or
+ * at the hotel), ZivoPlus' commission and the taxes on it, and the result: the amount in the
  * hotel's next payout, or the commission the hotel owes when the guest paid at the hotel.
  */
 const inr = (n) => `₹${Math.abs(Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -60,9 +60,9 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
               </div>
 
               <dl className="space-y-2.5 text-sm">
-                {data.collectedOnline > 0.5 && <div className="flex justify-between gap-4"><dt className="text-gray-700">Collected online by ZivoHotels</dt><dd className="font-semibold tabular-nums">{inr(data.collectedOnline)}</dd></div>}
+                {data.collectedOnline > 0.5 && <div className="flex justify-between gap-4"><dt className="text-gray-700">Collected online by ZivoPlus</dt><dd className="font-semibold tabular-nums">{inr(data.collectedOnline)}</dd></div>}
                 {data.collectedAtHotel > 0 && <div className="flex justify-between gap-4"><dt className="text-gray-700">Collected by you at the hotel</dt><dd className="font-semibold tabular-nums">{inr(data.collectedAtHotel)}</dd></div>}
-                <div className="pt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ZivoHotels&apos; charges</div>
+                <div className="pt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ZivoPlus&apos; charges</div>
                 {deductions.map((d) => (
                   <div key={d.type} className="flex justify-between gap-4"><dt className="text-gray-700">{d.label}</dt><dd className="font-semibold text-red-700 tabular-nums">−{inr(d.amount)}</dd></div>
                 ))}
@@ -73,13 +73,13 @@ const ExplainMoneyModal = ({ isOpen, onClose, settlementId }) => {
 
               <div className={`rounded-card p-5 ${owes ? 'bg-orange-50 border border-orange-200' : 'bg-navy-900 text-white'}`}>
                 <p className={`text-sm font-semibold ${owes ? 'text-orange-900' : 'text-navy-100'}`}>
-                  {owes ? (paid ? 'Commission deducted' : 'You owe ZivoHotels') : paid ? 'Paid to you' : 'You receive'}
+                  {owes ? (paid ? 'Commission deducted' : 'You owe ZivoPlus') : paid ? 'Paid to you' : 'You receive'}
                 </p>
                 <p className={`text-3xl font-bold tabular-nums mt-1 ${owes ? 'text-orange-900' : ''}`}>{inr(data.netPayable)}</p>
                 <p className={`text-xs mt-1 ${owes ? 'text-orange-900' : 'text-navy-100'}`}>
                   {owes
                     ? (paid ? 'The guest paid you at the hotel; this commission was deducted from that payout.' : 'The guest paid you at the hotel, so the commission is taken from your next payout.')
-                    : 'Collected online, minus ZivoHotels’ commission and taxes.'}
+                    : 'Collected online, minus ZivoPlus’ commission and taxes.'}
                 </p>
               </div>
 

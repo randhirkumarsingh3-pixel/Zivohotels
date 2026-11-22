@@ -13,7 +13,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db.js';
 
-const TEST_EMAILS = ['admin@zivohotels.com', 'extranet@zivotechretreat.com', 'user@zivohotels.com'];
+const TEST_EMAILS = ['admin@zivoplus.com', 'extranet@zivotechretreat.com', 'user@zivoplus.com'];
 
 const main = async () => {
   const apply = process.argv.includes('--apply');

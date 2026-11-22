@@ -49,7 +49,7 @@ const GoogleHotels = () => {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Google Hotels</h1>
-        <p className="text-sm text-gray-600 mt-1 max-w-3xl">Show ZivoHotels&apos; price on hotels in Google Search and Maps, with a link to the hotel page. Google reads the feeds below once your Hotel Center account is approved. Prices come from the same engine as checkout, so they always match.</p>
+        <p className="text-sm text-gray-600 mt-1 max-w-3xl">Show ZivoPlus&apos; price on hotels in Google Search and Maps, with a link to the hotel page. Google reads the feeds below once your Hotel Center account is approved. Prices come from the same engine as checkout, so they always match.</p>
       </div>
       {notice && <p className="rounded-lg bg-green-50 text-green-800 px-4 py-3 text-sm">{notice}</p>}
       {error && <p role="alert" className="rounded-lg bg-red-50 text-red-800 px-4 py-3 text-sm">{error}</p>}
@@ -103,7 +103,7 @@ const GoogleHotels = () => {
             <li key={h.id} className="py-3 flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="font-semibold text-gray-900">{h.name} <span className="text-xs font-normal text-gray-500">· {h.city}</span></p>
-                <p className="text-xs text-gray-500">{h.included ? 'On Google' : h.adminExcluded ? 'Left out by ZivoHotels' : h.hotelChoice === false ? 'The hotel opted out (Extranet)' : 'Not included'}</p>
+                <p className="text-xs text-gray-500">{h.included ? 'On Google' : h.adminExcluded ? 'Left out by ZivoPlus' : h.hotelChoice === false ? 'The hotel opted out (Extranet)' : 'Not included'}</p>
                 {h.problems.length > 0 && <p className="text-xs text-amber-800">Missing: {h.problems.join(', ')}</p>}
               </div>
               <div className="flex gap-2">

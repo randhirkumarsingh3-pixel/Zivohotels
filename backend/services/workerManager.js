@@ -1,7 +1,7 @@
 import { eventBus } from '../services/eventBus.js';
 
 /**
- * ZivoHotels Worker Manager
+ * ZivoPlus Worker Manager
  * Handles self-healing, health monitoring, and lifecycle of distributed workers.
  */
 class WorkerManager {

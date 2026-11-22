@@ -4,10 +4,10 @@ import { getSystemConfig, updateSystemConfig } from '../../../services/api';
 
 const SocialSettings = () => {
   const [socialData, setSocialData] = useState({
-    facebook: 'https://facebook.com/zivohotels',
-    instagram: 'https://instagram.com/zivohotels',
-    twitter: 'https://x.com/zivohotels',
-    linkedin: 'https://linkedin.com/company/zivohotels'
+    facebook: 'https://facebook.com/zivoplus',
+    instagram: 'https://instagram.com/zivoplus',
+    twitter: 'https://x.com/zivoplus',
+    linkedin: 'https://linkedin.com/company/zivoplus'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

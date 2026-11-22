@@ -51,7 +51,7 @@ const AdminLogin = () => {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center">
             <ShieldCheck className="h-7 w-7 text-white" aria-hidden="true" />
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-white">ZivoHotels Admin</h1>
+          <h1 className="mt-4 text-3xl font-bold text-white">ZivoPlus Admin</h1>
           <p className="mt-2 text-sm text-white/70">Staff console: authorised administrators only</p>
         </div>
 
@@ -78,7 +78,7 @@ const AdminLogin = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 block w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-navy-500 focus:border-navy-500 outline-none"
-                  placeholder="you@zivohotels.com"
+                  placeholder="you@zivoplus.com"
                 />
               </div>
             </div>

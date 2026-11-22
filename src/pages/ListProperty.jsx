@@ -7,7 +7,7 @@ import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * "List your property": hotels sign up as partners here, then register the property (location,
- * photos, rooms, rates, legal and bank details). ZivoHotels reviews it before it takes bookings.
+ * photos, rooms, rates, legal and bank details). ZivoPlus reviews it before it takes bookings.
  */
 const BENEFITS = [
   [CalendarCheck, 'Bookings from guests across India', 'Guests book and pay online, or reserve and pay later. You get every booking by email and in the Extranet.'],
@@ -18,7 +18,7 @@ const BENEFITS = [
 
 const Benefits = () => (
   <div>
-    <p className="text-sm font-semibold text-brand-700">ZivoHotels for partners</p>
+    <p className="text-sm font-semibold text-brand-700">ZivoPlus for partners</p>
     <h2 className="mt-2 text-3xl font-bold text-navy-900">Fill your rooms with guests who book direct to you</h2>
     <ul className="mt-6 space-y-5">
       {BENEFITS.map(([Icon, title, text]) => (
@@ -33,7 +33,7 @@ const Benefits = () => (
       <li><b>2.</b> Register the property: location, photos, rooms, rates, policies, legal and bank details. Progress is saved.</li>
       <li><b>3.</b> Submit: we review it, usually within 2 working days, and you&apos;re live.</li>
     </ol>
-    <p className="mt-4 text-sm text-gray-500">Questions? Write to <span className="font-semibold text-gray-700 select-all">partners@zivohotels.com</span></p>
+    <p className="mt-4 text-sm text-gray-500">Questions? Write to <span className="font-semibold text-gray-700 select-all">partners@zivoplus.com</span></p>
   </div>
 );
 

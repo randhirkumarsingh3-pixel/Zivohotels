@@ -117,7 +117,7 @@ export const extranetGetSetup = wrap(async (req, res) => res.json({ success: tru
 export const extranetSaveSetup = wrap(async (req, res) => {
   const before = await prisma.hotel.findUnique({ where: { id: req.scopedHotelId }, select: { name: true, hourlySettings: true } });
   const data = await saveHotelHourlySetup(req.scopedHotelId, req.body || {});
-  // First switch-on: ZivoHotels reviews it before guests can book
+  // First switch-on: ZivoPlus reviews it before guests can book
   if (data.settings.enabled && !data.settings.approved && !before?.hourlySettings?.enabled) {
     notifyAdmins({
       type: 'HOURLY_REQUESTED', title: `Hourly stays to approve: ${before?.name}`,
@@ -185,7 +185,7 @@ export const adminApproveHotel = wrap(async (req, res) => {
   notifyHotel(hotel.id, {
     type: approved ? 'HOURLY_APPROVED' : 'HOURLY_PAUSED',
     title: approved ? 'Hourly stays approved' : 'Hourly stays paused',
-    message: approved ? 'Guests can now book your rooms by the hour.' : 'ZivoHotels paused hourly bookings for your property. Contact partner support for details.',
+    message: approved ? 'Guests can now book your rooms by the hour.' : 'ZivoPlus paused hourly bookings for your property. Contact partner support for details.',
   }).catch(() => {});
   res.json({ success: true, message: approved ? 'Approved: guests can book this property by the hour.' : 'Hourly stays paused for this property.' });
 });

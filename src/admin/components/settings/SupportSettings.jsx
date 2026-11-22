@@ -3,13 +3,13 @@ import { Save, Loader2, Phone, Mail, MessageSquare, Clock } from 'lucide-react';
 import { getSystemConfig, updateSystemConfig } from '../../../services/api';
 
 /**
- * ZivoHotels guest support contacts. Shown on the Help page, in My Bookings, in booking emails and
+ * ZivoPlus guest support contacts. Shown on the Help page, in My Bookings, in booking emails and
  * on vouchers. Empty fields fall back to the server's ZIVO_SUPPORT_PHONE / ZIVO_SUPPORT_EMAIL.
  */
 const FIELDS = [
   { key: 'phone', label: 'Support phone', icon: Phone, type: 'tel', placeholder: '9663035520', hint: 'Shown with "Call us". 10-digit mobile or with +91.' },
   { key: 'whatsapp', label: 'WhatsApp number', icon: MessageSquare, type: 'tel', placeholder: 'Same as the support phone', hint: 'Leave empty to use the support phone.' },
-  { key: 'email', label: 'Support email', icon: Mail, type: 'email', placeholder: 'support@zivohotels.com', hint: 'Guests write here about bookings, refunds and invoices.' },
+  { key: 'email', label: 'Support email', icon: Mail, type: 'email', placeholder: 'support@zivoplus.com', hint: 'Guests write here about bookings, refunds and invoices.' },
   { key: 'hours', label: 'Support hours', icon: Clock, type: 'text', placeholder: 'Every day, 9 am to 9 pm', hint: 'Optional. Shown next to the contacts.' },
 ];
 

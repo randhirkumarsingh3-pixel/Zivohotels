@@ -5,7 +5,7 @@ import { Mail, CalendarX2, CreditCard, Wallet, Award, Building2, ChevronRight } 
 import usePageTitle from '../hooks/usePageTitle';
 
 /**
- * Help & contact: how cancellations, refunds and payments work on ZivoHotels, and who to write
+ * Help & contact: how cancellations, refunds and payments work on ZivoPlus, and who to write
  * to. Linked from the footer and from checkout ("Cancellation rules").
  */
 const Section = ({ id, icon: Icon, title, children }) => (
@@ -54,7 +54,7 @@ const Help = () => {
       </Section>
 
       <Section id="zivo-cash" icon={Wallet} title="Zivo Cash">
-        <p>Zivo Cash is your ZivoHotels wallet. Refunds you choose to receive there, and the unused part of a payment made with it, are added instantly. Use it on any ZivoHotels booking by ticking <strong>Pay with Zivo Cash</strong> at checkout. It can&apos;t be topped up, withdrawn or transferred.</p>
+        <p>Zivo Cash is your ZivoPlus wallet. Refunds you choose to receive there, and the unused part of a payment made with it, are added instantly. Use it on any ZivoPlus booking by ticking <strong>Pay with Zivo Cash</strong> at checkout. It can&apos;t be topped up, withdrawn or transferred.</p>
         <p><Link to="/wallet" className="text-navy-700 font-semibold inline-flex items-center gap-1">See your balance <ChevronRight size={16} /></Link></p>
       </Section>
 
@@ -67,7 +67,7 @@ const Help = () => {
       </Section>
 
       <Section id="hotels" icon={Building2} title="For hotels">
-        <p>List your property, manage rooms, rates and bookings, and track payouts in the ZivoHotels Extranet.</p>
+        <p>List your property, manage rooms, rates and bookings, and track payouts in the ZivoPlus Extranet.</p>
         <p><Link to="/extranet/login" className="text-navy-700 font-semibold inline-flex items-center gap-1">Go to the Extranet <ChevronRight size={16} /></Link></p>
       </Section>
 

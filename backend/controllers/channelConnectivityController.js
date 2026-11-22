@@ -5,7 +5,7 @@ const send = (res, req, fn, status = 200) => fn().then(
   (e) => res.status(e.status || 500).json({ success: false, message: e.status ? e.message : 'Could not complete the request', requestId: req.id })
 );
 
-// ── Admin (ZivoHotels team) ──
+// ── Admin (ZivoPlus team) ──
 export const overview = (req, res) => send(res, req, () => cm.getOverview());
 export const connection = (req, res) => send(res, req, () => cm.getConnection(req.params.hotelId));
 export const saveConnection = (req, res) => send(res, req, () => cm.saveConnection(req.params.hotelId, req.body || {}));

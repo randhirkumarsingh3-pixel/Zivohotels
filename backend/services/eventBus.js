@@ -4,7 +4,7 @@ import { EventEmitter } from 'events';
 
 
 /**
- * ZivoHotels Event Bus
+ * ZivoPlus Event Bus
  * Centralized, versioned event orchestrator for internal reactive workflows.
  */
 class ZivoEventBus extends EventEmitter {

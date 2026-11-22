@@ -1,12 +1,12 @@
-# ZivoHotels app on the VPS: a separate Docker Compose project ("zivohotels-app").
+# ZivoPlus app on the VPS: a separate Docker Compose project ("zivoplus-app").
 # Its own database, API, website, networks and volumes; nothing is shared with any other
 # project. The server's existing Caddy reaches our website through OUR network
-# "zivohotels-app-edge": caddy-link.sh attaches the Caddy container to it. Nothing of ours
+# "zivoplus-app-edge": caddy-link.sh attaches the Caddy container to it. Nothing of ours
 # joins the other project's network, so its deploys (including `docker compose down`) are
 # never blocked by us.
 #
 # Settings: deploy/vps/.env (copy from .env.example). Run everything via deploy.sh.
-name: zivohotels-app
+name: zivoplus-app
 
 services:
   db:
@@ -32,13 +32,13 @@ services:
       - log_min_duration_statement=1000
     shm_size: 1gb
     environment:
-      POSTGRES_DB: zivohotels
-      POSTGRES_USER: zivohotels
+      POSTGRES_DB: zivoplus
+      POSTGRES_USER: zivoplus
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/vps/.env}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zivohotels -d zivohotels"]
+      test: ["CMD-SHELL", "pg_isready -U zivoplus -d zivoplus"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -74,21 +74,21 @@ services:
       # Server processes (one per CPU core used); they share state through Redis
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels?connection_limit=${DB_POOL_PER_PROCESS:-10}
-      DIRECT_URL: postgresql://zivohotels:${DB_PASSWORD}@db:5432/zivohotels
+      DATABASE_URL: postgresql://zivoplus:${DB_PASSWORD}@db:5432/zivoplus?connection_limit=${DB_POOL_PER_PROCESS:-10}
+      DIRECT_URL: postgresql://zivoplus:${DB_PASSWORD}@db:5432/zivoplus
       CORS_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN in deploy/vps/.env}
       FRONTEND_URL: https://${APP_DOMAIN}
       # Search engines: keep false on staging (test data); true only on the live site
       ALLOW_INDEXING: ${ALLOW_INDEXING:-false}
       # The built website page that SEO pages are filled into (served by the website container)
-      SEO_TEMPLATE_URL: http://zivohotels-app-web/index.html
+      SEO_TEMPLATE_URL: http://zivoplus-app-web/index.html
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/vps/.env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?Set RAZORPAY_KEY_ID in deploy/vps/.env}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?Set RAZORPAY_KEY_SECRET in deploy/vps/.env}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-ZivoHotels <noreply@zivohotels.com>}
+      EMAIL_FROM: ${EMAIL_FROM:-ZivoPlus <noreply@zivoplus.com>}
       # Sign-in codes shown on screen instead of emailed ("true" only until the Resend domain works)
       EMAIL_TEST_MODE: ${EMAIL_TEST_MODE:-false}
       # Admin alert emails (refund failed, property submitted), comma-separated
@@ -112,7 +112,7 @@ services:
       ZIVO_PAN: ${ZIVO_PAN:-AADCZ1700C}
       ZIVO_CIN: ${ZIVO_CIN:-U62099BR2026PTC087845}
       ZIVO_ADDRESS: ${ZIVO_ADDRESS:-Makundpur Karpuri Gram, Karpoorigram, Samastipur 848129, Bihar, India}
-      ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-support@zivohotels.com}
+      ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-support@zivoplus.com}
       ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-9663035520}
     volumes:
       - uploads:/app/public/uploads            # hotel photos (public)
@@ -131,8 +131,8 @@ services:
       start_period: 20s
     networks: [internal]
 
-  # Named uniquely: Caddy finds it by this name on the zivohotels-app-edge network.
-  zivohotels-app-web:
+  # Named uniquely: Caddy finds it by this name on the zivoplus-app-edge network.
+  zivoplus-app-web:
     build:
       context: ../..
       dockerfile: deploy/vps/web.Dockerfile
@@ -151,7 +151,7 @@ networks:
   internal: {}
   # Shared only with the Caddy container (attached by caddy-link.sh); only the website is on it
   edge:
-    name: zivohotels-app-edge
+    name: zivoplus-app-edge
 
 volumes:
   db-data: {}

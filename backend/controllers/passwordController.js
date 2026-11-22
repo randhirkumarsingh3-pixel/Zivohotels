@@ -68,10 +68,10 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   const { emailLayout } = await import('../services/emailLayout.js');
   await queueService.enqueue('email', 'SEND_PASSWORD_RESET', {
     to: user.email,
-    subject: 'Reset your ZivoHotels password',
+    subject: 'Reset your ZivoPlus password',
     html: await emailLayout({
       title: 'Reset your password',
-      body: `<p>Hi ${escapeHtml(user.name || 'there')},</p><p>We received a request to reset the password for your ZivoHotels account. The button below works for 1 hour.</p>`,
+      body: `<p>Hi ${escapeHtml(user.name || 'there')},</p><p>We received a request to reset the password for your ZivoPlus account. The button below works for 1 hour.</p>`,
       cta: { label: 'Choose a new password', href: link },
       note: "If you didn't ask for this, you can ignore this email: your password stays the same.",
     }),

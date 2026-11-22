@@ -1,5 +1,6 @@
+import { BRAND_NAME } from '../../config/brand';
 /**
- * The ZivoHotels logo: the Z mark, optionally with the wordmark and a product label
+ * The ZivoPlus logo: the Z mark, optionally with the wordmark and a product label
  * ("Extranet", "Admin"). On dark backgrounds (`onDark`) the mark sits on a white tile, because its
  * white Z is open to the outside and would take the background colour.
  */
@@ -18,12 +19,12 @@ export const LogoMark = ({ size = 'md', onDark = false, className = '' }) => {
 const Logo = ({ size = 'md', onDark = false, label, showText = true, className = '' }) => {
   const s = SIZES[size] || SIZES.md;
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`} aria-label={label ? `ZivoHotels ${label}` : 'ZivoHotels'} role="img">
+    <span className={`inline-flex items-center gap-2.5 ${className}`} aria-label={label ? `${BRAND_NAME} ${label}` : BRAND_NAME} role="img">
       <LogoMark size={size} onDark={onDark} />
       {showText && (
         <span className="flex flex-col leading-none">
           <span className={`font-display font-extrabold tracking-tight ${s.text} ${onDark ? 'text-white' : 'text-navy-800'}`}>
-            Zivo<span className={onDark ? 'text-brand-400' : 'text-brand-600'}>Hotels</span>
+            Zivo<span className={onDark ? 'text-brand-400' : 'text-brand-600'}>Plus</span>
           </span>
           {label && <span className={`${s.label} font-semibold uppercase tracking-[0.14em] mt-1 ${onDark ? 'text-navy-200' : 'text-gray-500'}`}>{label}</span>}
         </span>

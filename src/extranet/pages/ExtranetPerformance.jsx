@@ -92,7 +92,7 @@ const ExtranetPerformance = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Performance</h1>
-          <p className="text-gray-600 mt-1">How {property?.name || 'your property'} is doing on ZivoHotels. Bookings count when they were made; cancelled ones are left out of revenue.</p>
+          <p className="text-gray-600 mt-1">How {property?.name || 'your property'} is doing on ZivoPlus. Bookings count when they were made; cancelled ones are left out of revenue.</p>
         </div>
         <div className="flex shrink-0 rounded-lg border border-gray-300 bg-white overflow-hidden self-start" role="group" aria-label="Period">
           {RANGES.map(([d, label]) => (
@@ -126,7 +126,7 @@ const ExtranetPerformance = () => {
               <h2 className="font-bold text-gray-900 flex items-center gap-2"><Trophy size={18} className="text-amber-600" aria-hidden="true" /> Your rank</h2>
               {data.rank
                 ? <p className="mt-2 text-gray-700"><span className="text-3xl font-bold text-gray-900 tabular-nums">#{data.rank.position}</span> of {data.rank.of} hotels in {data.rank.city}, by page views in the last {days} days.</p>
-                : <p className="mt-2 text-sm text-gray-600">You&apos;re the only ZivoHotels property in your city for now, so there&apos;s no ranking yet.</p>}
+                : <p className="mt-2 text-sm text-gray-600">You&apos;re the only ZivoPlus property in your city for now, so there&apos;s no ranking yet.</p>}
               <p className="mt-3 text-xs text-gray-500 flex items-center gap-1"><Clock size={12} aria-hidden="true" /> Updated when you open this page.</p>
             </section>
             <section className="lg:col-span-2 bg-white rounded-card border border-gray-200 p-5">

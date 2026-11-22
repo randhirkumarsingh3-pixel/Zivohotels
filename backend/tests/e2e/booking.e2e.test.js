@@ -39,7 +39,7 @@ describe('Booking end to end', function () {
   };
 
   before(async () => {
-    const login = await api.post('/auth/login', { email: 'user@zivohotels.com', password: process.env.SEED_CUSTOMER_PASSWORD || 'customer123' });
+    const login = await api.post('/auth/login', { email: 'user@zivoplus.com', password: process.env.SEED_CUSTOMER_PASSWORD || 'customer123' });
     expect(login.status, JSON.stringify(login.data)).to.equal(200);
     auth = { headers: { Authorization: `Bearer ${login.data.data.token}` } };
 

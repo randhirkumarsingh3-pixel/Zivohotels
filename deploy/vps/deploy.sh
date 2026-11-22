@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Deploy or update the ZivoHotels app on the VPS (run as root):
-#   bash /opt/zivohotels-app/deploy/vps/deploy.sh
+# Deploy or update the ZivoPlus app on the VPS (run as root):
+#   bash /opt/zivoplus-app/deploy/vps/deploy.sh
 # Optional: BRANCH=some-branch (default main), NO_PULL=1 (deploy the code as it is on disk).
 set -euo pipefail
 
@@ -25,6 +25,17 @@ docker inspect "$CADDY" >/dev/null 2>&1 || fail "Caddy container '$CADDY' not fo
 for other in APP_HOST API_HOST S3_HOST; do
   taken="$(docker exec "$CADDY" printenv "$other" 2>/dev/null || true)"
   [ -z "$taken" ] || [ "$taken" != "$APP_DOMAIN" ] || fail "APP_DOMAIN $APP_DOMAIN is already used by the other project ($other)"
+done
+# The app used to run under the internal name "zivohotels-app". Starting under the new name while
+# the old one still holds the data would start an empty database: move it first (once).
+if docker volume inspect zivohotels-app_db-data >/dev/null 2>&1 && ! docker volume inspect zivoplus-app_db-data >/dev/null 2>&1; then
+  fail "The app's data is still under the old name (zivohotels-app). Run the one-time move first: bash $HERE/move-to-zivoplus.sh"
+fi
+# The site's address (and any old addresses that forward to it) must point to this server in DNS,
+# or Caddy can't get its HTTPS certificate and the site goes down
+getent hosts "$APP_DOMAIN" >/dev/null || fail "$APP_DOMAIN doesn't resolve yet: add its DNS record (pointing to this server) first, or keep the old APP_DOMAIN in $HERE/.env"
+for d in $(echo "${REDIRECT_DOMAINS:-}" | tr "," " "); do
+  getent hosts "$d" >/dev/null || fail "$d (in REDIRECT_DOMAINS) doesn't resolve: add its DNS record first, or remove it from REDIRECT_DOMAINS"
 done
 COMPOSE=(docker compose -f "$HERE/docker-compose.yml" --env-file "$HERE/.env")
 # Advanced: an extra compose file layered on top (e.g. local overrides), if you ever need one
@@ -56,9 +67,9 @@ step "Starting the app"
 # ---- Caddy --------------------------------------------------------------------------------
 step "Connecting https://$APP_DOMAIN in Caddy"
 bash "$HERE/caddy-link.sh"
-CRON=/etc/cron.d/zivohotels-app-caddy
+CRON=/etc/cron.d/zivoplus-app-caddy
 if [ -w /etc/cron.d ] && [ ! -f "$CRON" ]; then
-  echo "*/5 * * * * root bash $HERE/caddy-link.sh --quiet >> /var/log/zivohotels-app-caddy.log 2>&1" > "$CRON"
+  echo "*/5 * * * * root bash $HERE/caddy-link.sh --quiet >> /var/log/zivoplus-app-caddy.log 2>&1" > "$CRON"
   echo "Installed $CRON (re-links Caddy after the other project's deploys)"
 fi
 
@@ -73,7 +84,7 @@ for i in $(seq 1 30); do
 done
 echo "⚠️  https://$APP_DOMAIN did not answer yet. Inside the server the app is:"
 "${COMPOSE[@]}" ps
-"${COMPOSE[@]}" exec -T zivohotels-app-web wget -qO- http://127.0.0.1/ready || true
+"${COMPOSE[@]}" exec -T zivoplus-app-web wget -qO- http://127.0.0.1/ready || true
 echo
 echo "Check Caddy's log: docker logs --tail 50 $CADDY"
 exit 1

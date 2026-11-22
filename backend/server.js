@@ -357,7 +357,7 @@ const PORT = process.env.PORT || 5000;
 // HOST=127.0.0.1 behind a reverse proxy (e.g. Nginx on a VPS) keeps the port off the internet.
 const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => {
-  console.log(`🚀 ZivoHotels Backend running on ${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`🚀 ZivoPlus Backend running on ${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
   
   // Initialize Real-time Infrastructure
   socketService.init(server);

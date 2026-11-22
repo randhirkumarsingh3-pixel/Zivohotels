@@ -68,7 +68,7 @@ export const onBookingConfirmed = async (bookingId) => {
       message: `${b.bookingRef} · ${when}`,
       link: '/my-bookings',
       metadata: { bookingId: b.id },
-      sms: `ZivoHotels: booking ${b.bookingRef} at ${b.hotel.name} is confirmed for ${when}. Details: My Bookings.`,
+      sms: `ZivoPlus: booking ${b.bookingRef} at ${b.hotel.name} is confirmed for ${when}. Details: My Bookings.`,
     });
   }
 
@@ -99,7 +99,7 @@ export const onBookingConfirmed = async (bookingId) => {
 export const onBookingCancelled = async (bookingId, { initiatedBy = 'GUEST', refundAmount = 0, refundTo = null, reason = null } = {}) => {
   const b = await load(bookingId);
   if (!b || !(await claim(b, 'cancelled'))) return;
-  const by = { GUEST: 'You cancelled', HOTEL: `${b.hotel.name} cancelled`, ADMIN: 'ZivoHotels cancelled', SYSTEM: 'We cancelled' }[initiatedBy] || 'We cancelled';
+  const by = { GUEST: 'You cancelled', HOTEL: `${b.hotel.name} cancelled`, ADMIN: 'ZivoPlus cancelled', SYSTEM: 'We cancelled' }[initiatedBy] || 'We cancelled';
   const refundLine = refundAmount > 0
     ? `A refund of <b>${inr(refundAmount)}</b> ${refundTo === 'wallet' ? 'has been added to your Zivo Cash wallet.' : 'is on its way to your original payment method (usually 5–7 working days).'}`
     : 'No refund is due under the cancellation policy, or nothing was paid.';
@@ -138,7 +138,7 @@ export const onBookingCancelled = async (bookingId, { initiatedBy = 'GUEST', ref
       subject: `Booking cancelled ${b.bookingRef}: ${b.guestName}, ${hourly(b) ? whenText(b) : emailDay(b.checkIn)}`,
       html: await emailLayout({
         title: `Booking ${b.bookingRef} was cancelled`,
-        body: `<p>${h({ GUEST: 'The guest', HOTEL: 'Your team', ADMIN: 'ZivoHotels', SYSTEM: 'The system (payment not received)' }[initiatedBy] || 'Someone')} cancelled this booking. The rooms are back in your inventory.</p>`,
+        body: `<p>${h({ GUEST: 'The guest', HOTEL: 'Your team', ADMIN: 'ZivoPlus', SYSTEM: 'The system (payment not received)' }[initiatedBy] || 'Someone')} cancelled this booking. The rooms are back in your inventory.</p>`,
         rows: [...stayRows(b), ...guestRows(b), ['Guest refund', refundAmount > 0 ? inr(refundAmount) : 'None']],
         cta: { label: 'Open in the extranet', href: '/extranet/bookings' },
       }),
@@ -164,7 +164,7 @@ export const onRoomCancelled = async (bookingId, { roomNumber, refundAmount = 0,
       subject: `Room ${roomNumber} cancelled · ${b.bookingRef}`,
       html: await emailLayout({
         title: `Room ${roomNumber} of ${b.bookingRef} was cancelled`,
-        body: `<p>${initiatedBy === 'GUEST' ? 'The guest' : initiatedBy === 'HOTEL' ? 'Your team' : 'ZivoHotels'} cancelled one room. The rest of the booking stands, and the room is back in your inventory.</p>`,
+        body: `<p>${initiatedBy === 'GUEST' ? 'The guest' : initiatedBy === 'HOTEL' ? 'Your team' : 'ZivoPlus'} cancelled one room. The rest of the booking stands, and the room is back in your inventory.</p>`,
         rows: [...stayRows(b), ['Guest', b.guestName]],
         cta: { label: 'Open in the extranet', href: '/extranet/bookings' },
       }),
@@ -201,7 +201,7 @@ export const sendStayMessages = async (now = new Date()) => {
       await notifyUser(b.userId, {
         type: 'CHECKIN_REMINDER', title: `Your stay at ${b.hotel.name} is tomorrow`, message: `${b.bookingRef} · check-in ${emailDay(b.checkIn)}`,
         link: '/my-bookings', metadata: { bookingId: b.id }, email,
-        sms: `ZivoHotels: see you tomorrow at ${b.hotel.name}. Booking ${b.bookingRef}. Carry a photo ID.`,
+        sms: `ZivoPlus: see you tomorrow at ${b.hotel.name}. Booking ${b.bookingRef}. Carry a photo ID.`,
       });
     }
     sent += 1;
@@ -220,7 +220,7 @@ export const sendStayMessages = async (now = new Date()) => {
       await notifyUser(b.userId, {
         type: 'CHECKIN_REMINDER', title: `Check-in at ${istTime(b.slotStart)}: ${b.hotel.name}`, message: `${b.bookingRef} · ${whenText(b)}`,
         link: '/my-bookings', metadata: { bookingId: b.id },
-        sms: `ZivoHotels: your hourly stay at ${b.hotel.name} starts at ${istTime(b.slotStart)}. Booking ${b.bookingRef}. Carry a photo ID.`,
+        sms: `ZivoPlus: your hourly stay at ${b.hotel.name} starts at ${istTime(b.slotStart)}. Booking ${b.bookingRef}. Carry a photo ID.`,
         email: b.guestEmail ? {
           to: b.guestEmail, jobType: 'SEND_CHECKIN_REMINDER',
           subject: `Your hourly stay starts at ${istTime(b.slotStart)} · ${b.hotel.name}`,
@@ -252,7 +252,7 @@ export const sendStayMessages = async (now = new Date()) => {
         subject: `How was your stay at ${b.hotel.name}?`,
         html: await emailLayout({
           title: 'How was your stay?',
-          body: `<p>Thanks for staying at <b>${h(b.hotel.name)}</b> with ZivoHotels. Tell other guests how it went: rate your stay in My Bookings. It takes a minute.</p>`,
+          body: `<p>Thanks for staying at <b>${h(b.hotel.name)}</b> with ZivoPlus. Tell other guests how it went: rate your stay in My Bookings. It takes a minute.</p>`,
           rows: [['Booking', b.bookingRef], ['Stay', `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`]],
           cta: { label: 'Rate your stay', href: '/my-bookings' },
         }),

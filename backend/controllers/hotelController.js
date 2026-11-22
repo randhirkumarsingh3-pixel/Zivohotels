@@ -310,10 +310,10 @@ const resolveOwnerAccount = async (contact) => {
 const sendOwnerInvite = (hotel, ownerEmail, { inviteToken, tempPassword }) =>
   queueService.enqueue('email', 'SEND_OWNER_INVITE', {
     to: ownerEmail,
-    subject: 'Welcome to ZivoHotels - Claim Your Property',
+    subject: 'Welcome to ZivoPlus - Claim Your Property',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2>Welcome to ZivoHotels!</h2>
+        <h2>Welcome to ZivoPlus!</h2>
         <p>An admin has started onboarding your property: <strong>${escapeHtml(hotel.name)}</strong>.</p>
         <p>An owner account has been created for you. Please log in using the temporary credentials below to review and submit your property.</p>
         <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -512,7 +512,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
   if (!isAdmin) {
     delete prismaData.status;
     delete prismaData.channelProvider;
-    // Commission is agreed with ZivoHotels: only an admin can set it
+    // Commission is agreed with ZivoPlus: only an admin can set it
     normalized._commissionRate = undefined;
     // Owners fill in legal and bank details while onboarding; once submitted they're locked
     // (changing the payout account later goes through support)

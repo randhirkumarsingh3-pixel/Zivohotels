@@ -16,7 +16,7 @@ resource "google_storage_bucket" "media_buckets" {
   }
 
   cors {
-    origin          = ["https://zivohotels.com", "https://app.zivohotels.com", "http://localhost:5173", "http://localhost:3000"]
+    origin          = ["https://zivoplus.com", "https://app.zivoplus.com", "http://localhost:5173", "http://localhost:3000"]
     method          = ["GET", "HEAD", "PUT", "POST", "DELETE"]
     response_header = ["*"]
     max_age_seconds = 3600

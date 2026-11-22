@@ -19,7 +19,7 @@ const ExtranetFinance = () => {
   const [selectedSettlement, setSelectedSettlement] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const shownSettlements = (overview?.recentSettlements || []).filter((x) => statusFilter === 'ALL' || x.status === statusFilter);
-  // CSV of the settlements shown: what each stay earned, ZivoHotels' commission and taxes, and net payable
+  // CSV of the settlements shown: what each stay earned, ZivoPlus' commission and taxes, and net payable
   const exportCsv = () => {
     const head = ['Booking ID', 'Guest', 'Check-in', 'Check-out', 'Type', 'Status', 'Gross (₹)', 'Commission (₹)', 'GST on commission (₹)', 'TCS (₹)', 'TDS (₹)', 'Net payable (₹)', 'Created', 'Pays on'];
     const rows = shownSettlements.map((x) => [x.booking?.bookingRef, x.booking?.guestName, x.booking?.checkIn?.slice(0, 10), x.booking?.checkOut?.slice(0, 10), KIND_LABEL[x.kind] || x.kind, STATUS_LABEL[x.status] || x.status, x.grossAmount, x.commissionAmount, x.commissionGstAmount, x.tcsAmount, x.tdsAmount, x.netPayable, String(x.createdAt).slice(0, 10), x.holdUntil ? String(x.holdUntil).slice(0, 10) : ''].map(csvCell).join(','));
@@ -196,7 +196,7 @@ const ExtranetFinance = () => {
                  <p className="text-xs font-semibold text-navy-200 mb-1">Account ending in</p>
                  <p className="text-lg font-mono font-bold tracking-widest">{property?.bankAccount ? `•••• ${property.bankAccount.last4}` : '—'}</p>
               </div>
-              <p className="text-xs text-navy-100 leading-relaxed">To change the account your payouts go to, write to <span className="font-semibold text-white select-all">partners@zivohotels.com</span>.</p>
+              <p className="text-xs text-navy-100 leading-relaxed">To change the account your payouts go to, write to <span className="font-semibold text-white select-all">partners@zivoplus.com</span>.</p>
            </div>
         </div>
       </div>

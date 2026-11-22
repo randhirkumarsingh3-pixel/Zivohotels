@@ -67,7 +67,7 @@ const Account = () => {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-1"><KeyRound size={20} className="text-navy-700" aria-hidden="true" /> Password</h2>
           <p className="text-sm text-gray-500 mb-4">Changing it signs you out on your other devices.</p>
           <ChangePasswordForm />
-          {user?.google && <p className="mt-3 text-xs text-gray-500">{'You joined with Google, so you have no ZivoHotels password yet. Use "Forgot password" on the sign-in page to set one, or keep signing in with Google or a code.'}</p>}
+          {user?.google && <p className="mt-3 text-xs text-gray-500">{'You joined with Google, so you have no ZivoPlus password yet. Use "Forgot password" on the sign-in page to set one, or keep signing in with Google or a code.'}</p>}
         </section>
 
         <section className="bg-white border border-gray-200 rounded-card p-6">

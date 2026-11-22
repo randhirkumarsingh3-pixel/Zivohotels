@@ -7,7 +7,7 @@ import GoogleHotelsCard from '../components/GoogleHotelsCard';
 
 /**
  * Extranet -> Settings: the signed-in partner's account and the active property's legal, contact
- * and payout details, as saved on ZivoHotels. The page used to show a made-up owner ("Rajesh
+ * and payout details, as saved on ZivoPlus. The page used to show a made-up owner ("Rajesh
  * Kumar"), GSTIN and phone, with notification toggles and a password form that saved nothing.
  * Details are edited in Property Info or, for legal and bank details, through partner support.
  * The password can be changed here.
@@ -44,7 +44,7 @@ const ExtranetSettings = () => {
     <div className="space-y-6 pb-12 max-w-4xl">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Settings</h1>
-        <p className="text-gray-500 mt-1">Your account and the details ZivoHotels holds for {property.name}.</p>
+        <p className="text-gray-500 mt-1">Your account and the details ZivoPlus holds for {property.name}.</p>
       </div>
 
       <Card icon={User} title="Your account">
@@ -85,7 +85,7 @@ const ExtranetSettings = () => {
         <LifeBuoy size={28} className="text-navy-200 shrink-0" aria-hidden="true" />
         <div className="flex-1">
           <h2 className="font-bold">Need to change your legal or payout details?</h2>
-          <p className="text-sm text-navy-100 mt-1">Write to <span className="font-semibold text-white select-all">partners@zivohotels.com</span> from your login email.</p>
+          <p className="text-sm text-navy-100 mt-1">Write to <span className="font-semibold text-white select-all">partners@zivoplus.com</span> from your login email.</p>
         </div>
         <button type="button" onClick={logout} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-semibold">
           <LogOut size={16} aria-hidden="true" /> Log out

@@ -85,7 +85,7 @@ const buildData = async (req, input, existing = null) => {
   }
 
   if (input.audience && !['ALL', 'MEMBERS'].includes(input.audience)) {
-    if (!isAdmin(req)) bad('Hotels can target everyone or members; plan-only offers are set by ZivoHotels');
+    if (!isAdmin(req)) bad('Hotels can target everyone or members; plan-only offers are set by ZivoPlus');
     const plan = await prisma.membershipPlan.findUnique({ where: { code: input.audience } });
     if (!plan || plan.isFree) bad('Unknown membership plan');
   }
@@ -157,7 +157,7 @@ const loadEditable = async (req, res) => {
   const promo = await prisma.promotion.findUnique({ where: { id: req.params.id } });
   if (!promo) { fail(res, req, 404, 'Promotion not found'); return null; }
   if (!isAdmin(req)) {
-    if (!promo.hotelId) { fail(res, req, 403, 'Zivo promotions are managed by ZivoHotels'); return null; }
+    if (!promo.hotelId) { fail(res, req, 403, 'Zivo promotions are managed by ZivoPlus'); return null; }
     const hotel = await prisma.hotel.findUnique({ where: { id: promo.hotelId }, select: { ownerId: true } });
     if (!hotel || !managesHotel(req.user, { ...hotel, id: promo.hotelId })) { fail(res, req, 404, 'Promotion not found'); return null; }
   }

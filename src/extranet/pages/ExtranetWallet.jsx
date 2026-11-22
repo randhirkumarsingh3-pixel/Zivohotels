@@ -4,7 +4,7 @@ import { extranetGet } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
 
 /**
- * Extranet -> Wallet: the property's money with ZivoHotels, worked out from its settlements and
+ * Extranet -> Wallet: the property's money with ZivoPlus, worked out from its settlements and
  * payouts. On hold until the payout date, ready to pay, owed to Zivo (commission on pay-at-hotel
  * stays, netted against payouts), paid out, and a statement with a running balance (CSV download).
  */
@@ -41,7 +41,7 @@ const ExtranetWallet = () => {
   const cards = [
     { icon: Clock, label: 'On hold', value: data.onHold, sub: data.nextPayoutDate ? `Next payout ${new Date(data.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Released after check-out, per your payout cycle', cls: 'text-amber-700' },
     { icon: CheckCircle2, label: 'Ready to pay', value: data.ready, sub: 'Included in the next payout', cls: 'text-blue-600' },
-    { icon: AlertTriangle, label: 'Owed to ZivoHotels', value: data.owed, sub: 'Commission on stays paid at the hotel; deducted from payouts', cls: data.owed > 0 ? 'text-red-600' : 'text-gray-900' },
+    { icon: AlertTriangle, label: 'Owed to ZivoPlus', value: data.owed, sub: 'Commission on stays paid at the hotel; deducted from payouts', cls: data.owed > 0 ? 'text-red-600' : 'text-gray-900' },
     { icon: Banknote, label: 'Paid out', value: data.paidOut, sub: 'Total paid to your bank account', cls: 'text-green-700' },
   ];
 
@@ -49,14 +49,14 @@ const ExtranetWallet = () => {
     <div className="space-y-6 pb-12">
       <div>
         <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Wallet size={28} className="text-brand-700" /> Wallet</h1>
-        <p className="text-gray-500 font-medium mt-1">What {property?.name || 'your property'} has earned through ZivoHotels, after commission and taxes.</p>
+        <p className="text-gray-500 font-medium mt-1">What {property?.name || 'your property'} has earned through ZivoPlus, after commission and taxes.</p>
       </div>
 
       <div className="bg-gray-900 text-white rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Balance</p>
           <p className={`text-4xl font-black mt-1 ${data.balance < 0 ? 'text-red-300' : ''}`}>{data.balance < 0 ? '−' : ''}{inr(Math.abs(data.balance))}</p>
-          <p className="text-sm text-gray-400">{data.balance < 0 ? 'You owe ZivoHotels this amount; it is deducted from your next payouts.' : 'On hold + ready, minus anything owed to ZivoHotels.'}</p>
+          <p className="text-sm text-gray-400">{data.balance < 0 ? 'You owe ZivoPlus this amount; it is deducted from your next payouts.' : 'On hold + ready, minus anything owed to ZivoPlus.'}</p>
         </div>
         <p className="text-xs text-gray-400 md:text-right">Earned so far: <span className="text-white font-bold">{inr(data.lifetimeEarned)}</span></p>
       </div>

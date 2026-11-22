@@ -1,19 +1,19 @@
-# ZivoHotels - Production Architecture Blueprint (Option C)
+# ZivoPlus - Production Architecture Blueprint (Option C)
 
-This blueprint documents the production-grade GCP architecture for ZivoHotels, incorporating the CTO's approved Option C structure and all 10 operational refinements.
+This blueprint documents the production-grade GCP architecture for ZivoPlus, incorporating the CTO's approved Option C structure and all 10 operational refinements.
 
 ---
 
 ## 1. Executive System Overview
 
-ZivoHotels is a multi-tenant, enterprise-grade Property Management System (PMS) and OTA booking engine deployed entirely on **Google Cloud Platform (GCP)**.
+ZivoPlus is a multi-tenant, enterprise-grade Property Management System (PMS) and OTA booking engine deployed entirely on **Google Cloud Platform (GCP)**.
 
 ```
                               Users / Clients
                                      │
             ┌────────────────────────┼────────────────────────┐
             ▼                        ▼                        ▼
-     zivohotels.com        admin.zivohotels.com     partner.zivohotels.com
+     zivoplus.com        admin.zivoplus.com     partner.zivoplus.com
    (Customer Website)         (Admin Portal)           (Hotel Extranet)
             │                        │                        │
             ▼                        ▼                        ▼
@@ -23,7 +23,7 @@ ZivoHotels is a multi-tenant, enterprise-grade Property Management System (PMS) 
     └────────────────────────┬────────────────────────────────┘
                              │
                              ▼
-                     api.zivohotels.com
+                     api.zivoplus.com
                              │
                              ▼
                         Cloud Armor (DDoS & IP / Geo / Rate Limiting)
@@ -59,7 +59,7 @@ ZivoHotels is a multi-tenant, enterprise-grade Property Management System (PMS) 
 ## 2. Core Architectural Flow
 
 1. **Static Assets**: Frontend client requests are terminated at the **Firebase Hosting Edge CDN**, eliminating server cold starts and serving HTML/JS/CSS with edge-cached compression.
-2. **API Routing**: Dynamic requests are routed to `api.zivohotels.com/v1`, protected by **Cloud Armor**, processed through the **API Gateway**, and forwarded to the **Cloud Run** backend.
+2. **API Routing**: Dynamic requests are routed to `api.zivoplus.com/v1`, protected by **Cloud Armor**, processed through the **API Gateway**, and forwarded to the **Cloud Run** backend.
 3. **Database & Storage**: The Express backend interacts with **Cloud SQL** via Prisma and streams user media uploads to **GCS + Cloud CDN**.
 4. **Request ID Propagation**: A single correlation/request ID is generated in the browser and propagated through Firebase, API Gateway, Cloud Run, and database transactions to ensure end-to-end trace logging.
 
@@ -69,15 +69,15 @@ ZivoHotels is a multi-tenant, enterprise-grade Property Management System (PMS) 
 
 ### 1. Separate Frontend Deployment Targets
 To reduce bundle sizes, decouple rollbacks, and improve security boundaries, the monorepo builds three distinct static targets:
-- `zivohotels.com` -> Customer Booking Site
-- `admin.zivohotels.com` -> Global Admin Portal (Super Admin)
-- `partner.zivohotels.com` -> Hotel Partner Extranet (Owners)
+- `zivoplus.com` -> Customer Booking Site
+- `admin.zivoplus.com` -> Global Admin Portal (Super Admin)
+- `partner.zivoplus.com` -> Hotel Partner Extranet (Owners)
 
 ### 2. Environment Isolation & DNS Strategy
 DNS registrar remains with **Hostinger**, with DNS zones pointing directly to Google Cloud targets:
-- **Production**: `zivohotels.com` (Firebase), `api.zivohotels.com` (API Gateway)
-- **Staging**: `staging.zivohotels.com` (Firebase Staging target), `staging-api.zivohotels.com`
-- **Development**: `dev.zivohotels.com`, `dev-api.zivohotels.com`
+- **Production**: `zivoplus.com` (Firebase), `api.zivoplus.com` (API Gateway)
+- **Staging**: `staging.zivoplus.com` (Firebase Staging target), `staging-api.zivoplus.com`
+- **Development**: `dev.zivoplus.com`, `dev-api.zivoplus.com`
 
 ### 3. Edge CDN Caching Policy
 Static assets are aggressively edge-cached. Dynamic resources are explicitly blacklisted from caching.

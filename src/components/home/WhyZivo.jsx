@@ -1,6 +1,6 @@
 import { Receipt, CalendarX2, Building, Wallet, Crown } from 'lucide-react';
 
-/** What every booking on ZivoHotels gets: only promises the platform actually keeps. */
+/** What every booking on ZivoPlus gets: only promises the platform actually keeps. */
 const POINTS = [
   { icon: Receipt, title: 'The price you see', text: 'Totals include GST before you pay. No surprise charges at checkout.' },
   { icon: CalendarX2, title: 'Free cancellation', text: 'On many rates, clearly marked next to the price.' },
@@ -12,7 +12,7 @@ const POINTS = [
 const WhyZivo = () => (
   <section className="py-14 bg-navy-900 text-white" aria-labelledby="why-heading">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h2 id="why-heading" className="text-2xl md:text-3xl font-bold mb-8">Why book with ZivoHotels</h2>
+      <h2 id="why-heading" className="text-2xl md:text-3xl font-bold mb-8">Why book with ZivoPlus</h2>
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {POINTS.map((p) => (
           <li key={p.title} className="flex lg:flex-col gap-3">

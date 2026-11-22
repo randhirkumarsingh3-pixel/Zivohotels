@@ -115,7 +115,7 @@ const DestinationAutocomplete = ({ destination, setDestination, error, onFocusNe
         try {
           const data = await nearbyDestinations(pos.coords.latitude, pos.coords.longitude);
           if (data?.[0]?.type === 'near') handleSelect(data[0]);
-          else setNearNote('No ZivoHotels within 50 km of you yet. Type a city instead.');
+          else setNearNote('No ZivoPlus hotels within 50 km of you yet. Type a city instead.');
         } catch (error) {
           console.error('Geolocation search failed', error);
           setNearNote('Couldn’t search near you. Please try again.');

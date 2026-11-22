@@ -16,7 +16,7 @@ const newDb = new PrismaClient({
 });
 
 async function runVerification() {
-  console.log('--- ZivoHotels Migration Verification Report ---');
+  console.log('--- ZivoPlus Migration Verification Report ---');
   
   if (!process.env.OLD_DATABASE_URL || !process.env.NEW_DATABASE_URL) {
     console.error('Error: OLD_DATABASE_URL and NEW_DATABASE_URL must be provided.');
@@ -73,7 +73,7 @@ async function runVerification() {
     const testUser = await newDb.user.create({
       data: { 
         name: 'Migration Test User', 
-        email: `migration.test.${Date.now()}@zivohotels.com`,
+        email: `migration.test.${Date.now()}@zivoplus.com`,
         password: 'hashed_password_mock',
         phone: '1234567890'
       }

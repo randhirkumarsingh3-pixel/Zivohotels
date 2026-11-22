@@ -274,7 +274,7 @@ export const getHotelHourlySetup = async (hotelId) => {
   };
 };
 
-/** Saves the hotel's hourly settings and room types. Approval stays as ZivoHotels set it. */
+/** Saves the hotel's hourly settings and room types. Approval stays as ZivoPlus set it. */
 export const saveHotelHourlySetup = async (hotelId, body = {}) => {
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { hourlySettings: true, roomTypes: { select: { id: true, totalInventory: true } } } });
   if (!hotel) throw new HourlyError('Hotel not found', 404);

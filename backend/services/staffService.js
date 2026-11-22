@@ -1,5 +1,5 @@
 /**
- * Staff and roles: ZivoHotels' own team (scope ADMIN) and each hotel's team (scope EXTRANET).
+ * Staff and roles: ZivoPlus' own team (scope ADMIN) and each hotel's team (scope EXTRANET).
  *
  * Rules (enforced here, whatever the screen sends):
  * - Nobody can give a role with permissions they don't have themselves (no self-promotion).
@@ -88,7 +88,7 @@ const activeSuperAdmins = async () => prisma.staffMember.count({ where: { roleId
 
 const inviteEmail = ({ to, name, inviter, where, roleName, link, isNew }) => queueService.enqueue('email', 'SEND_STAFF_INVITE', {
   to,
-  subject: isNew ? `You're invited to ${where} on ZivoHotels` : `You've been added to ${where} on ZivoHotels`,
+  subject: isNew ? `You're invited to ${where} on ZivoPlus` : `You've been added to ${where} on ZivoPlus`,
   html: `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <h2>Hello ${escapeHtml(name)},</h2>
@@ -107,7 +107,7 @@ export const inviteStaff = async (actor, { scope, hotelId = null, email, name, p
   assertCanGrant(actor, scope, hotelId, role.permissions);
 
   const hotel = scope === SCOPES.EXTRANET ? await prisma.hotel.findUnique({ where: { id: hotelId }, select: { id: true, name: true, ownerId: true } }) : null;
-  const where = hotel ? hotel.name : 'the ZivoHotels team';
+  const where = hotel ? hotel.name : 'the ZivoPlus team';
   const wantRole = scope === SCOPES.ADMIN ? 'ADMIN' : 'OWNER';
   let user = await prisma.user.findUnique({ where: { email: mail } });
   let raw = null;
@@ -117,9 +117,9 @@ export const inviteStaff = async (actor, { scope, hotelId = null, email, name, p
     if (user.role !== wantRole) {
       throw new StaffError(user.role === 'CUSTOMER'
         ? 'This email belongs to a guest account. Use a separate work email for staff.'
-        : (scope === SCOPES.ADMIN ? 'This email belongs to a hotel account. Use a separate ZivoHotels email.' : 'This email belongs to a ZivoHotels staff account. Use a different email.'));
+        : (scope === SCOPES.ADMIN ? 'This email belongs to a hotel account. Use a separate ZivoPlus email.' : 'This email belongs to a ZivoPlus staff account. Use a different email.'));
     }
-    if (['BLOCKED', 'DELETED'].includes(user.status)) throw new StaffError('This account is blocked. Ask ZivoHotels support.');
+    if (['BLOCKED', 'DELETED'].includes(user.status)) throw new StaffError('This account is blocked. Ask ZivoPlus support.');
     const already = await prisma.staffMember.findFirst({ where: { userId: user.id, scope, hotelId } });
     if (already) throw new StaffError('This person is already on the team.', 409);
   } else {
@@ -199,7 +199,7 @@ export const resendStaffInvite = async (actor, { scope, hotelId = null, id }, re
   const loginPath = scope === SCOPES.ADMIN ? '/admin/login' : '/extranet/login';
   const hotel = hotelId ? await prisma.hotel.findUnique({ where: { id: hotelId }, select: { name: true } }) : null;
   const link = `${site()}/accept-invite?token=${raw}&next=${encodeURIComponent(loginPath)}`;
-  await inviteEmail({ to: m.user.email, name: m.user.name, inviter: actor.name || 'Your team', where: hotel?.name || 'the ZivoHotels team', roleName: m.role.name, isNew: true, link });
+  await inviteEmail({ to: m.user.email, name: m.user.name, inviter: actor.name || 'Your team', where: hotel?.name || 'the ZivoPlus team', roleName: m.role.name, isNew: true, link });
   await audit(actor, 'STAFF_INVITE_RESENT', m.id, { scope, hotelId, email: m.user.email }, requestId);
   return process.env.EMAIL_TEST_MODE === 'true' ? { inviteLink: link } : {};
 };

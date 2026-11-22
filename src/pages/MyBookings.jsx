@@ -474,7 +474,7 @@ const MyBookings = () => {
               <p className="text-sm text-gray-500 leading-relaxed mb-4">
                 For a late arrival, early check-in, airport pickup or parking, open a booking (<span className="font-semibold text-gray-700">Manage</span>) and choose <span className="font-semibold text-gray-700">Requests to hotel</span>. The hotel answers there and by email.
               </p>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ZivoHotels support</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ZivoPlus support</p>
               <div className="mb-3"><SupportContacts compact /></div>
               <Link to="/help" className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
                 <span>Help centre: changes, cancellations, refunds</span><ChevronRight size={14} />
@@ -747,7 +747,7 @@ const MyBookings = () => {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. Send a request in <span className="font-semibold">Requests to hotel</span>, or contact ZivoHotels support with your booking ID and we&apos;ll reach the hotel.</p>
+                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. Send a request in <span className="font-semibold">Requests to hotel</span>, or contact ZivoPlus support with your booking ID and we&apos;ll reach the hotel.</p>
                     )}
                     {!(hotelPhone(activeBooking) || activeBooking.hotel?.contact?.email) && (
                       <SupportContacts bookingRef={activeBooking.bookingRef} compact />
@@ -805,7 +805,7 @@ const MyBookings = () => {
                   <p className="text-xs font-bold text-gray-700">Where should ₹{cancelPreview.choosableRefund.toLocaleString('en-IN')} go?</p>
                   {[
                     { id: 'SOURCE', title: 'Original payment method', sub: 'Card / UPI / net banking · 5-7 working days' },
-                    { id: 'WALLET', title: 'Zivo Cash', sub: 'Instant · use it on any ZivoHotels booking' },
+                    { id: 'WALLET', title: 'Zivo Cash', sub: 'Instant · use it on any ZivoPlus booking' },
                   ].map((o) => (
                     <button key={o.id} type="button" role="radio" aria-checked={refundTo === o.id} onClick={() => setRefundTo(o.id)}
                       className={`w-full text-left rounded-2xl border p-3 text-xs ${refundTo === o.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200'}`}>
@@ -1107,7 +1107,7 @@ const ReviewTab = ({
           <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">{existingReview ? 'Review Saved' : 'Review Submitted'}</p>
           <h4 className="text-2xl font-black text-gray-900 mb-2">Thank You!</h4>
           <p className="text-sm text-gray-500 max-w-[260px] mx-auto leading-relaxed">
-            Your review helps the ZivoHotels community make smarter travel decisions.
+            Your review helps the ZivoPlus community make smarter travel decisions.
           </p>
         </div>
         <div className="flex gap-1 my-1">

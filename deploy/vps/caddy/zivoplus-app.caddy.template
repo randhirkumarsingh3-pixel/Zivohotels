@@ -1,0 +1,9 @@
+# ZivoPlus app: a separate project in /opt/zivoplus-app.
+# Managed by /opt/zivoplus-app/deploy/vps/caddy-link.sh (edit the template there, not this copy).
+__APP_DOMAIN__ {
+	encode zstd gzip
+	header -Server
+	reverse_proxy zivoplus-app-web:80 {
+		__TRUSTED_PROXIES__
+	}
+}

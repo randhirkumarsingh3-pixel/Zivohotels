@@ -18,6 +18,7 @@ import { cityNames } from '../utils/places.js';
 import { hotelSlug, slugify, isUuid, slugIdPrefix } from '../utils/hotelSlug.js';
 import { getShared, setShared, delShared } from '../utils/sharedCache.js';
 import crypto from 'crypto';
+import { BRAND_NAME } from '../config/brand.js';
 
 export const site = () => String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
 export const indexingAllowed = () => String(process.env.ALLOW_INDEXING || '').toLowerCase() === 'true';
@@ -36,10 +37,10 @@ const clip = (s, n) => {
 // ─── Settings ──────────────────────────────────────────────────────────────────────────────────
 
 export const DEFAULT_SEO = {
-  siteName: 'ZivoHotels',
+  siteName: BRAND_NAME,
   home: {
-    title: 'ZivoHotels: hotel bookings at the best prices',
-    description: 'Book hotels across India with ZivoHotels. Member prices, free cancellation on many stays, reserve now and pay later, and Zivo Rewards on every booking.',
+    title: 'ZivoPlus: hotel bookings at the best prices',
+    description: 'Book hotels across India with ZivoPlus. Member prices, free cancellation on many stays, reserve now and pay later, and Zivo Rewards on every booking.',
   },
   hotel: {
     title: '{name}, {place}[: rooms from {price}] | {site}',
@@ -273,7 +274,7 @@ const hotelPage = async (param, settings) => {
     },
     ...(h.latitude != null && h.longitude != null ? { geo: { '@type': 'GeoCoordinates', latitude: h.latitude, longitude: h.longitude } } : {}),
     ...(stars ? { starRating: { '@type': 'Rating', ratingValue: stars } } : {}),
-    // Only real guest reviews from bookings on ZivoHotels
+    // Only real guest reviews from bookings on ZivoPlus
     ...(h.reviewCount > 0 && h.reviewScore ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(h.reviewScore), bestRating: 10, worstRating: 1, reviewCount: h.reviewCount } } : {}),
     ...(price ? { priceRange: `From ${inr(price)} per night` } : {}),
     ...(amenities.length ? { amenityFeature: amenities.map((a) => ({ '@type': 'LocationFeatureSpecification', name: a, value: true })) } : {}),
@@ -300,13 +301,13 @@ const hotelPage = async (param, settings) => {
 };
 
 const STATIC_PAGES = {
-  '/help': { title: 'Help centre | ZivoHotels', description: 'Answers about bookings, payments, cancellations and refunds, Zivo Rewards and your account.' },
-  '/privacy': { title: 'Privacy policy | ZivoHotels', description: 'How ZivoHotels collects, uses and protects your personal information.' },
-  '/terms': { title: 'Terms of service | ZivoHotels', description: 'The terms for using ZivoHotels and booking stays.' },
-  '/refund-policy': { title: 'Cancellation and refund policy | ZivoHotels', description: 'How cancellations and refunds work for bookings on ZivoHotels.' },
-  '/list-your-property': { title: 'List your property on ZivoHotels', description: 'Reach guests across India: list your hotel on ZivoHotels in a few steps.' },
-  '/rewards': { title: 'Zivo Rewards | ZivoHotels', description: 'Earn points on every stay and use them on your next booking.' },
-  '/membership': { title: 'Membership | ZivoHotels', description: 'Member prices and extra benefits on ZivoHotels stays.' },
+  '/help': { title: 'Help centre | ZivoPlus', description: 'Answers about bookings, payments, cancellations and refunds, Zivo Rewards and your account.' },
+  '/privacy': { title: 'Privacy policy | ZivoPlus', description: 'How ZivoPlus collects, uses and protects your personal information.' },
+  '/terms': { title: 'Terms of service | ZivoPlus', description: 'The terms for using ZivoPlus and booking stays.' },
+  '/refund-policy': { title: 'Cancellation and refund policy | ZivoPlus', description: 'How cancellations and refunds work for bookings on ZivoPlus.' },
+  '/list-your-property': { title: 'List your property on ZivoPlus', description: 'Reach guests across India: list your hotel on ZivoPlus in a few steps.' },
+  '/rewards': { title: 'Zivo Rewards | ZivoPlus', description: 'Earn points on every stay and use them on your next booking.' },
+  '/membership': { title: 'Membership | ZivoPlus', description: 'Member prices and extra benefits on ZivoPlus stays.' },
 };
 
 /**
@@ -361,7 +362,7 @@ const loadTemplate = async () => {
     html = await r.text();
   }
   // No template configured (tests, a bare API): a minimal page with the same placeholders
-  if (!html) html = '<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <title>ZivoHotels</title>\n    <meta name="description" content="" />\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n';
+  if (!html) html = '<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <title>ZivoPlus</title>\n    <meta name="description" content="" />\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n';
   template = { html, at: Date.now() };
   return html;
 };

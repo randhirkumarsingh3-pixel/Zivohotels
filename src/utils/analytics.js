@@ -1,5 +1,5 @@
 /**
- * Event-based tracking system for ZivoHotels analytics.
+ * Event-based tracking system for ZivoPlus analytics.
  * In a real environment, this would push to Mixpanel, Amplitude, or Google Analytics.
  */
 export const track = (eventName, properties = {}) => {

@@ -33,7 +33,7 @@ export const protect = async (req, res, next) => {
     // Signed in by cookie: a change (POST, PUT…) must come from our own site. SameSite already keeps
     // the cookie off other sites' requests; this also refuses one that names another origin.
     if (viaCookie && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin && !isAllowedOrigin(req.headers.origin, req)) {
-      return res.status(403).json({ success: false, message: 'Request refused: it did not come from ZivoHotels.' });
+      return res.status(403).json({ success: false, message: 'Request refused: it did not come from ZivoPlus.' });
     }
 
     // Verify token

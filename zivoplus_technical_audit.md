@@ -1,6 +1,6 @@
-# ZivoHotels Platform: End-to-End Technical Audit
+# ZivoPlus Platform: End-to-End Technical Audit
 
-This is a comprehensive structural, functional, and API connectivity audit of the ZivoHotels platform as of the current state.
+This is a comprehensive structural, functional, and API connectivity audit of the ZivoPlus platform as of the current state.
 
 ---
 

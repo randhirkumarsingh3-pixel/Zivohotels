@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Connects the ZivoHotels app's domain to the server's existing Caddy. Safe to run any time:
-#  - attaches the Caddy container to our network "zivohotels-app-edge" if it isn't (it isn't
+# Connects the ZivoPlus app's domain to the server's existing Caddy. Safe to run any time:
+#  - attaches the Caddy container to our network "zivoplus-app-edge" if it isn't (it isn't
 #    after the other project recreates Caddy)
 #  - writes our site file next to Caddy's Caddyfile and adds one "import" line if missing
 #  - validates the whole config before reloading; if Caddy rejects it, everything is restored
@@ -21,7 +21,7 @@ CADDY="${CADDY_CONTAINER:-staging-caddy}"
 docker inspect "$CADDY" >/dev/null 2>&1 || { echo "❌ Caddy container '$CADDY' not found"; exit 1; }
 
 # Caddy reaches our website over our own network (created by docker compose up)
-EDGE_NET="zivohotels-app-edge"
+EDGE_NET="zivoplus-app-edge"
 docker network inspect "$EDGE_NET" >/dev/null 2>&1 || { echo "❌ Network $EDGE_NET not found: start the app first (deploy.sh)"; exit 1; }
 if ! docker inspect "$CADDY" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' | grep -qw "$EDGE_NET"; then
   docker network connect "$EDGE_NET" "$CADDY"
@@ -31,8 +31,8 @@ DIR="$(docker inspect "$CADDY" --format '{{range .Mounts}}{{if eq .Destination "
 [ -n "$DIR" ] && [ -f "$DIR/Caddyfile" ] || { echo "❌ Can't find the folder mounted at /etc/caddy in '$CADDY'"; exit 1; }
 
 CADDYFILE="$DIR/Caddyfile"
-SITE_FILE="$DIR/zivohotels-app.caddy"
-IMPORT_LINE="import zivohotels-app.caddy"
+SITE_FILE="$DIR/zivoplus-app.caddy"
+IMPORT_LINE="import zivoplus-app.caddy"
 # Behind Cloudflare (BEHIND_CLOUDFLARE=true in .env): trust the visitor address Cloudflare passes
 # on, but only when the request really comes from Cloudflare (its published address ranges,
 # fetched here and kept in .cloudflare-ips in case Cloudflare's site can't be reached later).
@@ -50,7 +50,16 @@ if [ "${BEHIND_CLOUDFLARE:-false}" = "true" ]; then
     echo "⚠️  BEHIND_CLOUDFLARE=true but Cloudflare's address list couldn't be fetched; visitor addresses will be Cloudflare's until it can"
   fi
 fi
-NEW_SITE="$(sed -e "s/__APP_DOMAIN__/$APP_DOMAIN/g" -e "s|__TRUSTED_PROXIES__|$TRUSTED|" "$HERE/caddy/zivohotels-app.caddy.template")"
+NEW_SITE="$(sed -e "s/__APP_DOMAIN__/$APP_DOMAIN/g" -e "s|__TRUSTED_PROXIES__|$TRUSTED|" "$HERE/caddy/zivoplus-app.caddy.template")"
+# Old addresses (REDIRECT_DOMAINS in .env, comma-separated, e.g. the old zivohotels.com names)
+# forward permanently to the same page on APP_DOMAIN, so links and search results keep working
+for d in $(echo "${REDIRECT_DOMAINS:-}" | tr "," " "); do
+  [ "$d" = "$APP_DOMAIN" ] && continue
+  NEW_SITE="$NEW_SITE
+$d {
+	redir https://$APP_DOMAIN{uri} permanent
+}"
+done
 
 BACKUP_DIR="$HERE/.caddy-backups"
 mkdir -p "$BACKUP_DIR"
@@ -59,19 +68,27 @@ changed=no
 had_site=no; [ -f "$SITE_FILE" ] && had_site=yes
 
 if [ "$had_site" = no ] || [ "$(cat "$SITE_FILE")" != "$NEW_SITE" ]; then
-  [ "$had_site" = yes ] && cp "$SITE_FILE" "$BACKUP_DIR/zivohotels-app.caddy.$STAMP"
+  [ "$had_site" = yes ] && cp "$SITE_FILE" "$BACKUP_DIR/zivoplus-app.caddy.$STAMP"
   printf '%s\n' "$NEW_SITE" > "$SITE_FILE"
   chown --reference="$CADDYFILE" "$SITE_FILE" 2>/dev/null || true
   changed=yes
 fi
+# Before the move to ZivoPlus the app's Caddy file was "zivohotels-app.caddy": drop it (and its
+# import line), or both would claim the same address
+if grep -qxF "import zivohotels-app.caddy" "$CADDYFILE" || [ -f "$DIR/zivohotels-app.caddy" ]; then
+  cp "$CADDYFILE" "$BACKUP_DIR/Caddyfile.before-zivoplus.$STAMP"
+  [ -f "$DIR/zivohotels-app.caddy" ] && mv "$DIR/zivohotels-app.caddy" "$BACKUP_DIR/zivohotels-app.caddy.before-zivoplus.$STAMP"
+  sed -i '/ZivoHotels app (separate project/d; /^import zivohotels-app\.caddy$/d' "$CADDYFILE"
+  changed=yes
+fi
 if ! grep -qxF "$IMPORT_LINE" "$CADDYFILE"; then
   cp "$CADDYFILE" "$BACKUP_DIR/Caddyfile.$STAMP"
-  printf '\n# ZivoHotels app (separate project in /opt/zivohotels-app), added by its deploy/vps/caddy-link.sh\n%s\n' "$IMPORT_LINE" >> "$CADDYFILE"
+  printf '\n# ZivoPlus app (separate project in /opt/zivoplus-app), added by its deploy/vps/caddy-link.sh\n%s\n' "$IMPORT_LINE" >> "$CADDYFILE"
   changed=yes
 fi
 
 if [ "$changed" = no ]; then
-  say "✅ Caddy already routes https://$APP_DOMAIN to the ZivoHotels app"
+  say "✅ Caddy already routes https://$APP_DOMAIN to the ZivoPlus app"
   exit 0
 fi
 
@@ -81,12 +98,14 @@ if docker exec "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter c
     tail -n 5 "$BACKUP_DIR/last-reload.log"
     exit 1
   fi
-  echo "✅ Caddy now routes https://$APP_DOMAIN to the ZivoHotels app ($(date))"
+  echo "✅ Caddy now routes https://$APP_DOMAIN to the ZivoPlus app ($(date))"
 else
   echo "❌ Caddy rejected the new configuration; restoring the previous files. Details:"
   tail -n 5 "$BACKUP_DIR/last-validate.log"
-  [ -f "$BACKUP_DIR/Caddyfile.$STAMP" ] && cp "$BACKUP_DIR/Caddyfile.$STAMP" "$CADDYFILE"
-  if [ -f "$BACKUP_DIR/zivohotels-app.caddy.$STAMP" ]; then cp "$BACKUP_DIR/zivohotels-app.caddy.$STAMP" "$SITE_FILE"
+  if [ -f "$BACKUP_DIR/Caddyfile.before-zivoplus.$STAMP" ]; then cp "$BACKUP_DIR/Caddyfile.before-zivoplus.$STAMP" "$CADDYFILE"
+  elif [ -f "$BACKUP_DIR/Caddyfile.$STAMP" ]; then cp "$BACKUP_DIR/Caddyfile.$STAMP" "$CADDYFILE"; fi
+  [ -f "$BACKUP_DIR/zivohotels-app.caddy.before-zivoplus.$STAMP" ] && mv "$BACKUP_DIR/zivohotels-app.caddy.before-zivoplus.$STAMP" "$DIR/zivohotels-app.caddy"
+  if [ -f "$BACKUP_DIR/zivoplus-app.caddy.$STAMP" ]; then cp "$BACKUP_DIR/zivoplus-app.caddy.$STAMP" "$SITE_FILE"
   elif [ "$had_site" = no ]; then rm -f "$SITE_FILE"; fi
   exit 1
 fi

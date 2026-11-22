@@ -4,7 +4,7 @@
  * Safe to run against production: it never deletes anything and only touches the one
  * email given. Run it once after `prisma migrate deploy` on a new database.
  *
- *   ADMIN_PASSWORD='a-long-password' node scripts/createAdmin.js --email you@zivohotels.com --name "Your Name"
+ *   ADMIN_PASSWORD='a-long-password' node scripts/createAdmin.js --email you@zivoplus.com --name "Your Name"
  *
  * If ADMIN_PASSWORD is not set, the password is asked for interactively (input hidden).
  * Re-running for an existing user promotes them to ADMIN and, if a password is given,

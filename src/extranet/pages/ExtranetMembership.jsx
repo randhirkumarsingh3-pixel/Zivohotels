@@ -4,10 +4,10 @@ import { extranetGet, extranetPut } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
 
 /**
- * Extranet -> Member Prices: the property's discount for ZivoHotels members (signed-in guests).
+ * Extranet -> Member Prices: the property's discount for ZivoPlus members (signed-in guests).
  * Members see the lower price in search, on the hotel page and at checkout. The property funds
  * this discount (commission and payout are on the discounted price). Paid-plan members (e.g. Zivo
- * Prime) may get an extra discount on top, paid for by ZivoHotels.
+ * Prime) may get an extra discount on top, paid for by ZivoPlus.
  */
 const inr = (n) => `₹${Math.round(Number(n || 0)).toLocaleString('en-IN')}`;
 
@@ -43,7 +43,7 @@ const ExtranetMembership = () => {
     <div className="space-y-6 pb-12 max-w-4xl">
       <div>
         <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Crown size={28} className="text-amber-500" /> Member Prices</h1>
-        <p className="text-gray-500 font-medium mt-1">Offer ZivoHotels members a lower price at {property?.name || 'your property'}. Members are guests signed in to their account.</p>
+        <p className="text-gray-500 font-medium mt-1">Offer ZivoPlus members a lower price at {property?.name || 'your property'}. Members are guests signed in to their account.</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
@@ -62,7 +62,7 @@ const ExtranetMembership = () => {
         </div>
         <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
           Example: a {inr(example)} room is {inr(example * (1 - pct / 100))} for members. You fund this discount; commission and your payout are on the member price.
-          Zivo Prime members may get an extra discount on top, which ZivoHotels pays for: your payout isn&apos;t reduced by it.
+          Zivo Prime members may get an extra discount on top, which ZivoPlus pays for: your payout isn&apos;t reduced by it.
         </p>
       </div>
 
