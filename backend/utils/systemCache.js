@@ -1,12 +1,14 @@
 /**
  * systemCache.js
  * In-memory singleton for real-time stats, security monitoring, and configuration.
- * Counters are per process. Blocked IP addresses are shared through Redis when it's set up
- * (REDIS_URL): a block made in one server process applies in all of them, and survives restarts.
+ * With Redis (REDIS_URL), the counters and the blocked IP addresses are shared by every server
+ * process: the admin dashboard shows the totals, and a block applies everywhere and survives
+ * restarts. Without Redis they live in this process's memory, as before.
  */
 import { redis, redisSubscriber } from '../config/redis.js';
 
 const BLOCKED_KEY = 'zivo:blocked-ips';
+const STATS_KEY = 'zivo:stats';
 
 class SystemCache {
   constructor() {
@@ -34,11 +36,27 @@ class SystemCache {
   increment(key, amount = 1) {
     if (Object.prototype.hasOwnProperty.call(this.stats, key)) {
       this.stats[key] += amount;
+      if (redis?.isReady) redis.hIncrBy(STATS_KEY, key, amount).catch(() => {});
     }
   }
 
+  /** This process's counters (see getSharedStats for the totals across processes). */
   getStats() {
     return { ...this.stats };
+  }
+
+  /** Totals across all server processes (Redis), or this process's counters without it. */
+  async getSharedStats() {
+    if (!redis?.isReady) return this.getStats();
+    try {
+      const shared = await redis.hGetAll(STATS_KEY);
+      const out = { ...this.stats };
+      Object.keys(out).forEach((k) => { if (k !== 'lastReset') out[k] = Number(shared[k]) || 0; });
+      if (shared.lastReset) out.lastReset = new Date(shared.lastReset);
+      return out;
+    } catch {
+      return this.getStats();
+    }
   }
 
   resetStats() {
@@ -46,6 +64,7 @@ class SystemCache {
       if (k !== 'lastReset') this.stats[k] = 0;
     });
     this.stats.lastReset = new Date();
+    if (redis?.isReady) redis.del(STATS_KEY).then(() => redis.hSet(STATS_KEY, 'lastReset', this.stats.lastReset.toISOString())).catch(() => {});
   }
 
   // --- BLACKLIST ---

@@ -1,4 +1,4 @@
-import { createPaymentOrder, verifyPaymentApi } from '../services/api';
+import { createPaymentOrder, verifyPaymentApi, createExtensionApi, verifyExtensionApi } from '../services/api';
 
 /**
  * Pays an existing unpaid booking online with Razorpay (reserve now, pay later; My Bookings and the
@@ -40,6 +40,38 @@ export const payForBooking = async (booking, prefill = {}) => {
       modal: { ondismiss: () => resolve('closed') },
     });
     rzp.on('payment.failed', (r) => reject(new Error(r?.error?.description || 'The payment failed. You can try again before the deadline.')));
+    rzp.open();
+  });
+};
+
+/**
+ * Pays for extra hours on an hourly stay: a Razorpay order for the difference, then the stay is
+ * extended once the payment is confirmed. Resolves 'paid' or 'closed'; rejects with a message.
+ */
+export const payForExtension = async (booking, hours) => {
+  if (!(await loadRazorpay())) throw new Error('The payment window could not load. Check your connection and try again.');
+  const { order, option } = await createExtensionApi(booking.id, hours);
+  return new Promise((resolve, reject) => {
+    const rzp = new window.Razorpay({
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'ZivoHotels',
+      description: `${option.hours} extra hour${option.hours === 1 ? '' : 's'} · ${booking.bookingRef}`,
+      order_id: order.id,
+      prefill: { name: booking.guestName, email: booking.guestEmail, contact: booking.guestPhone },
+      theme: { color: '#1a56db' },
+      handler: async (response) => {
+        try {
+          await verifyExtensionApi(booking.id, response);
+          resolve('paid');
+        } catch (err) {
+          reject(new Error(err?.message || 'We could not confirm the payment. If money was taken, it is refunded automatically.'));
+        }
+      },
+      modal: { ondismiss: () => resolve('closed') },
+    });
+    rzp.on('payment.failed', (r) => reject(new Error(r?.error?.description || 'The payment failed. Please try again.')));
     rzp.open();
   });
 };

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import {
-  platformHourly, hotelHourly, isBookable, checkSlot, startTimes, roomsNeeded, hourlyPrice, priceHourly, hourlyRefund, istDate, istYmd, slotLabel,
+  platformHourly, hotelHourly, isBookable, checkSlot, startTimes, roomsNeeded, hourlyPrice, priceHourly, hourlyRefund, istDate, istYmd, slotLabel, extensionPrice,
 } from '../../domains/hourly.js';
 
 const settings = hotelHourly({ enabled: true, approved: true, openFrom: '08:00', openTo: '21:00', durations: [3, 6], cleaningMinutes: 30, leadMinutes: 60, freeCancelHours: 2 });
@@ -69,5 +69,28 @@ describe('Hourly stays: price and refunds', () => {
   });
   it('labels a slot in India time', () => {
     expect(slotLabel(istDate('2026-12-10', '11:00'), istDate('2026-12-10', '14:00'), 3)).to.match(/10 Dec · 11:00 am – 2:00 pm · 3 hours/i);
+  });
+  describe('priceHourly with an offer', () => {
+    it('takes the offer off first, the member price from what is left, then adds GST', () => {
+      const p = priceHourly({ price: 1299, promotionDiscount: 130, memberHotel: 58, memberZivo: 0, taxRules: [] });
+      expect(p).to.include({ roomPrice: 1299, promotionDiscountAmount: 130, memberDiscountAmount: 58, baseAmount: 1111, taxPercentage: 5, taxAmount: 56, totalAmount: 1167 });
+    });
+    it('never discounts below zero', () => {
+      const p = priceHourly({ price: 500, promotionDiscount: 450, memberHotel: 100, taxRules: [] });
+      expect(p).to.include({ promotionDiscountAmount: 450, memberDiscountAmount: 50, baseAmount: 0, totalAmount: 0 });
+    });
+  });
+  describe('extensionPrice', () => {
+    it('charges the extra hours at the hotel price and GST again on the whole stay', () => {
+      const p = extensionPrice({ baseAmount: 1169, taxAmount: 58, totalAmount: 1227 }, 2, 400, []);
+      expect(p).to.include({ extraBase: 800, newBase: 1969, taxPercentage: 5, newTax: 98, newTotal: 2067, extraAmount: 840 });
+    });
+    it('moves to the higher GST rate when the stay crosses ₹7,500', () => {
+      const p = extensionPrice({ baseAmount: 7200, taxAmount: 360, totalAmount: 7560 }, 1, 500, []);
+      expect(p).to.include({ newBase: 7700, taxPercentage: 18, newTax: 1386, extraAmount: 1526 });
+    });
+    it('is not offered without an extra-hour price', () => {
+      expect(extensionPrice({ baseAmount: 1000, taxAmount: 50, totalAmount: 1050 }, 1, 0, [])).to.equal(null);
+    });
   });
 });

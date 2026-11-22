@@ -753,6 +753,8 @@ model Promotion {
   bookStart        DateTime?
   bookEnd          DateTime?
   minNights        Int                   @default(1)
+  // Also discounts hourly stays (off by default: offers were made for nights)
+  forHourly        Boolean               @default(false)
   minAdvanceDays   Int?
   maxAdvanceDays   Int?
   usageLimit       Int?

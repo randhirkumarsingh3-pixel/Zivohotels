@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isHourly, slotText, lengthText } from '../utils/stay';
+import { isHourly, slotText, lengthText, canAddHours } from '../utils/stay';
 import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../utils/bookingRooms';
 import RoomCancel from '../components/booking/RoomCancel';
 import { 
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import PayLaterBanner from '../components/booking/PayLaterBanner';
 import { needsPayment } from '../utils/payBooking';
+import AddHoursPanel from '../components/booking/AddHoursPanel';
 import StayRequests from '../components/booking/StayRequests';
 import SupportContacts from '../components/SupportContacts';
 import { useAuth } from '../context/AuthContext';
@@ -536,6 +537,7 @@ const MyBookings = () => {
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   <PayLaterBanner booking={activeBooking} onPaid={fetchMyBookings} />
+                  {canAddHours(activeBooking) && <AddHoursPanel booking={activeBooking} onExtended={fetchMyBookings} />}
                   <div className="grid grid-cols-3 gap-4">
                     {[
                       { label: 'Guests', value: `${activeBooking.guests} pax` },
@@ -926,6 +928,7 @@ const BookingCard = ({ booking, onRateStay, onManage, onPaid }) => {
             <div className="bg-navy-50 rounded-2xl p-3 mb-3">
               <p className="text-xs text-navy-700 font-bold uppercase tracking-wider mb-0.5">Hourly stay</p>
               <p className="font-extrabold text-navy-900 text-xs">{slotText(booking)}</p>
+              {canAddHours(booking) && <button type="button" onClick={() => onManage?.(booking)} className="mt-1.5 text-xs font-bold text-brand-700 hover:underline">Need more time? Add hours</button>}
             </div>
           )}
           <div className={`grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50 ${isHourly(booking) ? 'hidden' : ''}`}>

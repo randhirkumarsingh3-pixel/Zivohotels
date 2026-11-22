@@ -9,7 +9,8 @@ import { redis, redisSubscriber } from '../config/redis.js';
 class SocketService {
   constructor() {
     this.io = null;
-    this.presence = new Map(); // roomId -> Set of userId
+    this.presence = new Map(); // roomId -> Set of userId (without Redis)
+    this.presenceRecheck = new Map(); // roomId -> pending re-send
   }
 
   /**
@@ -74,7 +75,7 @@ class SocketService {
       if (socket.user.hotelId) {
         const roomId = `hotel_${socket.user.hotelId}`;
         socket.join(roomId);
-        this.updatePresence(roomId, socket.user, true);
+        this.updatePresence(roomId, socket.user, true, {}, socket.id);
         console.log(`[Socket] User joined room: ${roomId}`);
       }
 
@@ -82,7 +83,7 @@ class SocketService {
       if (socket.user.role === 'ADMIN') {
         const roomId = 'admin_global';
         socket.join(roomId);
-        this.updatePresence(roomId, socket.user, true);
+        this.updatePresence(roomId, socket.user, true, {}, socket.id);
         socket.join('finance_ops');
         console.log(`[Socket] Admin joined global rooms`);
       }
@@ -90,10 +91,10 @@ class SocketService {
       socket.on('disconnect', () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
         if (socket.user.hotelId) {
-          this.updatePresence(`hotel_${socket.user.hotelId}`, socket.user, false);
+          this.updatePresence(`hotel_${socket.user.hotelId}`, socket.user, false, {}, socket.id);
         }
         if (socket.user.role === 'ADMIN') {
-          this.updatePresence('admin_global', socket.user, false);
+          this.updatePresence('admin_global', socket.user, false, {}, socket.id);
         }
       });
 
@@ -105,7 +106,7 @@ class SocketService {
       // Operational Intent Tracking
       socket.on('update_intent', (data) => {
         const { intent, target } = data; // e.g., intent: 'EDITING', target: 'Room Rates'
-        this.updatePresence(`hotel_${socket.user.hotelId}`, socket.user, true, { intent, target });
+        this.updatePresence(`hotel_${socket.user.hotelId}`, socket.user, true, { intent, target }, socket.id);
       });
     });
 
@@ -147,9 +148,51 @@ class SocketService {
   }
 
   /**
-   * Updates and broadcasts presence information for a room.
+   * Updates and broadcasts who is in a room (the extranet's "who's here / editing" avatars).
+   * With Redis, the list covers people connected to every server process; each browser tab is
+   * one entry (keyed by its connection), shown once per person.
    */
-  updatePresence(roomId, user, isJoining, metadata = {}) {
+  async updatePresence(roomId, user, isJoining, metadata = {}, socketId = user.id) {
+    if (!redis?.isReady) return this.updateLocalPresence(roomId, user, isJoining, metadata);
+    const key = `zivo:presence:${roomId}`;
+    try {
+      if (isJoining) {
+        const existing = JSON.parse((await redis.hGet(key, socketId)) || '{}');
+        await redis.hSet(key, socketId, JSON.stringify({
+          id: user.id, name: user.name, role: user.role, lastSeen: new Date(),
+          intent: metadata.intent || existing.intent || 'IDLE',
+          target: metadata.target || existing.target || null,
+        }));
+        await redis.expire(key, 12 * 60 * 60); // forgotten if every process stopped without saying
+      } else {
+        await redis.hDel(key, socketId);
+      }
+      await this.emitPresence(roomId);
+      // People joining at the same moment on different processes can send their lists in any
+      // order; one more list a moment later makes sure everyone ends up with the full one
+      if (!this.presenceRecheck.has(roomId)) {
+        this.presenceRecheck.set(roomId, setTimeout(() => {
+          this.presenceRecheck.delete(roomId);
+          this.emitPresence(roomId).catch(() => {});
+        }, 500));
+      }
+    } catch (err) {
+      console.error('[Socket] Presence not updated:', err.message);
+    }
+    return undefined;
+  }
+
+  /** Sends the room's current list (from Redis), one entry per person. */
+  async emitPresence(roomId) {
+    const byUser = new Map();
+    (await redis.hVals(`zivo:presence:${roomId}`)).map((v) => JSON.parse(v))
+      .sort((a, b) => new Date(a.lastSeen) - new Date(b.lastSeen))
+      .forEach((p) => byUser.set(p.id, p)); // latest tab's intent wins
+    this.io.to(roomId).emit('USER_PRESENCE_UPDATED', { roomId, activeUsers: [...byUser.values()] });
+  }
+
+  /** Presence in this process's memory (no Redis). */
+  updateLocalPresence(roomId, user, isJoining, metadata = {}) {
     if (!this.presence.has(roomId)) {
       this.presence.set(roomId, new Map());
     }

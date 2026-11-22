@@ -13,7 +13,7 @@ import { z } from 'zod';
 // --- GET /api/v1/admin/system/stats ---
 export const getStats = asyncHandler(async (req, res) => {
   // 1. Get cached stats
-  const cacheStats = systemCache.getStats();
+  const cacheStats = await systemCache.getSharedStats();
 
   // 2. Count current active sessions (lastActiveAt > 15 mins)
   const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);

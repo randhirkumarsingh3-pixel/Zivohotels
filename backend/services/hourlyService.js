@@ -13,10 +13,18 @@ import { getSystemConfig } from '../config/systemConfig.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { uniqueBookingRef } from '../utils/bookingRef.js';
 import { membershipFor, memberDiscounts } from './membershipService.js';
+import { resolveBest, redeem, displayOffers } from './promotionService.js';
+
 import {
   platformHourly, hotelHourly, isBookable, checkSlot, startTimes, roomsNeeded, hourlyPrice, priceHourly,
   istDate, istYmd, slotLabel, hourlyRefund,
 } from '../domains/hourly.js';
+
+/** What the guest sees of an applied offer */
+const offerSummary = (promotion) => (promotion ? {
+  id: promotion.id, name: promotion.name, code: promotion.code, label: promotion.label,
+  discountAmount: promotion.discountAmount, fundedBy: promotion.fundedBy, platform: promotion.platform,
+} : null);
 
 export class HourlyError extends Error {
   constructor(message, statusCode = 400) { super(message); this.statusCode = statusCode; }
@@ -24,7 +32,7 @@ export class HourlyError extends Error {
 
 export const getPlatformHourly = async () => platformHourly((await getSystemConfig()).hourly_settings || {});
 
-const HOLDING = (now = new Date()) => ({
+export const HOLDING = (now = new Date()) => ({
   stayType: 'HOURLY',
   OR: [
     { status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
@@ -57,7 +65,7 @@ const slotsForDay = async (roomTypeIds, ymd, db = prisma) => {
   return out;
 };
 
-const loadHotel = (hotelId) => prisma.hotel.findUnique({
+export const loadHotel = (hotelId) => prisma.hotel.findUnique({
   where: { id: hotelId },
   select: {
     id: true, name: true, city: true, status: true, hourlySettings: true, memberDiscountPercent: true,
@@ -105,6 +113,16 @@ export const hotelHourlyOffer = async (hotelId, { date, hours } = {}, now = new 
       startTimes: free,
     };
   });
+  // Best automatic offer for hourly stays on each room's price (what checkout will take off)
+  const day = new Date(`${ymd}T00:00:00`);
+  const offers = await displayOffers({
+    hotelId, checkIn: day, checkOut: new Date(day.getTime() + 86400000), stayType: 'HOURLY',
+    plans: roomTypes.map((rt) => ({ roomTypeId: rt.id, ratePlanId: rt.id, nightlyPrice: rt.price })),
+  });
+  roomTypes.forEach((rt) => {
+    const o = offers[rt.id];
+    if (o) rt.offer = { name: o.name, label: o.label, discount: o.discountTotal, priceAfter: rt.price - o.discountTotal };
+  });
   return {
     available: roomTypes.some((r) => r.startTimes.length > 0),
     hotelId, date: ymd, hours: h, settings: publicSettings(settings),
@@ -124,7 +142,7 @@ export const hourlyFromPrice = (hotel, hours, platform) => {
 };
 
 /** Checks the request and works out the price (with member discounts for signed-in guests). */
-const prepare = async ({ hotelId, roomTypeId, date, start, hours, adults = 2, children = 0, userId }, now = new Date()) => {
+const prepare = async ({ hotelId, roomTypeId, date, start, hours, adults = 2, children = 0, userId, couponCode }, now = new Date()) => {
   const hotel = await loadHotel(hotelId);
   if (!hotel || !PUBLIC_HOTEL_STATUSES.includes(hotel.status)) throw new HourlyError('Hotel not found', 404);
   const platform = await getPlatformHourly();
@@ -141,10 +159,18 @@ const prepare = async ({ hotelId, roomTypeId, date, start, hours, adults = 2, ch
   if (a + c > (roomType.maxOccupancy || 2)) throw new HourlyError(`${roomType.name} fits up to ${roomType.maxOccupancy || 2} guests.`);
 
   const membership = await membershipFor(userId);
-  const member = memberDiscounts(membership, hotel.memberDiscountPercent, price);
+  // Offers switched on for hourly stays (automatic, or the code the guest entered); the stay
+  // counts as one night on its date for the offer's dates and conditions
+  const day = new Date(`${date}T00:00:00`);
+  const { promotion, codeStatus } = await resolveBest({
+    hotelId, roomTypeId, ratePlanId: null, checkIn: day, checkOut: new Date(day.getTime() + 86400000),
+    subtotal: price, userId, code: couponCode, membership, stayType: 'HOURLY', now,
+  });
+  const promoDiscount = promotion?.discountAmount || 0;
+  const member = memberDiscounts(membership, hotel.memberDiscountPercent, price - promoDiscount);
   const taxRules = await prisma.taxRule.findMany({ where: { isActive: true }, orderBy: { effectiveFrom: 'desc' } });
-  const pricing = priceHourly({ price, memberHotel: member.hotel, memberZivo: member.zivo, taxRules });
-  return { hotel, settings, roomType, slot, hours: Number(hours), adults: a, children: c, pricing, membership, member };
+  const pricing = priceHourly({ price, promotionDiscount: promoDiscount, memberHotel: member.hotel, memberZivo: member.zivo, taxRules });
+  return { hotel, settings, roomType, slot, hours: Number(hours), adults: a, children: c, pricing, membership, member, promotion, codeStatus };
 };
 
 const freeRoomsOk = async (db, { roomType, date, slot, settings }) => {
@@ -165,6 +191,7 @@ export const quoteHourly = async (input) => {
     freeCancelHours: p.settings.freeCancelHours,
     ...p.pricing,
     memberHotelDiscount: p.member.hotel, memberZivoDiscount: p.member.zivo,
+    promotion: offerSummary(p.promotion), promoCodeStatus: p.codeStatus,
   };
 };
 
@@ -177,6 +204,7 @@ export const createHourlyBooking = async (input, { userId, requestId } = {}) => 
   const guestName = String(input.guestName || '').trim();
   const guestEmail = String(input.guestEmail || '').trim();
   const guestPhone = String(input.guestPhone || '').trim();
+  if (input.couponCode && p.codeStatus && !p.codeStatus.ok && !p.promotion) throw new HourlyError(p.codeStatus.message);
   if (guestName.length < 2) throw new HourlyError('Enter the name of the guest checking in.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) throw new HourlyError('Enter a valid email for the booking.');
   if (guestPhone.replace(/\D/g, '').length < 10) throw new HourlyError('Enter a valid mobile number for the booking.');
@@ -197,11 +225,15 @@ export const createHourlyBooking = async (input, { userId, requestId } = {}) => 
         totalAmount: p.pricing.totalAmount, baseAmount: p.pricing.baseAmount, taxAmount: p.pricing.taxAmount, roomPrice: p.pricing.roomPrice,
         hotelId: p.hotel.id, roomTypeId: p.roomType.id, ratePlanId: null,
         paymentType: 'PREPAID', status: 'PENDING', expiresAt: new Date(Date.now() + 30 * 60000),
+        couponCode: p.promotion?.code || null,
         requestId: requestId || null, userId: userId || null,
         metadata: {
           pricingVersion: 'HOURLY-V1',
           hourly: { date: input.date, start: input.start, hours: p.hours, label, freeCancelHours: p.settings.freeCancelHours, cleaningMinutes: p.settings.cleaningMinutes },
           memberDiscountAmount: p.pricing.memberDiscountAmount,
+          discountAmount: p.pricing.promotionDiscountAmount + p.pricing.memberDiscountAmount,
+          // Same shape as nightly bookings: the settlement pays the hotel for a Zivo-funded offer
+          promotion: p.promotion ? { ...offerSummary(p.promotion), discountAmount: p.pricing.promotionDiscountAmount } : null,
           membership: p.membership && p.pricing.memberDiscountAmount > 0 ? { plan: p.membership.plan.name, isPaid: p.membership.isPaid, hotelDiscount: p.member.hotel, zivoDiscount: p.member.zivo } : null,
           taxPercentage: p.pricing.taxPercentage,
         },
@@ -214,6 +246,9 @@ export const createHourlyBooking = async (input, { userId, requestId } = {}) => 
         roomPrice: p.pricing.roomPrice, extraGuestCharges: 0, mealCharges: 0, extraBedCharges: 0, subtotal: p.pricing.roomPrice,
       },
     });
+    if (p.promotion && p.pricing.promotionDiscountAmount > 0) {
+      await redeem(tx, { promotionId: p.promotion.id, bookingId: booking.id, userId, hotelId: p.hotel.id, discountAmount: p.pricing.promotionDiscountAmount });
+    }
     return booking;
   });
 };

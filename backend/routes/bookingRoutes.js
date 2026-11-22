@@ -2,7 +2,7 @@ import express from 'express';
 import { listBookingRequests, createBookingRequest, cancelBookingRequest } from '../controllers/stayRequestController.js';
 import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview, downloadVoucher, roomCancelPreview, cancelRoom } from '../controllers/bookingController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
-import { previewHourly, bookHourly } from '../controllers/hourlyController.js';
+import { previewHourly, bookHourly, getExtensionOptions, createExtension, confirmExtension } from '../controllers/hourlyController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { bookingSchema } from '../schemas/bookingSchema.js';
 
@@ -14,6 +14,10 @@ router.route('/preview')
 // Hourly stays: price for a slot, and booking it (pending payment, 30 minutes)
 router.post('/hourly/preview', extractUser, previewHourly);
 router.post('/hourly', protect, bookHourly);
+// Extra hours on a booked hourly stay: options, pay the difference, confirm the payment
+router.get('/:id/hourly/extend', protect, getExtensionOptions);
+router.post('/:id/hourly/extend', protect, createExtension);
+router.post('/:id/hourly/extend/verify', protect, confirmExtension);
 
 router.route('/my-bookings')
   .get(protect, getMyBookings);

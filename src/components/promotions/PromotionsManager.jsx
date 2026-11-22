@@ -37,6 +37,7 @@ const conditions = (p) => {
   if (p.usageLimit) out.push(`${p.usageLimit} uses in total`);
   if (p.perUserLimit) out.push(`${p.perUserLimit} per guest`);
   if (p.firstBookingOnly) out.push('First booking only');
+  if (p.forHourly) out.push('Also hourly stays');
   return out;
 };
 
@@ -49,7 +50,7 @@ const emptyForm = (hotelId, mode) => ({
   roomTypeIds: [], ratePlanIds: [],
   stayStart: '', stayEnd: '', bookStart: '', bookEnd: '',
   minNights: 1, minAdvanceDays: '', maxAdvanceDays: '',
-  usageLimit: '', perUserLimit: '', firstBookingOnly: false,
+  usageLimit: '', perUserLimit: '', firstBookingOnly: false, forHourly: false,
   fundedBy: mode === 'admin' && !hotelId ? 'ZIVO' : 'HOTEL',
   audience: 'ALL',
 });
@@ -61,7 +62,7 @@ const fromPromotion = (p) => ({
   roomTypeIds: p.roomTypeIds || [], ratePlanIds: p.ratePlanIds || [],
   stayStart: ymd(p.stayStart), stayEnd: ymd(p.stayEnd), bookStart: ymd(p.bookStart), bookEnd: ymd(p.bookEnd),
   minNights: p.minNights || 1, minAdvanceDays: p.minAdvanceDays ?? '', maxAdvanceDays: p.maxAdvanceDays ?? '',
-  usageLimit: p.usageLimit ?? '', perUserLimit: p.perUserLimit ?? '', firstBookingOnly: p.firstBookingOnly,
+  usageLimit: p.usageLimit ?? '', perUserLimit: p.perUserLimit ?? '', firstBookingOnly: p.firstBookingOnly, forHourly: Boolean(p.forHourly),
   fundedBy: p.fundedBy,
   audience: p.audience || 'ALL',
 });
@@ -96,7 +97,7 @@ const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) 
       maxDiscount: f.discountType === 'PERCENT' ? f.maxDiscount : null, minBookingAmount: f.minBookingAmount,
       stayStart: f.stayStart || null, stayEnd: f.stayEnd || null, bookStart: f.bookStart || null, bookEnd: f.bookEnd || null,
       minNights: Number(f.minNights) || 1, minAdvanceDays: f.minAdvanceDays, maxAdvanceDays: f.maxAdvanceDays,
-      usageLimit: f.usageLimit, perUserLimit: f.perUserLimit, firstBookingOnly: f.firstBookingOnly,
+      usageLimit: f.usageLimit, perUserLimit: f.perUserLimit, firstBookingOnly: f.firstBookingOnly, forHourly: f.forHourly,
       audience: f.audience || 'ALL',
       ...(mode === 'admin' ? { fundedBy: f.fundedBy } : {}),
       ...(f.scope === 'PROPERTY'
@@ -253,6 +254,9 @@ const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) 
           <label className={label}>Uses per guest<input type="number" min="1" className={`${input} mt-1`} value={f.perUserLimit} placeholder="Unlimited" onChange={(e) => set('perUserLimit', e.target.value)} /></label>
           <label className="flex items-center gap-2 text-sm text-gray-700 md:col-span-2 mt-5 cursor-pointer">
             <input type="checkbox" className="rounded border-gray-300" checked={f.firstBookingOnly} onChange={(e) => set('firstBookingOnly', e.target.checked)} /> Only for a guest&apos;s first booking on Zivo
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 md:col-span-2 cursor-pointer">
+            <input type="checkbox" className="rounded border-gray-300" checked={f.forHourly} onChange={(e) => set('forHourly', e.target.checked)} /> Also for hourly stays (not for offers limited to rate plans or needing more than one night)
           </label>
         </div>
       </section>
