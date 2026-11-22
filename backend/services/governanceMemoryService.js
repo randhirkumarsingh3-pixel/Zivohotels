@@ -3,7 +3,7 @@ import prisma from '../config/db.js';
 
 
 /**
- * ZivoHotels Governance Memory Service
+ * ZivoPlus Governance Memory Service
  * Tracks autonomous decisions and their long-term effectiveness.
  */
 class GovernanceMemoryService {

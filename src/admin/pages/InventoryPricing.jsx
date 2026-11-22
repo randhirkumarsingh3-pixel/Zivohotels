@@ -29,7 +29,7 @@ const InventoryPricing = () => {
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">Inventory &amp; Rates</h2>
-          <p className="text-gray-500 mt-0.5 text-sm">Rooms to sell, stop-sell and nightly prices per rate plan. Guests see these on ZivoHotels straight away.</p>
+          <p className="text-gray-500 mt-0.5 text-sm">Rooms to sell, stop-sell and nightly prices per rate plan. Guests see these on ZivoPlus straight away.</p>
         </div>
         <div className="relative">
           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />

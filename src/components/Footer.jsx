@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from './brand/Logo';
+import { BRAND_NAME } from '../config/brand';
 
 /**
  * Guest site footer (navy). Every link goes somewhere real: links to pages that don't exist yet
@@ -21,7 +22,7 @@ const Footer = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
         <div className="col-span-2 md:col-span-1">
-          <Link to="/" className="inline-flex mb-5" aria-label="ZivoHotels home">
+          <Link to="/" className="inline-flex mb-5" aria-label="ZivoPlus home">
             <Logo size="md" onDark />
           </Link>
           <p className="text-navy-100 text-sm leading-relaxed max-w-xs">
@@ -33,7 +34,7 @@ const Footer = () => (
         <Column title="For hotels" links={[['/list-your-property', 'List your property'], ['/extranet/login', 'Partner log in']]} />
       </div>
       <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row justify-between gap-3 text-sm text-navy-200">
-        <p>© {new Date().getFullYear()} ZivoHotels. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
         <div className="flex gap-6">
           <Link to="/privacy" className="hover:text-white">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white">Terms of Service</Link>

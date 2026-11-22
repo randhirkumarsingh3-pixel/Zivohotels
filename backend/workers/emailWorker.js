@@ -27,7 +27,7 @@ const processJob = async (job) => {
     // Send email using Resend
     // Important: In a real system you may also enforce Idempotency by storing an IdempotencyKey
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'ZivoHotels <noreply@zivohotels.com>',
+      from: process.env.EMAIL_FROM || 'ZivoPlus <noreply@zivoplus.com>',
       to,
       subject,
       html,

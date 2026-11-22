@@ -6,7 +6,7 @@ import invoiceDomain from '../domains/invoiceDomain.js';
 import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
 import { getSupportContacts } from '../config/supportContacts.js';
 
-// The company that runs ZivoHotels (the booking platform), printed on every invoice
+// The company that runs ZivoPlus (the booking platform), printed on every invoice
 const platformDetails = async () => {
   const support = await getSupportContacts();
   return {

@@ -80,7 +80,7 @@ export const getSettlementDetails = async (req, res) => {
     const tcs = n(settlement.tcsAmount);
     const tds = n(settlement.tdsAmount);
     const netPayable = n(settlement.netPayable);
-    // What ZivoHotels collected online; the rest of the value was paid at the hotel
+    // What ZivoPlus collected online; the rest of the value was paid at the hotel
     const collectedOnline = netPayable + commission + commissionGst + tcs + tds;
     const collectedAtHotel = Math.max(0, gross - collectedOnline);
     const gstSplit = n(settlement.igstAmount) > 0 ? 'IGST' : 'CGST + SGST';

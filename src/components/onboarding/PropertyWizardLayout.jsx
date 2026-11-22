@@ -54,7 +54,7 @@ const PropertyWizardLayout = ({
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold text-navy-900 flex items-center gap-2">
                 <LogoMark size="sm" />
-                ZivoHotels <span className="font-normal text-slate-400 mx-1" aria-hidden="true">|</span> <span className="font-semibold text-slate-700">{title}</span>
+                ZivoPlus <span className="font-normal text-slate-400 mx-1" aria-hidden="true">|</span> <span className="font-semibold text-slate-700">{title}</span>
               </h1>
             </div>
             <div className="sm:hidden flex items-center gap-2 font-bold text-navy-900"><LogoMark size="sm" /> {title}</div>

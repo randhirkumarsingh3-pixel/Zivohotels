@@ -31,7 +31,7 @@ router.get('/', async (req, res, next) => {
         email: {
           provider: 'Resend',
           keySet: key.startsWith('re_') && key !== 're_test_key',
-          from: process.env.EMAIL_FROM || 'ZivoHotels <noreply@zivohotels.com>',
+          from: process.env.EMAIL_FROM || 'ZivoPlus <noreply@zivoplus.com>',
           testMode: emailTestMode(),
           adminAlertEmails: adminAlertEmails().length,
         },

@@ -1,6 +1,6 @@
-# ZivoHotels System Audit Report (April 2026) - FINAL
+# ZivoPlus System Audit Report (April 2026) - FINAL
 
-This report summarizes a comprehensive end-to-end audit of the ZivoHotels platform, spanning the database, backend services, and operational resilience for a production launch.
+This report summarizes a comprehensive end-to-end audit of the ZivoPlus platform, spanning the database, backend services, and operational resilience for a production launch.
 
 ---
 

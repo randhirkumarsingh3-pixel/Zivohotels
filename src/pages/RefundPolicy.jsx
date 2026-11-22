@@ -21,7 +21,7 @@ const SECTIONS = [
 const RefundPolicy = () => (
   <LegalPage
     title="Cancellation & Refund Policy"
-    intro="How cancellations and refunds work for bookings made on ZivoHotels. The cancellation terms of your rate are shown on the hotel page, at checkout and in your booking, and those terms apply to your booking."
+    intro="How cancellations and refunds work for bookings made on ZivoPlus. The cancellation terms of your rate are shown on the hotel page, at checkout and in your booking, and those terms apply to your booking."
     sections={SECTIONS}
   >
     <LegalSection id="summary" title="1. In short">

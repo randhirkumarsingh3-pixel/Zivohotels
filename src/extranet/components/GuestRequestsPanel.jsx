@@ -51,7 +51,7 @@ const GuestRequestsPanel = ({ requests = [], onChanged, addToast }) => {
                 <div className="mt-3 space-y-2">
                   <label htmlFor={`reply-${r.id}`} className="block text-xs font-semibold text-gray-700">Reply to the guest <span className="font-normal text-gray-500">(needed to decline)</span></label>
                   <textarea id={`reply-${r.id}`} rows={2} maxLength={500} value={replies[r.id] || ''}
-                    placeholder="e.g. Driver will wait at Gate 3 with a ZivoHotels sign. ₹900, pay at the hotel."
+                    placeholder="e.g. Driver will wait at Gate 3 with a ZivoPlus sign. ₹900, pay at the hotel."
                     onChange={(e) => setReplies((x) => ({ ...x, [r.id]: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-navy-500 outline-none" />
                   <div className="flex flex-wrap gap-2">

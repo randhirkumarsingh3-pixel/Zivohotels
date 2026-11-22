@@ -1,6 +1,6 @@
 /**
  * End-to-end hourly stay against a running API and its database (sample data from prisma/seed.js):
- * the hotel switches hourly stays on (one room for hourly use), ZivoHotels approves, a guest books
+ * the hotel switches hourly stays on (one room for hourly use), ZivoPlus approves, a guest books
  * and pays a 3-hour slot, an overlapping slot is refused (cleaning time included), a slot after
  * the cleaning time is accepted, night inventory is untouched, and the guest cancels in time for
  * a full refund to Zivo Cash. The hotel's hourly setup is put back afterwards.
@@ -29,8 +29,8 @@ describe('Hourly stay end to end', function () {
 
   before(async () => {
     owner = await login('extranet@zivotechretreat.com', process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026');
-    admin = await login('admin@zivohotels.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
-    guest = await login('user@zivohotels.com', process.env.SEED_CUSTOMER_PASSWORD || 'customer123');
+    admin = await login('admin@zivoplus.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
+    guest = await login('user@zivoplus.com', process.env.SEED_CUSTOMER_PASSWORD || 'customer123');
     hotelId = (await api.get('/extranet/property', owner)).data.data.id;
     const h = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { hourlySettings: true, roomTypes: { select: { id: true, hourlyEnabled: true, hourlyRooms: true, hourlyPrices: true } } } });
     saved = h; // put back afterwards
@@ -51,13 +51,13 @@ describe('Hourly stay end to end', function () {
       roomTypes: setup.roomTypes.map((t) => ({ id: t.id, hourlyEnabled: t.id === roomType.id, hourlyRooms: 1, hourlyPrices: { 3: 1299, 6: 1999 } })),
     }, owner);
     expect(r.status, JSON.stringify(r.data)).to.equal(200);
-    // Approval is ZivoHotels' decision, not the hotel's
+    // Approval is ZivoPlus' decision, not the hotel's
     await prisma.hotel.update({ where: { id: hotelId }, data: { hourlySettings: { ...(await prisma.hotel.findUnique({ where: { id: hotelId } })).hourlySettings, approved: false } } });
     const offer = (await api.get(`/hotels/${hotelId}/hourly?date=${DATE}&hours=3`)).data.data;
     expect(offer.available).to.equal(false);
   });
 
-  it('shows the hotel to guests once ZivoHotels approves', async () => {
+  it('shows the hotel to guests once ZivoPlus approves', async () => {
     const r = await api.put(`/admin/hourly/hotels/${hotelId}`, { approved: true }, admin);
     expect(r.status, JSON.stringify(r.data)).to.equal(200);
     const offer = (await api.get(`/hotels/${hotelId}/hourly?date=${DATE}&hours=3`)).data.data;

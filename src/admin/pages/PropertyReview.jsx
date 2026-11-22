@@ -551,7 +551,7 @@ export default function PropertyReview() {
                     <div className="bg-red-50 p-5 rounded-xl border border-red-100 flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold text-red-900">🔴 Currently Live</h3>
-                        <p className="text-sm text-red-700 mt-1">Property is visible to customers on ZivoHotels.</p>
+                        <p className="text-sm text-red-700 mt-1">Property is visible to customers on ZivoPlus.</p>
                       </div>
                       <button 
                         disabled={actionLoading}

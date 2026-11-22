@@ -13,7 +13,7 @@ resource "google_monitoring_dashboard" "api_dashboard" {
   project = var.project_id
   dashboard_json = <<EOF
 {
-  "displayName": "ZivoHotels - API & Compute",
+  "displayName": "ZivoPlus - API & Compute",
   "gridLayout": {
     "widgets": [
       {
@@ -61,7 +61,7 @@ resource "google_monitoring_dashboard" "db_dashboard" {
   project = var.project_id
   dashboard_json = <<EOF
 {
-  "displayName": "ZivoHotels - Database & Infrastructure",
+  "displayName": "ZivoPlus - Database & Infrastructure",
   "gridLayout": {
     "widgets": [
       {

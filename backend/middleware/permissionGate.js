@@ -1,7 +1,7 @@
 /**
  * Checks every admin-console and extranet request against the person's permissions
  * (services/accessService.js). Each rule matches a path (after /api/v1) and says which permission
- * reading (GET) and changing (anything else) need: for ZivoHotels staff (ADMIN accounts) and for
+ * reading (GET) and changing (anything else) need: for ZivoPlus staff (ADMIN accounts) and for
  * hotel teams (OWNER accounts, the extranet). The first matching rule applies; a path with no rule
  * needs every permission (only Super Admins / hotel owners), so nothing new is left open by default.
  *

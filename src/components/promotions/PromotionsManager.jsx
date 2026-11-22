@@ -265,12 +265,12 @@ const PromotionForm = ({ mode, initial, editingId, hotels, onCancel, onSaved }) 
         <section className="space-y-2">
           <p className="text-sm font-bold text-gray-800">Who pays for the discount</p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Who pays for the discount">
-            {[{ id: 'ZIVO', label: 'ZivoHotels', hint: 'The hotel is paid as if there were no discount' }, { id: 'HOTEL', label: 'The hotel', hint: 'The hotel\'s payout is on the discounted price' }].map((o) => (
+            {[{ id: 'ZIVO', label: 'ZivoPlus', hint: 'The hotel is paid as if there were no discount' }, { id: 'HOTEL', label: 'The hotel', hint: 'The hotel\'s payout is on the discounted price' }].map((o) => (
               <button key={o.id} type="button" role="radio" aria-checked={f.fundedBy === o.id} title={o.hint} onClick={() => set('fundedBy', o.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-semibold border ${f.fundedBy === o.id ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}>{o.label}</button>
             ))}
           </div>
-          <p className="text-xs text-gray-500">{f.fundedBy === 'ZIVO' ? 'ZivoHotels pays the discount: the hotel\'s commission and payout are on the full price.' : 'The hotel gives the discount: commission and payout are on the discounted price.'}</p>
+          <p className="text-xs text-gray-500">{f.fundedBy === 'ZIVO' ? 'ZivoPlus pays the discount: the hotel\'s commission and payout are on the full price.' : 'The hotel gives the discount: commission and payout are on the discounted price.'}</p>
         </section>
       )}
       {mode === 'owner' && <p className="text-xs text-gray-500">Your property funds this discount: commission and your payout are on the discounted price.</p>}
@@ -424,7 +424,7 @@ const PromotionsManager = ({ mode = 'owner', hotelId = null }) => {
       {mode === 'owner' && zivo.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-bold text-gray-900 flex items-center gap-2"><Globe2 size={16} className="text-indigo-600" /> Zivo offers on your property</h3>
-          <p className="text-xs text-gray-500 -mt-2">Run by ZivoHotels. When ZivoHotels funds the discount, your payout is on the full price.</p>
+          <p className="text-xs text-gray-500 -mt-2">Run by ZivoPlus. When ZivoPlus funds the discount, your payout is on the full price.</p>
           {zivo.map(card)}
         </div>
       )}

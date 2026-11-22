@@ -2,7 +2,7 @@ resource "google_api_gateway_api" "api" {
   provider     = google-beta
   project      = var.project_id
   api_id       = var.api_id
-  display_name = "ZivoHotels Gateway API"
+  display_name = "ZivoPlus Gateway API"
 }
 
 resource "google_api_gateway_api_config" "api_config" {

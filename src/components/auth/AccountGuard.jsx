@@ -31,7 +31,7 @@ const AccountGuard = () => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="add-phone-title">
       <div className="w-full max-w-md rounded-card bg-white p-6 shadow-xl">
         <h2 id="add-phone-title" className="flex items-center gap-2 text-lg font-bold text-gray-900"><Smartphone size={20} className="text-navy-700" aria-hidden="true" /> Add your mobile number</h2>
-        <p className="mt-1 mb-5 text-sm text-gray-600">Every ZivoHotels account needs a confirmed mobile number, so hotels can reach you about your stay. We&apos;ll send a code by SMS.</p>
+        <p className="mt-1 mb-5 text-sm text-gray-600">Every ZivoPlus account needs a confirmed mobile number, so hotels can reach you about your stay. We&apos;ll send a code by SMS.</p>
         <PhoneVerifyForm />
         <button type="button" onClick={logout} className="mt-4 w-full text-sm font-semibold text-gray-500 hover:text-gray-700">Sign out instead</button>
       </div>

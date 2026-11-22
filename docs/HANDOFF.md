@@ -1,4 +1,4 @@
-# Handoff: state of the ZivoHotels project (13 Nov 2026)
+# Handoff: state of the ZivoPlus project (13 Nov 2026)
 
 Written at the end of a long cloud session so a new session (running on the owner's Mac via
 Remote Control) can continue without the earlier conversation. Read this first, then
@@ -49,9 +49,9 @@ Hotel booking platform:
 
   | Role | Email | Password |
   |---|---|---|
-  | Admin | admin@zivohotels.com | admin123 |
+  | Admin | admin@zivoplus.com | admin123 |
   | Owner (extranet, at `/extranet/login`) | extranet@zivotechretreat.com | ZivoExtranet@2026 |
-  | Customer | user@zivohotels.com | customer123 |
+  | Customer | user@zivoplus.com | customer123 |
 
 ## Checks to run before pushing
 ```bash
@@ -151,7 +151,7 @@ npm run test:smoke -- --url=http://localhost:5000   # needs the API running; 4 p
     follow check-out) and the owner is notified in-app and by email that the refund is being made.
 - **No-show:** what was paid online is kept and becomes a `NO_SHOW` settlement.
 - **Deductions on every settlement** (`constants/finance.js`): GST 18% on commission (CGST 9% +
-  SGST 9% when ZivoHotels and the hotel are in the same state, else IGST 18%; set `ZIVO_GSTIN`),
+  SGST 9% when ZivoPlus and the hotel are in the same state, else IGST 18%; set `ZIVO_GSTIN`),
   TCS 0.5% of the pre-GST value collected online (GST-registered hotels only), TDS 0.1% (194-O) of
   the pre-GST value. netPayable = collected online - commission - GST on it - TCS - TDS.
 - **Commission is admin-only:** owners could previously set their own rate through the API.
@@ -195,7 +195,7 @@ settlement. Fixed along the way:
   company billing. Hotelier voucher (owner/admin only): night-wise breakup and the settlement
   calculation (commission, GST on commission, TCS, TDS, payable), provisional until check-out.
   Download from the confirmation screen, My Bookings and the extranet bookings list.
-  ZivoHotels' legal/support lines come from `ZIVO_*` settings (shown only when set).
+  ZivoPlus' legal/support lines come from `ZIVO_*` settings (shown only when set).
 - **PDFs on this Mac:** Puppeteer's bundled Chrome can't run on macOS 12, so `utils/browser.js`
   falls back to the installed Chrome (invoices failed locally before for the same reason).
 - **Invoice:** shows the hotel's real GSTIN (it printed a made-up one), the true payment status, the
@@ -213,7 +213,7 @@ settlement. Fixed along the way:
   (`stayNightlyPrice`). A rate plan without a price can't be shown or booked.
 - **Room Config:** prices are shown (every plan read "UNCONFIGURED ₹—"), room photos upload the file
   (they saved a browser-only `blob:` URL), the rate-plan form gets its room type.
-- **Channel managers (ZivoHotels as the OTA):** Admin -> Channel Manager records per property
+- **Channel managers (ZivoPlus as the OTA):** Admin -> Channel Manager records per property
   whether ARI comes from the extranet or its channel manager (provider, property code, room/rate
   code mapping, API key, status). The channel manager uses `X-Api-Key` on
   `GET /channel-manager/property`, `POST /channel-manager/ari`, `GET /channel-manager/bookings`
@@ -327,7 +327,7 @@ settlement. Fixed along the way:
   (hotel), `/admin/wallets` (overview, guests, adjust, hotel statements). Pages: `/wallet` (Zivo
   Cash), Extranet -> Wallet, Admin -> Wallet Control (the old page was sample data).
 - Guest wallet "Zivo Cash" (`Wallet.userId`, `WalletTransaction` with category, booking link and
-  balance after): closed-system credit, spendable only on ZivoHotels bookings (no top-up,
+  balance after): closed-system credit, spendable only on ZivoPlus bookings (no top-up,
   withdrawal or transfer). Credits: refunds the guest CHOSE to take as Zivo Cash (never the
   default), Zivo Cash returned from uncompleted / cancelled bookings, admin credits with a reason.
 - Paying: checkout "Pay with Zivo Cash" covers the amount due now (full, or the part payment).
@@ -440,7 +440,7 @@ settlement. Fixed along the way:
 ## Home page (Nov 2026)
 - Order: search with quick chips (Near me, recent searches, cities with live counts), sign-up banner
   (signed out) or Zivo Prime banner (signed-in guests), live offers, top-rated hotels, popular
-  destinations, the guest's own rows (recently viewed, recommended), "Why book with ZivoHotels",
+  destinations, the guest's own rows (recently viewed, recommended), "Why book with ZivoPlus",
   guest reviews.
 - Data: `GET /api/v1/public/home` (`controllers/homeController.js`, cached 5 minutes in memory):
   cities with counts and average map pin, top-rated live hotels with the lowest base price, active
@@ -494,7 +494,7 @@ settlement. Fixed along the way:
 
 ## Open questions
 - GST on a kept cancellation fee / no-show charge is taken pro rata from the booking; confirm with
-  the accountant. ZivoHotels' commission invoice to the hotel isn't generated yet.
+  the accountant. ZivoPlus' commission invoice to the hotel isn't generated yet.
 - Changing a hotel's payout bank account after submission goes through support/admin; there is no
   verification flow for it.
 - `paymentController` falls back to a hard-coded 30% for partial payments instead of the configured
@@ -515,13 +515,13 @@ settlement. Fixed along the way:
 
 ## Staging on the Hostinger VPS (added 16 Nov 2026)
 - **Server:** `srv2151205` (Ubuntu 24.04, Docker, IP 189.72.151.212). It already runs a **different**
-  ZivoHotels platform (microservices, `/opt/zivo`, Docker project `zivo-staging`). The owner wants
+  Zivo platform (microservices, `/opt/zivo`, Docker project `zivo-staging`). The owner wants
   that kept **completely separate**: never modify it.
-- **Our app** runs there as its own Docker project `zivohotels-app` in `/opt/zivohotels-app`, at
-  https://zivohotels.189-72-151-212.sslip.io. Setup, updates, backups and removal:
+- **Our app** runs there as its own Docker project `zivoplus-app` in `/opt/zivoplus-app`, at
+  https://zivoplus.189-72-151-212.sslip.io. Setup, updates, backups and removal:
   `deploy/vps/README.md`.
 - **The only links** with the other project are a Caddy site file plus one `import` line, and the
-  Caddy container attached to our network `zivohotels-app-edge`. `deploy/vps/caddy-link.sh`
+  Caddy container attached to our network `zivoplus-app-edge`. `deploy/vps/caddy-link.sh`
   manages both, and cron re-runs it every 5 minutes because the other project's deploys reset them.
 - **Backend settings for self-hosting:** `STORAGE_DRIVER=local`, `CORS_ORIGINS`, `HOST`,
   `TRUST_PROXY=2` (Caddy, then the web container, then the API).

@@ -7,21 +7,21 @@ const SEOSettings = () => {
   const [selectedPage, setSelectedPage] = useState('homepage');
   const [seoData, setSeoData] = useState({
     global: {
-      brandName: 'ZivoHotels',
-      canonicalBase: 'https://www.zivohotels.com',
-      defaultTitle: 'ZivoHotels - Premium Stays Across India',
-      defaultDescription: 'Book premium hotels and resorts at the best prices with ZivoHotels.',
+      brandName: 'ZivoPlus',
+      canonicalBase: 'https://www.zivoplus.com',
+      defaultTitle: 'ZivoPlus - Premium Stays Across India',
+      defaultDescription: 'Book premium hotels and resorts at the best prices with ZivoPlus.',
       keywords: 'hotels, resorts, booking, india, luxury stays',
-      ogImageUrl: 'https://zivohotels.com/assets/og-default.jpg'
+      ogImageUrl: 'https://zivoplus.com/assets/og-default.jpg'
     },
     pagewise: {
       homepage: { title: '', description: '', robots: 'index, follow' },
       search: { title: '', description: '', robots: 'index, follow' },
       detail: { title: '', description: '', robots: 'index, follow' },
-      city: { title: 'Best Hotels in {{city}} | ZivoHotels', description: 'Find the best premium stays in {{city}}. Book now for exclusive discounts!', robots: 'index, follow' }
+      city: { title: 'Best Hotels in {{city}} | ZivoPlus', description: 'Find the best premium stays in {{city}}. Book now for exclusive discounts!', robots: 'index, follow' }
     },
     advanced: {
-      robotsTxt: "User-agent: *\nDisallow: /admin/\nDisallow: /checkout/\nAllow: /\n\nSitemap: https://www.zivohotels.com/sitemap.xml",
+      robotsTxt: "User-agent: *\nDisallow: /admin/\nDisallow: /checkout/\nAllow: /\n\nSitemap: https://www.zivoplus.com/sitemap.xml",
       schemaEnabled: true
     }
   });

@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { Network, RefreshCw, KeyRound, Copy, Check, X, AlertTriangle } from 'lucide-react';
 
 /**
- * Admin -> Channel Manager, with ZivoHotels as the OTA.
+ * Admin -> Channel Manager, with ZivoPlus as the OTA.
  *
- * Each property either manages rates & availability in the ZivoHotels extranet, or connects its
+ * Each property either manages rates & availability in the ZivoPlus extranet, or connects its
  * own channel manager (STAAH, AxisRooms, eZee...). For a connected property we record the provider
  * and the property's code there, map room types / rate plans to the channel manager's codes and
  * issue an API key. The channel manager then pushes ARI to /channel-manager/ari and pulls bookings
  * from /channel-manager/bookings. (This page used to show hard-coded "Booking.com / MakeMyTrip /
- * Agoda" connections as if ZivoHotels were a hotel distributing to other OTAs.)
+ * Agoda" connections as if ZivoPlus were a hotel distributing to other OTAs.)
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
@@ -47,8 +47,8 @@ const ChannelManager = () => {
             <Network className="mr-2 h-6 w-6 text-brand-700" /> Channel Manager Connectivity
           </h1>
           <p className="text-gray-500 mt-1 max-w-3xl">
-            How each property sends its rates and availability to ZivoHotels: managed in the ZivoHotels extranet,
-            or pushed by the property&apos;s own channel manager, which also collects its ZivoHotels bookings.
+            How each property sends its rates and availability to ZivoPlus: managed in the ZivoPlus extranet,
+            or pushed by the property&apos;s own channel manager, which also collects its ZivoPlus bookings.
           </p>
         </div>
         <button type="button" onClick={load} disabled={loading} className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold hover:bg-gray-50">
@@ -77,7 +77,7 @@ const ChannelManager = () => {
                 <td className="px-4 py-3">
                   {r.mode === 'CHANNEL_MANAGER'
                     ? <span><b>{r.provider}</b><span className="text-gray-500"> · code {r.externalHotelCode || '—'}</span></span>
-                    : <span className="text-gray-600">ZivoHotels extranet</span>}
+                    : <span className="text-gray-600">ZivoPlus extranet</span>}
                 </td>
                 <td className="px-4 py-3">
                   {r.mode === 'CHANNEL_MANAGER'
@@ -166,7 +166,7 @@ const ConnectionPanel = ({ hotelId, onClose }) => {
             <section className="space-y-3">
               <h3 className="font-bold text-gray-900">1. How are rates and availability managed?</h3>
               <div className="grid grid-cols-2 gap-3" role="radiogroup">
-                {[{ id: 'EXTRANET', t: 'ZivoHotels extranet', d: 'The property or our team updates them in Inventory & Rates.' },
+                {[{ id: 'EXTRANET', t: 'ZivoPlus extranet', d: 'The property or our team updates them in Inventory & Rates.' },
                   { id: 'CHANNEL_MANAGER', t: 'Channel manager', d: 'Pushed by the property\'s channel manager; bookings are collected by it.' }].map((o) => (
                   <button key={o.id} type="button" role="radio" aria-checked={form.mode === o.id} onClick={() => setForm({ ...form, mode: o.id })}
                     className={`text-left p-4 rounded-xl border-2 ${form.mode === o.id ? 'border-brand-600 bg-brand-50/40' : 'border-gray-200'}`}>
@@ -279,7 +279,7 @@ const IntegrationGuide = () => {
     { "roomCode": "STD", "from": "2027-01-12", "to": "2027-01-12", "stopSell": true }
   ]
 }`}</pre>
-        <p className="text-xs text-gray-500"><code>available</code> = rooms left to sell on ZivoHotels; <code>price</code> = per night at base occupancy, before GST (needs a <code>rateCode</code>). Each update is applied or rejected with a reason.</p>
+        <p className="text-xs text-gray-500"><code>available</code> = rooms left to sell on ZivoPlus; <code>price</code> = per night at base occupancy, before GST (needs a <code>rateCode</code>). Each update is applied or rejected with a reason.</p>
         <p><b>Collect bookings</b>: <code>GET {base}/bookings?since=2027-01-01T00:00:00Z</code> returns new, changed and cancelled bookings (oldest first) with room / rate codes, guest and amounts; pass the returned <code>next</code> as <code>since</code> on the next call.</p>
       </div>
     </details>

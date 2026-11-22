@@ -141,7 +141,7 @@ model Hotel {
   @@index([country])
   @@index([pincode])
   stayRequests          StayRequest[]
-  /// Hourly stays: { enabled, approved (by ZivoHotels), openFrom "08:00", openTo "21:00",
+  /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
   /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
   hourlySettings        Json?
 }
@@ -902,7 +902,7 @@ model ChannelIntegration {
   credentials       Json
   isActive          Boolean   @default(true)
   externalHotelCode String? // the property's ID at its channel manager
-  apiKeyHash        String? // SHA-256 of the key the channel manager uses to push ARI to ZivoHotels
+  apiKeyHash        String? // SHA-256 of the key the channel manager uses to push ARI to ZivoPlus
   apiKeyHint        String? // last 4 characters, to recognise the key
   status            String    @default("PENDING") // PENDING | ACTIVE | PAUSED
   lastAriAt         DateTime?
@@ -1681,7 +1681,7 @@ model HourlyAllocation {
   @@unique([roomTypeId, date])
 }
 
-/// A role: a named set of permissions (constants/permissions.js). scope ADMIN = ZivoHotels staff
+/// A role: a named set of permissions (constants/permissions.js). scope ADMIN = ZivoPlus staff
 /// (admin console), EXTRANET = a hotel's team. Ready-made roles have a key and isSystem (can't be
 /// edited or deleted). Custom extranet roles belong to the hotel owner who made them (ownerId).
 model AccessRole {

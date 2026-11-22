@@ -1,5 +1,5 @@
 /**
- * Staff & roles screens: ZivoHotels' team (/admin/staff, needs staff.manage) and a hotel's team
+ * Staff & roles screens: ZivoPlus' team (/admin/staff, needs staff.manage) and a hotel's team
  * (/extranet/team, needs team.manage at that property). The rules live in services/staffService.js.
  */
 import { asyncHandler } from '../middleware/asyncHandler.js';

@@ -1,11 +1,11 @@
-# ZivoHotels app on the Hostinger VPS (separate project, next to the existing stack)
+# ZivoPlus app on the Hostinger VPS (separate project, next to the existing stack)
 
 This runs **this repository's app** on the VPS `srv2151205` (Ubuntu 24.04, Docker) as a
 **completely separate Docker project**. It has its own folder, database, API, website, networks
-and volumes. The other ZivoHotels platform that already runs there (`/opt/zivo`, Docker project
+and volumes. The other project that already runs there (`/opt/zivo`, Docker project
 `zivo-staging`) is not modified.
 
-**Address:** https://zivohotels.189-72-151-212.sslip.io
+**Address:** https://zivoplus.189-72-151-212.sslip.io
 
 sslip.io names point to the IP inside them, so **no DNS setup** is needed. You can switch to a
 real domain later by changing one line in `.env`.
@@ -13,17 +13,54 @@ real domain later by changing one line in `.env`.
 ```
 Internet ──HTTPS──> Caddy (belongs to the other project, holds ports 80/443)
                       ├─ app./api./s3.189-72-151-212.sslip.io → the other platform (unchanged)
-                      └─ zivohotels.189-72-151-212.sslip.io
-                           └─(network "zivohotels-app-edge")→ our website container (Nginx)
+                      └─ zivoplus.189-72-151-212.sslip.io
+                           └─(network "zivoplus-app-edge")→ our website container (Nginx)
                                 ├─ /            → the React app
                                 └─ /api /uploads /socket.io → our API container
                                                                 └─ our PostgreSQL container
 ```
 
+## Moving to the ZivoPlus names (once, after updating to the ZivoPlus code)
+
+Until now the app ran as `zivohotels-app` from `/opt/zivohotels-app` (database and user
+`zivohotels`). The ZivoPlus code uses `zivoplus-app`, `/opt/zivoplus-app` and `zivoplus`. Move once:
+
+```bash
+cd /opt/zivohotels-app && git pull origin main
+bash /opt/zivohotels-app/deploy/vps/move-to-zivoplus.sh
+```
+
+It asks you to type `MOVE`, then:
+1. checks disk space and backs up the database to `/var/backups/zivoplus-app/before-zivoplus-*.dump`;
+2. builds the new images while the site still runs;
+3. stops the site (a few minutes), copies every data volume to the new names (the old ones are kept),
+   renames the database and its user, moves the folder (the old path stays as a link), switches our
+   Caddy file and the cron jobs, and starts everything with `deploy.sh`.
+
+If any step fails it puts everything back and starts the old site again. Until the move is done,
+`deploy.sh` refuses to start under the new names (it would start with an empty database).
+After a week or so, delete the kept old data with the commands it prints at the end.
+
+## Switching to the zivoplus.com address
+
+1. In DNS, point the new names (e.g. `staging.zivoplus.com`) to this server, and keep the old names
+   pointing here too.
+2. In `deploy/vps/.env`: set `APP_DOMAIN` to the new name and list the old names in
+   `REDIRECT_DOMAINS` (comma-separated). They forward permanently to the same page on the new one.
+   ```
+   APP_DOMAIN=staging.zivoplus.com
+   REDIRECT_DOMAINS=staging.zivohotels.com
+   EMAIL_FROM="ZivoPlus Staging <noreply@zivoplus.com>"
+   ```
+3. `bash /opt/zivoplus-app/deploy/vps/deploy.sh`. It refuses if a name doesn't resolve yet, so the
+   site never goes down waiting for DNS.
+
+Keep the old domain registered (and in `REDIRECT_DOMAINS`) for at least a year.
+
 ## What is shared with the other project (only these two things)
-1. **Caddy's configuration:** one file next to its Caddyfile, `zivohotels-app.caddy`, plus one
-   line at the end of the Caddyfile: `import zivohotels-app.caddy`.
-2. **Networking:** the Caddy container is attached to **our** network `zivohotels-app-edge`, so it
+1. **Caddy's configuration:** one file next to its Caddyfile, `zivoplus-app.caddy`, plus one
+   line at the end of the Caddyfile: `import zivoplus-app.caddy`.
+2. **Networking:** the Caddy container is attached to **our** network `zivoplus-app-edge`, so it
    can reach our website. Nothing of ours joins the other project's networks.
 
 `caddy-link.sh` manages both:
@@ -36,11 +73,12 @@ Deploys of the other project replace its Caddyfile and recreate Caddy, which dro
 ## Files in this folder
 | File | Purpose |
 |---|---|
-| `docker-compose.yml` | Our project `zivohotels-app`: `db`, `api`, `zivohotels-app-web` |
+| `docker-compose.yml` | Our project `zivoplus-app`: `db`, `api`, `zivoplus-app-web` |
 | `web.Dockerfile`, `nginx.conf` | The website image (React build + Nginx, which also routes to the API) |
 | `.env.example` | Settings template; the real `.env` stays on the server and is never committed |
 | `deploy.sh` | Deploy or update in one command |
-| `caddy-link.sh`, `caddy/zivohotels-app.caddy.template` | Connects our domain in Caddy |
+| `caddy-link.sh`, `caddy/zivoplus-app.caddy.template` | Connects our domain in Caddy (and forwards `REDIRECT_DOMAINS`) |
+| `move-to-zivoplus.sh` | One-time move from the old `zivohotels-app` names |
 
 Tested in a copy of this server's layout (a Caddy container on `zivo-staging_default` with the
 Caddyfile mounted from `/opt/zivo/current/...`, plus a stand-in other app):
@@ -70,23 +108,23 @@ Docker Compose must be **v2.17 or newer**.
 ### 3. Get the code with its own deploy key
 This key is used only for this repository, so it can't interfere with the other project's GitHub access:
 ```bash
-ssh-keygen -t ed25519 -C "zivohotels-app on srv2151205" -f /root/.ssh/zivohotels_app_deploy -N ""
+ssh-keygen -t ed25519 -C "zivoplus-app on srv2151205" -f /root/.ssh/zivohotels_app_deploy -N ""
 ```
 ```bash
-printf '\nHost github-zivohotels-app\n  HostName github.com\n  User git\n  IdentityFile /root/.ssh/zivohotels_app_deploy\n  IdentitiesOnly yes\n' >> /root/.ssh/config
+printf '\nHost github-zivoplus-app\n  HostName github.com\n  User git\n  IdentityFile /root/.ssh/zivohotels_app_deploy\n  IdentitiesOnly yes\n' >> /root/.ssh/config
 ```
 ```bash
 cat /root/.ssh/zivohotels_app_deploy.pub
 ```
 Copy the printed line. On GitHub, go to **randhirkumarsingh3-pixel/Zivohotels → Settings → Deploy keys → Add deploy key**, paste it, and leave write access **off**. Then:
 ```bash
-git clone git@github-zivohotels-app:randhirkumarsingh3-pixel/Zivohotels.git /opt/zivohotels-app
+git clone git@github-zivoplus-app:randhirkumarsingh3-pixel/Zivohotels.git /opt/zivoplus-app
 ```
 Answer `yes` to the GitHub fingerprint question.
 
 ### 4. Settings
 ```bash
-cd /opt/zivohotels-app/deploy/vps && cp .env.example .env && chmod 600 .env
+cd /opt/zivoplus-app/deploy/vps && cp .env.example .env && chmod 600 .env
 ```
 Fill in the database password and login secret automatically:
 ```bash
@@ -100,22 +138,22 @@ Save with Ctrl+O, Enter, Ctrl+X. Leave `APP_DOMAIN` and `CADDY_CONTAINER` as the
 
 ### 5. Deploy
 ```bash
-bash /opt/zivohotels-app/deploy/vps/deploy.sh
+bash /opt/zivoplus-app/deploy/vps/deploy.sh
 ```
 The first run builds the images, which takes a few minutes. It:
 1. starts the database
 2. applies the migrations and search indexes
 3. starts the API and website
 4. connects the domain in Caddy
-5. installs the 5-minute re-link job (`/etc/cron.d/zivohotels-app-caddy`)
+5. installs the 5-minute re-link job (`/etc/cron.d/zivoplus-app-caddy`)
 6. waits for HTTPS
 
-It ends with **`✅ Live: https://zivohotels.189-72-151-212.sslip.io`**. The first visit can take up to a minute while Caddy gets the certificate.
+It ends with **`✅ Live: https://zivoplus.189-72-151-212.sslip.io`**. The first visit can take up to a minute while Caddy gets the certificate.
 
 ### 6. Data
 A shortcut for the commands below, valid in this terminal session:
 ```bash
-ZC="docker compose -f /opt/zivohotels-app/deploy/vps/docker-compose.yml --env-file /opt/zivohotels-app/deploy/vps/.env"
+ZC="docker compose -f /opt/zivoplus-app/deploy/vps/docker-compose.yml --env-file /opt/zivoplus-app/deploy/vps/.env"
 ```
 Then pick one.
 - **Test data** (sample hotels and the usual test logins). This **deletes all data** in our database:
@@ -124,7 +162,7 @@ Then pick one.
   ```
 - **Or start empty with your own admin:**
   ```bash
-  $ZC run --rm --no-deps api node scripts/createAdmin.js --email you@zivohotels.com --name "Your Name"
+  $ZC run --rm --no-deps api node scripts/createAdmin.js --email you@zivoplus.com --name "Your Name"
   ```
 
 - **Before real people use it:** create your own admin (above), then switch off the test logins from the sample data (their passwords are in the code). The first command only lists them:
@@ -138,7 +176,7 @@ Then pick one.
 
 ### 7. Check it
 - [ ] **The other platform** still opens: https://app.189-72-151-212.sslip.io
-- [ ] **The API is healthy:** https://zivohotels.189-72-151-212.sslip.io/ready shows `"READY"`.
+- [ ] **The API is healthy:** https://zivoplus.189-72-151-212.sslip.io/ready shows `"READY"`.
 - [ ] **The home page** loads, and typing a city shows suggestions.
 - [ ] **Owner:** log in at `/extranet/login`, then upload a photo and a KYC document.
 - [ ] **Admin:** open `/admin` and log in, then review the property and view the document.
@@ -146,46 +184,46 @@ Then pick one.
 
 ### 8. Razorpay test webhook (optional)
 In the Razorpay Dashboard (**Test mode**), go to **Settings → Webhooks → Add**:
-- **URL:** `https://zivohotels.189-72-151-212.sslip.io/api/v1/payments/webhook`
+- **URL:** `https://zivoplus.189-72-151-212.sslip.io/api/v1/payments/webhook`
 - **Events:** `payment.captured`, `payment.failed`, `payment.refunded`
 - **Secret:** put the same value in `RAZORPAY_WEBHOOK_SECRET` in `.env`
 
-Then apply it with `bash /opt/zivohotels-app/deploy/vps/deploy.sh`.
+Then apply it with `bash /opt/zivoplus-app/deploy/vps/deploy.sh`.
 
 ---
 
 ## Day to day (as root)
 | Task | Command |
 |---|---|
-| Update to the latest `main` | `bash /opt/zivohotels-app/deploy/vps/deploy.sh` |
-| Deploy a branch for testing | `BRANCH=branch-name bash /opt/zivohotels-app/deploy/vps/deploy.sh` |
+| Update to the latest `main` | `bash /opt/zivoplus-app/deploy/vps/deploy.sh` |
+| Deploy a branch for testing | `BRANCH=branch-name bash /opt/zivoplus-app/deploy/vps/deploy.sh` |
 | Status | `$ZC ps` |
 | API logs | `$ZC logs --tail 100 -f api` |
-| Restart | `$ZC restart api zivohotels-app-web` |
+| Restart | `$ZC restart api zivoplus-app-web` |
 | Stop / start | `$ZC stop` / `$ZC start`. Use `stop`, not `down`, while Caddy is attached to our network. |
-| Re-link Caddy now | `bash /opt/zivohotels-app/deploy/vps/caddy-link.sh` |
-| Re-link history | `tail /var/log/zivohotels-app-caddy.log` |
+| Re-link Caddy now | `bash /opt/zivoplus-app/deploy/vps/caddy-link.sh` |
+| Re-link history | `tail /var/log/zivoplus-app-caddy.log` |
 
 **Backups:** a nightly database dump, keeping 14 days:
 ```bash
-mkdir -p /var/backups/zivohotels-app
+mkdir -p /var/backups/zivoplus-app
 ```
 ```bash
-echo '15 3 * * * root docker exec zivohotels-app-db-1 pg_dump -U zivohotels -Fc zivohotels > /var/backups/zivohotels-app/db-$(date +\%F).dump && find /var/backups/zivohotels-app -name "*.dump" -mtime +14 -delete' > /etc/cron.d/zivohotels-app-backup
+echo '15 3 * * * root docker exec zivoplus-app-db-1 pg_dump -U zivoplus -Fc zivoplus > /var/backups/zivoplus-app/db-$(date +\%F).dump && find /var/backups/zivoplus-app -name "*.dump" -mtime +14 -delete' > /etc/cron.d/zivoplus-app-backup
 ```
-Uploads are in the Docker volumes `zivohotels-app_uploads` (photos) and
-`zivohotels-app_private-uploads` (KYC documents). Hostinger snapshots include them.
+Uploads are in the Docker volumes `zivoplus-app_uploads` (photos) and
+`zivoplus-app_private-uploads` (KYC documents). Hostinger snapshots include them.
 
 ## Remove it completely (undo everything)
 This permanently deletes our database and uploads; the other project is untouched.
 ```bash
-rm -f /etc/cron.d/zivohotels-app-caddy /etc/cron.d/zivohotels-app-backup
+rm -f /etc/cron.d/zivoplus-app-caddy /etc/cron.d/zivoplus-app-backup
 CF="$(docker inspect staging-caddy --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy"}}{{.Source}}{{end}}{{end}}')"
-sed -i '/ZivoHotels app (separate project/d; /^import zivohotels-app.caddy$/d' "$CF/Caddyfile" && rm -f "$CF/zivohotels-app.caddy"
+sed -i '/ZivoPlus app (separate project/d; /^import zivoplus-app.caddy$/d' "$CF/Caddyfile" && rm -f "$CF/zivoplus-app.caddy"
 docker exec staging-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
-docker network disconnect zivohotels-app-edge staging-caddy
-docker compose -f /opt/zivohotels-app/deploy/vps/docker-compose.yml --env-file /opt/zivohotels-app/deploy/vps/.env down -v
-rm -rf /opt/zivohotels-app
+docker network disconnect zivoplus-app-edge staging-caddy
+docker compose -f /opt/zivoplus-app/deploy/vps/docker-compose.yml --env-file /opt/zivoplus-app/deploy/vps/.env down -v
+rm -rf /opt/zivoplus-app
 ```
 
 ## Troubleshooting

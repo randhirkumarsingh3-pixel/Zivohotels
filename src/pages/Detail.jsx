@@ -450,7 +450,7 @@ const Detail = () => {
                   <span className="bg-navy-800 text-white px-2 py-0.5 rounded-md text-sm font-bold tabular-nums">{hotel.reviewScore}</span>
                   <span className="text-gray-700 font-medium">{hotel.reviewCount} review{hotel.reviewCount === 1 ? '' : 's'}</span>
                 </a>
-              ) : <span className="text-gray-500">New on ZivoHotels</span>}
+              ) : <span className="text-gray-500">New on ZivoPlus</span>}
             </div>
             {/* The essentials at a glance, before the rooms (the full overview is further down) */}
             <div className="mt-3"><Highlights hotel={hotel} /></div>

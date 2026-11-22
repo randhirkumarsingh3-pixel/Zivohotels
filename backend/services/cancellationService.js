@@ -187,7 +187,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     }
   }
 
-  const byLabel = { GUEST: 'the guest', HOTEL: 'the hotel', ADMIN: 'ZivoHotels' }[initiatedBy];
+  const byLabel = { GUEST: 'the guest', HOTEL: 'the hotel', ADMIN: 'ZivoPlus' }[initiatedBy];
 
   const finalizedBooking = await prisma.$transaction(async (tx) => {
     await tx.refund.update({ where: { id: refundRecord.id }, data: { status: 'SUCCESS', razorpayRefundId } });
@@ -260,7 +260,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   const message = initiatedBy === 'GUEST'
     ? `The guest cancelled booking ${booking.bookingRef}. Refund under your cancellation policy: ${inr(refundAmount - memberWaiver)}.` +
       (retainedAmount > 0 ? ` ${inr(retainedAmount)} was kept and will be settled in your payout cycle.` : '') +
-      (memberWaiver > 0 ? ` As a ${booking.metadata?.membership?.plan || 'member'} benefit the guest also got the ${inr(memberWaiver)} fee back; ZivoHotels pays you that fee in your payout cycle.` : '')
+      (memberWaiver > 0 ? ` As a ${booking.metadata?.membership?.plan || 'member'} benefit the guest also got the ${inr(memberWaiver)} fee back; ZivoPlus pays you that fee in your payout cycle.` : '')
     : `Booking ${booking.bookingRef} was cancelled by ${byLabel}.` +
       (refundAmount > 0 ? ` A full refund of ${inr(refundAmount)} will be initiated to the guest.` : ' Nothing was paid online, so there is no refund.');
 
@@ -365,7 +365,7 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
     }
   }
 
-  const byLabel = { GUEST: 'the guest', HOTEL: 'the hotel', ADMIN: 'ZivoHotels' }[initiatedBy];
+  const byLabel = { GUEST: 'the guest', HOTEL: 'the hotel', ADMIN: 'ZivoPlus' }[initiatedBy];
   const total = toMoney(booking.totalAmount) || 0;
   const newTotal = roundMoney(total - q.shareTotal + q.retainedAmount);
   const newPaid = roundMoney((toMoney(booking.paidAmount) || 0) - q.refundAmount);

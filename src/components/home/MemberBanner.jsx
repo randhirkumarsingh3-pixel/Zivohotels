@@ -23,7 +23,7 @@ const MemberBanner = ({ signup, membership, isAuthenticated, role }) => {
   ].filter(Boolean);
 
   return (
-    <section className="bg-white" aria-label={signedOut ? 'Join ZivoHotels' : 'Zivo Prime'}>
+    <section className="bg-white" aria-label={signedOut ? 'Join ZivoPlus' : 'Zivo Prime'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between rounded-card border border-navy-100 bg-navy-50 px-5 py-4">
           <div className="flex items-start gap-3">

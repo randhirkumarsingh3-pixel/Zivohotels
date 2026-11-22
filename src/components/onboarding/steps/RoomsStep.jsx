@@ -357,7 +357,7 @@ const RoomsStep = ({ formData, updateForm }) => {
 
             {/* Room Name */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-800 mb-1">Room Name (as displayed on ZivoHotels & partner websites)</label>
+              <label className="block text-sm font-bold text-slate-800 mb-1">Room Name (as displayed on ZivoPlus & partner websites)</label>
               <p className="text-xs text-slate-500 mb-2">Add a room name that looks attractive to travellers</p>
               <input
                 type="text"

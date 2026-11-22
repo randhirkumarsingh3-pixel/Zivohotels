@@ -58,7 +58,7 @@ export const sendPayLaterEmail = async (bookingId, kind) => {
     </table>
     ${site() ? `<p><a href="${h(link)}" style="display:inline-block;background:#e7194a;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold">${c.cta}</a></p>
     <p style="font-size:12px;color:#64748b">${kind === 'expired' ? '' : `Or open My Bookings: ${h(site())}/my-bookings`}</p>` : ''}
-    ${support.phone || support.email ? `<p style="font-size:12px;color:#64748b">Questions? ZivoHotels support: ${[support.phone, support.email].filter(Boolean).map(h).join(' · ')}</p>` : ''}
+    ${support.phone || support.email ? `<p style="font-size:12px;color:#64748b">Questions? ZivoPlus support: ${[support.phone, support.email].filter(Boolean).map(h).join(' · ')}</p>` : ''}
   </body></html>`;
   if (b.userId) {
     // The bell too (no second email)
@@ -69,7 +69,7 @@ export const sendPayLaterEmail = async (bookingId, kind) => {
       message: `${b.bookingRef} · ${b.hotel.name} · ${inr(b.totalAmount)}`,
       link: '/my-bookings',
       metadata: { bookingId: b.id },
-      sms: kind === 'reminder' ? `ZivoHotels: pay ${inr(b.totalAmount)} by ${payLaterLabel(b.expiresAt)} to keep booking ${b.bookingRef}, or it will be cancelled.` : null,
+      sms: kind === 'reminder' ? `ZivoPlus: pay ${inr(b.totalAmount)} by ${payLaterLabel(b.expiresAt)} to keep booking ${b.bookingRef}, or it will be cancelled.` : null,
     }).catch(() => {});
   }
   return queueService.enqueue('email', 'SEND_PAY_LATER', { to: b.guestEmail, subject: c.subject, html }, { priority: 2 });

@@ -1,4 +1,4 @@
-# ZivoHotels: Deployment & Rollback Guide
+# ZivoPlus: Deployment & Rollback Guide
 
 This document defines the operational procedures for a safe production rollout.
 

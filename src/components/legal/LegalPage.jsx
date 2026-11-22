@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { LEGAL, missingLegalFields } from '../../constants/legal';
+import { BRAND_NAME } from '../../config/brand';
 
 /** Layout for the Privacy Policy and Terms: title, draft notice, contents list, sections. */
 export const LegalSection = ({ id, title, children }) => (
@@ -27,7 +28,7 @@ export const GrievanceOfficer = () => {
 };
 
 const LegalPage = ({ title, intro, sections, children }) => {
-  useEffect(() => { document.title = `${title} | ZivoHotels`; window.scrollTo(0, 0); }, [title]);
+  useEffect(() => { document.title = `${title} | ${BRAND_NAME}`; window.scrollTo(0, 0); }, [title]);
   const missing = missingLegalFields();
   return (
     <div className="pt-28 pb-20 bg-gray-50 min-h-screen">

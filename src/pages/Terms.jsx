@@ -8,7 +8,7 @@ import { LEGAL } from '../constants/legal';
  * membership and reviews actually work on the platform.
  */
 const SECTIONS = [
-  ['about', 'About ZivoHotels'],
+  ['about', 'About ZivoPlus'],
   ['account', 'Your account'],
   ['booking', 'Bookings and prices'],
   ['payment', 'Paying'],
@@ -27,10 +27,10 @@ const SECTIONS = [
 const Terms = () => (
   <LegalPage
     title="Terms of Service"
-    intro="These terms apply when you use ZivoHotels to search for, book or manage hotel stays. By creating an account or making a booking you accept them, together with the hotel's own policies shown when you book."
+    intro="These terms apply when you use ZivoPlus to search for, book or manage hotel stays. By creating an account or making a booking you accept them, together with the hotel's own policies shown when you book."
     sections={SECTIONS}
   >
-    <LegalSection id="about" title="1. About ZivoHotels">
+    <LegalSection id="about" title="1. About ZivoPlus">
       <p>The platform is run by <Who />. We let you find and book stays at independent hotels. When you book, your contract for the stay is with the hotel; we arrange the booking and take payment as the hotel&apos;s agent where you pay online.</p>
     </LegalSection>
 
@@ -68,7 +68,7 @@ const Terms = () => (
     </LegalSection>
 
     <LegalSection id="cash" title="7. Zivo Cash">
-      <p>Zivo Cash is a ZivoHotels balance made up of refunds you chose to receive there and unused amounts returned from bookings. It can be used only for ZivoHotels bookings. It can&apos;t be topped up, withdrawn, transferred or exchanged for cash, and it isn&apos;t a bank account or a prepaid payment instrument.</p>
+      <p>Zivo Cash is a ZivoPlus balance made up of refunds you chose to receive there and unused amounts returned from bookings. It can be used only for ZivoPlus bookings. It can&apos;t be topped up, withdrawn, transferred or exchanged for cash, and it isn&apos;t a bank account or a prepaid payment instrument.</p>
     </LegalSection>
 
     <LegalSection id="rewards" title="8. Zivo Rewards and membership">
@@ -80,7 +80,7 @@ const Terms = () => (
     </LegalSection>
 
     <LegalSection id="reviews" title="9. Reviews">
-      <p>Only guests who stayed can review, from the day after check-in. Reviews must be honest, about the stay, and free of abusive, discriminatory or personal information. We moderate reviews and may remove ones that break these rules; hotels may reply publicly. By posting, you let us show your review on ZivoHotels with your first name and last initial.</p>
+      <p>Only guests who stayed can review, from the day after check-in. Reviews must be honest, about the stay, and free of abusive, discriminatory or personal information. We moderate reviews and may remove ones that break these rules; hotels may reply publicly. By posting, you let us show your review on ZivoPlus with your first name and last initial.</p>
     </LegalSection>
 
     <LegalSection id="conduct" title="10. Using the platform fairly">
@@ -88,7 +88,7 @@ const Terms = () => (
     </LegalSection>
 
     <LegalSection id="partners" title="11. Hotel partners">
-      <p>Hotels that list on ZivoHotels also accept the agreement they sign in the Extranet, which sets out commission, payouts and obligations. Hotels must keep rates, availability, photos, policies and legal details accurate and honour confirmed bookings.</p>
+      <p>Hotels that list on ZivoPlus also accept the agreement they sign in the Extranet, which sets out commission, payouts and obligations. Hotels must keep rates, availability, photos, policies and legal details accurate and honour confirmed bookings.</p>
     </LegalSection>
 
     <LegalSection id="liability" title="12. Our responsibility">

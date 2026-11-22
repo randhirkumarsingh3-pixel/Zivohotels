@@ -2,7 +2,7 @@
  * Google Hotels end to end against a running API (sample data from prisma/seed.js): the feeds are
  * hidden until switched on and only answer at the secret address; the hotel list, prices that
  * equal checkout's (same stay, same room and plan), unknown hotels as unavailable, the changes
- * (hint) feed, and a hotel leaving the feeds by its own choice (extranet) or ZivoHotels'. Settings
+ * (hint) feed, and a hotel leaving the feeds by its own choice (extranet) or ZivoPlus'. Settings
  * and the hotel's choices are put back afterwards.
  */
 import axios from 'axios';
@@ -35,9 +35,9 @@ describe('Google Hotels end to end', function () {
     });
     savedIntegration = hotel.integrationSettings;
     saved = await prisma.systemConfig.findUnique({ where: { key: 'google_hotels' } });
-    admin = await login('admin@zivohotels.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
+    admin = await login('admin@zivoplus.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
     owner = await login('extranet@zivotechretreat.com', process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026');
-    guest = await login('user@zivohotels.com', process.env.SEED_CUSTOMER_PASSWORD || 'customer123');
+    guest = await login('user@zivoplus.com', process.env.SEED_CUSTOMER_PASSWORD || 'customer123');
     const g = { ...(savedIntegration?.googleHotels || {}) }; delete g.optIn; delete g.adminExcluded;
     await prisma.hotel.update({ where: { id: hotel.id }, data: { integrationSettings: { ...(savedIntegration || {}), googleHotels: g } } });
   });
@@ -93,7 +93,7 @@ describe('Google Hotels end to end', function () {
     expect(r.data).to.include(`<Property>${hotel.id}</Property>`);
   });
 
-  it("drops a hotel that opts out in the extranet, or that ZivoHotels leaves out", async () => {
+  it("drops a hotel that opts out in the extranet, or that ZivoPlus leaves out", async () => {
     const mine = await api.get(`/extranet/google?hotelId=${hotel.id}`, owner);
     expect(mine.status, JSON.stringify(mine.data)).to.equal(200);
     expect(mine.data.data.included).to.equal(true);

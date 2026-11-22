@@ -1,7 +1,7 @@
 {
-  "name": "zivohotels-backend",
+  "name": "zivoplus-backend",
   "version": "1.0.0",
-  "description": "Node.js Express backend for ZivoHotels",
+  "description": "Node.js Express backend for ZivoPlus",
   "main": "server.js",
   "type": "module",
   "scripts": {

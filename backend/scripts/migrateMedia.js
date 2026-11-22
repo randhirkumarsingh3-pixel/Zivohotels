@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 async function runMigration() {
   const isDryRun = process.argv.includes('--dry-run');
-  console.log(`--- Starting ZivoHotels Media Migration to GCS ${isDryRun ? '[DRY-RUN MODE]' : ''} ---`);
+  console.log(`--- Starting ZivoPlus Media Migration to GCS ${isDryRun ? '[DRY-RUN MODE]' : ''} ---`);
   
   // 1. Rollback Mechanism - Backup original DB URLs
   if (!isDryRun) {

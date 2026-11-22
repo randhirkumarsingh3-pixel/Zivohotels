@@ -36,7 +36,7 @@ describe('Staff roles end to end', function () {
   let admin; let owner; let team; let hotelTeam;
 
   before(async () => {
-    admin = await login('admin@zivohotels.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
+    admin = await login('admin@zivoplus.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
     owner = await login('extranet@zivotechretreat.com', process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026');
   });
   after(async () => {
@@ -64,8 +64,8 @@ describe('Staff roles end to end', function () {
 
   it('refuses guest emails as staff and changes to one\'s own access', async () => {
     const support = team.roles.find((r) => r.key === 'admin.support');
-    expect((await api.post('/admin/staff/invite', { email: 'user@zivohotels.com', name: 'U', roleId: support.id }, admin)).status).to.equal(400);
-    const meRow = team.members.find((m) => m.user.email === 'admin@zivohotels.com');
+    expect((await api.post('/admin/staff/invite', { email: 'user@zivoplus.com', name: 'U', roleId: support.id }, admin)).status).to.equal(400);
+    const meRow = team.members.find((m) => m.user.email === 'admin@zivoplus.com');
     expect((await api.patch(`/admin/staff/${meRow.id}`, { roleId: support.id }, admin)).status).to.equal(403);
   });
 

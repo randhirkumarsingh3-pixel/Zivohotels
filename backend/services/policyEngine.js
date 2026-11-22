@@ -1,5 +1,5 @@
 /**
- * ZivoHotels Policy Engine
+ * ZivoPlus Policy Engine
  * Declarative governance policies for autonomous system coordination.
  */
 class PolicyEngine {

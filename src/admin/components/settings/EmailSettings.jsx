@@ -18,20 +18,20 @@ const EmailSettings = () => {
 
   const defaultTemplates = {
     booking_confirmation: {
-      subject: 'Your Booking is Confirmed - ZivoHotels',
-      content: `Dear {{guest_name}},\n\nYour booking at {{property_name}} is confirmed!\n\nBooking ID: {{booking_id}}\nCheck-in: {{check_in_date}}\nCheck-out: {{check_out_date}}\nTotal Amount: {{total_amount}}\n\nWe look forward to hosting you.\n\nBest Regards,\nThe ZivoHotels Team`
+      subject: 'Your Booking is Confirmed - ZivoPlus',
+      content: `Dear {{guest_name}},\n\nYour booking at {{property_name}} is confirmed!\n\nBooking ID: {{booking_id}}\nCheck-in: {{check_in_date}}\nCheck-out: {{check_out_date}}\nTotal Amount: {{total_amount}}\n\nWe look forward to hosting you.\n\nBest Regards,\nThe ZivoPlus Team`
     },
     cancellation: {
-      subject: 'Booking Cancelled - ZivoHotels',
+      subject: 'Booking Cancelled - ZivoPlus',
       content: `Dear {{guest_name}},\n\nYour booking at {{property_name}} has been cancelled.\n\nBooking ID: {{booking_id}}\n\nIf this was a mistake, please contact us immediately.`
     },
     refund: {
-      subject: 'Refund Processed - ZivoHotels',
+      subject: 'Refund Processed - ZivoPlus',
       content: `Dear {{guest_name}},\n\nYour refund for booking {{booking_id}} has been processed successfully.`
     },
     signup: {
-      subject: 'Welcome to ZivoHotels!',
-      content: `Dear {{guest_name}},\n\nWelcome to ZivoHotels! We're glad to have you with us.`
+      subject: 'Welcome to ZivoPlus!',
+      content: `Dear {{guest_name}},\n\nWelcome to ZivoPlus! We're glad to have you with us.`
     }
   };
 

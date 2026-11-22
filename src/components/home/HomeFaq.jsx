@@ -13,9 +13,9 @@ const FAQS = [
   ['Which rates have free cancellation?', 'Each rate shows its cancellation policy next to the price and again at checkout. Free-cancellation rates can be cancelled at no cost until the time shown. Zivo Prime members get extra time on eligible rates.'],
   ['Are hotels couple-friendly, and is a local ID accepted?', 'This depends on each hotel. Its house rules, including whether unmarried couples are welcome and which IDs are accepted (and whether local IDs are allowed), are shown on the hotel page under Policies.'],
   ['Can I get a GST invoice for my company?', 'Yes. Tick "Add company / GST details" at checkout and enter your company name and GSTIN.'],
-  ['What is Zivo Cash?', 'Your ZivoHotels balance. Refunds you choose to receive there arrive instantly, and you can use it on any ZivoHotels booking. It can’t be withdrawn or transferred.'],
+  ['What is Zivo Cash?', 'Your ZivoPlus balance. Refunds you choose to receive there arrive instantly, and you can use it on any ZivoPlus booking. It can’t be withdrawn or transferred.'],
   ['How do Zivo Rewards points work?', 'You earn points on completed stays and can use them at checkout on a later booking. Membership is free with an account and also unlocks member prices at hotels that offer them.'],
-  ['I own a hotel. How can I list it?', 'Write to partners@zivohotels.com. Once listed, you manage rooms, rates, bookings and payouts in the ZivoHotels Extranet.'],
+  ['I own a hotel. How can I list it?', 'Write to partners@zivoplus.com. Once listed, you manage rooms, rates, bookings and payouts in the ZivoPlus Extranet.'],
 ];
 
 const HomeFaq = () => {

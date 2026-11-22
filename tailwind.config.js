@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 
-// ZivoHotels theme, taken from the logo: navy (#013A67) for structure and trust, red (#E7194A)
+// ZivoPlus theme, taken from the logo: navy (#013A67) for structure and trust, red (#E7194A)
 // for actions only (Search, Book, Pay, deal badges). Neutrals are tinted towards the navy.
 const red = {
   50: '#fef1f4', 100: '#fde3e9', 200: '#fbc8d4', 300: '#f79bb0', 400: '#f15f82',

@@ -1,4 +1,4 @@
-# ZivoHotels Migration Command Book
+# ZivoPlus Migration Command Book
 
 This document is the Single Source of Truth for executing the final Sprint 6 Production Cutover.
 

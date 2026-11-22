@@ -90,7 +90,7 @@ const Login = () => {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle={<>New to ZivoHotels? <Link to="/signup" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Create an account</Link></>}
+      subtitle={<>New to ZivoPlus? <Link to="/signup" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Create an account</Link></>}
     >
       {notice && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
       {back.booking && !notice && (

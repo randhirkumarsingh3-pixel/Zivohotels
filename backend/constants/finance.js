@@ -2,9 +2,9 @@
  * Statutory rates applied to every hotel settlement (owner-confirmed, Nov 2026).
  * Percentages. Change them here if the law or the owner's accountant says so.
  *
- * - GST on ZivoHotels' commission: 18%, split CGST 9% + SGST 9% when ZivoHotels and the hotel are
+ * - GST on ZivoPlus' commission: 18%, split CGST 9% + SGST 9% when ZivoPlus and the hotel are
  *   in the same state, otherwise IGST 18%.
- * - TCS under GST (section 52): 0.5% of the pre-GST value of what ZivoHotels collected online,
+ * - TCS under GST (section 52): 0.5% of the pre-GST value of what ZivoPlus collected online,
  *   only for GST-registered hotels (CGST 0.25% + SGST 0.25%).
  * - TDS under income tax (section 194-O): 0.1% of the pre-GST value of the stay.
  */
@@ -14,7 +14,7 @@ export const TDS_PERCENT = 0.1;
 export const DEFAULT_COMMISSION_PERCENT = 15;
 
 /**
- * ZivoHotels' own GST state code (first two digits of its GSTIN), e.g. "27" for Maharashtra.
+ * ZivoPlus' own GST state code (first two digits of its GSTIN), e.g. "27" for Maharashtra.
  * Set ZIVO_GSTIN or ZIVO_GST_STATE_CODE in production; without it every commission is treated
  * as inter-state (IGST).
  */

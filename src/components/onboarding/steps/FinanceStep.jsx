@@ -39,7 +39,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
   // locked (changes go through support). The backend enforces the same rule.
   const isDraft = !formData.status || ['DRAFT', 'INFORMATION_REQUESTED'].includes(formData.status);
   const isProtected = !isAdmin && !isDraft;
-  // Commission is agreed with ZivoHotels and only an admin can change it
+  // Commission is agreed with ZivoPlus and only an admin can change it
   const commissionLocked = !isAdmin;
   const [activeStep, setActiveStep] = useState(1);
   const [reAccountNumber, setReAccountNumber] = useState(formData.accountNumber || '');
@@ -164,7 +164,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
       setGstVerified(true);
       
       // Auto-populate Legal Entity Name (pushed from verification details)
-      const mockName = "ZIVO HOTELS & RESORTS PRIVATE LIMITED";
+      const mockName = "SUNRISE HOTELS & RESORTS PRIVATE LIMITED";
       updateForm({
         gstin: gstin,
         legalName: mockName,
@@ -526,7 +526,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           type="text"
                           value={formData.legalName || ''}
                           onChange={e => updateForm('legalName', e.target.value)}
-                          placeholder="e.g. Zivo Hotels Pvt Ltd"
+                          placeholder="e.g. Sunrise Hotels Pvt Ltd"
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         />
                         <p className="text-xs text-slate-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
@@ -748,7 +748,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
             className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 mt-0.5 cursor-pointer"
           />
           <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-colors leading-relaxed">
-            I accept the ZivoHotels Platform Agreement, Terms of Service, and Payout Policies. I confirm that all banking, tax registrations, and corporate documents provided are authentic and legally binding.
+            I accept the ZivoPlus Platform Agreement, Terms of Service, and Payout Policies. I confirm that all banking, tax registrations, and corporate documents provided are authentic and legally binding.
           </span>
         </label>
       </div>

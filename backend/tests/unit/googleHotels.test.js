@@ -39,7 +39,7 @@ describe('Google Hotels helpers', () => {
       expect(isIncluded(with_({ optIn: false }), on)).to.equal(false);
       expect(isIncluded(with_({ optIn: true }), off)).to.equal(true);
     });
-    it("lets ZivoHotels' exclusion win over the hotel's choice", () => {
+    it("lets ZivoPlus' exclusion win over the hotel's choice", () => {
       expect(isIncluded(with_({ optIn: true, adminExcluded: true }), on)).to.equal(false);
     });
   });

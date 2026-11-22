@@ -7,7 +7,7 @@ const settings = hotelHourly({ enabled: true, approved: true, openFrom: '08:00',
 const now = istDate('2026-12-10', '07:00');
 
 describe('Hourly stays: settings', () => {
-  it('keeps only durations ZivoHotels allows and that fit the opening hours', () => {
+  it('keeps only durations ZivoPlus allows and that fit the opening hours', () => {
     const s = hotelHourly({ durations: [3, 6, 9, 12, 5], openFrom: '10:00', openTo: '17:00' }, platformHourly({ durations: [3, 6, 12] }));
     expect(s.durations).to.deep.equal([3, 6]);
   });

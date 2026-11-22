@@ -1,7 +1,7 @@
 /**
  * Permissions: what each kind of staff may do.
  *
- * ADMIN permissions are for ZivoHotels' own team (the admin console). EXTRANET permissions are
+ * ADMIN permissions are for ZivoPlus' own team (the admin console). EXTRANET permissions are
  * for a hotel's team, per property. A role is a named set of them; ready-made roles are below,
  * and Super Admins / hotel owners can make their own.
  *
@@ -25,7 +25,7 @@ export const ADMIN_PERMISSIONS = {
   'finance.manage': { group: 'Finance', label: 'Record payouts and adjust wallets' },
   'users.view': { group: 'People', label: 'See guest and partner accounts' },
   'users.manage': { group: 'People', label: 'Block, unblock and edit accounts' },
-  'staff.manage': { group: 'People', label: 'Invite ZivoHotels staff and manage roles' },
+  'staff.manage': { group: 'People', label: 'Invite ZivoPlus staff and manage roles' },
   'settings.view': { group: 'Settings', label: 'See platform settings and system health' },
   'settings.manage': { group: 'Settings', label: 'Change platform settings (taxes, support, emails, security)' },
 };

@@ -24,11 +24,11 @@ const SECTIONS = [
 const Privacy = () => (
   <LegalPage
     title="Privacy Policy"
-    intro="This policy explains what personal data ZivoHotels collects when you search, book or list a property with us, why we need it, who we share it with and the choices you have. It applies to the ZivoHotels website, the Extranet for hotel partners and our emails."
+    intro="This policy explains what personal data ZivoPlus collects when you search, book or list a property with us, why we need it, who we share it with and the choices you have. It applies to the ZivoPlus website, the Extranet for hotel partners and our emails."
     sections={SECTIONS}
   >
     <LegalSection id="who" title="1. Who we are">
-      <p><Who /> (&quot;ZivoHotels&quot;, &quot;we&quot;) runs this platform and decides how your personal data is used for it. For each booking, the hotel you book also receives your details and uses them to host your stay.</p>
+      <p><Who /> (&quot;ZivoPlus&quot;, &quot;we&quot;) runs this platform and decides how your personal data is used for it. For each booking, the hotel you book also receives your details and uses them to host your stay.</p>
     </LegalSection>
 
     <LegalSection id="collect" title="2. What we collect">

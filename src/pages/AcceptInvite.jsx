@@ -75,7 +75,7 @@ const AcceptInvite = () => {
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-gray-900">Set Your Password</h1>
-            <p className="text-xs text-gray-500">You&apos;ve been invited to ZivoHotels. Set a password to activate your account.</p>
+            <p className="text-xs text-gray-500">You&apos;ve been invited to ZivoPlus. Set a password to activate your account.</p>
           </div>
         </div>
 

@@ -106,7 +106,7 @@ const ExtranetProperty = () => {
           {['LIVE', 'ACTIVE'].includes(full?.status) ? (
             <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-800 rounded-lg border border-green-200">
               <CheckCircle2 size={14} aria-hidden="true" />
-              <span className="text-sm font-semibold">Live on ZivoHotels</span>
+              <span className="text-sm font-semibold">Live on ZivoPlus</span>
             </div>
           ) : full?.status && (
             <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-900 rounded-lg border border-amber-200">

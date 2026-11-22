@@ -25,7 +25,7 @@ export const guestRefund = (booking, policy, now = new Date()) => {
 /**
  * What cancelling one room means in money: the room's share of the booking (by its price before
  * discounts and tax), its share of what was paid, and the refund under the same rules as a whole
- * booking (property policy for a guest; everything back when the hotel or ZivoHotels cancels).
+ * booking (property policy for a guest; everything back when the hotel or ZivoPlus cancels).
  * Pure, for unit tests: booking { totalAmount, paidAmount, taxAmount, baseAmount, checkIn, ... },
  * rooms = the booking's rooms not yet cancelled, room = the one to cancel.
  */

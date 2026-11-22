@@ -6,7 +6,7 @@ import usePageTitle from '../hooks/usePageTitle';
 
 /**
  * Zivo Cash: the guest's wallet. Balance, how it works, and every movement with the balance after
- * it. Money comes from refunds the guest chose to take as Zivo Cash and from ZivoHotels credits;
+ * it. Money comes from refunds the guest chose to take as Zivo Cash and from ZivoPlus credits;
  * it is spent at checkout. It can't be topped up, withdrawn or transferred.
  */
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -36,7 +36,7 @@ const Wallet = () => {
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-3 text-sm text-gray-600">
             <p className="flex gap-2"><Zap size={16} className="text-brand-700 shrink-0 mt-0.5" /> Choose Zivo Cash when you cancel and your refund arrives instantly.</p>
             <p className="flex gap-2"><ShieldCheck size={16} className="text-brand-700 shrink-0 mt-0.5" /> If a booking paid with Zivo Cash is cancelled, that amount comes back here.</p>
-            <p className="flex gap-2"><Info size={16} className="text-gray-400 shrink-0 mt-0.5" /> Zivo Cash can only be used for ZivoHotels bookings. It can&apos;t be topped up, withdrawn to a bank or transferred.</p>
+            <p className="flex gap-2"><Info size={16} className="text-gray-400 shrink-0 mt-0.5" /> Zivo Cash can only be used for ZivoPlus bookings. It can&apos;t be topped up, withdrawn to a bank or transferred.</p>
           </div>
         </div>
 

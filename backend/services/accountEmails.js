@@ -10,15 +10,15 @@ export const sendWelcome = async (user) => {
   const first = String(user.name || '').split(' ')[0];
   return notifyUser(user.id, {
     type: 'WELCOME',
-    title: 'Welcome to ZivoHotels',
+    title: 'Welcome to ZivoPlus',
     message: 'Your account is ready. Find a stay and book in a few taps.',
     link: '/',
     email: {
       jobType: 'SEND_WELCOME',
-      subject: 'Welcome to ZivoHotels',
+      subject: 'Welcome to ZivoPlus',
       html: await emailLayout({
         title: `Welcome${first ? `, ${first}` : ''}!`,
-        body: `<p>Your ZivoHotels account is ready. You can now book stays, keep all your bookings in one place, and earn Zivo Rewards points on every stay.</p>`,
+        body: `<p>Your ZivoPlus account is ready. You can now book stays, keep all your bookings in one place, and earn Zivo Rewards points on every stay.</p>`,
         rows: [['Email', user.email], ['Mobile', user.phone]],
         cta: { label: 'Find a stay', href: '/' },
       }),
@@ -34,11 +34,11 @@ export const sendPasswordChanged = async (user, { ip } = {}) => notifyUser(user.
   email: {
     jobType: 'SEND_PASSWORD_CHANGED',
     priority: 1,
-    subject: 'Your ZivoHotels password was changed',
+    subject: 'Your ZivoPlus password was changed',
     html: await emailLayout({
       title: 'Your password was changed',
-      body: `<p>Hi ${h(String(user.name || '').split(' ')[0] || 'there')}, the password for your ZivoHotels account (${h(user.email)}) was just changed, and you were signed out on your other devices.</p>
-        <p><b>If this wasn't you</b>, reset your password straight away with "Forgot password" and contact ZivoHotels support.</p>`,
+      body: `<p>Hi ${h(String(user.name || '').split(' ')[0] || 'there')}, the password for your ZivoPlus account (${h(user.email)}) was just changed, and you were signed out on your other devices.</p>
+        <p><b>If this wasn't you</b>, reset your password straight away with "Forgot password" and contact ZivoPlus support.</p>`,
       rows: [['When', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })], ['From', ip]],
       cta: { label: 'Reset password', href: '/forgot-password' },
     }),
@@ -48,12 +48,12 @@ export const sendPasswordChanged = async (user, { ip } = {}) => notifyUser(user.
 /** A hotel owner who signed up from "List your property": what happens next. */
 export const sendPartnerWelcome = async (user, { propertyName } = {}) => notifyUser(user.id, {
   type: 'WELCOME',
-  title: 'Welcome to ZivoHotels for partners',
+  title: 'Welcome to ZivoPlus for partners',
   message: `Finish registering ${propertyName || 'your property'}: it goes live once our team approves it.`,
   link: '/extranet/onboarding',
   email: {
     jobType: 'SEND_WELCOME',
-    subject: `Welcome to ZivoHotels: let's list ${propertyName || 'your property'}`,
+    subject: `Welcome to ZivoPlus: let's list ${propertyName || 'your property'}`,
     html: await emailLayout({
       title: `Welcome, ${h(String(user.name || '').split(' ')[0] || 'partner')}!`,
       body: `<p>Your partner account is ready. Next:</p>
@@ -64,7 +64,7 @@ export const sendPartnerWelcome = async (user, { propertyName } = {}) => notifyU
         </ol>
         <p>Your progress is saved as you go.</p>`,
       cta: { label: 'Continue registration', href: '/extranet/onboarding' },
-      note: 'Questions? Write to partners@zivohotels.com.',
+      note: 'Questions? Write to partners@zivoplus.com.',
     }),
   },
 });

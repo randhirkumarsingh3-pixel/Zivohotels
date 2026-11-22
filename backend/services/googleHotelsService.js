@@ -1,5 +1,5 @@
 /**
- * Google Hotels (Hotel Center, free booking links): the feeds Google reads to show ZivoHotels'
+ * Google Hotels (Hotel Center, free booking links): the feeds Google reads to show ZivoPlus'
  * price for a hotel in Search and Maps, with a "Visit site" button to our hotel page.
  *
  * - Hotel list (listings XML): every included live hotel with name, address, map pin and phone,
@@ -29,7 +29,7 @@ const KEY = 'google_hotels';
 export const DEFAULTS = {
   enabled: false,
   accountId: '', // Hotel Center account id (for reference)
-  posId: 'zivohotels',
+  posId: 'zivoplus',
   token: '',
   includeNewHotels: true, // hotels are included unless excluded (admin) or opted out (extranet)
   maxNights: 14,

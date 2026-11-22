@@ -1,6 +1,6 @@
 /**
  * api.js
- * Centralized API service for ZivoHotels.
+ * Centralized API service for ZivoPlus.
  * Single Source of Truth for all frontend requests.
  * 
  * Features:
@@ -418,7 +418,7 @@ export const verifyExtensionApi = (bookingId, response) => apiFetch(`${PUBLIC_BA
 // ─── STAFF & ROLES (admin console) ──────────────────────────────────────────────
 const STAFF = () => `${PUBLIC_BASE}/admin/staff`;
 const jsonBody = (method, body) => ({ method, body: JSON.stringify(body || {}) });
-/** ZivoHotels staff: the same shape as the extranet team API (services/extranetApi.js teamApi) */
+/** ZivoPlus staff: the same shape as the extranet team API (services/extranetApi.js teamApi) */
 export const adminTeamApi = {
   get: () => apiFetch(STAFF(), { cache: 'no-store' }, 0).then((r) => r?.data),
   invite: (body) => apiFetch(`${STAFF()}/invite`, jsonBody('POST', body), 0).then((r) => r?.data),

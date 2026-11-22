@@ -35,7 +35,7 @@ const indiaDay = (d) => new Date(new Date(d).getTime() + IST_MS).toISOString().s
 const nightsBetween = (a, b) => Math.max(1, Math.round((new Date(indiaDay(b)) - new Date(indiaDay(a))) / 86400000));
 
 const company = () => ({
-  name: process.env.ZIVO_LEGAL_NAME || 'ZivoHotels',
+  name: process.env.ZIVO_LEGAL_NAME || 'ZivoPlus',
   pan: process.env.ZIVO_PAN || '',
   gstin: process.env.ZIVO_GSTIN || '',
   cin: process.env.ZIVO_CIN || '',
@@ -95,13 +95,13 @@ const cancellationText = (booking, policy) => {
   if (deadline <= new Date(booking.createdAt)) {
     return [
       'This booking was made after the free-cancellation period had ended, so the amount paid online is not refundable.',
-      'Cancellations are possible until check-in from My Bookings on ZivoHotels.',
+      'Cancellations are possible until check-in from My Bookings on ZivoPlus.',
     ];
   }
   return [
     `Free cancellation (full refund of the amount paid online) if cancelled before ${fmtDateTime(deadline)} IST.`,
     'After that, the amount paid is not refundable. A no-show is treated as a cancellation after this time.',
-    'Cancellations are possible until check-in from My Bookings on ZivoHotels.',
+    'Cancellations are possible until check-in from My Bookings on ZivoPlus.',
   ];
 };
 
@@ -244,7 +244,7 @@ export const guestVoucherHtml = (d) => {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking ${h(booking.bookingRef)}</title><style>${baseCss}</style></head><body>
     <div class="band">
-      <div class="brand">Zivo<span>Hotels</span></div>
+      <div class="brand">Zivo<span>Plus</span></div>
       <div class="doc"><div class="t">Booking Confirmation</div><div class="s">Show this at check-in</div></div>
     </div>
 
@@ -367,7 +367,7 @@ export const hotelierVoucherHtml = (d, f) => {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hotelier voucher ${h(booking.bookingRef)}</title><style>${baseCss}</style></head><body>
     <div class="band">
-      <div class="brand">Zivo<span>Hotels</span> <span style="color:#9ca3af;font-weight:600;font-size:13px">Partner</span></div>
+      <div class="brand">Zivo<span>Plus</span> <span style="color:#9ca3af;font-weight:600;font-size:13px">Partner</span></div>
       <div class="doc"><div class="t">Hotelier Booking Voucher</div><div class="s">${h(hotel?.name)} · ${h(address(hotel))}</div></div>
     </div>
 
@@ -379,7 +379,7 @@ export const hotelierVoucherHtml = (d, f) => {
           <div><span>Booked on</span><b>${fmtDateTime(booking.createdAt)}</b></div>
           <div><span>Status</span><b>${h(STATUS_LABEL[booking.status] || booking.status)}</b></div>
           <div><span>Payment</span><b>${h(pay.label)}</b></div>
-          <div><span>Booked via</span><b>ZivoHotels</b></div>
+          <div><span>Booked via</span><b>ZivoPlus</b></div>
           <div><span>Property</span><b>${h(hotel?.name)}</b></div>
         </div>
       </div>
@@ -399,7 +399,7 @@ export const hotelierVoucherHtml = (d, f) => {
       <div class="grid" style="margin-top:0">
         <div class="card"><h3>Property gross charges</h3><div class="big">${inr(f.gross)}</div>
           <div class="muted">Room ${inr(f.roomCharges)}${f.extras ? ` + extras ${inr(f.extras)}` : ''} + GST ${inr(f.tax)}</div></div>
-        <div class="card"><h3>${owed ? 'Payable by property to ZivoHotels' : 'Payable to property'}</h3><div class="big">${inr(Math.abs(f.netPayable))}</div>
+        <div class="card"><h3>${owed ? 'Payable by property to ZivoPlus' : 'Payable to property'}</h3><div class="big">${inr(Math.abs(f.netPayable))}</div>
           <div class="muted">${owed
             ? `The guest pays ${inr(collectedAtHotel)} at the property. The amount above is netted against your next payout.`
             : `Released on ${fmtDate(f.releaseOn)} (your payout cycle after check-out); bank credit usually takes 1–3 working days.`}</div></div>
@@ -423,10 +423,10 @@ export const hotelierVoucherHtml = (d, f) => {
         <div><span>2. Extra guest / bed / meal charges</span><span>${inr(f.extras)}</span></div>
         <div><span>3. GST charged to the guest</span><span>${inr(f.tax)}</span></div>
         <div class="sub"><span>(A) Property gross charges (1+2+3)</span><span>${inr(f.gross)}</span></div>
-        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded discount (offer / reward points, paid by ZivoHotels; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
+        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded discount (offer / reward points, paid by ZivoPlus; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
         ${collectedAtHotel ? `<div><span>Less: collected by the property from the guest</span><span>− ${inr(collectedAtHotel)}</span></div>
-        <div class="sub"><span>(A′) Collected online by ZivoHotels</span><span>${inr(f.collected)}</span></div>` : ''}
-        <div><span>4. ZivoHotels commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>
+        <div class="sub"><span>(A′) Collected online by ZivoPlus</span><span>${inr(f.collected)}</span></div>` : ''}
+        <div><span>4. ZivoPlus commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>
         <div><span>5. GST on commission @ ${COMMISSION_GST_PERCENT}% (${gstSplit})</span><span>${inr(f.commissionGst)}</span></div>
         <div class="sub"><span>(B) Commission incl. GST (4+5)</span><span>${inr(commissionInclGst)}</span></div>
         <div><span>6. TCS @ ${TCS_PERCENT}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', not applicable: property not GST-registered'}</span><span>${inr(f.tcs)}</span></div>
@@ -440,7 +440,7 @@ export const hotelierVoucherHtml = (d, f) => {
     <div class="section"><h2>Notes for the property</h2>
       <ul>
         <li>TCS and TDS are subject to reconciliation and are reported against the property's PAN / GSTIN.</li>
-        <li>ZivoHotels deducts TDS under section 194-O on this booking; the property should not deduct TDS on ZivoHotels' commission.</li>
+        <li>ZivoPlus deducts TDS under section 194-O on this booking; the property should not deduct TDS on ZivoPlus' commission.</li>
         <li>Issue the tax invoice to the guest for the property gross charges${booking.guestCompanyGstin ? `, in the name of ${h(booking.guestCompanyName)} (GSTIN ${h(booking.guestCompanyGstin)})` : ''}.</li>
         <li>Do not charge the guest again for anything paid online. Collect only ${collectedAtHotel ? `${inr(collectedAtHotel)} for the stay plus ` : ''}extra services they use.</li>
         <li>If the guest cancels or changes this booking, you will be notified and this voucher will no longer be valid.</li>

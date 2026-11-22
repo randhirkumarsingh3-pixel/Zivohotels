@@ -70,7 +70,7 @@ export const sendCode = async ({ channel = 'EMAIL', target, purpose = 'VERIFY', 
 
   const test = isTestChannel(channel);
   if (channel === 'SMS') {
-    await sendSms(to, `${code} is your ZivoHotels code. It is valid for ${OTP_EXPIRY_MINUTES} minutes. Do not share it with anyone.`, { otp: code });
+    await sendSms(to, `${code} is your ZivoPlus code. It is valid for ${OTP_EXPIRY_MINUTES} minutes. Do not share it with anyone.`, { otp: code });
   } else if (!test) {
     await sendOTPEmail(to, code, OTP_EXPIRY_MINUTES, { purpose, name });
   }

@@ -21,9 +21,9 @@ const STATUS_INFO = {
   ACTIVE: { label: 'Live: taking bookings', tone: 'green' },
   READY_FOR_GO_LIVE: { label: 'Agreement signed: going live shortly', tone: 'amber' },
   PENDING_AGREEMENT: { label: 'Approved: sign the agreement to go live', tone: 'amber' },
-  IN_REVIEW: { label: 'Under review by ZivoHotels', tone: 'amber' },
+  IN_REVIEW: { label: 'Under review by ZivoPlus', tone: 'amber' },
   SUBMITTED: { label: 'Submitted: awaiting review', tone: 'amber' },
-  INFORMATION_REQUESTED: { label: 'Action needed: ZivoHotels asked for more information', tone: 'red' },
+  INFORMATION_REQUESTED: { label: 'Action needed: ZivoPlus asked for more information', tone: 'red' },
   PAUSED: { label: 'Paused: not taking bookings', tone: 'red' },
   DRAFT: { label: 'Draft: finish and submit your listing', tone: 'amber' },
 };
@@ -93,14 +93,14 @@ const ExtranetDashboard = () => {
   useSocketEvent('*', onLiveEvent);
 
   const handleSignAgreement = async () => {
-    if (!window.confirm('By clicking OK, you are digitally signing the ZivoHotels property agreement.')) return;
+    if (!window.confirm('By clicking OK, you are digitally signing the ZivoPlus property agreement.')) return;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/hotels/${property.id}/sign-agreement`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwt_token')}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to sign agreement');
-      addToast('Agreement signed. ZivoHotels will take your property live shortly.', 'success');
+      addToast('Agreement signed. ZivoPlus will take your property live shortly.', 'success');
       load();
     } catch (e) { addToast(e.message, 'error'); }
   };
@@ -205,7 +205,7 @@ const ExtranetDashboard = () => {
           )}
           <section className="bg-navy-900 text-white rounded-card p-5">
             <h2 className="font-bold">Need help?</h2>
-            <p className="text-sm text-navy-100 mt-1">Write to <span className="font-semibold text-white select-all">partners@zivohotels.com</span></p>
+            <p className="text-sm text-navy-100 mt-1">Write to <span className="font-semibold text-white select-all">partners@zivoplus.com</span></p>
           </section>
         </div>
       </div>

@@ -50,7 +50,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Super Admin",
-      email: "admin@zivohotels.com",
+      email: "admin@zivoplus.com",
       password: hashedAdminPassword,
       role: "ADMIN"
     }
@@ -74,7 +74,7 @@ async function main() {
   const customer = await prisma.user.create({
     data: {
       name: "Regular Guest",
-      email: "user@zivohotels.com",
+      email: "user@zivoplus.com",
       password: hashedCustomerPassword,
       role: "CUSTOMER"
     }

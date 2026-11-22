@@ -8,7 +8,7 @@ const targets = [
 ];
 
 console.log('--- API Performance Benchmarks ---');
-console.log('The following targets have been established for ZivoHotels:');
+console.log('The following targets have been established for ZivoPlus:');
 targets.forEach(t => console.log(`- ${t.name}: < ${t.targetMs} ms`));
 console.log('\nTo run a real benchmark, we recommend installing autocannon:');
 console.log('npm install -g autocannon');

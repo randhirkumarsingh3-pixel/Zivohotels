@@ -26,9 +26,9 @@ const Card = ({ title, note, children, right }) => (
 );
 
 const StatusBanner = ({ settings, platform }) => {
-  if (!platform.enabled) return <p className="flex items-start gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700"><AlertTriangle size={18} className="shrink-0" aria-hidden="true" /> Hourly stays are switched off on ZivoHotels right now.</p>;
-  if (!settings.enabled) return <p className="flex items-start gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700"><Clock size={18} className="shrink-0" aria-hidden="true" /> Hourly stays are off. Switch them on, set your rooms and prices, and save: ZivoHotels approves them before guests can book.</p>;
-  if (!settings.approved) return <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900"><AlertTriangle size={18} className="shrink-0" aria-hidden="true" /> Waiting for ZivoHotels to approve hourly stays for your property. You can keep editing; guests can book once approved.</p>;
+  if (!platform.enabled) return <p className="flex items-start gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700"><AlertTriangle size={18} className="shrink-0" aria-hidden="true" /> Hourly stays are switched off on ZivoPlus right now.</p>;
+  if (!settings.enabled) return <p className="flex items-start gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700"><Clock size={18} className="shrink-0" aria-hidden="true" /> Hourly stays are off. Switch them on, set your rooms and prices, and save: ZivoPlus approves them before guests can book.</p>;
+  if (!settings.approved) return <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900"><AlertTriangle size={18} className="shrink-0" aria-hidden="true" /> Waiting for ZivoPlus to approve hourly stays for your property. You can keep editing; guests can book once approved.</p>;
   return <p className="flex items-start gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800"><CheckCircle2 size={18} className="shrink-0" aria-hidden="true" /> Live: guests can book your rooms by the hour.</p>;
 };
 
@@ -161,7 +161,7 @@ const ExtranetHourly = () => {
         roomTypes: rts.map((r) => ({ id: r.id, hourlyEnabled: r.hourlyEnabled, hourlyRooms: Number(r.hourlyRooms) || 0, hourlyPrices: r.hourlyPrices })),
       });
       apply(d);
-      setMsg({ ok: true, text: d.settings.enabled && !d.settings.approved ? 'Saved. ZivoHotels will review hourly stays for your property.' : 'Saved.' });
+      setMsg({ ok: true, text: d.settings.enabled && !d.settings.approved ? 'Saved. ZivoPlus will review hourly stays for your property.' : 'Saved.' });
     } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setSaving(false); }
   };
 

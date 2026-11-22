@@ -135,11 +135,11 @@ const ExtranetLogin = () => {
         </div>
         
         <p className="mt-6 text-center text-sm text-gray-600">
-          New to ZivoHotels? <a href="/list-your-property" className="font-bold text-blue-600 hover:underline">List your property</a>
+          New to ZivoPlus? <a href="/list-your-property" className="font-bold text-blue-600 hover:underline">List your property</a>
         </p>
         <p className="mt-4 text-center text-xs text-gray-400 font-medium leading-relaxed">
            By logging in, you agree to Zivo&apos;s <a href="/terms" className="text-blue-600 font-bold underline">Terms of Service</a> and <a href="/privacy" className="text-blue-600 font-bold underline">Privacy Policy</a>.
-           Need help? Write to <span className="text-blue-600 font-bold select-all">partners@zivohotels.com</span>.
+           Need help? Write to <span className="text-blue-600 font-bold select-all">partners@zivoplus.com</span>.
         </p>
       </div>
     </div>

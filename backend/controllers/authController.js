@@ -217,7 +217,7 @@ export const login = asyncHandler(async (req, res) => {
     }).catch(() => {});
     return res.status(401).json({ success: false, message: 'Wrong email, mobile number or password.', requestId: req.id });
   }
-  if (user.status === 'BLOCKED' || user.status === 'DELETED') return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoHotels support.', requestId: req.id });
+  if (user.status === 'BLOCKED' || user.status === 'DELETED') return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoPlus support.', requestId: req.id });
   return startSession(req, res, user);
 });
 
@@ -251,7 +251,7 @@ export const loginCodeVerify = asyncHandler(async (req, res) => {
     if (e instanceof CodeError) { await secLog(req, 'OTP_FAILED', { action: 'LOGIN', reason: e.message }, user.id); await trackOtpAbuse(target, req.ip); return codeFail(res, e); }
     throw e;
   }
-  if (['BLOCKED', 'DELETED'].includes(user.status)) return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoHotels support.' });
+  if (['BLOCKED', 'DELETED'].includes(user.status)) return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoPlus support.' });
   // A code to the inbox / phone proves it belongs to them
   const proof = channel === 'EMAIL' ? (!user.emailVerifiedAt ? { emailVerifiedAt: new Date() } : {}) : {};
   const fresh = Object.keys(proof).length ? await prisma.user.update({ where: { id: user.id }, data: proof }) : user;
@@ -283,7 +283,7 @@ export const googleSignIn = asyncHandler(async (req, res) => {
 
   let user = await prisma.user.findUnique({ where: { googleId: p.sub } }) || await prisma.user.findUnique({ where: { email } });
   if (user) {
-    if (['BLOCKED', 'DELETED'].includes(user.status)) return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoHotels support.' });
+    if (['BLOCKED', 'DELETED'].includes(user.status)) return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoPlus support.' });
     if (user.role === 'ADMIN') return res.status(403).json({ success: false, message: 'Admin accounts sign in with their password.' });
     if (!user.googleId || !user.emailVerifiedAt) {
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: user.googleId || p.sub, emailVerifiedAt: user.emailVerifiedAt || new Date() } });

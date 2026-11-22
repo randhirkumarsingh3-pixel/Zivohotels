@@ -25,16 +25,16 @@ describe('SEO helpers', () => {
 
   describe('fill (title and description templates)', () => {
     it('fills placeholders and keeps spacing around "|"', () => {
-      expect(fill('{name}, {place}[: rooms from {price}] | {site}', { name: 'Z Stays', place: 'Goa', price: '₹1,000', site: 'ZivoHotels' }))
-        .to.equal('Z Stays, Goa: rooms from ₹1,000 | ZivoHotels');
+      expect(fill('{name}, {place}[: rooms from {price}] | {site}', { name: 'Z Stays', place: 'Goa', price: '₹1,000', site: 'ZivoPlus' }))
+        .to.equal('Z Stays, Goa: rooms from ₹1,000 | ZivoPlus');
     });
     it('leaves out a [part] when a placeholder inside it is empty', () => {
-      expect(fill('{name}, {place}[: rooms from {price}] | {site}', { name: 'Z Stays', place: 'Goa', price: '', site: 'ZivoHotels' }))
-        .to.equal('Z Stays, Goa | ZivoHotels');
+      expect(fill('{name}, {place}[: rooms from {price}] | {site}', { name: 'Z Stays', place: 'Goa', price: '', site: 'ZivoPlus' }))
+        .to.equal('Z Stays, Goa | ZivoPlus');
     });
     it('tidies punctuation left by empty values', () => {
-      expect(fill('{name} in {place}. {stars}{type} with {amenities}.[ Rooms from {price} a night.] {cancellation} Book on {site}.', { name: 'Z', place: 'Goa', stars: '', type: 'Hotel', amenities: 'wifi', price: '', cancellation: '', site: 'ZivoHotels' }))
-        .to.equal('Z in Goa. Hotel with wifi. Book on ZivoHotels.');
+      expect(fill('{name} in {place}. {stars}{type} with {amenities}.[ Rooms from {price} a night.] {cancellation} Book on {site}.', { name: 'Z', place: 'Goa', stars: '', type: 'Hotel', amenities: 'wifi', price: '', cancellation: '', site: 'ZivoPlus' }))
+        .to.equal('Z in Goa. Hotel with wifi. Book on ZivoPlus.');
     });
   });
 });

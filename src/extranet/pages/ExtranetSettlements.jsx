@@ -120,7 +120,7 @@ const ExtranetSettlements = () => {
         <div>
           <h3 className="text-sm font-black text-brand-900 uppercase tracking-tight">Need help with payments?</h3>
           <p className="text-sm text-brand-800 leading-relaxed mt-1 font-medium">
-            Settlements are processed 24 hours after guest checkout. If you see a discrepancy, please contact our Finance Desk at <strong>finance@zivohotels.com</strong> or raise a ticket in the Settings tab.
+            Settlements are processed 24 hours after guest checkout. If you see a discrepancy, please contact our Finance Desk at <strong>finance@zivoplus.com</strong> or raise a ticket in the Settings tab.
           </p>
         </div>
       </div>

@@ -12,7 +12,7 @@
 
 export const ALL_DURATIONS = [3, 6, 9, 12];
 
-/** ZivoHotels' own rules (Admin → Platform settings → Hourly stays). */
+/** ZivoPlus' own rules (Admin → Platform settings → Hourly stays). */
 export const platformHourly = (saved = {}) => {
   const durations = (Array.isArray(saved.durations) ? saved.durations : ALL_DURATIONS)
     .map(Number).filter((d) => ALL_DURATIONS.includes(d));
@@ -32,7 +32,7 @@ export const toMinutes = (hhmm) => {
 };
 export const fromMinutes = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-/** A hotel's hourly settings, filled with defaults and limited to what ZivoHotels allows. */
+/** A hotel's hourly settings, filled with defaults and limited to what ZivoPlus allows. */
 export const hotelHourly = (saved = {}, platform = platformHourly()) => {
   const s = saved || {};
   const openFrom = toMinutes(s.openFrom) ?? 8 * 60;
@@ -54,7 +54,7 @@ export const hotelHourly = (saved = {}, platform = platformHourly()) => {
   };
 };
 
-/** Guests can book hourly stays here: the hotel switched it on, ZivoHotels approved it, and it's on platform-wide. */
+/** Guests can book hourly stays here: the hotel switched it on, ZivoPlus approved it, and it's on platform-wide. */
 export const isBookable = (settings, platform) => Boolean(platform.enabled && settings.enabled && settings.approved && settings.durations.length);
 
 /** India time on a date: ("2026-12-10", "11:00") -> Date (UTC instant). */

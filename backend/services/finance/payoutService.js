@@ -9,7 +9,7 @@ export const payoutService = {
    * Processes a payout for a specific hotel
    */
   processPayout: async (hotelId, { reference, adminId } = {}) => {
-    // A payout records money ZivoHotels has already sent by bank transfer: it needs the transfer
+    // A payout records money ZivoPlus has already sent by bank transfer: it needs the transfer
     // reference (UTR) and a bank account on file (there is no bank integration that sends it).
     const ref = String(reference || '').trim();
     if (ref.length < 6) throw bad('Enter the bank transfer reference (UTR) of the payment you made');

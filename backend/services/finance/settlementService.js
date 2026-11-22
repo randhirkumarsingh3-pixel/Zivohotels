@@ -55,16 +55,16 @@ const pct = (amount, percent) => D(amount).times(percent).dividedBy(100).toDecim
  * @param {number} input.grossAmount   value the hotel earns, GST included (the stay, or the
  *                                     cancellation / no-show amount kept)
  * @param {number} input.taxAmount     GST included in grossAmount
- * @param {number} input.collected     part of grossAmount ZivoHotels collected online (0 for pay-at-hotel)
+ * @param {number} input.collected     part of grossAmount ZivoPlus collected online (0 for pay-at-hotel)
  * @param {number} input.commissionPercent  the hotel's agreed rate
  * @param {boolean} input.hotelGstRegistered TCS applies only to GST-registered hotels
- * @param {boolean} input.sameState    ZivoHotels and the hotel in the same state -> CGST+SGST, else IGST
+ * @param {boolean} input.sameState    ZivoPlus and the hotel in the same state -> CGST+SGST, else IGST
  * @param {number} input.zivoFunded    pre-tax discount of a Zivo-funded promotion: the hotel sold the
  *                                     room at the full price, so commission, TCS and TDS are on the
- *                                     full value and ZivoHotels pays the discount to the hotel
+ *                                     full value and ZivoPlus pays the discount to the hotel
  *
  * netPayable = collected + zivoFunded - commission - GST on commission - TCS - TDS. Negative means
- * the hotel holds the money (pay-at-hotel) and owes ZivoHotels; it is netted against later payouts.
+ * the hotel holds the money (pay-at-hotel) and owes ZivoPlus; it is netted against later payouts.
  */
 export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0 }) => {
   const gross = D(grossAmount);
@@ -135,7 +135,7 @@ const KIND_LABEL = { STAY: 'stay', CANCELLATION: 'cancellation fee', NO_SHOW: 'n
  */
 /**
  * The hotel-specific inputs to computeSettlement: agreed commission (agreement, else the hotel's
- * rate, else 15%), whether ZivoHotels and the hotel are in the same GST state, GST registration and
+ * rate, else 15%), whether ZivoPlus and the hotel are in the same GST state, GST registration and
  * payout cycle. Shared by settlements and the hotelier voucher so both show the same numbers.
  */
 export const settlementTermsForHotel = async (tx, hotelId) => {

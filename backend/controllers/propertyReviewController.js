@@ -1,3 +1,4 @@
+import { siteUrl } from '../config/brand.js';
 import { notifyAdmins } from '../services/notifyService.js';
 import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -98,7 +99,7 @@ export const submitForReview = asyncHandler(async (req, res) => {
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 0; background: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoHotels</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoPlus</h1>
             <p style="color: #a0aec0; margin: 8px 0 0; font-size: 14px;">Property Lifecycle Management</p>
           </div>
           
@@ -131,12 +132,12 @@ export const submitForReview = asyncHandler(async (req, res) => {
               </ol>
             </div>
 
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">If you need to make any changes or have questions, please log in to your <a href="https://zivohotels.com/extranet" style="color: #2563eb;">Extranet Dashboard</a>.</p>
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">If you need to make any changes or have questions, please log in to your <a href="${siteUrl()}/extranet" style="color: #2563eb;">Extranet Dashboard</a>.</p>
           </div>
           
           <!-- Footer -->
           <div style="background: #f8fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoHotels. All rights reserved.</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoPlus. All rights reserved.</p>
             <p style="color: #9ca3af; font-size: 11px; margin: 8px 0 0;">This is an automated notification. Please do not reply to this email.</p>
           </div>
         </div>
@@ -226,7 +227,7 @@ export const approveProperty = asyncHandler(async (req, res) => {
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 0; background: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoHotels</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoPlus</h1>
             <p style="color: #a0aec0; margin: 8px 0 0; font-size: 14px;">Property Lifecycle Management</p>
           </div>
           
@@ -239,7 +240,7 @@ export const approveProperty = asyncHandler(async (req, res) => {
             </div>
             
             <p style="color: #374151; font-size: 15px; line-height: 1.6;">Dear <strong>${hotel.owner.name || 'Property Owner'}</strong>,</p>
-            <p style="color: #374151; font-size: 15px; line-height: 1.6;">We are pleased to inform you that your property <strong>${hotel.name}</strong> has been <strong>successfully validated and approved</strong> for listing on ZivoHotels.</p>
+            <p style="color: #374151; font-size: 15px; line-height: 1.6;">We are pleased to inform you that your property <strong>${hotel.name}</strong> has been <strong>successfully validated and approved</strong> for listing on ZivoPlus.</p>
             
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
               <h3 style="color: #1e293b; margin: 0 0 16px; font-size: 16px;">📋 Property Details</h3>
@@ -252,15 +253,15 @@ export const approveProperty = asyncHandler(async (req, res) => {
 
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px; margin: 24px 0;">
               <h4 style="color: #1e40af; margin: 0 0 8px; font-size: 14px;">📝 Next Step: Sign the Listing Agreement</h4>
-              <p style="color: #1e3a5f; font-size: 13px; line-height: 1.6; margin: 0;">To complete your listing, please log in to your <a href="https://zivohotels.com/extranet" style="color: #2563eb; font-weight: 600;">Extranet Dashboard</a> and digitally sign the Listing Agreement. Once signed, your property will be ready to go live on ZivoHotels!</p>
+              <p style="color: #1e3a5f; font-size: 13px; line-height: 1.6; margin: 0;">To complete your listing, please log in to your <a href="${siteUrl()}/extranet" style="color: #2563eb; font-weight: 600;">Extranet Dashboard</a> and digitally sign the Listing Agreement. Once signed, your property will be ready to go live on ZivoPlus!</p>
             </div>
 
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">Thank you for choosing ZivoHotels as your distribution partner. We look forward to a successful collaboration!</p>
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">Thank you for choosing ZivoPlus as your distribution partner. We look forward to a successful collaboration!</p>
           </div>
           
           <!-- Footer -->
           <div style="background: #f8fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoHotels. All rights reserved.</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoPlus. All rights reserved.</p>
             <p style="color: #9ca3af; font-size: 11px; margin: 8px 0 0;">This is an automated notification. Please do not reply to this email.</p>
           </div>
         </div>
@@ -300,7 +301,7 @@ export const requestInformation = asyncHandler(async (req, res) => {
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 0; background: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoHotels</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoPlus</h1>
             <p style="color: #a0aec0; margin: 8px 0 0; font-size: 14px;">Property Lifecycle Management</p>
           </div>
           
@@ -323,7 +324,7 @@ export const requestInformation = asyncHandler(async (req, res) => {
             <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 20px; margin: 24px 0;">
               <h4 style="color: #92400e; margin: 0 0 8px; font-size: 14px;">📝 How to Resolve</h4>
               <ol style="color: #78350f; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 16px;">
-                <li>Log in to your <a href="https://zivohotels.com/extranet" style="color: #2563eb;">Extranet Dashboard</a></li>
+                <li>Log in to your <a href="${siteUrl()}/extranet" style="color: #2563eb;">Extranet Dashboard</a></li>
                 <li>Update the requested information or upload the pending documents</li>
                 <li>Re-submit your property for review</li>
               </ol>
@@ -334,7 +335,7 @@ export const requestInformation = asyncHandler(async (req, res) => {
           
           <!-- Footer -->
           <div style="background: #f8fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoHotels. All rights reserved.</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoPlus. All rights reserved.</p>
             <p style="color: #9ca3af; font-size: 11px; margin: 8px 0 0;">This is an automated notification. Please do not reply to this email.</p>
           </div>
         </div>

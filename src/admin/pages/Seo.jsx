@@ -4,7 +4,7 @@ import { adminSeoApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 
 /**
- * Admin → SEO: how ZivoHotels pages appear in Google and link previews.
+ * Admin → SEO: how ZivoPlus pages appear in Google and link previews.
  * Templates per page type, verification codes, IndexNow, redirects, per-hotel titles and
  * descriptions (or hidden from search), and a preview of any address.
  */
@@ -107,7 +107,7 @@ const Seo = () => {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">SEO</h1>
-        <p className="text-sm text-gray-600 mt-1">How ZivoHotels pages appear in Google and in link previews. New hotels are added automatically when they go live.</p>
+        <p className="text-sm text-gray-600 mt-1">How ZivoPlus pages appear in Google and in link previews. New hotels are added automatically when they go live.</p>
       </div>
       {notice && <p className="rounded-lg bg-green-50 text-green-800 px-4 py-3 text-sm">{notice}</p>}
       {error && <p role="alert" className="rounded-lg bg-red-50 text-red-800 px-4 py-3 text-sm">{error}</p>}

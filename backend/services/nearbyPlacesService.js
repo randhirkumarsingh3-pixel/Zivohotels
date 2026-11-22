@@ -19,7 +19,7 @@ import { createNotification } from './notificationService.js';
 export const CATEGORIES = ['TRANSIT', 'ATTRACTION', 'LANDMARK', 'RESTAURANT'];
 const PER_CATEGORY = 12;
 const MAX_PLACES = 80;
-const UA = 'ZivoHotels/1.0 (property nearby places)';
+const UA = 'ZivoPlus/1.0 (property nearby places)';
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
 /** Straight-line distance in km (haversine), one decimal. */

@@ -39,7 +39,7 @@ const sendEmail = (to, subject, html) => (to
 
 const emailShell = (title, body) => `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#0f172a;max-width:560px;margin:0 auto;padding:20px">
   <h2 style="margin:0 0 12px;font-size:18px">${title}</h2>${body}
-  <p style="color:#64748b;font-size:12px;margin-top:24px">ZivoHotels</p></body></html>`;
+  <p style="color:#64748b;font-size:12px;margin-top:24px">ZivoPlus</p></body></html>`;
 
 /** Who may see a booking's requests: the guest who booked, the hotel's owner, an admin. */
 const canSeeBooking = (booking, user) => {

@@ -152,11 +152,11 @@ const AgreementDrawer = ({ agreement, onClose, onAction, actionLoading }) => {
           <div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Agreement Terms & Conditions</p>
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-600 space-y-2 leading-relaxed max-h-40 overflow-y-auto">
-              <p>1. The Owner agrees to list the property exclusively on ZivoHotels for the duration of this agreement.</p>
+              <p>1. The Owner agrees to list the property exclusively on ZivoPlus for the duration of this agreement.</p>
               <p>2. The Platform shall deduct a commission of <strong>{agreement.commissionRate}%</strong> on all successful bookings.</p>
               <p>3. Payouts will be processed on a monthly cycle directly to the registered bank account.</p>
               <p>4. This agreement is valid for 12 months from the date of signature.</p>
-              <p>5. ZivoHotels reserves the right to suspend properties violating the platform&apos;s policies.</p>
+              <p>5. ZivoPlus reserves the right to suspend properties violating the platform&apos;s policies.</p>
             </div>
           </div>
         </div>

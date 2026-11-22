@@ -127,7 +127,7 @@ const Listing = ({ place = null }) => {
       ? `Hourly stays${hourlyQ.city ? ` in ${hourlyQ.city}` : ''}`
       : isNear ? 'Hotels near you' : placeName ? `Hotels in ${placeName}` : 'All hotels';
   usePageTitle(heading,
-    placeName ? `Compare hotels in ${placeName} on ZivoHotels: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
+    placeName ? `Compare hotels in ${placeName} on ZivoPlus: prices with GST, guest ratings, free cancellation and member prices.` : undefined);
 
   const minStars = f.stars.length ? Math.min(...f.stars) : null;
   const serverFilters = useMemo(() => ({
@@ -312,7 +312,7 @@ const Listing = ({ place = null }) => {
             <div className="bg-white rounded-card p-12 text-center border border-gray-200">
               <SearchX className="mx-auto text-gray-400 mb-3" size={40} aria-hidden="true" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">{hotels.length ? 'No hotels match these filters' : 'No hotels found'}</h3>
-              <p className="text-gray-600 mb-4">{hotels.length ? 'Remove a filter to see more.' : (isNear ? 'No ZivoHotels within 50 km of you yet. Search for a city instead.' : 'Try another destination or different dates.')}</p>
+              <p className="text-gray-600 mb-4">{hotels.length ? 'Remove a filter to see more.' : (isNear ? 'No ZivoPlus hotels within 50 km of you yet. Search for a city instead.' : 'Try another destination or different dates.')}</p>
               {chips.length > 0 && <button type="button" onClick={() => setF(EMPTY)} className="text-navy-700 font-semibold underline">Clear all filters</button>}
             </div>
           ) : view === 'map' ? (
