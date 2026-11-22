@@ -134,12 +134,17 @@ export const gstPercent = (amount, taxRules = []) => {
  * extra, as for nights), GST. Offers are not applied to hourly stays unless the hotel allows them
  * (not yet supported, so none). Returns the breakdown stored on the booking.
  */
-export const priceHourly = ({ price, memberHotel = 0, memberZivo = 0, taxRules = [] }) => {
-  const discount = Math.min(price, Math.round(memberHotel + memberZivo));
-  const base = price - discount;
+/**
+ * Price of an hourly stay: the room's price for those hours, less an offer (promotion), less the
+ * member price (worked out on the price after the offer, as for nights), plus GST on the rest.
+ */
+export const priceHourly = ({ price, promotionDiscount = 0, memberHotel = 0, memberZivo = 0, taxRules = [] }) => {
+  const promo = Math.min(price, Math.max(0, Math.round(promotionDiscount)));
+  const member = Math.min(price - promo, Math.round(memberHotel + memberZivo));
+  const base = price - promo - member;
   const taxPercentage = gstPercent(base, taxRules);
   const taxAmount = Math.round((base * taxPercentage) / 100);
-  return { roomPrice: price, memberDiscountAmount: discount, baseAmount: base, taxPercentage, taxAmount, totalAmount: base + taxAmount };
+  return { roomPrice: price, promotionDiscountAmount: promo, memberDiscountAmount: member, baseAmount: base, taxPercentage, taxAmount, totalAmount: base + taxAmount };
 };
 
 /** Refund if an hourly stay is cancelled now: all of it until freeCancelHours before the start, nothing after. */
@@ -154,4 +159,22 @@ export const slotLabel = (start, end, hours) => {
   const day = new Date(start).toLocaleDateString('en-IN', { ...opts, weekday: 'short', day: 'numeric', month: 'short' });
   const tm = (d) => new Date(d).toLocaleTimeString('en-IN', { ...opts, hour: 'numeric', minute: '2-digit' });
   return `${day} · ${tm(start)} – ${tm(end)} · ${hours} hour${hours === 1 ? '' : 's'}`;
+};
+
+/**
+ * Adding hours to a booked hourly stay: each extra hour at the hotel's extra-hour price (before
+ * GST; offers and member prices aren't applied to it). GST is worked out again on the whole stay,
+ * so the guest pays the new total less what they paid. Returns null if the hotel has no
+ * extra-hour price.
+ */
+export const extensionPrice = ({ baseAmount, taxAmount, totalAmount }, extraHours, extraHourPrice, taxRules = []) => {
+  const perHour = Math.max(0, Math.round(Number(extraHourPrice) || 0));
+  if (!perHour || !(extraHours > 0)) return null;
+  const extraBase = perHour * extraHours;
+  const newBase = Math.round(Number(baseAmount) || 0) + extraBase;
+  const taxPercentage = gstPercent(newBase, taxRules);
+  const newTax = Math.round((newBase * taxPercentage) / 100);
+  const newTotal = newBase + newTax;
+  const paidTotal = Math.round(Number(totalAmount) || 0);
+  return { perHour, extraHours, extraBase, newBase, taxPercentage, newTax, newTotal, extraTax: newTax - Math.round(Number(taxAmount) || 0), extraAmount: newTotal - paidTotal };
 };

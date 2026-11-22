@@ -14,6 +14,7 @@ import settlementService from './finance/settlementService.js';
 import { createNotification } from './notificationService.js';
 import { queueService } from './queueService.js';
 import { hourlyGuestRefund } from './hourlyService.js';
+import { paymentsOf } from './hourlyExtension.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
 
@@ -136,7 +137,34 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
   // Razorpay refund (outside the DB transaction, with an idempotency key)
   let razorpayRefundId = null;
-  if (toSource > 0 && booking.razorpayPaymentId) {
+  // An hourly stay with extra hours bought online was paid in several payments: the refund goes
+  // back to each (newest first), and each one done is recorded so a retry never repeats it
+  const extensionPayments = booking.metadata?.hourlyExtensions?.length ? paymentsOf(booking) : null;
+  if (toSource > 0 && extensionPayments) {
+    let left = toSource;
+    const done = { ...(booking.metadata?.refundedPayments || {}) };
+    for (const p of [...extensionPayments].reverse()) {
+      const amount = roundMoney(Math.min(left, p.amount));
+      if (amount <= 0) continue;
+      if (!done[p.paymentId]) {
+        try {
+          const r = await withTimeout(
+            razorpay.payments.refund(p.paymentId, { amount: Math.round(amount * 100), notes: { requestId, bookingId, initiatedBy } }, { 'X-Razorpay-Idempotency-Key': `${bookingId}-${p.paymentId}` }),
+            10000, 'Razorpay Refund Timed Out',
+          );
+          done[p.paymentId] = { refundId: r.id, amount };
+          razorpayRefundId = razorpayRefundId || r.id;
+          await prisma.booking.update({ where: { id: bookingId }, data: { metadata: { ...booking.metadata, refundedPayments: done } } });
+        } catch (apiError) {
+          criticalLogger('REFUND_FAILURE', { bookingId, error: apiError.message, amount, paymentId: p.paymentId }, requestId);
+          await prisma.refund.update({ where: { id: refundRecord.id }, data: { status: 'FAILED' } });
+          alertRefundFailure(booking, refundAmount, apiError.message);
+          throw new CancellationError(502, `Payment refund failed: ${apiError.message}`);
+        }
+      }
+      left = roundMoney(left - amount);
+    }
+  } else if (toSource > 0 && booking.razorpayPaymentId) {
     try {
       const razorResponse = await withTimeout(
         razorpay.payments.refund(booking.razorpayPaymentId, {

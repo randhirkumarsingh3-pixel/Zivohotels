@@ -44,6 +44,7 @@ const schema = z.object({
   usageLimit: optInt(1, 1000000),
   perUserLimit: optInt(1, 100),
   firstBookingOnly: z.boolean().optional(),
+  forHourly: z.boolean().optional(),
   fundedBy: z.enum(['HOTEL', 'ZIVO']).optional(),
   // Who can use it: everyone, any member (signed-in guest), or a paid plan's members (admins)
   audience: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{3,20}$/).optional(),
@@ -88,7 +89,7 @@ const buildData = async (req, input, existing = null) => {
     if (!plan || plan.isFree) bad('Unknown membership plan');
   }
   const data = {};
-  for (const k of ['audience', 'name', 'description', 'code', 'discountType', 'value', 'maxDiscount', 'minBookingAmount', 'minAdvanceDays', 'maxAdvanceDays', 'usageLimit', 'perUserLimit', 'firstBookingOnly', 'isActive']) {
+  for (const k of ['audience', 'name', 'description', 'code', 'discountType', 'value', 'maxDiscount', 'minBookingAmount', 'minAdvanceDays', 'maxAdvanceDays', 'usageLimit', 'perUserLimit', 'firstBookingOnly', 'forHourly', 'isActive']) {
     if (input[k] !== undefined) data[k] = input[k];
   }
   if (input.minNights !== undefined) data.minNights = input.minNights || 1;

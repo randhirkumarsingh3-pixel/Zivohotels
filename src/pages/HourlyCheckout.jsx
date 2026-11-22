@@ -27,12 +27,17 @@ const HourlyCheckout = () => {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
-  // The price again, in case it changed since the hotel page (or member prices now apply)
+  // Offer code: typed in the box, applied (sent with the price check and the booking) on "Apply"
+  const [codeInput, setCodeInput] = useState('');
+  const [code, setCode] = useState('');
+
+  // The price again, in case it changed since the hotel page (or member prices / an offer apply)
   useEffect(() => {
     if (!h) return;
-    previewHourlyApi({ hotelId: h.hotelId, roomTypeId: h.roomTypeId, date: h.date, start: h.start, hours: h.hours, adults: h.adults, children: h.children })
+    previewHourlyApi({ hotelId: h.hotelId, roomTypeId: h.roomTypeId, date: h.date, start: h.start, hours: h.hours, adults: h.adults, children: h.children, couponCode: code || undefined })
       .then(setQuote).catch((e) => setError(e.message));
-  }, [h]);
+  }, [h, code]);
+  const codeStatus = quote?.promoCodeStatus;
 
   if (!h) {
     return (
@@ -60,6 +65,7 @@ const HourlyCheckout = () => {
         const r = await bookHourlyApi({
           hotelId: h.hotelId, roomTypeId: h.roomTypeId, date: h.date, start: h.start, hours: h.hours, adults: h.adults, children: h.children,
           guestName: guest.name.trim(), guestEmail: guest.email.trim(), guestPhone: guest.phone.trim(),
+          couponCode: codeStatus?.ok ? code : undefined,
         });
         b = { ...r.booking, guestName: guest.name, guestEmail: guest.email, guestPhone: guest.phone };
         setBooking(b);
@@ -133,11 +139,26 @@ const HourlyCheckout = () => {
             {quote ? (
               <div className="mt-4 text-sm space-y-2 tabular-nums">
                 <div className="flex justify-between text-gray-600"><span>{h.hours} hours</span><span>{inr(quote.roomPrice)}</span></div>
+                {quote.promotionDiscountAmount > 0 && <div className="flex justify-between text-green-700"><span>{quote.promotion?.name || 'Offer'}{quote.promotion?.code ? ` (${quote.promotion.code})` : ''}</span><span>− {inr(quote.promotionDiscountAmount)}</span></div>}
                 {quote.memberDiscountAmount > 0 && <div className="flex justify-between text-green-700"><span>Member price</span><span>− {inr(quote.memberDiscountAmount)}</span></div>}
                 <div className="flex justify-between text-gray-600"><span>GST ({quote.taxPercentage}%)</span><span>{inr(quote.taxAmount)}</span></div>
                 <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>Total</span><span>{inr(quote.totalAmount)}</span></div>
               </div>
             ) : <div className="mt-4 h-20 bg-gray-50 rounded-xl animate-pulse" />}
+            {!booking && (
+              <form className="mt-4 pt-4 border-t border-gray-100" onSubmit={(e) => { e.preventDefault(); setCode(codeInput.trim().toUpperCase()); }}>
+                <label className="block text-xs font-semibold text-gray-600 mb-1" htmlFor="hourly-code">Offer code</label>
+                <div className="flex gap-2">
+                  <input id="hourly-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase" placeholder="Enter code" />
+                  {code ? (
+                    <button type="button" onClick={() => { setCode(''); setCodeInput(''); }} className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold">Remove</button>
+                  ) : (
+                    <button type="submit" disabled={!codeInput.trim()} className="px-3 py-2 rounded-lg bg-navy-800 text-white text-sm font-semibold disabled:opacity-50">Apply</button>
+                  )}
+                </div>
+                {code && codeStatus && <p className={`mt-1 text-xs ${codeStatus.ok ? 'text-green-700' : 'text-red-700'}`}>{codeStatus.ok ? 'Code applied' : codeStatus.message}</p>}
+              </form>
+            )}
           </aside>
         </div>
       </div>

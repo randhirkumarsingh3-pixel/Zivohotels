@@ -10,6 +10,7 @@ import { getSystemConfig } from '../config/systemConfig.js';
 import { z } from 'zod';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
 import { roundMoney, toMoney } from '../utils/money.js';
+import { bookingForExtensionOrder, applyExtension } from '../services/hourlyExtension.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
 const razorpay = new Razorpay({
@@ -273,6 +274,16 @@ export const webhook = asyncHandler(async (req, res) => {
       const orderId = payment.order_id;
       
       const booking = await prisma.booking.findFirst({ where: { razorpayOrderId: orderId } });
+
+      // Extra hours on an hourly stay (its own order): extend it, unless the page already did
+      if (!booking) {
+        const ext = await bookingForExtensionOrder(orderId);
+        if (ext) {
+          await applyExtension(ext.id, { orderId, paymentId: payment.id, paidPaise: payment.amount })
+            .catch((err) => console.error('[Webhook] Extension not applied:', err.message));
+        }
+        return res.status(200).send('OK');
+      }
       
       if (booking && booking.paymentStatus === 'PENDING') {
         if (booking.status === 'CANCELLED') {

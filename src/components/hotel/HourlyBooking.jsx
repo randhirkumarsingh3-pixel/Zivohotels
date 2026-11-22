@@ -109,7 +109,10 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap justify-between gap-2">
                           <h3 className="text-lg font-bold text-gray-900">{r.name}</h3>
-                          <p className="text-right"><span className="text-xl font-bold text-gray-900 tabular-nums">{inr(r.price)}</span><span className="text-xs text-gray-500"> for {hours} h</span></p>
+                          <div className="text-right">
+                            {r.offer && <p className="text-xs"><span className="text-gray-400 line-through tabular-nums">{inr(r.price)}</span> <span className="ml-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 font-bold">{r.offer.label}</span></p>}
+                            <p><span className="text-xl font-bold text-gray-900 tabular-nums">{inr(r.offer ? r.offer.priceAfter : r.price)}</span><span className="text-xs text-gray-500"> for {hours} h</span></p>
+                          </div>
                         </div>
                         <p className="mt-1 flex flex-wrap gap-x-4 text-sm text-gray-600">
                           <span className="inline-flex items-center gap-1"><Users size={14} aria-hidden="true" /> Up to {r.maxOccupancy || 2} guests</span>
@@ -155,6 +158,7 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
             {quote ? (
               <div className="mt-4 bg-gray-50 rounded-xl p-4 text-sm space-y-2 tabular-nums">
                 <div className="flex justify-between text-gray-600"><span>{hours} hours</span><span>{inr(quote.roomPrice)}</span></div>
+                {quote.promotionDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>{quote.promotion?.name || 'Offer'}</span><span>− {inr(quote.promotionDiscountAmount)}</span></div>}
                 {quote.memberDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Member price</span><span>− {inr(quote.memberDiscountAmount)}</span></div>}
                 <div className="flex justify-between text-gray-600"><span>GST ({quote.taxPercentage}%)</span><span>{inr(quote.taxAmount)}</span></div>
                 <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>Total</span><span>{inr(quote.totalAmount)}</span></div>

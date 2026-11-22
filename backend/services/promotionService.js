@@ -70,10 +70,11 @@ const summary = (promotion, discount) => ({
  */
 export const resolveBest = async (ctx) => {
   const code = ctx.code ? String(ctx.code).trim().toUpperCase() : null;
-  const list = await candidates(ctx.hotelId, code);
+  // Hourly stays (ctx.stayType 'HOURLY') only get offers switched on for them
+  const list = (await candidates(ctx.hotelId, code)).filter((p) => ctx.stayType !== 'HOURLY' || p.forHourly);
   let best = null;
   let codeStatus = null;
-  if (code && !list.some((p) => p.code === code)) codeStatus = { code, ok: false, message: 'This code isn\'t valid' };
+  if (code && !list.some((p) => p.code === code)) codeStatus = { code, ok: false, message: ctx.stayType === 'HOURLY' ? 'This code isn\'t valid for hourly stays' : 'This code isn\'t valid' };
 
   for (const p of list) {
     // Several rooms (ctx.lines: [{ roomTypeId, ratePlanId, subtotal }]): the offer counts the rooms
@@ -110,10 +111,10 @@ export const resolveBest = async (ctx) => {
  * that have run out, aren't shown. plans: [{ roomTypeId, ratePlanId, nightlyPrice }].
  * Returns { [ratePlanId]: { name, label, discountPerNight, nightlyPriceAfter, fundedBy } }.
  */
-export const displayOffers = async ({ hotelId, checkIn, checkOut, plans, membership = null }) => {
+export const displayOffers = async ({ hotelId, checkIn, checkOut, plans, membership = null, stayType = 'NIGHTLY' }) => {
   if (!checkIn || !checkOut || !plans.length) return {};
-  // Member-only offers show only to members who can use them
-  const list = (await candidates(hotelId, null)).filter((p) => !p.code && !p.firstBookingOnly && canUseAudience(membership, p.audience));
+  // Member-only offers show only to members who can use them; hourly stays only offers for them
+  const list = (await candidates(hotelId, null)).filter((p) => !p.code && !p.firstBookingOnly && canUseAudience(membership, p.audience) && (stayType !== 'HOURLY' || p.forHourly));
   if (!list.length) return {};
   const usable = [];
   for (const p of list) if (!(await limitProblem(p, null))) usable.push(p);

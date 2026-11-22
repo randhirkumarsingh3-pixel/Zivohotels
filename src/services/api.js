@@ -410,6 +410,10 @@ export const getMyProfile = () => apiFetch(`${PUBLIC_BASE}/auth/me`, {}, 0).then
 // ─── PAYMENTS ─────────────────────────────────────────────────────────────────
 export const createPaymentOrder = (bookingId) => apiFetch(`${PUBLIC_BASE}/payments/create-order`, { method: 'POST', body: JSON.stringify({ bookingId }) });
 export const verifyPaymentApi = (verificationData) => apiFetch(`${PUBLIC_BASE}/payments/verify`, { method: 'POST', body: JSON.stringify(verificationData) });
+/** Extra hours on a booked hourly stay: options, a payment order for the difference, confirm */
+export const getExtensionOptionsApi = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/hourly/extend`, { cache: 'no-store' }).then((r) => r?.data);
+export const createExtensionApi = (bookingId, hours) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/hourly/extend`, { method: 'POST', body: JSON.stringify({ hours }) }).then((r) => r?.data);
+export const verifyExtensionApi = (bookingId, response) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/hourly/extend/verify`, { method: 'POST', body: JSON.stringify(response) }).then((r) => r?.data);
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const getAdminHotels = async () => apiFetch(`${ADMIN_BASE}/hotels`).then(res => res?.data);

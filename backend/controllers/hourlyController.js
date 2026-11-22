@@ -14,6 +14,7 @@ import {
 } from '../services/hourlyService.js';
 import { platformHourly, hotelHourly, isBookable, istYmd } from '../domains/hourly.js';
 import { notifyAdmins, notifyHotel } from '../services/notifyService.js';
+import { extensionOptions, startExtension, verifyExtension } from '../services/hourlyExtension.js';
 
 const fail = (res, e) => {
   if (e instanceof HourlyError) return res.status(e.statusCode).json({ success: false, message: e.message });
@@ -87,6 +88,25 @@ export const previewHourly = wrap(async (req, res) => {
 export const bookHourly = wrap(async (req, res) => {
   const booking = await createHourlyBooking(req.body || {}, { userId: req.user.id, requestId: req.id });
   res.status(201).json({ success: true, data: { booking: { id: booking.id, bookingRef: booking.bookingRef, totalAmount: booking.totalAmount, expiresAt: booking.expiresAt, slotStart: booking.slotStart, slotEnd: booking.slotEnd, hours: booking.hours } } });
+});
+
+/** GET /bookings/:id/hourly/extend — the extra hours this guest can buy now, with prices. */
+export const getExtensionOptions = wrap(async (req, res) => {
+  res.json({ success: true, data: await extensionOptions(req.params.id, req.user.id) });
+});
+
+/** POST /bookings/:id/hourly/extend { hours } — a payment order for the difference. */
+export const createExtension = wrap(async (req, res) => {
+  const { order, option } = await startExtension(req.params.id, req.user.id, req.body?.hours);
+  res.status(201).json({ success: true, data: { order, option } });
+});
+
+/** POST /bookings/:id/hourly/extend/verify — Razorpay's response; extends the stay. */
+export const confirmExtension = wrap(async (req, res) => {
+  const r = await verifyExtension(req.params.id, req.user.id, req.body || {});
+  if (!r.applied) return res.status(409).json({ success: false, message: r.message, data: { refunded: r.refunded } });
+  const b = r.booking;
+  return res.json({ success: true, data: { booking: { id: b.id, hours: b.hours, slotEnd: b.slotEnd, totalAmount: b.totalAmount, paidAmount: b.paidAmount } } });
 });
 
 // ─── Hotels (extranet) ───────────────────────────────────────────────────────────────────────

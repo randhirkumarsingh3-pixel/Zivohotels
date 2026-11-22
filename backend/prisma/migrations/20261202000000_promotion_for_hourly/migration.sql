@@ -1,0 +1,1 @@
+ALTER TABLE "Promotion" ADD COLUMN "forHourly" BOOLEAN NOT NULL DEFAULT false;
