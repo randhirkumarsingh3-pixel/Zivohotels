@@ -10,6 +10,7 @@ const NEAR_ME = 'Hotels near me';
 import { useAllExperiments } from '../context/ExperimentContext';
 import SmartSearchBar from '../components/search/SmartSearchBar';
 import HotelCard from '../components/HotelCard';
+import ShowInBatches from '../components/search/ShowInBatches';
 import { amenityLabels } from '../utils/amenityLabels';
 import usePageTitle from '../hooks/usePageTitle';
 import ResultsMap from '../components/search/ResultsMap';
@@ -307,7 +308,7 @@ const Listing = () => {
             <ResultsMap hotels={shown} detailQuery={detailQuery} className="h-[70vh] min-h-[420px]" />
           ) : (
             <div className="space-y-4">
-              {shown.map((hotel) => <HotelCard key={hotel.id} hotel={hotel} layout="row" />)}
+              <ShowInBatches items={shown} resetKey={`${location.search}|${sortBy}|${JSON.stringify(f)}`} render={(hotel) => <HotelCard key={hotel.id} hotel={hotel} layout="row" />} />
             </div>
           )}
         </div>

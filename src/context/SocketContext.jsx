@@ -28,9 +28,10 @@ export const SocketProvider = ({ children }) => {
       if (closed) return;
       newSocket = io(socketUrl, {
         withCredentials: true,
-        // Allow polling first so Socket.IO can do the standard HTTP upgrade.
-        // Forcing websocket-only breaks on Render's CDN proxy.
-        transports: ['polling', 'websocket'],
+        // WebSocket first: works when the server runs as several processes (long-polling needs
+        // every request of a connection to reach the same process). Long-polling stays as a
+        // fallback for networks that block WebSocket.
+        transports: ['websocket', 'polling'],
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
         reconnectionDelayMax: 10000,

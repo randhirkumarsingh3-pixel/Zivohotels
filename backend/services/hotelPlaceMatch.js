@@ -7,6 +7,9 @@ import prisma from '../config/db.js';
 import { PUBLIC_HOTEL_STATUSES } from '../constants/hotelStatus.js';
 import { cityNames, distanceKm, NEAR_ME_RADIUS_KM } from '../utils/places.js';
 
+/** Most hotels one search covers (the results page shows them a few at a time) */
+export const SEARCH_MAX_HOTELS = 1000;
+
 const escapeLike = (s) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**
@@ -30,7 +33,7 @@ export const hotelIdsForPlace = async (place) => {
         OR "integrationSettings"->'addressDetails'->>'area' ILIKE ANY(${contains}::text[])
         OR state ILIKE ANY(${exact}::text[])
       )
-    LIMIT 200`;
+    LIMIT ${SEARCH_MAX_HOTELS}`;
   return rows.map((r) => r.id);
 };
 
@@ -46,7 +49,7 @@ export const hotelsNear = async ({ lat, lng }, radiusKm = NEAR_ME_RADIUS_KM) => 
       longitude: { gte: lng - dLng, lte: lng + dLng },
     },
     select: { id: true, latitude: true, longitude: true },
-    take: 500,
+    take: SEARCH_MAX_HOTELS,
   });
   return new Map(rows
     .map((h) => [h.id, distanceKm(lat, lng, h.latitude, h.longitude)])

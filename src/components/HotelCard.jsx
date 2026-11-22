@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { getHotelById } from '../services/api';
 import { hourlyQuery } from '../utils/hourly';
 import { MapPin, Star, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,16 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const href = hotel.hourly
     ? `/hotel/${hotel.id}?${hourlyQuery({ date: hotel.hourly.date, start: hotel.hourly.start || hotel.hourly.nextStart || '10:00', hours: hotel.hourly.hours, guests: searchParams?.guests || 2 })}`
     : `/hotel/${hotel.id}${detailQuery}`;
+
+  // Pointing at (or touching) a card starts loading the hotel page and its details, so the page is
+  // usually ready by the time the click lands
+  const warmed = useRef(false);
+  const warm = () => {
+    if (warmed.current || hotel.hourly) return;
+    warmed.current = true;
+    import('../pages/Detail');
+    getHotelById(hotel.id, { checkIn: searchParams?.checkIn, checkOut: searchParams?.checkOut }).catch(() => {});
+  };
 
   const reviewCount = hotel.reviewCount || 0;
   const reviewScore = Number(hotel.reviewScore ?? hotel.rating) || 0;
@@ -83,7 +94,7 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   ) : <p className="text-sm font-semibold text-gray-600">Price on request</p>;
 
   return (
-    <article className={`group bg-white rounded-card overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow flex h-full ${row ? 'flex-col md:flex-row' : 'flex-col'}`}>
+    <article onPointerEnter={warm} onTouchStart={warm} onFocus={warm} className={`group bg-white rounded-card overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow flex h-full ${row ? 'flex-col md:flex-row' : 'flex-col'}`}>
       <Link to={href} tabIndex={-1} aria-hidden="true" className={row ? 'md:flex' : ''}>{photo}</Link>
       <div className={`p-5 flex flex-col flex-grow min-w-0 ${row ? 'md:flex-row md:gap-6' : ''}`}>
         <div className="flex-1 min-w-0">

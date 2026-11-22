@@ -33,7 +33,24 @@ DIR="$(docker inspect "$CADDY" --format '{{range .Mounts}}{{if eq .Destination "
 CADDYFILE="$DIR/Caddyfile"
 SITE_FILE="$DIR/zivohotels-app.caddy"
 IMPORT_LINE="import zivohotels-app.caddy"
-NEW_SITE="$(sed "s/__APP_DOMAIN__/$APP_DOMAIN/g" "$HERE/caddy/zivohotels-app.caddy.template")"
+# Behind Cloudflare (BEHIND_CLOUDFLARE=true in .env): trust the visitor address Cloudflare passes
+# on, but only when the request really comes from Cloudflare (its published address ranges,
+# fetched here and kept in .cloudflare-ips in case Cloudflare's site can't be reached later).
+# Anyone else's forwarded-address header is replaced, so rate limits can't be dodged.
+TRUSTED="# visitor address: Caddy's own view (not behind Cloudflare)"
+if [ "${BEHIND_CLOUDFLARE:-false}" = "true" ]; then
+  CF_CACHE="$HERE/.cloudflare-ips"
+  # Fetched at most once a day (this script also runs every 5 minutes from cron)
+  if { [ ! -s "$CF_CACHE" ] || [ -n "$(find "$CF_CACHE" -mmin +1440 2>/dev/null)" ]; } && CF="$(curl -fsS --max-time 10 https://www.cloudflare.com/ips-v4 && echo && curl -fsS --max-time 10 https://www.cloudflare.com/ips-v6)" && echo "$CF" | grep -q '/'; then
+    echo "$CF" | grep '/' | tr '\n' ' ' > "$CF_CACHE"
+  fi
+  if [ -s "$CF_CACHE" ]; then
+    TRUSTED="trusted_proxies $(cat "$CF_CACHE")"
+  else
+    echo "⚠️  BEHIND_CLOUDFLARE=true but Cloudflare's address list couldn't be fetched; visitor addresses will be Cloudflare's until it can"
+  fi
+fi
+NEW_SITE="$(sed -e "s/__APP_DOMAIN__/$APP_DOMAIN/g" -e "s|__TRUSTED_PROXIES__|$TRUSTED|" "$HERE/caddy/zivohotels-app.caddy.template")"
 
 BACKUP_DIR="$HERE/.caddy-backups"
 mkdir -p "$BACKUP_DIR"
