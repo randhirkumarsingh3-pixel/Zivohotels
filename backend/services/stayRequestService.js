@@ -31,6 +31,7 @@ const site = () => String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
 const fmtDay = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
 import { hotelEmailRecipients, notifyUser } from './notifyService.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 const sendEmail = (to, subject, html) => (to
   ? queueService.enqueue('email', 'SEND_STAY_REQUEST', { to, subject, html }, { priority: 3 }).catch((e) => console.error('[StayRequest] email not queued:', e.message))
@@ -44,7 +45,7 @@ const emailShell = (title, body) => `<!DOCTYPE html><html><body style="font-fami
 const canSeeBooking = (booking, user) => {
   if (!booking || !user) return false;
   if (user.role === 'ADMIN') return true;
-  if (user.role === 'OWNER' && booking.hotel?.ownerId === user.id) return true;
+  if (user.role === 'OWNER' && managesHotel(user, { ...booking.hotel, id: booking.hotelId || booking.hotel?.id }, 'bookings.view')) return true;
   return booking.userId === user.id;
 };
 

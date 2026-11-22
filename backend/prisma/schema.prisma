@@ -39,6 +39,7 @@ model User {
   hotels              Hotel[]        @relation("PrimaryOwner")
   loyaltyWallet       LoyaltyWallet?
   reviews             Review[]
+  staffMemberships    StaffMember[]  @relation("StaffUser")
 }
 
 model Hotel {
@@ -121,6 +122,7 @@ model Hotel {
   bookings           Booking[]
   cancellationPolicy CancellationPolicy?
   owner              User                @relation("PrimaryOwner", fields: [ownerId], references: [id])
+  staff              StaffMember[]
   media              HotelImage[]
   reviewList         Review[]
   roomTypes          RoomType[]
@@ -1677,4 +1679,46 @@ model HourlyAllocation {
   roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 
   @@unique([roomTypeId, date])
+}
+
+/// A role: a named set of permissions (constants/permissions.js). scope ADMIN = ZivoHotels staff
+/// (admin console), EXTRANET = a hotel's team. Ready-made roles have a key and isSystem (can't be
+/// edited or deleted). Custom extranet roles belong to the hotel owner who made them (ownerId).
+model AccessRole {
+  id          String        @id @default(uuid())
+  scope       String // ADMIN | EXTRANET
+  key         String?       @unique
+  name        String
+  description String?
+  permissions String[]      @default([])
+  isSystem    Boolean       @default(false)
+  ownerId     String?
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  members     StaffMember[]
+
+  @@index([scope, ownerId])
+}
+
+/// A person's role: in the admin console (scope ADMIN, no hotel) or at one property (scope
+/// EXTRANET, hotelId). A hotel's owner (Hotel.ownerId) has every extranet permission there without
+/// a row. PAUSED members keep their row but have no access.
+model StaffMember {
+  id          String     @id @default(uuid())
+  userId      String
+  roleId      String
+  scope       String // ADMIN | EXTRANET
+  hotelId     String?
+  status      String     @default("ACTIVE") // ACTIVE | PAUSED
+  invitedById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation("StaffUser", fields: [userId], references: [id], onDelete: Cascade)
+  role        AccessRole @relation(fields: [roleId], references: [id])
+  hotel       Hotel?     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, hotelId])
+  @@index([hotelId])
+  @@index([roleId])
 }

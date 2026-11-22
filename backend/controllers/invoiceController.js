@@ -2,6 +2,7 @@ import invoiceService from '../services/invoiceService.js';
 import prisma from '../config/db.js';
 import path from 'path';
 import fs from 'fs';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 export const regenerateInvoice = async (req, res, next) => {
   try {
@@ -56,7 +57,7 @@ export const downloadInvoice = async (req, res, next) => {
     if (userRole === 'CUSTOMER' && booking.userId !== userId) {
       return res.status(403).json({ success: false, message: 'Access denied to this invoice' });
     }
-    if (userRole === 'OWNER' && booking.hotel.ownerId !== userId) {
+    if (userRole === 'OWNER' && !managesHotel(req.user, { ...booking.hotel, id: booking.hotelId }, 'bookings.view')) {
       return res.status(403).json({ success: false, message: 'Access denied to this invoice' });
     }
 

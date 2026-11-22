@@ -415,6 +415,20 @@ export const getExtensionOptionsApi = (bookingId) => apiFetch(`${PUBLIC_BASE}/bo
 export const createExtensionApi = (bookingId, hours) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/hourly/extend`, { method: 'POST', body: JSON.stringify({ hours }) }).then((r) => r?.data);
 export const verifyExtensionApi = (bookingId, response) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/hourly/extend/verify`, { method: 'POST', body: JSON.stringify(response) }).then((r) => r?.data);
 
+// ─── STAFF & ROLES (admin console) ──────────────────────────────────────────────
+const STAFF = () => `${PUBLIC_BASE}/admin/staff`;
+const jsonBody = (method, body) => ({ method, body: JSON.stringify(body || {}) });
+/** ZivoHotels staff: the same shape as the extranet team API (services/extranetApi.js teamApi) */
+export const adminTeamApi = {
+  get: () => apiFetch(STAFF(), { cache: 'no-store' }, 0).then((r) => r?.data),
+  invite: (body) => apiFetch(`${STAFF()}/invite`, jsonBody('POST', body), 0).then((r) => r?.data),
+  update: (id, body) => apiFetch(`${STAFF()}/${id}`, jsonBody('PATCH', body), 0).then((r) => r?.data),
+  remove: (id) => apiFetch(`${STAFF()}/${id}`, { method: 'DELETE' }, 0).then((r) => r?.data),
+  resend: (id) => apiFetch(`${STAFF()}/${id}/resend`, { method: 'POST' }, 0).then((r) => r?.data),
+  saveRole: (role) => apiFetch(role.id ? `${STAFF()}/roles/${role.id}` : `${STAFF()}/roles`, jsonBody(role.id ? 'PUT' : 'POST', role), 0).then((r) => r?.data),
+  deleteRole: (id) => apiFetch(`${STAFF()}/roles/${id}`, { method: 'DELETE' }, 0).then((r) => r?.data),
+};
+
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const getAdminHotels = async () => apiFetch(`${ADMIN_BASE}/hotels`).then(res => res?.data);
 export const getAdminBookings = async (params = {}) => apiFetch(`${ADMIN_BASE}/bookings?${new URLSearchParams(params).toString()}`);

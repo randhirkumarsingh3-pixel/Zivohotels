@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { firstHotelFor, accessForClient } from '../services/accessService.js';
 import { awardSignupBonus } from '../services/loyaltyService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -67,7 +68,7 @@ const startSession = async (req, res, user, status = 200) => {
   });
   let hotelId = null;
   if (['OWNER', 'MANAGER'].includes(updated.role)) {
-    hotelId = (await prisma.hotel.findFirst({ where: { ownerId: updated.id }, select: { id: true } }))?.id || null;
+    hotelId = await firstHotelFor(updated.id);
   }
   const token = signToken(updated.id, updated.role, hotelId, updated.tokenVersion);
   setSessionCookie(res, token); // the token in the body is for API clients; browsers use the cookie
@@ -335,7 +336,9 @@ export const phoneCodeVerify = asyncHandler(async (req, res) => {
 
 /** The signed-in person's profile. */
 export const me = (req, res) => {
-  res.status(200).json({ success: true, data: { user: publicUser(req.user, req.user.hotelId || null) } });
+  // Staff: what they may do (admin console, and per property), so screens show only that
+  const access = ['ADMIN', 'OWNER'].includes(req.user.role) ? accessForClient(req.user.access) : null;
+  res.status(200).json({ success: true, data: { user: { ...publicUser(req.user, req.user.hotelId || null), ...(access ? { access } : {}) } } });
 };
 
 // --- Hotel email check during property onboarding (send-otp / verify-otp) ---

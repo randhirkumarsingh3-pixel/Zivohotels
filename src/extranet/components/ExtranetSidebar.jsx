@@ -15,9 +15,12 @@ import {
   Plus,
   Wallet,
   Crown,
+  Users,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useExtranet } from '../context/ExtranetContext';
+import useAccess from '../../hooks/useAccess';
 import Logo from '../../components/brand/Logo';
 
 const NavItem = ({ name, path, icon, exact, state }) => (
@@ -44,9 +47,54 @@ const SectionLabel = ({ children }) => (
   <li className="pt-5 pb-2 px-3 list-none"><span className="text-xs font-semibold text-navy-300 uppercase tracking-wider">{children}</span></li>
 );
 
+// Each item names the permission it needs at the active property (staff roles); hidden otherwise.
+// owner: only for the property's owner.
+const MENU = [
+  { items: [{ name: 'Dashboard', path: '/extranet', icon: <LayoutDashboard size={18} />, exact: true, perm: 'dashboard.view' }] },
+  {
+    label: 'Property',
+    items: [
+      { name: 'Property Info', path: '/extranet/property', icon: <Building2 size={18} />, perm: 'property.edit' },
+      { name: 'Add New Property', path: '/extranet/onboarding', state: { resetDraft: true }, icon: <Plus size={18} />, owner: true },
+      { name: 'Rooms & Rate Plans', path: '/extranet/rooms', icon: <BedDouble size={18} />, perm: 'rates.view' },
+      { name: 'Inventory Calendar', path: '/extranet/inventory', icon: <CalendarDays size={18} />, perm: 'rates.view' },
+      { name: 'Hourly Stays', path: '/extranet/hourly', icon: <Clock size={18} />, perm: 'rates.view' },
+      { name: 'Dynamic Pricing', path: '/extranet/pricing', icon: <IndianRupee size={18} />, perm: 'rates.view' },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { name: 'Bookings', path: '/extranet/bookings', icon: <ClipboardList size={18} />, perm: 'bookings.view' },
+      { name: 'Finance Hub', path: '/extranet/finance', icon: <IndianRupee size={18} />, perm: 'finance.view' },
+      { name: 'Wallet', path: '/extranet/wallet', icon: <Wallet size={18} />, perm: 'finance.view' },
+      { name: 'Member Prices', path: '/extranet/member-prices', icon: <Crown size={18} />, perm: 'membership.manage' },
+      { name: 'Guest Reviews', path: '/extranet/reviews', icon: <Star size={18} />, perm: 'reviews.reply' },
+      { name: 'Promotions', path: '/extranet/promotions', icon: <Tag size={18} />, perm: 'promotions.manage' },
+    ],
+  },
+  {
+    label: 'Growth',
+    items: [
+      { name: 'Performance', path: '/extranet/performance', icon: <BarChart3 size={18} />, perm: 'dashboard.view' },
+      { name: 'Team', path: '/extranet/team', icon: <Users size={18} />, perm: 'team.manage' },
+      { name: 'Settings', path: '/extranet/settings', icon: <Settings size={18} />, perm: 'dashboard.view' },
+    ],
+  },
+];
+
 /** Extranet menu: fixed column on large screens, slide-in drawer on phones and tablets. */
 const ExtranetSidebar = ({ open = false, onClose = () => {} }) => {
   const { user, logout } = useAuth();
+  const { hotelId } = useExtranet();
+  const { access, canAtHotel } = useAccess();
+  const here = access?.hotels?.[hotelId];
+  // Until the property and permissions are known, show the owner's full menu (an owner is the common case)
+  const show = (item) => {
+    if (!access || !hotelId) return true;
+    if (item.owner) return Boolean(here?.owner) || !Object.keys(access.hotels || {}).length;
+    return canAtHotel(hotelId, item.perm);
+  };
 
   return (
     <>
@@ -59,27 +107,18 @@ const ExtranetSidebar = ({ open = false, onClose = () => {} }) => {
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-1">
-          <NavItem name="Dashboard" path="/extranet" icon={<LayoutDashboard size={18} />} exact />
-          
-          <SectionLabel>Property</SectionLabel>
-          <NavItem name="Property Info" path="/extranet/property" icon={<Building2 size={18} />} />
-          <NavItem name="Add New Property" path="/extranet/onboarding" state={{ resetDraft: true }} icon={<Plus size={18} />} />
-          <NavItem name="Rooms & Rate Plans" path="/extranet/rooms" icon={<BedDouble size={18} />} />
-          <NavItem name="Inventory Calendar" path="/extranet/inventory" icon={<CalendarDays size={18} />} />
-          <NavItem name="Hourly Stays" path="/extranet/hourly" icon={<Clock size={18} />} />
-          <NavItem name="Dynamic Pricing" path="/extranet/pricing" icon={<IndianRupee size={18} />} />
-          
-          <SectionLabel>Operations</SectionLabel>
-          <NavItem name="Bookings" path="/extranet/bookings" icon={<ClipboardList size={18} />} />
-          <NavItem name="Finance Hub" path="/extranet/finance" icon={<IndianRupee size={18} />} />
-          <NavItem name="Wallet" path="/extranet/wallet" icon={<Wallet size={18} />} />
-          <NavItem name="Member Prices" path="/extranet/member-prices" icon={<Crown size={18} />} />
-          <NavItem name="Guest Reviews" path="/extranet/reviews" icon={<Star size={18} />} />
-          <NavItem name="Promotions" path="/extranet/promotions" icon={<Tag size={18} />} />
-          
-          <SectionLabel>Growth</SectionLabel>
-          <NavItem name="Performance" path="/extranet/performance" icon={<BarChart3 size={18} />} />
-          <NavItem name="Settings" path="/extranet/settings" icon={<Settings size={18} />} />
+          {MENU.map((section) => {
+            const items = section.items.filter((i) => show(i));
+            if (!items.length) return null;
+            return (
+              <li key={section.label || 'top'} className="list-none">
+                <ul className="space-y-1">
+                  {section.label && <SectionLabel>{section.label}</SectionLabel>}
+                  {items.map((i) => <NavItem key={i.path} name={i.name} path={i.path} icon={i.icon} exact={i.exact} state={i.state} />)}
+                </ul>
+              </li>
+            );
+          })}
         </ul>
 
       </nav>
@@ -91,7 +130,7 @@ const ExtranetSidebar = ({ open = false, onClose = () => {} }) => {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-white truncate leading-none mb-1">{user?.name}</div>
-            <div className="text-xs text-navy-200 truncate">Property partner</div>
+            <div className="text-xs text-navy-200 truncate">{here?.role || 'Property partner'}</div>
           </div>
         </div>
         <button

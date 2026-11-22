@@ -1,6 +1,8 @@
 import prisma from '../config/db.js';
 import express from 'express';
+import staffRoutes from './staffRoutes.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { permissionGate } from '../middleware/permissionGate.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
@@ -30,6 +32,7 @@ const router = express.Router();
 // Extranet routes are protected and restricted to OWNER/MANAGER
 router.use(protect);
 router.use(authorizeRoles('OWNER', 'ADMIN', 'MANAGER'));
+router.use(permissionGate); // each path's permission (staff roles)
 
 // Property Onboarding (Bypasses scoping during creation)
 router.post('/onboarding/init', initOnboarding);
@@ -38,8 +41,10 @@ router.post('/onboarding/init', initOnboarding);
 // every hotel the owner may pick)
 router.get('/properties', async (req, res) => {
   try {
+    // Owned properties and the ones whose team they're on
+    const ids = req.user.role === 'ADMIN' ? [] : Object.keys(req.user.access?.hotels || {});
     const hotels = await prisma.hotel.findMany({
-      where: { ownerId: req.user.id, isDeleted: false },
+      where: { id: { in: ids }, isDeleted: false },
       select: { id: true, name: true, city: true, status: true },
       orderBy: { name: 'asc' }
     });
@@ -103,5 +108,8 @@ router.get('/finance/payouts', getPayoutHistory);
 router.get('/wallet', getHotelWallet);
 router.get('/membership', getHotelMembership);
 router.put('/membership', putHotelMembership);
+
+// The property's team and roles (needs team.manage there)
+router.use('/team', staffRoutes);
 
 export default router;

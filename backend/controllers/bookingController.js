@@ -80,6 +80,7 @@ const statusUpdateSchema = z.object({
 });
 
 import bookingService from '../services/bookingService.js';
+import { managesHotel, managedHotelWhere } from '../utils/hotelAccess.js';
 
 export const previewBooking = async (req, res, _next) => {
   try {
@@ -214,7 +215,7 @@ export const getBookings = async (req, res, next) => {
 
     // OWNER-scoped: only see bookings for properties they own
     if (req.user.role === 'OWNER') {
-      filter.hotel = { ownerId: req.user.id };
+      filter.hotel = managedHotelWhere(req.user);
     }
 
     const [bookings, total] = await Promise.all([
@@ -266,10 +267,7 @@ export const updateBookingStatus = async (req, res, next) => {
       const booking = await prisma.booking.findUnique({ where: { id } });
       if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
       
-      const hotel = await prisma.hotel.findFirst({
-        where: { id: booking.hotelId, ownerId: req.user.id }
-      });
-      if (!hotel) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (!managesHotel(req.user, booking.hotelId)) return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     const context = { userId: req.user?.id };
@@ -290,10 +288,10 @@ export const updateBookingStatus = async (req, res, next) => {
  */
 // Who may cancel (a room of) a booking: the guest who booked, the hotel's owner, an admin
 const mayCancel = async (bookingId, user) => {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { userId: true, hotel: { select: { ownerId: true } } } });
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { userId: true, hotelId: true, hotel: { select: { ownerId: true } } } });
   if (!booking) return { status: 404, message: 'Booking not found' };
   if (user.role === 'ADMIN') return null;
-  if (user.role === 'OWNER' && booking.hotel?.ownerId === user.id) return null;
+  if (user.role === 'OWNER' && managesHotel(user, { id: booking.hotelId, ownerId: booking.hotel?.ownerId }, 'bookings.manage')) return null;
   if (user.role === 'CUSTOMER' && booking.userId === user.id) return null;
   return { status: 403, message: 'Unauthorized' };
 };
@@ -338,7 +336,7 @@ export const cancelBooking = async (req, res, next) => {
     // Authorization: guests cancel their own bookings, owners their hotels' bookings
     if (req.user.role === 'OWNER') {
       const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId } });
-      if (hotel.ownerId !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized', requestId });
+      if (!managesHotel(req.user, hotel, 'bookings.manage')) return res.status(403).json({ success: false, message: 'Unauthorized', requestId });
     } else if (req.user.role === 'CUSTOMER') {
       if (booking.userId !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized', requestId });
     }
@@ -385,8 +383,8 @@ export const cancelPreview = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
     }
     if (req.user.role === 'OWNER') {
-      const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId }, select: { ownerId: true } });
-      if (hotel?.ownerId !== req.user.id) return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
+      const hotel = await prisma.hotel.findUnique({ where: { id: booking.hotelId }, select: { id: true, ownerId: true } });
+      if (!hotel || !managesHotel(req.user, hotel, 'bookings.view')) return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
     }
     res.json({ success: true, data: await previewGuestCancellation(booking), requestId: req.id });
   } catch (error) {
@@ -442,13 +440,13 @@ export const failBooking = async (req, res, next) => {
     // Authorization: customers may only fail their own bookings, owners only their hotels' bookings.
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { userId: true, hotel: { select: { ownerId: true } } }
+      select: { userId: true, hotelId: true, hotel: { select: { ownerId: true } } }
     });
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found', requestId: req.id });
     }
     const isAdmin = req.user.role === 'ADMIN';
-    const isOwnerOfHotel = req.user.role === 'OWNER' && booking.hotel?.ownerId === req.user.id;
+    const isOwnerOfHotel = req.user.role === 'OWNER' && managesHotel(req.user, { id: booking.hotelId, ownerId: booking.hotel?.ownerId }, 'bookings.view');
     const isBookingCustomer = booking.userId === req.user.id;
     if (!isAdmin && !isOwnerOfHotel && !isBookingCustomer) {
       return res.status(403).json({ success: false, message: 'Unauthorized', requestId: req.id });

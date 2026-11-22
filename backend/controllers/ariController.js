@@ -2,6 +2,7 @@ import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import ariService from '../services/ariService.js';
 import { scheduleRecompute } from '../services/dynamicPricingService.js';
+import { managesHotel } from '../utils/hotelAccess.js';
 
 /**
  * Rates & availability (ARI) for Admin -> Inventory & Rates and the extranet.
@@ -12,7 +13,7 @@ import { scheduleRecompute } from '../services/dynamicPricingService.js';
 const loadHotelFor = async (req, hotelId) => {
   if (!hotelId) throw Object.assign(new Error('Choose a property'), { status: 400 });
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { id: true, ownerId: true, integrationMode: true, channelProvider: true, isDeleted: true } });
-  if (!hotel || hotel.isDeleted || (req.user.role !== 'ADMIN' && hotel.ownerId !== req.user.id)) {
+  if (!hotel || hotel.isDeleted || !managesHotel(req.user, hotel)) {
     throw Object.assign(new Error('Property not found'), { status: 404 });
   }
   const integration = await prisma.channelIntegration.findUnique({ where: { hotelId }, select: { provider: true, status: true } });

@@ -20,6 +20,7 @@ import nearbyPlaces from '../services/nearbyPlacesService.js';
 import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
 import { parseLatLng } from '../utils/places.js';
 import { SEARCH_MAX_HOTELS } from '../services/hotelPlaceMatch.js';
+import { managesHotel, managedHotelWhere } from '../utils/hotelAccess.js';
 
 const SEARCH_BATCH = 200;
 /** Runs fn over items, `size` at a time (keeps the database pool free for other visitors). */
@@ -475,7 +476,7 @@ export const updateHotel = asyncHandler(async (req, res) => {
     }
   }
   
-  if (req.user.role === 'OWNER' && existingHotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, existingHotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
@@ -656,7 +657,7 @@ export const deleteHotel = asyncHandler(async (req, res) => {
   const hotel = await prisma.hotel.findUnique({ where: { id } });
   if (!hotel) return res.status(404).json({ success: false, message: 'Property not found', requestId: req.id });
   
-  if (req.user.role === 'OWNER' && hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, hotel)) {
     return res.status(403).json({ success: false, message: 'Forbidden', requestId: req.id });
   }
 
@@ -717,7 +718,7 @@ export const getAllHotels = asyncHandler(async (req, res) => {
 
   const where = { ...activeFilter };
   if (req.user && req.user.role === 'OWNER') {
-    where.ownerId = req.user.id;
+    Object.assign(where, managedHotelWhere(req.user));
   } else if (!req.user || req.user.role !== 'ADMIN') {
     // Public & customer listings must only show approved, live hotels — never drafts,
     // properties under review, or suspended ones. Admins/owners still see everything they manage.
@@ -873,7 +874,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
   // Only an admin or the property's own owner sees the full record (bank account, agreement, PAN,
   // owner contact...). Everyone else gets the public view of a live property. Before, this
   // endpoint needed no login and returned the bank account and PAN of any hotel.
-  const isPrivileged = req.user && (req.user.role === 'ADMIN' || (req.user.role === 'OWNER' && hotel.ownerId === req.user.id));
+  const isPrivileged = req.user && (req.user.role === 'ADMIN' || (req.user.role === 'OWNER' && managesHotel(req.user, hotel)));
   if (!isPrivileged && !PUBLIC_HOTEL_STATUSES.includes(hotel.status)) {
     return res.status(404).json({ success: false, message: 'Hotel not found', requestId: req.id });
   }
@@ -1187,7 +1188,7 @@ export const signAgreement = asyncHandler(async (req, res) => {
 
   if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
   
-  if (req.user.role === 'OWNER' && hotel.ownerId !== req.user.id) {
+  if (req.user.role === 'OWNER' && !managesHotel(req.user, hotel)) {
     return res.status(403).json({ success: false, message: 'Not authorized to sign for this property' });
   }
 

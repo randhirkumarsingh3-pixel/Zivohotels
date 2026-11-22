@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../config/db.js';
 import systemCache from '../utils/systemCache.js';
+import { loadAccess } from '../services/accessService.js';
 import { requestToken } from '../utils/sessionCookie.js';
 import { isAllowedOrigin as isConfiguredOrigin } from '../config/origins.js';
 
@@ -79,6 +80,8 @@ export const protect = async (req, res, next) => {
     // Never expose credential fields downstream (e.g. GET /auth/me returns req.user).
     const { password: _password, ...safeUser } = currentUser;
     req.user = { ...safeUser, hotelId: decoded.hotelId };
+    // Staff permissions (admin console, and each property for hotel teams)
+    req.user.access = await loadAccess(req.user);
     next();
   } catch (error) {
     console.error('Auth Error:', error.message);
