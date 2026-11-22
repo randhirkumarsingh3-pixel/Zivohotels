@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { loginCodeSendApi, loginCodeVerifyApi, googleSignInApi } from '../services/api';
 import usePageTitle from '../hooks/usePageTitle';
 import { AuthShell, ErrorNote, Field, CodeInput, TestCodeNote, ResendButton, GoogleButton } from '../components/auth/AuthParts';
-import { inputClass, primaryButton } from '../components/auth/authUtils';
+import { inputClass, primaryButton, returnTo } from '../components/auth/authUtils';
 
 /**
  * Guest sign-in, two ways:
@@ -18,7 +18,7 @@ const Login = () => {
   const { login, setSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+  const back = returnTo(location);
   const [notice] = useState(() => {
     let once = '';
     try { once = sessionStorage.getItem('zivo_login_notice') || ''; } catch { /* ignore */ }
@@ -40,7 +40,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const done = (result) => {
-    if (result.success) navigate(from, { replace: true });
+    if (result.success) navigate(back.path, { replace: true, state: back.state });
     else { setError(result.message || 'Sign-in failed'); setLoading(false); }
   };
 
@@ -93,6 +93,11 @@ const Login = () => {
       subtitle={<>New to ZivoHotels? <Link to="/signup" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Create an account</Link></>}
     >
       {notice && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
+      {back.booking && !notice && (
+        <p className="mb-4 rounded-lg bg-navy-50 p-3 text-sm text-navy-900">
+          <strong>Sign in to finish your booking.</strong> Not registered yet? <Link to="/signup" state={location.state} className="font-semibold underline">Create a free account</Link>. Your room and dates are kept.
+        </p>
+      )}
       <div role="tablist" aria-label="How to sign in" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-6">
         {[['password', 'Password'], ['code', 'Sign-in code']].map(([m, label]) => (
           <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)}
@@ -149,6 +154,14 @@ const Login = () => {
       )}
 
       <GoogleButton onCredential={onGoogle} />
+      <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+        <p className="text-sm text-gray-600">Not registered yet?</p>
+        <Link to="/signup" state={location.state}
+          className="mt-2 w-full inline-flex justify-center items-center py-3 px-4 rounded-xl text-sm font-bold border-2 border-navy-700 text-navy-800 hover:bg-navy-50 transition-colors">
+          Create a free account
+        </Link>
+        <p className="mt-2 text-xs text-gray-500">Member prices, Zivo Rewards on every stay, and all your bookings in one place.</p>
+      </div>
     </AuthShell>
   );
 };

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, BedDouble, Users, ShieldCheck, Check, Loader2, Hourglass } from 'lucide-react';
 import { getHotelHourly, previewHourlyApi } from '../../services/api';
 import { getImageUrl } from '../../utils/image';
+import { useAuth } from '../../context/AuthContext';
 import PhotoViewer from './PhotoViewer';
 import { timeLabel, todayIst } from '../../utils/hourly';
 
@@ -15,6 +16,7 @@ const addHours = (hhmm, h) => { const [a, b] = hhmm.split(':').map(Number); cons
 
 const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [date, setDate] = useState(initial.date);
   const [hours, setHours] = useState(initial.hours);
   const [guests, setGuests] = useState(initial.guests);
@@ -169,6 +171,7 @@ const HourlyBooking = ({ hotel, initial, onSlotChange }) => {
               className="mt-4 w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
               {quote ? `Book now · ${inr(quote.totalAmount)}` : 'Book now'}
             </button>
+            {!isAuthenticated && <p className="text-center text-xs text-gray-600 mt-2">You&apos;ll sign in, or create a free account, before paying. Your room and time are kept.</p>}
             <p className="text-center text-xs text-gray-500 mt-3 flex items-center justify-center gap-1">
               <ShieldCheck size={12} className="text-green-700" aria-hidden="true" />
               {offer?.settings?.freeCancelHours ? `Free cancellation until ${offer.settings.freeCancelHours} hour${offer.settings.freeCancelHours === 1 ? '' : 's'} before check-in` : 'Non-refundable once booked'}
