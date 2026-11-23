@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useExtranet } from '../context/ExtranetContext';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -30,11 +30,15 @@ const getAuthHeaders = () => {
 
 /** One readable line from a failed save (first field error, or the message). */
 const saveErrorMessage = (json, fallback) => {
-  const fieldErrors = json?.errors?.fieldErrors;
+  // The API's response wrapper puts details under data.errors
+  const fieldErrors = (json?.errors || json?.data?.errors)?.fieldErrors;
   const field = fieldErrors && Object.keys(fieldErrors)[0];
   if (field) return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldErrors[field][0]}`;
   return json?.message || fallback;
 };
+
+/** Editor sections by name, for links like /extranet/onboarding/<id>?section=photos */
+const SECTION_STEP = { basics: 1, location: 2, amenities: 3, rooms: 4, photos: 5, policies: 6, finance: 7, documents: 8 };
 
 const PropertyOnboarding = () => {
   const navigate = useNavigate();
@@ -71,7 +75,8 @@ const PropertyOnboarding = () => {
     hasDraftLoaded,
     handleResetDraft,
     saveDraftIfNeeded,
-    clearSavedProgress
+    clearSavedProgress,
+    reloadProperty
   } = usePropertyWizard({
     isEditing,
     effectiveId,
@@ -79,6 +84,23 @@ const PropertyOnboarding = () => {
     onFetchError: handleFetchError,
     clearCurrentHotelId: handleClearHotelId
   });
+
+  // Editing a property that is already listed (or opening one part from the Property page): any
+  // section opens directly and "Save changes" saves without sending it for review again.
+  // A property still being set up keeps the step-by-step flow ending in "Submit".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
+  const sectionMode = isEditing && (Boolean(requestedSection) || Boolean(formData.status && !['DRAFT', 'INFORMATION_REQUESTED'].includes(formData.status)));
+  useEffect(() => {
+    const step = SECTION_STEP[requestedSection];
+    if (isEditing && step) _setCurrentStep(step);
+  }, [requestedSection, isEditing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const jumpTo = (step) => {
+    const key = Object.keys(SECTION_STEP).find((k) => SECTION_STEP[k] === step);
+    if (key) setSearchParams({ section: key }, { replace: true });
+    _setCurrentStep(step);
+    window.scrollTo(0, 0);
+  };
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -180,29 +202,10 @@ const PropertyOnboarding = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    // Advance to next step if not on last step (8 = Documents, shared with the admin wizard)
-    if (currentStep < 8) {
-      return handleStepChange(
-        currentStep + 1,
-        (error) => addToast(error, 'warning'),
-        async (_step) => {
-          return await syncDraftToBackend();
-        }
-      );
-    }
-
-    // Final Validation before submit
-    const { valid, firstError } = validateStep(7, formData);
-    if (!valid) {
-      addToast(firstError, 'warning');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
+  /** Saves the property and its rooms (and rate plans, room photos). Returns the property id. */
+  const saveEverything = async () => {
           const payload = buildHotelPayload(formData, import.meta.env.VITE_API_URL);
-          payload.status = 'PENDING';
+          if (!sectionMode) payload.status = 'PENDING';
 
       const draftId = localStorage.getItem('currentHotelId_extranet');
       const targetHotelId = effectiveId || draftId;
@@ -237,8 +240,9 @@ const PropertyOnboarding = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.errors && data.errors.fieldErrors) {
-          const fieldErrors = data.errors.fieldErrors;
+        const errs = data.errors || data.data?.errors;
+        if (errs && errs.fieldErrors && Object.keys(errs.fieldErrors).length) {
+          const fieldErrors = errs.fieldErrors;
           const firstField = Object.keys(fieldErrors)[0];
           const firstMsg = fieldErrors[firstField][0];
           throw new Error(`${firstField.charAt(0).toUpperCase() + firstField.slice(1)}: ${firstMsg}`);
@@ -333,6 +337,53 @@ const PropertyOnboarding = () => {
         }
       }
 
+      return hotelId;
+  };
+
+  /** Section mode: save everything, stay on this section, never send the property for review. */
+  const handleSaveSection = async () => {
+    if (currentStep <= 7) {
+      const { valid, firstError } = validateStep(currentStep, formData);
+      if (!valid) { addToast(firstError, 'warning'); return; }
+    }
+    setIsSubmitting(true);
+    try {
+      const id = await saveEverything();
+      if (!id) return;
+      clearSavedProgress();
+      await reloadProperty();
+      addToast(['LIVE', 'ACTIVE'].includes(formData.status) ? 'Saved. Your changes are live.' : 'Saved.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Your changes could not be saved.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Advance to next step if not on last step (8 = Documents, shared with the admin wizard)
+    if (currentStep < 8) {
+      return handleStepChange(
+        currentStep + 1,
+        (error) => addToast(error, 'warning'),
+        async (_step) => {
+          return await syncDraftToBackend();
+        }
+      );
+    }
+
+    // Final Validation before submit
+    const { valid, firstError } = validateStep(7, formData);
+    if (!valid) {
+      addToast(firstError, 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const hotelId = await saveEverything();
+      if (!hotelId) return;
+
       // Final Submission (KYC Trigger)
       // Your details are saved above; if the server says the property isn't ready (e.g. bank
       // details or KYC documents missing), stop here and show why instead of the success screen.
@@ -387,12 +438,15 @@ const PropertyOnboarding = () => {
   return (
     <>
       <PropertyWizardLayout 
-        title={isEditing ? 'Property Settings' : 'List New Property'}
+        title={sectionMode ? (formData.name || 'Edit property') : isEditing ? 'Property Settings' : 'List New Property'}
         subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
         currentStep={currentStep}
         setCurrentStep={handleStepChange}
-        onSaveDraft={handleSaveDraft}
-        onSave={handleSubmit}
+        onSaveDraft={sectionMode ? handleSaveSection : handleSaveDraft}
+        onSave={sectionMode ? handleSaveSection : handleSubmit}
+        sectionMode={sectionMode}
+        onJump={jumpTo}
+        onBackToProperty={() => navigate('/extranet/property')}
         isSubmitting={isSubmitting}
         isEditing={isEditing}
       >

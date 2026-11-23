@@ -109,3 +109,15 @@ export const updateBookingEmails = async (req, res) => {
     res.status(500).json({ success: false, message: 'Could not save the booking emails.' });
   }
 };
+
+/** GET /api/v1/extranet/property/overview: header details, guest rating and content score. */
+export const getPropertyOverview = async (req, res, next) => {
+  try {
+    const { propertyOverview } = await import('../../services/contentScore.js');
+    const data = await propertyOverview(req.scopedHotelId);
+    if (!data) return res.status(404).json({ success: false, message: 'Property not found' });
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};

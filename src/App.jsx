@@ -78,6 +78,7 @@ const ExtranetFinance = lazy(() => import('./extranet/pages/ExtranetFinance'));
 const ExtranetPerformance = lazy(() => import('./extranet/pages/ExtranetPerformance'));
 const ExtranetLogin = lazy(() => import('./extranet/pages/ExtranetLogin'));
 const ExtranetProperty = lazy(() => import('./extranet/pages/ExtranetProperty'));
+const ExtranetContentScore = lazy(() => import('./extranet/pages/ExtranetContentScore'));
 const ExtranetRooms = lazy(() => import('./extranet/pages/ExtranetRooms'));
 const ExtranetBookings = lazy(() => import('./extranet/pages/ExtranetBookings'));
 const ExtranetReviews = lazy(() => import('./extranet/pages/ExtranetReviews'));
@@ -264,6 +265,7 @@ function App() {
               <Route index element={<ExtranetDashboard />} />
               
               <Route path="property" element={<ExtranetProperty />} />
+              <Route path="property/score" element={<ExtranetContentScore />} />
               <Route path="rooms" element={<ExtranetRooms />} />
               <Route path="inventory" element={<ExtranetInventory />} />
               <Route path="hourly" element={<ExtranetHourly />} />

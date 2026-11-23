@@ -22,13 +22,19 @@ const PropertyWizardLayout = ({
   onSaveDraft,
   isSubmitting, 
   children,
-  isEditing = false
+  isEditing = false,
+  // Editing a listed property: every section is a tab, "Save changes" saves and stays
+  sectionMode = false,
+  onJump = null,
+  onBackToProperty = null,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleBackNavigation = () => {
-    if (location.pathname.startsWith('/admin')) {
+    if (sectionMode && onBackToProperty) {
+      onBackToProperty();
+    } else if (location.pathname.startsWith('/admin')) {
       navigate('/admin/properties');
     } else {
       navigate('/extranet');
@@ -61,9 +67,11 @@ const PropertyWizardLayout = ({
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="text-sm font-medium text-slate-500 hidden sm:block">
-              Step {currentStep} of {STEPS.length}: <span className="text-slate-900">{currentStepData.title}</span>
-            </div>
+            {!sectionMode && (
+              <div className="text-sm font-medium text-slate-500 hidden sm:block">
+                Step {currentStep} of {STEPS.length}: <span className="text-slate-900">{currentStepData.title}</span>
+              </div>
+            )}
             <button 
               onClick={onSaveDraft || onSave}
               disabled={isSubmitting}
@@ -71,26 +79,40 @@ const PropertyWizardLayout = ({
               className="text-slate-600 hover:text-blue-600 px-3 py-2 font-semibold text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              <span className="hidden sm:inline">Save Draft</span>
+              <span className="hidden sm:inline">{sectionMode ? 'Save changes' : 'Save Draft'}</span>
             </button>
           </div>
         </div>
 
-        {/* Thin Progressive Progress Bar */}
+        {sectionMode ? (
+          <nav aria-label="Listing sections" className="border-t border-slate-100">
+            <div className="max-w-5xl mx-auto px-2 sm:px-6 flex gap-1 overflow-x-auto">
+              {STEPS.map((st) => (
+                <button key={st.num} type="button" onClick={() => onJump?.(st.num)} aria-current={st.num === currentStep ? 'page' : undefined}
+                  className={`shrink-0 px-3 py-3 text-sm font-semibold border-b-2 transition-colors ${st.num === currentStep ? 'border-navy-800 text-navy-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                  {st.title}
+                </button>
+              ))}
+            </div>
+          </nav>
+        ) : (
         <div className="w-full h-1 bg-slate-100">
           <div 
             className="h-full bg-blue-600 transition-all duration-500 ease-out"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
+        )}
       </div>
 
       {/* Main Content Area - Centered Focused Card */}
       <main className="max-w-3xl mx-auto mt-8 sm:mt-12 px-4 sm:px-6 relative">
         {/* Step Indicator for Mobile */}
-        <div className="sm:hidden text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4">
-          Step {currentStep} of {STEPS.length} — {currentStepData.title}
-        </div>
+        {!sectionMode && (
+          <div className="sm:hidden text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4">
+            Step {currentStep} of {STEPS.length} — {currentStepData.title}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 overflow-hidden min-h-[500px] mb-8 transition-all">
           <div className="p-6 sm:p-10">
@@ -102,6 +124,12 @@ const PropertyWizardLayout = ({
       {/* Floating Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 py-4 px-6 flex items-center justify-center z-40">
         <div className="w-full max-w-3xl flex items-center justify-between">
+          {sectionMode ? (
+            <button type="button" onClick={handleBackNavigation} disabled={isSubmitting}
+              className="font-semibold text-sm px-6 py-3 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+              Back to property
+            </button>
+          ) : (
           <button
             type="button"
             onClick={() => currentStep > 1 && setCurrentStep(prev => prev - 1)}
@@ -112,8 +140,9 @@ const PropertyWizardLayout = ({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            Back
+ Back
           </button>
+          )}
           
           <button
             type="button"
@@ -122,7 +151,7 @@ const PropertyWizardLayout = ({
             className="bg-slate-900 hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 hover:shadow-blue-600/30 active:scale-95"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            {currentStep === STEPS.length ? (isEditing ? 'Save Property Info' : 'Submit Property') : 'Next Step'}
+            {sectionMode ? 'Save changes' : currentStep === STEPS.length ? (isEditing ? 'Save Property Info' : 'Submit Property') : 'Next Step'}
           </button>
         </div>
       </div>
