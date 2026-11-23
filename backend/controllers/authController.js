@@ -1,3 +1,5 @@
+import { weakPasswordReason } from '../utils/passwordPolicy.js';
+import { lockedFor, recordFailure, recordSuccess } from '../services/loginGuard.js';
 import prisma from '../config/db.js';
 import { firstHotelFor, accessForClient } from '../services/accessService.js';
 import { awardSignupBonus } from '../services/loyaltyService.js';
@@ -42,10 +44,12 @@ const firstError = (v) => v.error.issues?.[0]?.message || 'Please check the deta
 const invalid = (res, req, v) => res.status(422).json({ success: false, message: firstError(v), errors: v.error.format(), requestId: req.id });
 const codeFail = (res, e) => res.status(e.statusCode || 400).json({ success: false, message: e.message, ...(e.field ? { field: e.field } : {}) });
 
+// ZivoPlus staff (admin console) sessions last at most 12 hours; guests and hotels keep the usual
+const STAFF_SESSION = '12h';
 const signToken = (id, role, hotelId, tokenVersion) => {
   return jwt.sign({ id, role, hotelId, tokenVersion }, process.env.JWT_SECRET, {
     algorithm: 'HS256',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    expiresIn: role === 'ADMIN' ? STAFF_SESSION : (process.env.JWT_EXPIRES_IN || '7d'),
   });
 };
 
@@ -71,7 +75,7 @@ const startSession = async (req, res, user, status = 200) => {
     hotelId = await firstHotelFor(updated.id);
   }
   const token = signToken(updated.id, updated.role, hotelId, updated.tokenVersion);
-  setSessionCookie(res, token); // the token in the body is for API clients; browsers use the cookie
+  setSessionCookie(res, token, updated.role === 'ADMIN' ? STAFF_SESSION : undefined); // the token in the body is for API clients; browsers use the cookie
   const sessionId = req.headers['x-session-id'];
   if (sessionId) setImmediate(() => mergeAnonymousSession(sessionId, updated.id));
   return res.status(status).json({ success: true, token, requestId: req.id, data: { user: publicUser(updated, hotelId) } });
@@ -156,6 +160,8 @@ export const signup = asyncHandler(async (req, res) => {
   const email = normEmail(v.data.email);
   const phone = normalizePhone(v.data.phone);
   if (!phone) return res.status(422).json({ success: false, message: 'Enter a valid mobile number.' });
+  const weak = weakPasswordReason(v.data.password, { email, phone, name: v.data.name, role: v.data.accountType === 'PARTNER' ? 'OWNER' : 'CUSTOMER' });
+  if (weak) return res.status(422).json({ success: false, message: weak });
   if (await prisma.user.findUnique({ where: { email } })) return res.status(409).json({ success: false, message: 'An account with this email already exists. Sign in instead.' });
   if (await userByPhone(phone)) return res.status(409).json({ success: false, message: 'This mobile number is already used by another account.' });
 
@@ -209,7 +215,15 @@ export const login = asyncHandler(async (req, res) => {
   if (!v.success) return invalid(res, req, v);
   const { user } = await findByIdentifier(v.data.email);
 
+  // Paused after too many wrong passwords (from any address): even the right one waits
+  const pausedFor = await lockedFor(user?.id);
+  if (pausedFor > 0) {
+    await secLog(req, 'LOGIN_WHILE_LOCKED', { email: v.data.email }, user.id);
+    return res.status(429).json({ success: false, code: 'ACCOUNT_LOCKED', message: `Too many wrong passwords. Password sign-in is paused for ${Math.ceil(pausedFor / 60)} more minute${pausedFor > 60 ? 's' : ''}. Sign in with a code instead, or reset your password.`, requestId: req.id });
+  }
+
   if (!user || !(await bcrypt.compare(v.data.password, user.password))) {
+    if (user) await recordFailure(user, { ip: req.ip });
     systemCache.increment('failedLogins');
     await secLog(req, 'FAILED_LOGIN', { email: v.data.email }, user?.id || null);
     await prisma.auditLog.create({
@@ -218,6 +232,7 @@ export const login = asyncHandler(async (req, res) => {
     return res.status(401).json({ success: false, message: 'Wrong email, mobile number or password.', requestId: req.id });
   }
   if (user.status === 'BLOCKED' || user.status === 'DELETED') return res.status(403).json({ success: false, message: 'This account is blocked. Contact ZivoPlus support.', requestId: req.id });
+  await recordSuccess(user.id);
   return startSession(req, res, user);
 });
 

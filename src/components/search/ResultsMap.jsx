@@ -12,12 +12,12 @@ const loadLeaflet = () => {
   leafletPromise = new Promise((resolve, reject) => {
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
-      link.id = 'leaflet-css'; link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.id = 'leaflet-css'; link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='; link.crossOrigin = '';
       document.head.appendChild(link);
     }
     const existing = document.getElementById('leaflet-js');
     const script = existing || document.createElement('script');
-    if (!existing) { script.id = 'leaflet-js'; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.async = true; document.body.appendChild(script); }
+    if (!existing) { script.id = 'leaflet-js'; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='; script.crossOrigin = ''; script.async = true; document.body.appendChild(script); }
     const done = () => (window.L ? resolve(window.L) : reject(new Error('Map failed to load')));
     script.addEventListener('load', done);
     script.addEventListener('error', () => { leafletPromise = null; reject(new Error('Map failed to load')); });

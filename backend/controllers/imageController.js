@@ -2,6 +2,17 @@ import prisma from '../config/db.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import { mediaService } from '../services/MediaService.js';
+import { canAtHotel } from '../services/accessService.js';
+
+/**
+ * Photos belong to one hotel: a hotel team may only see or change photos of their own hotels
+ * (the route gate only checks they may edit photos somewhere). Answers 404, not 403, so ids of
+ * other hotels' photos aren't confirmed.
+ */
+const notYours = (res) => res.status(404).json({ success: false, message: 'Not found' });
+const mayUseHotel = (req, hotelId) => canAtHotel(req.user, String(hotelId || ''), req.user?.permission || undefined);
+const roomTypeHotel = async (roomTypeId) => (await prisma.roomType.findUnique({ where: { id: String(roomTypeId) }, select: { hotelId: true } }).catch(() => null))?.hotelId;
+const imageHotel = async (imageId) => (await prisma.hotelImage.findUnique({ where: { id: String(imageId) }, select: { hotelId: true } }).catch(() => null))?.hotelId;
 
 const _IMAGE_TAGS = [
   "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
@@ -13,8 +24,8 @@ const _IMAGE_CATEGORIES = ["ROOM", "EXTERIOR", "AMENITIES", "FOOD"];
 
 // Loosened schema to allow string tags
 const imageSchema = z.object({
-  url: z.string().refine(val => val.startsWith('http') || val.startsWith('blob:') || val.startsWith('/uploads') || val.startsWith('gs://'), {
-    message: "URL must be a valid http/https, blob, local upload, or gs:// URL"
+  url: z.string().max(2048).refine(val => /^https:\/\/[^\s"'<>]+$/.test(val) || /^\/uploads\/[A-Za-z0-9/_.-]+$/.test(val) || /^gs:\/\/[^\s]+$/.test(val), {
+    message: "Use an https:// photo address or upload the photo"
   }),
   hotelId: z.string().uuid(),
   category: z.string().optional().default('EXTERIOR'),
@@ -23,7 +34,9 @@ const imageSchema = z.object({
 });
 
 export const uploadHotelImage = asyncHandler(async (req, res) => {
-  let url = req.body.url;
+  if (!mayUseHotel(req, req.body?.hotelId)) return notYours(res);
+  // A storage address (gs://) is only ever set by the upload below, never taken from the request
+  let url = typeof req.body.url === 'string' && req.body.url.startsWith('gs://') ? undefined : req.body.url;
   
   // Support base64 upload if 'image' field is present
   if (req.body.image && typeof req.body.image === 'string') {
@@ -85,6 +98,7 @@ export const getHotelImages = asyncHandler(async (req, res) => {
   if (!hotelId) {
     return res.status(400).json({ success: false, message: 'hotelId is required' });
   }
+  if (!mayUseHotel(req, hotelId)) return notYours(res);
 
   const images = await prisma.hotelImage.findMany({
     where: {
@@ -114,7 +128,7 @@ export const updateHotelImage = asyncHandler(async (req, res) => {
   const { tags, category, isPrimary } = req.body;
 
   const existing = await prisma.hotelImage.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || !mayUseHotel(req, existing.hotelId)) {
     return res.status(404).json({ success: false, message: 'Image not found' });
   }
 
@@ -144,7 +158,7 @@ export const deleteHotelImage = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const existing = await prisma.hotelImage.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || !mayUseHotel(req, existing.hotelId)) {
     return res.status(404).json({ success: false, message: 'Image not found' });
   }
 
@@ -165,6 +179,9 @@ export const deleteHotelImage = asyncHandler(async (req, res) => {
 export const attachImageToRoom = asyncHandler(async (req, res) => {
   const { roomTypeId } = req.params;
   const { imageId, isPrimary } = req.body;
+  // The room type and the photo must both be at one of this user's hotels (and the same one)
+  const hotelId = await roomTypeHotel(roomTypeId);
+  if (!hotelId || !mayUseHotel(req, hotelId) || (await imageHotel(imageId)) !== hotelId) return notYours(res);
 
   const link = await prisma.roomTypeImage.create({
     data: {
@@ -179,6 +196,8 @@ export const attachImageToRoom = asyncHandler(async (req, res) => {
 
 export const detachImageFromRoom = asyncHandler(async (req, res) => {
   const { roomTypeId, imageId } = req.params;
+  const hotelId = await roomTypeHotel(roomTypeId);
+  if (!hotelId || !mayUseHotel(req, hotelId)) return notYours(res);
 
   await prisma.roomTypeImage.deleteMany({
     where: { roomTypeId, imageId }
@@ -189,6 +208,8 @@ export const detachImageFromRoom = asyncHandler(async (req, res) => {
 
 export const setRoomPrimaryImage = asyncHandler(async (req, res) => {
   const { roomTypeId, imageId } = req.params;
+  const hotelId = await roomTypeHotel(roomTypeId);
+  if (!hotelId || !mayUseHotel(req, hotelId)) return notYours(res);
 
   await prisma.$transaction([
     prisma.roomTypeImage.updateMany({

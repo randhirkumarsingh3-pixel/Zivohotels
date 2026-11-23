@@ -162,7 +162,7 @@ const Signup = ({ partner = false, aside = null }) => {
         <Field label="Mobile number" id="su-phone" hint={partner ? "We'll send a code by SMS. Our partner team uses it to reach you." : "We'll send a code by SMS. Hotels use it to reach you about your stay."}>
           <PhoneInput id="su-phone" value={form.phone} onChange={set('phone')} />
         </Field>
-        <Field label="Password" id="su-pass" hint="At least 8 characters.">
+        <Field label="Password" id="su-pass" hint="At least 8 characters (10 for hotel partners). Avoid common passwords and your name, email or phone.">
           <div className="relative">
             <input id="su-pass" type={showPw ? 'text' : 'password'} autoComplete="new-password" required minLength={8} value={form.password} onChange={set('password')} className={`${inputClass} pr-11`} placeholder="••••••••" />
             <button type="button" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? 'Hide password' : 'Show password'} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">

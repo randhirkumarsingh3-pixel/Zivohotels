@@ -8,7 +8,8 @@
  * an 800 px WebP is about 40-80 KB. Works for every photo already uploaded, with no conversion
  * run. File names never change once uploaded, so variants can be cached for a year.
  *
- * New uploads are also shrunk (largest side 2400 px) before they're stored: shrinkUpload().
+ * New uploads are checked, re-encoded and shrunk (largest side 2400 px) before they're stored:
+ * sanitizeImage().
  */
 import fs from 'fs';
 import path from 'path';
@@ -56,16 +57,34 @@ export const variantFor = async (uploadDir, relPath, width) => {
  * Shrinks a new upload before it's stored: largest side 2400 px, metadata removed, same format.
  * Returns the original buffer if it isn't an image sharp can read.
  */
-export const shrinkUpload = async (buffer, mimeType) => {
-  if (!/^image\/(jpe?g|png|webp)$/i.test(mimeType || '')) return buffer;
+/**
+ * Makes an uploaded photo safe to store and show: it must really decode as a raster image (JPEG,
+ * PNG, WebP, GIF, AVIF or HEIF; never SVG, which can carry scripts), and it is always re-made,
+ * so nothing hidden in the file survives (scripts, other data, and the camera's location and
+ * other EXIF details). Largest side 2400 px. Returns { buffer, mimeType, ext }.
+ */
+export const SAFE_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'gif', 'avif', 'heif'];
+export const sanitizeImage = async (buffer, { maxBytes = 15 * 1024 * 1024 } = {}) => {
+  const bad = (message) => Object.assign(new Error(message), { status: 400, statusCode: 400 });
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw bad('The photo is empty');
+  if (buffer.length > maxBytes) throw bad(`Photos must be ${Math.round(maxBytes / 1024 / 1024)} MB or smaller`);
+  let meta;
   try {
-    let img = sharp(buffer, { failOn: 'none' }).rotate().resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true });
-    if (/png/i.test(mimeType)) img = img.png({ compressionLevel: 9, palette: true });
-    else if (/webp/i.test(mimeType)) img = img.webp({ quality: 82 });
-    else img = img.jpeg({ quality: 82, mozjpeg: true });
-    const out = await img.toBuffer();
-    return out.length < buffer.length ? out : buffer;
+    meta = await sharp(buffer, { failOn: 'error', limitInputPixels: 60_000_000 }).metadata();
   } catch {
-    return buffer;
+    throw bad('This file isn\'t a photo we can use. Upload a JPG, PNG or WebP image.');
+  }
+  if (!SAFE_IMAGE_FORMATS.includes(meta.format)) throw bad('Upload a JPG, PNG or WebP image (SVG and other formats aren\'t accepted).');
+  let img = sharp(buffer, { failOn: 'error', limitInputPixels: 60_000_000, animated: false })
+    .rotate() // apply the camera's orientation, then the EXIF data is dropped
+    .resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true });
+  let mimeType; let ext;
+  if (meta.format === 'jpeg') { img = img.jpeg({ quality: 84, mozjpeg: true }); mimeType = 'image/jpeg'; ext = 'jpg'; }
+  else if (meta.format === 'png') { img = img.png({ compressionLevel: 9 }); mimeType = 'image/png'; ext = 'png'; }
+  else { img = img.webp({ quality: 84 }); mimeType = 'image/webp'; ext = 'webp'; }
+  try {
+    return { buffer: await img.toBuffer(), mimeType, ext };
+  } catch {
+    throw bad('This photo couldn\'t be processed. Try another one.');
   }
 };

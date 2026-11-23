@@ -1,5 +1,5 @@
 import { isLocalStorageDriver } from '../config/storage.js';
-import { shrinkUpload } from './imageVariants.js';
+import { sanitizeImage } from './imageVariants.js';
 import { GoogleStorageProvider } from './providers/GoogleStorageProvider.js';
 import { LocalDiskProvider } from './providers/LocalDiskProvider.js';
 import crypto from 'crypto';
@@ -21,33 +21,16 @@ export class MediaService {
    * Orchestrates the upload of a hotel image, ensuring correct directory structure.
    * Accepts all common image MIME types including HEIC from iPhones.
    */
-  async uploadHotelImage(buffer, mimeType, hotelId, isPrimary = false) {
-    const ALLOWED_IMAGE_TYPES = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-      'image/gif', 'image/avif', 'image/bmp', 'image/tiff',
-      'image/heic', 'image/heif', 'image/svg+xml'
-    ];
-    this._validateMimeType(mimeType, ALLOWED_IMAGE_TYPES);
-    // Phone photos are 3-8 MB: store at most 2400 px on the longest side (pages use smaller copies)
-    buffer = await shrinkUpload(buffer, mimeType);
-
-    // Normalize extension — HEIC files stored as jpg so browsers can display them
-    const MIME_TO_EXT = {
-      'image/jpeg': 'jpg', 'image/jpg': 'jpg',
-      'image/png': 'png', 'image/webp': 'webp',
-      'image/gif': 'gif', 'image/avif': 'avif',
-      'image/bmp': 'bmp', 'image/tiff': 'tiff',
-      'image/heic': 'jpg', 'image/heif': 'jpg',
-      'image/svg+xml': 'svg'
-    };
-    const extension = MIME_TO_EXT[mimeType] || mimeType.split('/')[1] || 'jpg';
-    const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8);
-    const filename = `${isPrimary ? 'primary' : 'img'}-${Date.now()}-${hash}.${extension}`;
-    
-    // Structure: properties/{hotelId}/{filename}
-    const destinationPath = `properties/${hotelId}/${filename}`;
-    
-    return await this.storage.uploadFile(buffer, destinationPath, mimeType, true);
+  async uploadHotelImage(buffer, _declaredType, hotelId, isPrimary = false) {
+    // What the browser says the file is doesn't count: the photo must really decode, and it is
+    // re-made (no SVG, no hidden scripts or data, no camera location). See sanitizeImage().
+    const safe = await sanitizeImage(buffer);
+    const hash = crypto.createHash('md5').update(safe.buffer).digest('hex').substring(0, 8);
+    const filename = `${isPrimary ? 'primary' : 'img'}-${Date.now()}-${hash}.${safe.ext}`;
+    // Hotel ids only (no path tricks)
+    const folder = String(hotelId || '').replace(/[^A-Za-z0-9-]/g, '') || 'unassigned';
+    const destinationPath = `properties/${folder}/${filename}`;
+    return await this.storage.uploadFile(safe.buffer, destinationPath, safe.mimeType, true);
   }
 
   /**

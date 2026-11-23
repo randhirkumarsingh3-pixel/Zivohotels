@@ -43,7 +43,7 @@ const ChangePasswordForm = ({ onChanged }) => {
       <div>
         <label htmlFor="pw-new" className="block text-sm font-medium text-gray-700 mb-1">New password</label>
         <input id="pw-new" type={show ? 'text' : 'password'} autoComplete="new-password" value={form.next} onChange={set('next')} className={inputCls} required minLength={8} aria-describedby="pw-hint" />
-        <p id="pw-hint" className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
+        <p id="pw-hint" className="text-xs text-gray-500 mt-1">At least 8 characters (10 for staff and hotel teams). Avoid common passwords and your name, email or phone.</p>
       </div>
       <div>
         <label htmlFor="pw-confirm" className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
