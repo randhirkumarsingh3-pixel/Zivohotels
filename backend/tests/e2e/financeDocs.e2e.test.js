@@ -24,22 +24,27 @@ describe('Commission invoices and statements end to end', function () {
     admin = { headers: { Authorization: `Bearer ${a.data.data.token}` } };
     const o = await api.post('/auth/login', { email: 'extranet@zivotechretreat.com', password: process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026' });
     owner = { headers: { Authorization: `Bearer ${o.data.data.token}` } };
-    hotel = await prisma.hotel.findFirst({ where: { owner: { email: 'extranet@zivotechretreat.com' }, isDeleted: false }, orderBy: { name: 'asc' }, select: { id: true } });
     savedSettings = await prisma.systemConfig.findUnique({ where: { key: 'finance_settings' } });
-    // A stay settled in a past month for the owner's hotel (moved there for the test, or made)
-    settlement = await prisma.settlement.findFirst({ where: { hotelId: hotel.id, invoiceId: null, commissionAmount: { gt: 0 } } });
+    // A stay settled in a past month at one of the owner's hotels: an open one moved there for the
+    // test, or one made for a booking that has none (whichever of the owner's hotels has it)
+    const ownHotels = (await prisma.hotel.findMany({ where: { owner: { email: 'extranet@zivotechretreat.com' }, isDeleted: false }, select: { id: true } })).map((h) => h.id);
+    settlement = await prisma.settlement.findFirst({ where: { hotelId: { in: ownHotels }, invoiceId: null, commissionAmount: { gt: 0 } } });
     if (settlement) {
       original = { createdAt: settlement.createdAt };
     } else {
-      const booking = await prisma.booking.findFirst({ where: { hotelId: hotel.id, NOT: { id: { in: (await prisma.settlement.findMany({ select: { bookingId: true } })).map((s) => s.bookingId) } } }, select: { id: true } });
-      settlement = await prisma.settlement.create({ data: { bookingId: booking.id, hotelId: hotel.id, kind: 'STAY', grossAmount: 5985, taxAmount: 285, commissionAmount: 855, commissionGstAmount: 153.9, igstAmount: 153.9, tdsAmount: 5.7, netPayable: -1014.6, status: 'PENDING' } });
+      const settled = (await prisma.settlement.findMany({ select: { bookingId: true } })).map((x) => x.bookingId);
+      const booking = await prisma.booking.findFirst({ where: { hotelId: { in: ownHotels }, id: { notIn: settled } }, select: { id: true, hotelId: true } });
+      if (!booking) throw new Error('No booking at the owner\'s hotels to settle for the test');
+      settlement = await prisma.settlement.create({ data: { bookingId: booking.id, hotelId: booking.hotelId, kind: 'STAY', grossAmount: 5985, taxAmount: 285, commissionAmount: 855, commissionGstAmount: 153.9, igstAmount: 153.9, tdsAmount: 5.7, netPayable: -1014.6, status: 'PENDING' } });
       createdSettlement = true;
     }
+    hotel = { id: settlement.hotelId };
     await prisma.settlement.update({ where: { id: settlement.id }, data: { createdAt: new Date('2025-05-15T08:00:00Z') } });
     settlement = await prisma.settlement.findUnique({ where: { id: settlement.id } });
   });
 
   after(async () => {
+    if (!settlement) return;
     const docs = await prisma.financeDocument.findMany({ where: { OR: [{ id: invoice?.id || '-' }, { originalId: invoice?.id || '-' }] }, select: { id: true } });
     const ids = docs.map((d) => d.id);
     await prisma.ledgerEntry.deleteMany({ where: { referenceId: { in: ids } } });
