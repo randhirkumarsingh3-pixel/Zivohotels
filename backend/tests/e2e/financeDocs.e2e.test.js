@@ -8,6 +8,7 @@ import axios from 'axios';
 import { expect } from 'chai';
 import minimist from 'minimist';
 import prisma from '../../config/db.js';
+import { settlementTermsForHotel } from '../../services/finance/settlementService.js';
 
 const argv = minimist(process.argv.slice(2));
 const BASE = argv.url || process.env.E2E_URL || 'http://localhost:5000';
@@ -66,6 +67,21 @@ describe('Commission invoices and statements end to end', function () {
     expect((await api.get('/admin/finance/settings', owner)).status).to.equal(403);
   });
 
+  it('changes the TCS, TDS and commission GST rates within limits, for later stays', async () => {
+    expect((await api.put('/admin/finance/settings', { rates: { tcsPercent: 10 } }, admin)).status).to.equal(400);
+    expect((await api.put('/admin/finance/settings', { rates: { tdsPercent: -1 } }, admin)).status).to.equal(400);
+    const r = await api.put('/admin/finance/settings', { rates: { tcsPercent: 1, tdsPercent: 0.2, commissionGstPercent: 18 } }, admin);
+    expect(r.status, JSON.stringify(r.data)).to.equal(200);
+    expect(r.data.data.settings.rates).to.include({ tcsPercent: 1, tdsPercent: 0.2, commissionGstPercent: 18 });
+    // A stay settled now would use them
+    const terms = await settlementTermsForHotel(prisma, hotel.id);
+    expect(terms).to.include({ tcsPercent: 1, tdsPercent: 0.2, commissionGstPercent: 18 });
+    // Owners see the current rates in the Finance Hub
+    const hub = await api.get('/extranet/finance/hub', { ...owner, params: { hotelId: hotel.id } });
+    expect(hub.data.data.rates).to.include({ tcsPercent: 1, tdsPercent: 0.2 });
+    await api.put('/admin/finance/settings', { rates: { tcsPercent: 0.5, tdsPercent: 0.1 } }, admin);
+  });
+
   it('invoices a finished month once per hotel with the settlement figures', async () => {
     expect((await api.post(`/admin/finance/months/${new Date().toISOString().slice(0, 7)}/issue`, {}, admin)).status).to.equal(400);
     const r = await api.post(`/admin/finance/months/${PERIOD}/issue`, { hotelId: hotel.id }, admin);
@@ -106,6 +122,28 @@ describe('Commission invoices and statements end to end', function () {
     const st = (await api.get('/admin/finance/statement', { ...admin, params: { hotelId: hotel.id, period: PERIOD } })).data.data;
     expect(st.stays.map((x) => x.settlementId)).to.include(settlement.id);
     close(st.totals.closing, st.totals.opening + st.totals.earned + st.totals.credits - st.totals.paid);
+  });
+
+  it('shows a property month by month for its financial year, with every invoice in a ZIP', async () => {
+    const r = await api.get(`/admin/finance/properties/${hotel.id}`, { ...admin, params: { fy: '2025-26' } });
+    expect(r.status, JSON.stringify(r.data)).to.equal(200);
+    expect(r.data.data.months.map((m) => m.period)).to.deep.equal(['2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03']);
+    const may = r.data.data.months.find((m) => m.period === PERIOD);
+    expect(may.documents.map((d) => d.id)).to.include(invoice.id);
+    close(may.commission, settlement.commissionAmount);
+    close(r.data.data.totals.commission, r.data.data.months.reduce((a, m) => a + m.commission, 0));
+    const zip = await api.get('/admin/finance/documents/zip', { ...admin, params: { hotelId: hotel.id, fy: '2025-26' }, responseType: 'arraybuffer' });
+    expect(zip.status).to.equal(200);
+    expect(zip.headers['content-type']).to.match(/zip/);
+    expect(Buffer.from(zip.data).subarray(0, 2).toString()).to.equal('PK');
+    const month = await api.get('/admin/finance/documents/zip', { ...admin, params: { period: PERIOD }, responseType: 'arraybuffer' });
+    expect(month.status).to.equal(200);
+    expect((await api.get('/admin/finance/documents/zip', admin)).status).to.equal(400);
+    // The owner gets their own year's invoices, and not the admin view
+    const own = await api.get('/extranet/finance/documents/zip', { ...owner, params: { hotelId: hotel.id, fy: '2025-26' }, responseType: 'arraybuffer' });
+    expect(own.status).to.equal(200);
+    expect(Buffer.from(own.data).subarray(0, 2).toString()).to.equal('PK');
+    expect((await api.get(`/admin/finance/properties/${hotel.id}`, owner)).status).to.equal(403);
   });
 
   it('shows owners their own documents and statements only', async () => {

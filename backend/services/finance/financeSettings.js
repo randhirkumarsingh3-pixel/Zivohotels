@@ -10,7 +10,7 @@
  *  - automation: issue last month's invoices on the 1st, and email owners their documents
  */
 import prisma from '../../config/db.js';
-import { GST_STATE_CODES } from '../../constants/finance.js';
+import { GST_STATE_CODES, COMMISSION_GST_PERCENT, TCS_PERCENT, TDS_PERCENT } from '../../constants/finance.js';
 
 const KEY = 'finance_settings';
 
@@ -46,6 +46,8 @@ export const DEFAULTS = () => ({
     liveSince: null,
   },
   automation: { issueMonthly: true, emailOwners: true },
+  // Used for stays settled from now on; each stay keeps the rates it was settled with
+  rates: { commissionGstPercent: COMMISSION_GST_PERCENT, tcsPercent: TCS_PERCENT, tdsPercent: TDS_PERCENT, changedAt: null },
 });
 
 const clean = (v, max = 200) => String(v ?? '').trim().slice(0, max);
@@ -62,7 +64,20 @@ export const getFinanceSettings = async () => {
     tcsRegistrations: { ...(v.tcsRegistrations || {}) },
     invoice: { ...d.invoice, ...(v.invoice || {}) },
     automation: { ...d.automation, ...(v.automation || {}) },
+    rates: { ...d.rates, ...(v.rates || {}) },
   };
+};
+
+/** The rates for a stay settled now (without the bookkeeping fields). */
+export const currentRates = async () => {
+  const { rates } = await getFinanceSettings();
+  return { commissionGstPercent: Number(rates.commissionGstPercent), tcsPercent: Number(rates.tcsPercent), tdsPercent: Number(rates.tdsPercent) };
+};
+
+const RATE_LIMITS = {
+  commissionGstPercent: [0, 28, 'GST on commission'],
+  tcsPercent: [0, 2, 'TCS'],
+  tdsPercent: [0, 5, 'TDS'],
 };
 
 const bad = (message) => Object.assign(new Error(message), { status: 400, statusCode: 400 });
@@ -115,7 +130,18 @@ export const saveFinanceSettings = async (input = {}, { userId } = {}) => {
   const automation = { ...cur.automation };
   for (const k of ['issueMonthly', 'emailOwners']) if (typeof input.automation?.[k] === 'boolean') automation[k] = input.automation[k];
 
-  const value = { company, tcsRegistrations, invoice, automation };
+  const rates = { ...cur.rates };
+  let ratesChanged = false;
+  for (const [k, [min, max, label]] of Object.entries(RATE_LIMITS)) {
+    if (input.rates?.[k] === undefined || input.rates[k] === '') continue;
+    const v = Number(input.rates[k]);
+    if (!Number.isFinite(v) || v < min || v > max) throw bad(`${label} rate must be between ${min}% and ${max}%`);
+    const rounded = Math.round(v * 1000) / 1000;
+    if (rounded !== Number(cur.rates[k])) { rates[k] = rounded; ratesChanged = true; }
+  }
+  if (ratesChanged) { rates.changedAt = new Date().toISOString(); rates.changedBy = userId || null; }
+
+  const value = { company, tcsRegistrations, invoice, automation, rates };
   await prisma.systemConfig.upsert({ where: { key: KEY }, update: { value }, create: { key: KEY, value, description: 'Admin → Finance → Settings' } });
   return value;
 };
@@ -128,4 +154,4 @@ export const readiness = (s, hotelStates = []) => {
   return { missing, tcsMissing, live: Boolean(s.invoice.live) };
 };
 
-export default { getFinanceSettings, saveFinanceSettings, readiness, STATE_NAMES };
+export default { getFinanceSettings, saveFinanceSettings, currentRates, readiness, STATE_NAMES };

@@ -332,6 +332,8 @@ const splitNights = (amount, n) => {
 export const hotelierFigures = async (d) => {
   const { booking, settlement } = d;
   const terms = await settlementTermsForHotel(prisma, booking.hotelId);
+  // A settled stay shows the rates it was settled with (they can change later)
+  if (settlement?.rates) Object.assign(terms, settlement.rates);
   let m;
   if (settlement) {
     const n = (v) => toMoney(v) || 0;
@@ -427,10 +429,10 @@ export const hotelierVoucherHtml = (d, f) => {
         ${collectedAtHotel ? `<div><span>Less: collected by the property from the guest</span><span>− ${inr(collectedAtHotel)}</span></div>
         <div class="sub"><span>(A′) Collected online by ZivoPlus</span><span>${inr(f.collected)}</span></div>` : ''}
         <div><span>4. ZivoPlus commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>
-        <div><span>5. GST on commission @ ${COMMISSION_GST_PERCENT}% (${gstSplit})</span><span>${inr(f.commissionGst)}</span></div>
+        <div><span>5. GST on commission @ ${f.terms.commissionGstPercent ?? COMMISSION_GST_PERCENT}% (${gstSplit})</span><span>${inr(f.commissionGst)}</span></div>
         <div class="sub"><span>(B) Commission incl. GST (4+5)</span><span>${inr(commissionInclGst)}</span></div>
-        <div><span>6. TCS @ ${TCS_PERCENT}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', not applicable: property not GST-registered'}</span><span>${inr(f.tcs)}</span></div>
-        <div><span>7. TDS @ ${TDS_PERCENT}% (Income-tax s.194-O)</span><span>${inr(f.tds)}</span></div>
+        <div><span>6. TCS @ ${f.terms.tcsPercent ?? TCS_PERCENT}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', not applicable: property not GST-registered'}</span><span>${inr(f.tcs)}</span></div>
+        <div><span>7. TDS @ ${f.terms.tdsPercent ?? TDS_PERCENT}% (Income-tax s.194-O)</span><span>${inr(f.tds)}</span></div>
         <div class="sub"><span>(C) Tax deductions (6+7)</span><span>${inr(deductions)}</span></div>
         <div class="grand"><span>${owed ? 'Payable by property' : 'Payable to property'} (${collectedAtHotel ? 'A′' : 'A'}${f.zivoFunded > 0 ? ' + promotion' : ''} − B − C)</span><span>${inr(Math.abs(f.netPayable))}</span></div>
       </div></div>

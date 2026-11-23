@@ -114,3 +114,23 @@ describe('computeSettlement (commission, GST on commission, TCS, TDS)', () => {
     expect(m.netPayable.toString()).to.equal('8474.5');
   });
 });
+
+describe('computeSettlement with rates from Finance settings', () => {
+  const base = { grossAmount: 11200, taxAmount: 1200, collected: 11200, commissionPercent: 15, hotelGstRegistered: true };
+  it('uses the standard rates when none are given (18% GST, 0.5% TCS, 0.1% TDS)', () => {
+    const m = computeSettlement({ ...base, sameState: false });
+    expect(Number(m.commission)).to.equal(1500);
+    expect(Number(m.igst)).to.equal(270);
+    expect(Number(m.tcs)).to.equal(50);
+    expect(Number(m.tds)).to.equal(10);
+  });
+  it('uses the rates it is given, CGST + SGST halves in the same state', () => {
+    const m = computeSettlement({ ...base, sameState: true, commissionGstPercent: 12, tcsPercent: 1, tdsPercent: 0.2 });
+    expect(Number(m.cgst)).to.equal(90);
+    expect(Number(m.sgst)).to.equal(90);
+    expect(Number(m.igst)).to.equal(0);
+    expect(Number(m.tcs)).to.equal(100);
+    expect(Number(m.tds)).to.equal(20);
+    expect(Number(m.netPayable)).to.equal(11200 - 1500 - 180 - 100 - 20);
+  });
+});

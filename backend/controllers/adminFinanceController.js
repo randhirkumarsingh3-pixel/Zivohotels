@@ -180,3 +180,28 @@ export const emailMonth = asyncHandler(async (req, res) => {
   for (const id of ids) { const to = await financeMail.emailOwner(id, period); if (to) sent.push(id); }
   res.json({ success: true, data: { queued: sent.length, skipped: ids.length - sent.length } });
 });
+
+export const propertyYear = asyncHandler(async (req, res) => {
+  const fy = String(req.query.fy || financeDocs.financialYear());
+  res.json({ success: true, data: await financeDocs.propertyYear(req.params.hotelId, fy) });
+});
+
+/** ZIP of invoice / credit-note PDFs: a month (?period) or a property's financial year (?hotelId&fy). */
+export const documentsZip = asyncHandler(async (req, res) => {
+  const { period, hotelId, fy } = req.query;
+  const where = {};
+  let name = 'ZivoPlus-commission-documents';
+  if (hotelId) {
+    where.hotelId = String(hotelId);
+    const f = String(fy || financeDocs.financialYear());
+    const y = Number(f.slice(0, 4));
+    where.period = { gte: `${y}-04`, lte: `${y + 1}-03` };
+    name += `-FY${f}`;
+  }
+  if (financeDocs.validPeriod(period)) { where.period = String(period); name += `-${period}`; }
+  if (!where.period) return res.status(400).json({ success: false, message: 'Choose a month, or a property and financial year' });
+  if (['INVOICE', 'CREDIT_NOTE'].includes(req.query.kind)) where.kind = req.query.kind;
+  const docs = await prisma.financeDocument.findMany({ where, orderBy: [{ period: 'asc' }, { number: 'asc' }] });
+  if (!docs.length) return res.status(404).json({ success: false, message: 'No documents for this selection' });
+  sendFile(res, await financeDocs.documentsZip(docs), `${name}.zip`, 'application/zip');
+});

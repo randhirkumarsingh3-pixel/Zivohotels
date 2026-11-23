@@ -70,13 +70,19 @@ const parties = (s, r) => `<div class="parties"><div class="box"><h3>From (suppl
 <div>${r.gstin ? `GSTIN <b>${esc(r.gstin)}</b>` : 'Not registered for GST'}${r.pan ? ` · PAN ${esc(r.pan)}` : ''}</div><div class="muted">State: ${esc(r.stateName || '—')}${r.stateCode ? ` (${esc(r.stateCode)})` : ''} · ${r.registered ? 'Registered (B2B)' : 'Unregistered (B2C)'}</div></div></div>`;
 
 const taxCols = (d) => (n(d.cgst) || n(d.sgst) ? ['cgst', 'sgst'] : ['igst']);
-const TAX_LABEL = { cgst: 'CGST 9%', sgst: 'SGST 9%', igst: 'IGST 18%' };
+// GST rate on the document, from its own figures (rates can change between documents)
+const taxLabels = (d) => {
+  const rate = n(d.taxable) ? Math.round(((n(d.cgst) + n(d.sgst) + n(d.igst)) / n(d.taxable)) * 1000) / 10 : 18;
+  const fmt = (v) => `${Number.isInteger(v) ? v : v.toFixed(1)}%`;
+  return { cgst: `CGST ${fmt(rate / 2)}`, sgst: `SGST ${fmt(rate / 2)}`, igst: `IGST ${fmt(rate)}` };
+};
 
 /** Tax invoice (with booking-wise annexure) or credit note. */
 export const documentHtml = async (d, { original } = {}) => {
   const s = d.supplier; const r = d.recipient; const test = !d.live;
   const isCN = d.kind === 'CREDIT_NOTE';
   const cols = taxCols(d);
+  const TAX_LABEL = taxLabels(d);
   const lines = d.lines || [];
   const nights = lines.reduce((a, l) => a + n(l.nights), 0);
   const hourly = lines.filter((l) => /^Hourly/.test(l.stay)).length;
@@ -117,8 +123,8 @@ export const statementHtml = async (st) => {
     [`Paid online by guests (and offers paid by ZivoPlus), ${t.stays} stay${t.stays === 1 ? '' : 's'}`, t.online, 'plus'],
     ['Commission', -t.commission, 'minus'],
     [`GST on commission (${t.igst ? 'IGST' : 'CGST + SGST'})`, -t.commissionGst, 'minus'],
-    ['TCS 0.5% (GST section 52)', -t.tcs, 'minus'],
-    ['TDS 0.1% (Income Tax section 194-O)', -t.tds, 'minus'],
+    ['TCS (GST section 52)', -t.tcs, 'minus'],
+    ['TDS (Income Tax section 194-O)', -t.tds, 'minus'],
     ...(t.credits ? [['Credit notes (commission given back)', t.credits, 'plus']] : []),
     ['Paid out to your bank', -t.paid, 'minus'],
   ].filter(([, v], i) => i === 0 || Math.abs(v) > 0.004);

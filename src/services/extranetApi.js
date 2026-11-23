@@ -150,6 +150,7 @@ export const financeHubApi = {
   hub: (period) => extranetFetch(`/finance/hub?period=${encodeURIComponent(period)}`, { method: 'GET' }),
   documentPdf: (id) => extranetFile(`/finance/documents/${id}/pdf`),
   statement: (period, format) => extranetFile(`/finance/statement?period=${encodeURIComponent(period)}&format=${format}`),
+  invoicesZip: (fy) => extranetFile(`/finance/documents/zip?fy=${encodeURIComponent(fy)}`),
 };
 
 export const googleHotelsApi = {
