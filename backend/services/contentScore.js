@@ -101,33 +101,33 @@ export const contentScore = ({ hotel = {}, rooms = [], photos = [], hasCancellat
   return { score, label: score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs work', sections, nextSteps };
 };
 
-/** Everything the extranet property header and content score page show, for one hotel. */
-export const propertyOverview = async (hotelId) => {
-  const hotel = await prisma.hotel.findUnique({
-    where: { id: hotelId },
+/** The hotel fields the score and the header need (one query for one hotel or for all of them). */
+export const OVERVIEW_SELECT = {
+  id: true, name: true, type: true, rating: true, city: true, status: true, description: true, amenities: true,
+  nearbyPlaces: true, latitude: true, longitude: true, landmark: true, checkInTime: true, checkOutTime: true,
+  integrationSettings: true, reviewScore: true, reviewCount: true, updatedAt: true,
+  cancellationPolicy: { select: { id: true } },
+  media: { select: { category: true, isPrimary: true } },
+  roomTypes: {
+    where: { isActive: { not: false } },
     select: {
-      id: true, name: true, type: true, rating: true, city: true, status: true, description: true, amenities: true,
-      nearbyPlaces: true, latitude: true, longitude: true, landmark: true, checkInTime: true, checkOutTime: true,
-      integrationSettings: true, reviewScore: true, reviewCount: true,
-      cancellationPolicy: { select: { id: true } },
-      media: { select: { category: true, isPrimary: true } },
-      roomTypes: {
-        where: { isActive: { not: false } },
-        select: {
-          id: true, name: true, description: true, roomSize: true, bedType: true, maxOccupancy: true,
-          _count: { select: { images: true } },
-          ratePlans: { where: { isActive: true, basePrice: { gt: 0 } }, select: { id: true }, take: 1 },
-        },
-      },
+      id: true, name: true, description: true, roomSize: true, bedType: true, maxOccupancy: true,
+      _count: { select: { images: true } },
+      ratePlans: { where: { isActive: true, basePrice: { gt: 0 } }, select: { id: true }, take: 1 },
     },
-  });
-  if (!hotel) return null;
+  },
+};
+
+/** Header details, guest rating and content score from a hotel row selected with OVERVIEW_SELECT. */
+export const overviewFromRow = (hotel) => {
   const rooms = hotel.roomTypes.map((r) => ({ ...r, priced: r.ratePlans.length > 0, photoCount: r._count.images }));
   const content = contentScore({ hotel, rooms, photos: hotel.media, hasCancellationPolicy: Boolean(hotel.cancellationPolicy) || Boolean(hotel.integrationSettings?.cancellationPolicy) });
   return {
     hotel: {
-      id: hotel.id, name: hotel.name, type: hotel.type ? hotel.type.charAt(0).toUpperCase() + hotel.type.slice(1) : 'Hotel', stars: Number(hotel.rating) >= 1 && Number(hotel.rating) <= 5 ? Math.round(Number(hotel.rating)) : null,
-      area: hotel.integrationSettings?.addressDetails?.area || null, city: hotel.city, status: hotel.status,
+      id: hotel.id, name: hotel.name, type: hotel.type ? hotel.type.charAt(0).toUpperCase() + hotel.type.slice(1) : 'Hotel',
+      stars: Number(hotel.rating) >= 1 && Number(hotel.rating) <= 5 ? Math.round(Number(hotel.rating)) : null,
+      area: hotel.integrationSettings?.addressDetails?.area || null, city: hotel.city, status: hotel.status, updatedAt: hotel.updatedAt,
+      photos: hotel.media.length, roomTypes: rooms.length,
     },
     // Guest rating from ZivoPlus reviews only (verified stays)
     rating: { score: hotel.reviewCount > 0 && hotel.reviewScore != null ? Number(hotel.reviewScore) : null, count: hotel.reviewCount || 0 },
@@ -135,4 +135,66 @@ export const propertyOverview = async (hotelId) => {
   };
 };
 
-export default { contentScore, propertyOverview, SECTIONS };
+/** Everything the extranet property header and content score page show, for one hotel. */
+export const propertyOverview = async (hotelId) => {
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: OVERVIEW_SELECT });
+  return hotel ? overviewFromRow(hotel) : null;
+};
+
+/**
+ * Admin: every property's score with a portfolio summary (average, how many in each band, the
+ * weakest section on average). Filters: search (name/city/owner), status, band.
+ */
+export const BANDS = [
+  { key: 'excellent', label: 'Excellent', min: 85 },
+  { key: 'good', label: 'Good', min: 70 },
+  { key: 'fair', label: 'Fair', min: 50 },
+  { key: 'needs-work', label: 'Needs work', min: 0 },
+];
+const bandOf = (score) => BANDS.find((b) => score >= b.min).key;
+
+export const portfolioScores = async ({ search = '', status = '', band = '' } = {}) => {
+  const q = String(search).trim();
+  const rows = await prisma.hotel.findMany({
+    where: {
+      isDeleted: { not: true },
+      ...(status ? { status } : {}),
+      ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { city: { contains: q, mode: 'insensitive' } }, { owner: { email: { contains: q, mode: 'insensitive' } } }] } : {}),
+    },
+    select: { ...OVERVIEW_SELECT, owner: { select: { name: true, email: true } } },
+    orderBy: { name: 'asc' },
+    take: 2000,
+  });
+  const all = rows.map((row) => {
+    const o = overviewFromRow(row);
+    return {
+      ...o.hotel,
+      owner: row.owner ? { name: row.owner.name, email: row.owner.email } : null,
+      rating: o.rating,
+      score: o.content.score,
+      label: o.content.label,
+      band: bandOf(o.content.score),
+      sections: Object.fromEntries(o.content.sections.map((x) => [x.key, { score: x.score, max: x.max }])),
+      nextTip: o.content.nextSteps[0] || null,
+      openFixes: o.content.nextSteps.length,
+    };
+  });
+  const list = band ? all.filter((h) => h.band === band) : all;
+  const avg = (arr) => (arr.length ? Math.round(arr.reduce((t, v) => t + v, 0) / arr.length) : 0);
+  const sectionAverages = SECTIONS.map((sec) => {
+    const pct = all.map((h) => (h.sections[sec.key].score / h.sections[sec.key].max) * 100);
+    return { key: sec.key, label: sec.label, averagePercent: avg(pct) };
+  });
+  return {
+    summary: {
+      properties: all.length,
+      averageScore: avg(all.map((h) => h.score)),
+      bands: Object.fromEntries(BANDS.map((b) => [b.key, all.filter((h) => h.band === b.key).length])),
+      weakestSection: [...sectionAverages].sort((a, b) => a.averagePercent - b.averagePercent)[0] || null,
+      sectionAverages,
+    },
+    properties: list,
+  };
+};
+
+export default { contentScore, propertyOverview, portfolioScores, overviewFromRow, SECTIONS, BANDS };

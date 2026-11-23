@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
 
 import PropertyWizardLayout from '../../components/onboarding/PropertyWizardLayout';
@@ -18,6 +18,9 @@ import { buildHotelPayload } from '../../components/onboarding/services/onboardi
 import { buildRoomPayload, normalizeRatePlans } from '../../components/onboarding/utils/roomMapper';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+/** Editor sections by name, for links like /admin/properties/edit/<id>?section=photos */
+const SECTION_STEP = { basics: 1, location: 2, amenities: 3, rooms: 4, photos: 5, policies: 6, finance: 7, documents: 8 };
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('jwt_token');
@@ -71,7 +74,8 @@ const PropertyWizard = () => {
     hasDraftLoaded,
     handleResetDraft,
     saveDraftIfNeeded: hookSaveDraftIfNeeded,
-    clearSavedProgress
+    clearSavedProgress,
+    reloadProperty
   } = usePropertyWizard({
     isEditing,
     effectiveId: id || localStorage.getItem('currentHotelId_admin'),
@@ -79,6 +83,22 @@ const PropertyWizard = () => {
     onFetchError: handleFetchError,
     clearCurrentHotelId: handleClearHotelId
   });
+
+  // Editing an existing property section by section (from Content Scores or a ?section= link):
+  // every section is a tab and "Save changes" saves without the step-by-step flow
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
+  const sectionMode = isEditing && (Boolean(requestedSection) || Boolean(formData.status && !['DRAFT', 'INFORMATION_REQUESTED'].includes(formData.status)));
+  useEffect(() => {
+    const step = SECTION_STEP[requestedSection];
+    if (isEditing && step) _setCurrentStep(step);
+  }, [requestedSection, isEditing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const jumpTo = (step) => {
+    const key = Object.keys(SECTION_STEP).find((k) => SECTION_STEP[k] === step);
+    if (key) setSearchParams({ section: key }, { replace: true });
+    _setCurrentStep(step);
+    window.scrollTo(0, 0);
+  };
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -190,11 +210,13 @@ const PropertyWizard = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (opts) => {
     setApiError('');
+    // Section mode: save everything and stay here; never the step-by-step flow or a submit
+    const sectionSave = opts?.sectionSave === true;
 
     // Advance to next step if not on last step
-    if (currentStep < 8) {
+    if (!sectionSave && currentStep < 8) {
       return handleStepChange(
         currentStep + 1,
         (error) => alert(error),
@@ -204,8 +226,10 @@ const PropertyWizard = () => {
       );
     }
 
-    // Final Validation before submit
-    const { valid, firstError } = validateStep(8, formData);
+    // Final Validation before submit (section mode: the section being saved)
+    const { valid, firstError } = sectionSave
+      ? (currentStep <= 7 ? validateStep(currentStep, formData) : { valid: true })
+      : validateStep(8, formData);
     if (!valid) {
       alert(firstError);
       return;
@@ -352,6 +376,13 @@ const PropertyWizard = () => {
         }
       }
 
+      if (sectionSave) {
+        clearSavedProgress();
+        await reloadProperty();
+        alert('Saved.');
+        return;
+      }
+
       // Submit the property for review
       // Details are saved above; if the property isn't ready (e.g. bank details or KYC
       // documents missing), stop here and show why instead of the success screen.
@@ -412,8 +443,11 @@ const PropertyWizard = () => {
         subtitle={isEditing ? `Managing details for: ${formData.name}` : 'Provide property details below'}
         currentStep={currentStep}
         setCurrentStep={handleStepChange}
-        onSaveDraft={handleSaveDraft}
-        onSave={handleSubmit}
+        onSaveDraft={sectionMode ? () => handleSubmit({ sectionSave: true }) : handleSaveDraft}
+        onSave={sectionMode ? () => handleSubmit({ sectionSave: true }) : handleSubmit}
+        sectionMode={sectionMode}
+        onJump={jumpTo}
+        onBackToProperty={() => navigate('/admin/content-scores')}
         isSubmitting={isSubmitting}
         isEditing={isEditing}
       >
