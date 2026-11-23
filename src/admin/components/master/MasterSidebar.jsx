@@ -136,7 +136,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
 
         <NavGroup title="Analytics">
           <NavItem perm="dashboard.view" name="Revenue per Search" path="/admin/analytics/rps" icon={<Target size={18} />} badge="Preview" />
-          <NavItem perm="dashboard.view" name="Reports" path="/admin/reports" icon={<BarChart3 size={18} />} badge="Preview" />
+          <NavItem perm="dashboard.view" name="Reports" path="/admin/reports" icon={<BarChart3 size={18} />} />
         </NavGroup>
 
         <NavGroup title="Experiments">
@@ -144,8 +144,8 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         </NavGroup>
 
         <NavGroup title="Finance">
-          <NavItem perm="finance.view" name="Financial Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} badge="Preview" />
-          <NavItem perm="finance.view" name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} badge="Preview" />
+          <NavItem perm="finance.view" name="Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} />
+          <NavItem perm="finance.view" name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} />
         </NavGroup>
 
         <NavGroup title="Wallet & Credit">

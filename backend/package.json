@@ -22,7 +22,7 @@
     "worker:report": "node workers/runWorker.js report",
     "test:unit": "mocha 'tests/unit/**/*.test.js'",
     "test:smoke": "mocha tests/smoke/smoke.test.js --exit",
-    "test:e2e": "mocha tests/e2e/booking.e2e.test.js tests/e2e/auth.e2e.test.js tests/e2e/hourly.e2e.test.js tests/e2e/roles.e2e.test.js tests/e2e/seo.e2e.test.js tests/e2e/google.e2e.test.js --exit"
+    "test:e2e": "mocha tests/e2e/booking.e2e.test.js tests/e2e/auth.e2e.test.js tests/e2e/hourly.e2e.test.js tests/e2e/roles.e2e.test.js tests/e2e/seo.e2e.test.js tests/e2e/google.e2e.test.js tests/e2e/reports.e2e.test.js --exit"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.21.0",
@@ -33,6 +33,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^8.4.1",
+    "fflate": "^0.8.2",
     "google-auth-library": "^9.15.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
