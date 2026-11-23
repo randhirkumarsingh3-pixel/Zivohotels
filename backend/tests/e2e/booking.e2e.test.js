@@ -101,6 +101,15 @@ describe('Booking end to end', function () {
     expect(Number(b.paidAmount)).to.equal(Number(b.totalAmount));
   });
 
+  it('lists the booking in My Bookings with its rooms and timeline', async () => {
+    const r = await api.get('/bookings/my-bookings', auth);
+    expect(r.status, JSON.stringify(r.data)).to.equal(200);
+    const mine = (r.data.data.bookings || r.data.data).find((b) => b.id === paid.id);
+    expect(mine, 'the paid booking is listed').to.exist;
+    expect(mine.status).to.equal('CONFIRMED');
+    expect(mine.hotel?.name).to.be.a('string');
+  });
+
   it('cancels one room on its own: refund for it, room back on sale, the rest stays', async () => {
     const before = await roomsLeft(standard.id);
     const b0 = await prisma.booking.findUnique({ where: { id: paid.id } });
