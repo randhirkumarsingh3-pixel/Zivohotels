@@ -94,6 +94,13 @@ jobs:
       - name: Docker Build Test
         run: docker build -t test-backend-image .
 
+      - name: VPS settings file is valid (deploy/vps/docker-compose.yml)
+        working-directory: deploy/vps
+        run: |
+          printf 'APP_DOMAIN=ci.example.com\nDB_PASSWORD=x\nJWT_SECRET=%s\nRAZORPAY_KEY_ID=x\nRAZORPAY_KEY_SECRET=x\nDATA_ENCRYPTION_KEY=%s\n' "$(printf 'x%.0s' $(seq 1 40))" "$(openssl rand -base64 32)" > /tmp/ci.env
+          docker compose -f docker-compose.yml --env-file /tmp/ci.env config --quiet
+          bash -n deploy.sh && bash -n backup.sh && bash -n restore.sh && bash -n caddy-link.sh
+
   frontend:
     name: Frontend (lint, tests, build)
     runs-on: ubuntu-latest

@@ -126,8 +126,8 @@ services:
       ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-support@zivoplus.com}
       ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-9663035520}
       # Encryption at rest for bank details and KYC documents (created once by deploy.sh; keep a copy off the server)
-      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Run deploy.sh: it creates DATA_ENCRYPTION_KEY in deploy/vps/.env}
-      # App logs on disk (rotated daily-ish by size, 30 files kept), survive redeploys
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Set DATA_ENCRYPTION_KEY in deploy/vps/.env (deploy.sh creates it)}
+      # App logs on disk (rotated by size, old files removed after 90 days), kept across redeploys
       LOG_DIR: /app/logs
     volumes:
       - logs:/app/logs                         # app request and error logs
