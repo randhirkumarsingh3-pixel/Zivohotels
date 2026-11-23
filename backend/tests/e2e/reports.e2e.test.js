@@ -29,7 +29,7 @@ describe('Admin reports end to end', function () {
   it('lists the reports, and hotel accounts cannot open them', async () => {
     const r = await api.get('/admin/reports', admin);
     expect(r.status).to.equal(200);
-    expect(r.data.data.reports.map((x) => x.key)).to.include.members(['bookings', 'revenue', 'payments', 'refunds', 'cancellations', 'occupancy', 'settlements', 'tax', 'offers']);
+    expect(r.data.data.reports.map((x) => x.key)).to.include.members(['bookings', 'revenue', 'payments', 'refunds', 'collections', 'cancellations', 'occupancy', 'settlements', 'tax', 'offers']);
     expect((await api.get('/admin/reports', owner)).status).to.equal(403);
     expect((await api.get('/admin/reports/revenue', owner)).status).to.equal(403);
     expect((await api.get('/admin/finance/payouts', owner)).status).to.equal(403);
@@ -59,6 +59,29 @@ describe('Admin reports end to end', function () {
     close(t.tcs, sums._sum.tcsAmount || 0); close(t.tds, sums._sum.tdsAmount || 0); close(t.net, sums._sum.netPayable || 0);
     // Grouped by property: the groups add up to the same total
     close(r.data.data.rows.reduce((s, x) => s + x.commission, 0), t.commission);
+  });
+
+  it('puts payments and refunds side by side per property, matching the two reports', async () => {
+    const params = { from: '2020-01-01', to: istDay(Date.now() + 86400000) };
+    const c = await api.get('/admin/reports/collections', { ...admin, params: { ...params, groupBy: 'property' } });
+    expect(c.status, JSON.stringify(c.data)).to.equal(200);
+    const t = c.data.data.totals;
+    const pay = (await api.get('/admin/reports/payments', { ...admin, params: { ...params, groupBy: 'none' } })).data.data.rows;
+    const received = pay.filter((r) => r.status !== 'Failed');
+    close(t.online + t.atHotel, received.reduce((s, r) => s + r.amount, 0));
+    expect(t.failed).to.equal(pay.filter((r) => r.status === 'Failed').length);
+    const refunded = await prisma.refund.aggregate({ _sum: { amount: true }, where: { status: 'SUCCESS' } });
+    close(t.refunded, refunded._sum.amount || 0);
+    close(t.net, t.online + t.atHotel - t.refunded);
+    // One line per property, adding up to the same totals; and one property row by row
+    close(c.data.data.rows.reduce((s, r) => s + r.net, 0), t.net);
+    const first = c.data.data.rows[0];
+    if (first) {
+      const hotel = (await api.get('/admin/reports', admin)).data.data.hotels.find((h) => h.name === first.group);
+      const one = await api.get('/admin/reports/collections', { ...admin, params: { ...params, hotelId: hotel.id, groupBy: 'none' } });
+      expect(one.data.data.rows.every((r) => r.property === first.group)).to.equal(true);
+      close(one.data.data.totals.net, first.net);
+    }
   });
 
   it('downloads real CSV and Excel files', async () => {

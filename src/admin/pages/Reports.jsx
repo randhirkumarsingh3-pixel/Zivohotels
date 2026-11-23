@@ -197,7 +197,15 @@ const Reports = () => {
                   <tbody>
                     {shown.map((r, i) => (
                       <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                        {cols.map((c) => <td key={c.key} className={`px-3 py-1.5 whitespace-nowrap ${numeric(c.type) ? 'text-right tabular-nums' : ''} ${r[c.key] === 'Failed' ? 'text-red-700 font-semibold' : ''}`}>{fmt(r[c.key], c.type)}</td>)}
+                        {cols.map((c) => {
+                          // Totals by property: click a property to see its rows one by one
+                          const hotel = data.grouped && groupBy === 'property' && c.key === 'group' ? meta.hotels.find((h) => h.name === r.group) : null;
+                          return (
+                            <td key={c.key} className={`px-3 py-1.5 whitespace-nowrap ${numeric(c.type) ? 'text-right tabular-nums' : ''} ${r[c.key] === 'Failed' || /failed/i.test(String(r[c.key] || '')) ? 'text-red-700 font-semibold' : ''} ${c.key === 'net' && Number(r[c.key]) < 0 ? 'text-red-700' : ''}`}>
+                              {hotel ? <button type="button" onClick={() => set({ hotelId: hotel.id, groupBy: 'none' })} className="text-brand-700 font-semibold hover:underline" title={`See ${hotel.name} row by row`}>{r.group}</button> : fmt(r[c.key], c.type)}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -238,6 +246,7 @@ const explain = (key) => ({
   occupancy: 'Rooms available come from the inventory calendar (stop-sell days count as 0). ADR = room revenue ÷ room-nights sold; RevPAR = room revenue ÷ rooms available.',
   settlements: 'What each hotel is owed per stay: on hold until its payout date, then due, then paid (recorded under Finance → Payouts).',
   tax: 'For GST and income-tax filing: GST on rooms, GST on ZivoPlus commission, TCS under GST section 52 (registered hotels) and TDS under section 194-O.',
+  collections: 'Money in and out per property: payments received online (Razorpay and Zivo Cash) and at the hotel, refunds made (dated when they went out) and still pending, and failed payments. Net collected = received − refunded. Click a property to see its payments and refunds one by one.',
   offers: 'Discounts given per offer, and who paid for them. Zivo Rewards points earned and redeemed in the period are shown above.',
 }[key] || '');
 

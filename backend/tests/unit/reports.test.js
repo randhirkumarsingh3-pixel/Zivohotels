@@ -47,8 +47,8 @@ describe('Reports', () => {
   it('shows money reports only to staff with the finance permission', () => {
     const all = catalogue(true).map((r) => r.key);
     const ops = catalogue(false).map((r) => r.key);
-    expect(all).to.include.members(['bookings', 'revenue', 'payments', 'refunds', 'tax', 'settlements']);
-    expect(ops).to.include('bookings').and.not.include.members(['revenue', 'payments', 'refunds', 'tax', 'settlements']);
+    expect(all).to.include.members(['bookings', 'revenue', 'payments', 'refunds', 'collections', 'tax', 'settlements']);
+    expect(ops).to.include('bookings').and.not.include.members(['revenue', 'payments', 'refunds', 'collections', 'tax', 'settlements']);
   });
 
   describe('downloads', () => {
