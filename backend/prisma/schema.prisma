@@ -970,9 +970,12 @@ model Settlement {
   igstAmount          Decimal   @default(0) @db.Decimal(12, 2)
   placeOfSupply       String?
   sgstAmount          Decimal   @default(0) @db.Decimal(12, 2)
+  /// The monthly commission tax invoice that covers this stay (FinanceDocument), once issued
+  invoiceId           String?
 
   @@index([hotelId])
   @@index([status])
+  @@index([invoiceId])
 }
 
 model LedgerEntry {
@@ -1721,4 +1724,68 @@ model StaffMember {
   @@unique([userId, scope, hotelId])
   @@index([hotelId])
   @@index([roleId])
+}
+
+
+/// Commission tax invoices and credit notes ZivoPlus issues to hotels (one invoice per hotel per
+/// month; credit notes against an invoice). Everything printed is kept as it was when issued
+/// (supplier, recipient, lines), so a document never changes after it is issued.
+model FinanceDocument {
+  id            String    @id @default(uuid())
+  /// INVOICE | CREDIT_NOTE
+  kind          String
+  /// e.g. ZPC/2026-27/000001 (TEST-ZPC/… before live invoicing is switched on)
+  number        String    @unique
+  series        String
+  seq           Int
+  live          Boolean   @default(false)
+  hotelId       String
+  /// Month covered, YYYY-MM
+  period        String
+  issueDate     DateTime  @default(now())
+  placeOfSupply String?
+  supplier      Json
+  recipient     Json
+  /// Booking-wise lines (annexure)
+  lines         Json
+  stays         Int       @default(0)
+  bookingValue  Decimal   @default(0) @db.Decimal(14, 2)
+  taxable       Decimal   @default(0) @db.Decimal(14, 2)
+  cgst          Decimal   @default(0) @db.Decimal(14, 2)
+  sgst          Decimal   @default(0) @db.Decimal(14, 2)
+  igst          Decimal   @default(0) @db.Decimal(14, 2)
+  total         Decimal   @default(0) @db.Decimal(14, 2)
+  /// Credit notes: the invoice they reduce, and why
+  originalId    String?
+  reason        String?
+  /// ISSUED
+  status        String    @default("ISSUED")
+  emailedAt     DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([hotelId, period])
+  @@index([kind, period])
+}
+
+/// Running number per series and financial year, e.g. "ZPC/2026-27" -> 41
+model DocumentSequence {
+  series  String @id
+  counter Int    @default(0)
+}
+
+/// Money owed to (positive) or by (negative) a hotel outside a stay's settlement, e.g. commission
+/// given back with a credit note. Included in the hotel's next payout.
+model HotelAdjustment {
+  id         String   @id @default(uuid())
+  hotelId    String
+  amount     Decimal  @db.Decimal(12, 2)
+  reason     String
+  documentId String?
+  /// PENDING | PAID
+  status     String   @default("PENDING")
+  payoutId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([hotelId, status])
 }

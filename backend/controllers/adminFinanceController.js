@@ -6,6 +6,11 @@
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import prisma from '../config/db.js';
 import { normaliseFilters } from '../services/reportService.js';
+import financeDocs from '../services/finance/financeDocuments.js';
+import financeMail from '../services/finance/financeMail.js';
+import { getFinanceSettings, saveFinanceSettings, readiness, STATE_NAMES } from '../services/finance/financeSettings.js';
+import { hotelGstStateCode } from '../constants/finance.js';
+import { buildCsv } from '../utils/xlsx.js';
 
 const IST = 330 * 60000;
 const n = (v) => Number(v || 0);
@@ -57,6 +62,8 @@ export const payouts = asyncHandler(async (req, res) => {
     prisma.payout.findMany({ orderBy: { createdAt: 'desc' }, take: 300, select: { id: true, hotelId: true, totalAmount: true, status: true, reference: true, createdAt: true } }),
     prisma.bankDetail.findMany({ select: { hotelId: true, bankName: true, accountNumber: true, ifscCode: true } }),
   ]);
+  // Credit notes (commission given back) are paid with the next payout
+  const adjustments = await prisma.hotelAdjustment.findMany({ where: { status: 'PENDING' }, select: { hotelId: true, amount: true } });
   const bank = new Map(banks.map((b) => [b.hotelId, b]));
   const name = new Map(hotels.map((h) => [h.id, h.name]));
   const by = new Map(hotels.map((h) => [h.id, { hotelId: h.id, name: h.name, city: h.city, cycle: h.payoutCycle, due: 0, dueCount: 0, onHold: 0, holdCount: 0, nextDate: null, lastPayout: null, paidTotal: 0 }]));
@@ -68,6 +75,10 @@ export const payouts = asyncHandler(async (req, res) => {
       row.onHold += n(s.netPayable); row.holdCount += 1;
       if (s.holdUntil && (!row.nextDate || new Date(s.holdUntil) < new Date(row.nextDate))) row.nextDate = s.holdUntil;
     }
+  }
+  for (const a of adjustments) {
+    const row = by.get(a.hotelId);
+    if (row) { row.due += n(a.amount); row.dueCount += 1; }
   }
   for (const p of history) {
     const row = by.get(p.hotelId);
@@ -87,4 +98,85 @@ export const payouts = asyncHandler(async (req, res) => {
       history: history.map((p) => ({ ...p, totalAmount: n(p.totalAmount), hotel: name.get(p.hotelId) || '' })),
     },
   });
+});
+
+// ─── Invoices, credit notes, statements, settings ───────────────────────────────────────────────
+
+const sendFile = (res, buf, name, type) => {
+  res.setHeader('Content-Type', type);
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.send(buf);
+};
+const PDF = 'application/pdf';
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+const hotelStates = async () => {
+  const hotels = await prisma.hotel.findMany({ where: { isDeleted: false, status: { in: ['LIVE', 'ACTIVE'] } }, select: { gstin: true, state: true, integrationSettings: true } });
+  return hotels.map((h) => hotelGstStateCode({ gstin: h.gstin, state: h.state || h.integrationSettings?.addressDetails?.state })).filter(Boolean);
+};
+
+export const getSettings = asyncHandler(async (req, res) => {
+  const [settings, states] = await Promise.all([getFinanceSettings(), hotelStates()]);
+  const last = await prisma.systemConfig.findUnique({ where: { key: 'finance_monthly_last' } }).catch(() => null);
+  res.json({ success: true, data: { settings, readiness: readiness(settings, states), states: STATE_NAMES, hotelStates: [...new Set(states)], lastRun: last?.value || null } });
+});
+
+export const putSettings = asyncHandler(async (req, res) => {
+  const settings = await saveFinanceSettings(req.body || {}, { userId: req.user.id });
+  await prisma.auditLog.create({ data: { action: 'FINANCE_SETTINGS_SAVED', entityType: 'SYSTEM_CONFIG', entityId: 'finance_settings', userId: req.user.id, details: { live: settings.invoice.live } } }).catch(() => {});
+  res.json({ success: true, data: { settings } });
+});
+
+export const listDocuments = asyncHandler(async (req, res) => {
+  const where = {
+    ...(financeDocs.validPeriod(req.query.period) ? { period: String(req.query.period) } : {}),
+    ...(req.query.hotelId ? { hotelId: String(req.query.hotelId) } : {}),
+    ...(['INVOICE', 'CREDIT_NOTE'].includes(req.query.kind) ? { kind: req.query.kind } : {}),
+  };
+  const rows = await prisma.financeDocument.findMany({ where, orderBy: { issueDate: 'desc' }, take: 500, select: { id: true, kind: true, number: true, live: true, hotelId: true, period: true, issueDate: true, stays: true, taxable: true, cgst: true, sgst: true, igst: true, total: true, originalId: true, reason: true, emailedAt: true, recipient: true } });
+  if (req.query.format === 'csv') {
+    const columns = [{ key: 'number', label: 'Number' }, { key: 'kind', label: 'Type' }, { key: 'issueDate', label: 'Date', type: 'date' }, { key: 'period', label: 'Month' }, { key: 'hotel', label: 'Hotel' }, { key: 'gstin', label: 'Hotel GSTIN' }, { key: 'taxable', label: 'Taxable value', type: 'money' }, { key: 'cgst', label: 'CGST', type: 'money' }, { key: 'sgst', label: 'SGST', type: 'money' }, { key: 'igst', label: 'IGST', type: 'money' }, { key: 'total', label: 'Total', type: 'money' }];
+    const data = rows.map((d) => ({ ...d, kind: d.kind === 'INVOICE' ? 'Tax invoice' : 'Credit note', hotel: d.recipient?.property, gstin: d.recipient?.gstin || '', taxable: n(d.taxable), cgst: n(d.cgst), sgst: n(d.sgst), igst: n(d.igst), total: n(d.total) }));
+    return sendFile(res, buildCsv({ columns, rows: data }), `ZivoPlus-commission-documents${where.period ? `-${where.period}` : ''}.csv`, 'text/csv; charset=utf-8');
+  }
+  res.json({ success: true, data: rows.map((d) => ({ ...d, hotel: d.recipient?.property, gstin: d.recipient?.gstin || null, recipient: undefined, taxable: n(d.taxable), cgst: n(d.cgst), sgst: n(d.sgst), igst: n(d.igst), total: n(d.total) })) });
+});
+
+export const getDocument = asyncHandler(async (req, res) => {
+  const d = await prisma.financeDocument.findUnique({ where: { id: req.params.id } });
+  if (!d) return res.status(404).json({ success: false, message: 'Document not found' });
+  if (req.query.format === 'pdf') return sendFile(res, await financeDocs.documentPdf(d), `${d.number.replace(/\//g, '-')}.pdf`, PDF);
+  const credited = await prisma.financeDocument.findMany({ where: { originalId: d.id }, select: { id: true, number: true, lines: true, total: true } });
+  res.json({ success: true, data: { ...d, taxable: n(d.taxable), cgst: n(d.cgst), sgst: n(d.sgst), igst: n(d.igst), total: n(d.total), bookingValue: n(d.bookingValue), creditNotes: credited.map((c) => ({ id: c.id, number: c.number, total: n(c.total), settlementIds: (c.lines || []).map((l) => l.settlementId) })) } });
+});
+
+export const previewMonth = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await financeDocs.previewMonth(req.params.period) });
+});
+
+export const issueMonth = asyncHandler(async (req, res) => {
+  const created = await financeDocs.issueInvoices({ period: req.params.period, hotelId: req.body?.hotelId || null, userId: req.user.id });
+  res.status(201).json({ success: true, data: { issued: created.map((d) => ({ id: d.id, number: d.number, hotelId: d.hotelId, total: n(d.total) })) } });
+});
+
+export const creditNote = asyncHandler(async (req, res) => {
+  const d = await financeDocs.issueCreditNote({ invoiceId: req.params.id, settlementIds: Array.isArray(req.body?.settlementIds) ? req.body.settlementIds : [], reason: req.body?.reason, userId: req.user.id });
+  res.status(201).json({ success: true, data: { id: d.id, number: d.number, total: n(d.total) } });
+});
+
+export const statement = asyncHandler(async (req, res) => {
+  const { hotelId, period } = req.query;
+  if (!hotelId) return res.status(400).json({ success: false, message: 'Choose a property' });
+  if (req.query.format === 'pdf') return sendFile(res, await financeDocs.statementPdf(String(hotelId), String(period)), `ZivoPlus-Statement-${period}.pdf`, PDF);
+  if (req.query.format === 'xlsx') return sendFile(res, await financeDocs.statementWorkbook(String(hotelId), String(period)), `ZivoPlus-Statement-${period}.xlsx`, XLSX);
+  res.json({ success: true, data: await financeDocs.statementFor(String(hotelId), String(period)) });
+});
+
+export const emailMonth = asyncHandler(async (req, res) => {
+  const { period } = req.params;
+  if (!financeDocs.validPeriod(period)) return res.status(400).json({ success: false, message: 'Choose a month' });
+  const ids = req.body?.hotelId ? [String(req.body.hotelId)] : await financeMail.hotelsWithActivity(period);
+  const sent = [];
+  for (const id of ids) { const to = await financeMail.emailOwner(id, period); if (to) sent.push(id); }
+  res.json({ success: true, data: { queued: sent.length, skipped: ids.length - sent.length } });
 });

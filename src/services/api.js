@@ -464,6 +464,24 @@ export const adminFinanceApi = {
   payouts: () => apiFetch(`${ADMIN_BASE}/finance/payouts`, { cache: 'no-store' }, 0).then((r) => r?.data),
   due: (hotelId) => apiFetch(`${ADMIN_BASE}/wallets/hotels/${hotelId}/payout`, { cache: 'no-store' }, 0).then((r) => r?.data),
   record: (hotelId, reference) => apiFetch(`${ADMIN_BASE}/wallets/hotels/${hotelId}/payout`, jsonBody('POST', { reference }), 0).then((r) => r?.data),
+  settings: () => apiFetch(`${ADMIN_BASE}/finance/settings`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveSettings: (body) => apiFetch(`${ADMIN_BASE}/finance/settings`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  month: (period) => apiFetch(`${ADMIN_BASE}/finance/months/${period}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  issue: (period, hotelId) => apiFetch(`${ADMIN_BASE}/finance/months/${period}/issue`, jsonBody('POST', hotelId ? { hotelId } : {}), 0).then((r) => r?.data),
+  emailMonth: (period, hotelId) => apiFetch(`${ADMIN_BASE}/finance/months/${period}/email`, jsonBody('POST', hotelId ? { hotelId } : {}), 0).then((r) => r?.data),
+  documents: (filters) => apiFetch(`${ADMIN_BASE}/finance/documents?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  document: (id) => apiFetch(`${ADMIN_BASE}/finance/documents/${id}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  creditNote: (id, settlementIds, reason) => apiFetch(`${ADMIN_BASE}/finance/documents/${id}/credit-note`, jsonBody('POST', { settlementIds, reason }), 0).then((r) => r?.data),
+  file: (url) => apiFetch(`${ADMIN_BASE}/finance/${url}`, { responseType: 'blob' }, 0),
+};
+
+/** Saves a downloaded file (Blob) under a name. */
+export const saveBlob = (blob, name) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────

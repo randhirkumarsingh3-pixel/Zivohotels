@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import financeDocs from '../../services/finance/financeDocuments.js';
 
 /**
  * Controller for Extranet Financial Operations.
@@ -132,5 +133,73 @@ export const getPayoutHistory = async (req, res) => {
     return res.json({ success: true, data: payouts });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── Finance Hub: statement, documents, earnings, tax ────────────────────────────────────────────
+
+const num = (v) => Number(v || 0);
+
+/** Everything the Finance Hub shows for one month of the hotel in scope. */
+export const getFinanceHub = async (req, res) => {
+  try {
+    const hotelId = req.scopedHotelId;
+    const period = financeDocs.validPeriod(req.query.period) ? String(req.query.period) : financeDocs.currentPeriod();
+    const [statement, earnings, tax, documents, bank, due] = await Promise.all([
+      financeDocs.statementFor(hotelId, period),
+      financeDocs.earningsByMonth(hotelId, 12),
+      financeDocs.taxByQuarter(hotelId),
+      prisma.financeDocument.findMany({ where: { hotelId }, orderBy: { issueDate: 'desc' }, take: 60, select: { id: true, kind: true, number: true, period: true, issueDate: true, total: true, live: true, originalId: true, reason: true } }),
+      prisma.bankDetail.findUnique({ where: { hotelId }, select: { bankName: true, accountNumber: true, ifscCode: true, accountName: true } }),
+      prisma.settlement.findMany({ where: { hotelId, status: { in: ['PENDING', 'READY'] } }, select: { netPayable: true, holdUntil: true, status: true } }),
+    ]);
+    const now = new Date();
+    const adjustments = await prisma.hotelAdjustment.findMany({ where: { hotelId, status: 'PENDING' }, select: { amount: true } });
+    const dueNow = due.filter((s) => s.status === 'READY' || (s.holdUntil && new Date(s.holdUntil) <= now)).reduce((a, s) => a + num(s.netPayable), 0) + adjustments.reduce((a, x) => a + num(x.amount), 0);
+    const held = due.filter((s) => !(s.status === 'READY' || (s.holdUntil && new Date(s.holdUntil) <= now)));
+    const nextDate = held.map((s) => s.holdUntil).filter(Boolean).sort((a, b) => new Date(a) - new Date(b))[0] || null;
+    // Hotel teams see only what's theirs; ZivoPlus' internal ids stay out
+    const { supplier, recipient, ...rest } = statement;
+    res.json({
+      success: true,
+      data: {
+        ...rest,
+        recipient: { legalName: recipient.legalName, property: recipient.property, gstin: recipient.gstin, pan: recipient.pan, stateName: recipient.stateName },
+        zivo: { legalName: supplier.legalName, gstin: supplier.gstin, tan: supplier.tan, tcsGstin: supplier.tcsGstin },
+        earnings, tax,
+        documents: documents.map((d) => ({ ...d, total: num(d.total) })),
+        balance: { dueNow: Math.round(dueNow * 100) / 100, onHold: Math.round(held.reduce((a, s) => a + num(s.netPayable), 0) * 100) / 100, nextDate },
+        bank: bank ? { bankName: bank.bankName, last4: String(bank.accountNumber).slice(-4), ifsc: bank.ifscCode, accountName: bank.accountName } : null,
+      },
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ success: false, message: error.message });
+  }
+};
+
+export const downloadFinanceDocument = async (req, res) => {
+  try {
+    const d = await prisma.financeDocument.findUnique({ where: { id: req.params.id } });
+    if (!d || d.hotelId !== req.scopedHotelId) return res.status(404).json({ success: false, message: 'Document not found' });
+    const pdf = await financeDocs.documentPdf(d);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${d.number.replace(/\//g, '-')}.pdf"`);
+    res.send(pdf);
+  } catch (error) {
+    res.status(error.status || 500).json({ success: false, message: error.message });
+  }
+};
+
+export const downloadStatement = async (req, res) => {
+  try {
+    const { period, format } = req.query;
+    if (!financeDocs.validPeriod(period)) return res.status(400).json({ success: false, message: 'Choose a month' });
+    const xlsx = format === 'xlsx';
+    const buf = xlsx ? await financeDocs.statementWorkbook(req.scopedHotelId, period) : await financeDocs.statementPdf(req.scopedHotelId, period);
+    res.setHeader('Content-Type', xlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ZivoPlus-Statement-${period}.${xlsx ? 'xlsx' : 'pdf'}"`);
+    res.send(buf);
+  } catch (error) {
+    res.status(error.status || 500).json({ success: false, message: error.message });
   }
 };

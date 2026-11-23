@@ -135,6 +135,23 @@ export const teamApi = {
 };
 
 /** Google Hotels: whether this property appears on Google (the hotel's own choice) */
+/** Downloads a file (PDF / Excel) for the property in scope. */
+const extranetFile = async (endpoint) => {
+  const response = await fetch(`${EXTRANET_API_URL}${withActiveHotel(endpoint)}`, { headers: getAuthHeaders() });
+  if (!response.ok) {
+    let message = 'Download failed';
+    try { message = (await response.json()).message || message; } catch { /* not JSON */ }
+    throw { status: response.status, message };
+  }
+  return response.blob();
+};
+
+export const financeHubApi = {
+  hub: (period) => extranetFetch(`/finance/hub?period=${encodeURIComponent(period)}`, { method: 'GET' }),
+  documentPdf: (id) => extranetFile(`/finance/documents/${id}/pdf`),
+  statement: (period, format) => extranetFile(`/finance/statement?period=${encodeURIComponent(period)}&format=${format}`),
+};
+
 export const googleHotelsApi = {
   get: () => extranetFetch('/google', { method: 'GET' }),
   set: (optIn) => extranetFetch('/google', { method: 'PUT', body: JSON.stringify({ optIn }) }),
