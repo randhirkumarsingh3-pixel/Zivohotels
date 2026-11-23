@@ -273,7 +273,7 @@ export const statementFor = async (hotelId, period) => {
     const s = full.get(l.settlementId);
     const gross = n(s.grossAmount);
     const onlinePlusFunded = r2(n(s.netPayable) + n(s.commissionAmount) + n(s.commissionGstAmount) + n(s.tcsAmount) + n(s.tdsAmount));
-    return { ...l, gross: r2(gross), roomGst: r2(n(s.taxAmount)), online: onlinePlusFunded, atHotel: r2(Math.max(0, gross - onlinePlusFunded)), tcs: r2(n(s.tcsAmount)), tds: r2(n(s.tdsAmount)), net: r2(n(s.netPayable)), status: s.status, invoiceId: s.invoiceId };
+    return { ...l, tcsRate: s.rates?.tcsPercent ?? null, tdsRate: s.rates?.tdsPercent ?? null, gross: r2(gross), roomGst: r2(n(s.taxAmount)), online: onlinePlusFunded, atHotel: r2(Math.max(0, gross - onlinePlusFunded)), tcs: r2(n(s.tcsAmount)), tds: r2(n(s.tdsAmount)), net: r2(n(s.netPayable)), status: s.status, invoiceId: s.invoiceId };
   });
   const opening = r2(n(before._sum.netPayable) + n(adjBefore._sum.amount) - n(paidBefore._sum.totalAmount));
   const earned = sum(stays, 'net');
@@ -321,6 +321,56 @@ export const taxByQuarter = async (hotelId, fy = financialYear()) => {
     q[i].value += n(r.grossAmount) - n(r.taxAmount); q[i].tcs += n(r.tcsAmount); q[i].tds += n(r.tdsAmount);
   }
   return { fy, quarters: q.map((x) => ({ ...x, value: r2(x.value), tcs: r2(x.tcs), tds: r2(x.tds) })) };
+};
+
+// ─── One property, one financial year ──────────────────────────────────────────────────────────
+
+/** Month by month for a property in a financial year: stays, commission, taxes, net, paid, documents. */
+export const propertyYear = async (hotelId, fy = financialYear()) => {
+  if (!/^\d{4}-\d{2}$/.test(String(fy))) throw bad('Choose a financial year, e.g. 2026-27');
+  const y = Number(fy.slice(0, 4));
+  const range = { gte: new Date(Date.UTC(y, 3, 1) - IST), lt: new Date(Date.UTC(y + 1, 3, 1) - IST) };
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: hotelSelect });
+  if (!hotel) throw bad('Property not found', 404);
+  const months = [];
+  for (let i = 0; i < 12; i += 1) {
+    const p = new Date(Date.UTC(y, 3 + i, 1)).toISOString().slice(0, 7);
+    if (p > currentPeriod()) break;
+    months.push(p);
+  }
+  const [settled, payouts, documents] = await Promise.all([
+    prisma.settlement.findMany({ where: { hotelId, createdAt: range }, select: { createdAt: true, grossAmount: true, taxAmount: true, commissionAmount: true, commissionGstAmount: true, tcsAmount: true, tdsAmount: true, netPayable: true, invoiceId: true } }),
+    prisma.payout.findMany({ where: { hotelId, status: 'SUCCESS', createdAt: range }, select: { createdAt: true, totalAmount: true, reference: true } }),
+    prisma.financeDocument.findMany({ where: { hotelId, period: { in: months } }, orderBy: { issueDate: 'asc' }, select: { id: true, kind: true, number: true, period: true, issueDate: true, taxable: true, cgst: true, sgst: true, igst: true, total: true, live: true, emailedAt: true, reason: true } }),
+  ]);
+  const monthOf = (d) => new Date(new Date(d).getTime() + IST).toISOString().slice(0, 7);
+  const rows = months.map((p) => {
+    const mine = settled.filter((x) => monthOf(x.createdAt) === p);
+    const add = (k) => r2(mine.reduce((a, x) => a + n(x[k]), 0));
+    const docs = documents.filter((d) => d.period === p).map((d) => ({ ...d, taxable: n(d.taxable), gst: r2(n(d.cgst) + n(d.sgst) + n(d.igst)), total: n(d.total) }));
+    return {
+      period: p, label: periodLabel(p), stays: mine.length, uninvoiced: mine.filter((x) => !x.invoiceId && n(x.commissionAmount) > 0).length,
+      gross: add('grossAmount'), value: r2(add('grossAmount') - add('taxAmount')), commission: add('commissionAmount'), commissionGst: add('commissionGstAmount'),
+      tcs: add('tcsAmount'), tds: add('tdsAmount'), net: add('netPayable'),
+      paid: r2(payouts.filter((x) => monthOf(x.createdAt) === p).reduce((a, x) => a + n(x.totalAmount), 0)),
+      documents: docs,
+    };
+  });
+  const sumOf = (k) => r2(rows.reduce((a, x) => a + n(x[k]), 0));
+  const rec = recipientOf(hotel);
+  return {
+    fy, hotel: { id: hotel.id, name: hotel.name, gstin: rec.gstin, state: rec.stateName, legalName: rec.legalName },
+    months: rows,
+    totals: { stays: sumOf('stays'), gross: sumOf('gross'), value: sumOf('value'), commission: sumOf('commission'), commissionGst: sumOf('commissionGst'), tcs: sumOf('tcs'), tds: sumOf('tds'), net: sumOf('net'), paid: sumOf('paid'), documents: documents.length },
+  };
+};
+
+/** A ZIP of documents' PDFs (at most 200), named by number. */
+export const documentsZip = async (docs) => {
+  const { zipSync } = await import('fflate');
+  const files = {};
+  for (const d of docs.slice(0, 200)) files[`${d.number.replace(/\//g, '-')}.pdf`] = new Uint8Array(await documentPdf(d));
+  return Buffer.from(zipSync(files, { level: 0 }));
 };
 
 // ─── Files ──────────────────────────────────────────────────────────────────────────────────────
@@ -376,15 +426,19 @@ export const statementWorkbook = async (hotelId, period) => {
     },
     {
       name: 'TCS',
-      columns: [{ key: 'ref', label: 'Booking' }, { key: 'checkOut', label: 'Check-out', type: 'date' }, { key: 'hotelGstin', label: 'Hotel GSTIN' }, { key: 'tcsGstin', label: 'ZivoPlus TCS GSTIN' }, money('base', 'TCS base (online value before GST)'), money('half1', 'CGST TCS (0.25%)'), money('half2', 'SGST TCS (0.25%)'), money('tcs', 'Total TCS (0.5%)')],
+      columns: [{ key: 'ref', label: 'Booking' }, { key: 'checkOut', label: 'Check-out', type: 'date' }, { key: 'hotelGstin', label: 'Hotel GSTIN' }, { key: 'tcsGstin', label: 'ZivoPlus TCS GSTIN' }, money('base', 'TCS base (online value before GST)'), { key: 'rate', label: 'TCS rate', type: 'pct' }, money('half1', 'CGST TCS'), money('half2', 'SGST TCS'), money('tcs', 'Total TCS')],
       // The hotel's room sales are within its own state, so TCS is collected as CGST + SGST halves
-      rows: s.stays.filter((x) => x.tcs > 0).map((x) => ({ ref: x.ref, checkOut: x.checkOut, hotelGstin: s.recipient.gstin, tcsGstin: s.supplier.tcsGstin || 'Registration pending', base: r2((x.tcs / 0.5) * 100), half1: r2(x.tcs / 2), half2: r2(x.tcs - r2(x.tcs / 2)), tcs: x.tcs })),
+      // Base: the online part of the stay before GST (as TCS was worked out on it)
+      rows: s.stays.filter((x) => x.tcs > 0).map((x) => {
+        const base = x.gross ? r2(x.online * (x.value / x.gross)) : 0;
+        return { ref: x.ref, checkOut: x.checkOut, hotelGstin: s.recipient.gstin, tcsGstin: s.supplier.tcsGstin || 'Registration pending', base, rate: x.tcsRate ?? (base ? r2((x.tcs / base) * 100) : null), half1: r2(x.tcs / 2), half2: r2(x.tcs - r2(x.tcs / 2)), tcs: x.tcs };
+      }),
       totals: { tcs: t.tcs, half1: r2(t.tcs / 2), half2: r2(t.tcs - r2(t.tcs / 2)) },
     },
     {
       name: 'TDS',
-      columns: [{ key: 'ref', label: 'Booking' }, { key: 'checkOut', label: 'Check-out', type: 'date' }, { key: 'pan', label: 'Hotel PAN' }, money('base', 'TDS base (sale value)'), money('tds', 'TDS (0.1%)')],
-      rows: s.stays.filter((x) => x.tds > 0).map((x) => ({ ref: x.ref, checkOut: x.checkOut, pan: s.recipient.pan || 'Not on file', base: x.value, tds: x.tds })),
+      columns: [{ key: 'ref', label: 'Booking' }, { key: 'checkOut', label: 'Check-out', type: 'date' }, { key: 'pan', label: 'Hotel PAN' }, money('base', 'TDS base (sale value)'), { key: 'rate', label: 'TDS rate', type: 'pct' }, money('tds', 'TDS')],
+      rows: s.stays.filter((x) => x.tds > 0).map((x) => ({ ref: x.ref, checkOut: x.checkOut, pan: s.recipient.pan || 'Not on file', base: x.value, rate: x.tdsRate ?? (x.value ? r2((x.tds / x.value) * 100) : null), tds: x.tds })),
       totals: { tds: t.tds },
     },
     {
@@ -400,4 +454,4 @@ export const statementWorkbook = async (hotelId, period) => {
   ]);
 };
 
-export default { previewMonth, issueInvoices, issueCreditNote, statementFor, earningsByMonth, taxByQuarter, documentPdf, statementPdf, statementWorkbook, financialYear, documentNumber, periodRange, previousPeriod, currentPeriod, validPeriod, periodLabel };
+export default { propertyYear, documentsZip, previewMonth, issueInvoices, issueCreditNote, statementFor, earningsByMonth, taxByQuarter, documentPdf, statementPdf, statementWorkbook, financialYear, documentNumber, periodRange, previousPeriod, currentPeriod, validPeriod, periodLabel };

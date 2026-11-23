@@ -106,7 +106,10 @@ const ExtranetFinance = () => {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl bg-white border border-gray-200 p-5" aria-label="Invoices and credit notes">
           <h2 className="font-bold text-gray-900 flex items-center gap-2"><Receipt size={17} /> Commission invoices & credit notes</h2>
-          <p className="text-xs text-gray-500 mt-1">Issued on the 1st for the previous month. Use them to claim GST input credit.</p>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">Issued on the 1st for the previous month. Use them to claim GST input credit.</p>
+            {data.documents.length > 0 && <button type="button" onClick={() => download('zip', () => financeHubApi.invoicesZip(data.tax.fy), `ZivoPlus-invoices-FY${data.tax.fy}.zip`)} className="px-2.5 py-1 rounded-lg border border-gray-300 text-xs font-semibold">{busy === 'zip' ? <Loader2 size={13} className="animate-spin inline" /> : `All for FY ${data.tax.fy} (ZIP)`}</button>}
+          </div>
           {data.documents.length === 0 ? <p className="mt-3 text-sm text-gray-500">None yet.</p> : (
             <ul className="mt-3 divide-y divide-gray-100">{data.documents.map((d) => (
               <li key={d.id} className="py-2 flex items-center justify-between gap-2 text-sm">
@@ -130,7 +133,7 @@ const ExtranetFinance = () => {
 
       <section className="rounded-xl bg-white border border-gray-200 p-5" aria-label="Taxes">
         <h2 className="font-bold text-gray-900">Taxes deducted for you to claim · FY {data.tax.fy}</h2>
-        <p className="text-xs text-gray-500 mt-1">TCS (GST section 52, 0.5%{data.zivo.tcsGstin ? `, ZivoPlus TCS GSTIN ${data.zivo.tcsGstin}` : ''}) shows on the GST portal; TDS (section 194-O, 0.1%{data.zivo.tan ? `, ZivoPlus TAN ${data.zivo.tan}` : ''}) in Form 26AS, with Form 16A every quarter.</p>
+        <p className="text-xs text-gray-500 mt-1">TCS (GST section 52, {data.rates?.tcsPercent ?? 0.5}%{data.zivo.tcsGstin ? `, ZivoPlus TCS GSTIN ${data.zivo.tcsGstin}` : ''}) shows on the GST portal; TDS (section 194-O, {data.rates?.tdsPercent ?? 0.1}%{data.zivo.tan ? `, ZivoPlus TAN ${data.zivo.tan}` : ''}) in Form 26AS, with Form 16A every quarter.</p>
         <div className="overflow-x-auto mt-3"><table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-gray-600"><tr>{['Quarter', 'Sales value', 'TCS', 'TDS'].map((h, i) => <th key={h} scope="col" className={`px-3 py-2 font-semibold ${i ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead>
           <tbody>{data.tax.quarters.map((q) => <tr key={q.quarter} className="border-t border-gray-100"><td className="px-3 py-2">{q.quarter} <span className="text-gray-500">{q.label}</span></td><td className="px-3 py-2 text-right tabular-nums">{inr(q.value)}</td><td className="px-3 py-2 text-right tabular-nums">{inr(q.tcs)}</td><td className="px-3 py-2 text-right tabular-nums">{inr(q.tds)}</td></tr>)}</tbody>

@@ -473,6 +473,7 @@ export const adminFinanceApi = {
   document: (id) => apiFetch(`${ADMIN_BASE}/finance/documents/${id}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   creditNote: (id, settlementIds, reason) => apiFetch(`${ADMIN_BASE}/finance/documents/${id}/credit-note`, jsonBody('POST', { settlementIds, reason }), 0).then((r) => r?.data),
   file: (url) => apiFetch(`${ADMIN_BASE}/finance/${url}`, { responseType: 'blob' }, 0),
+  property: (hotelId, fy) => apiFetch(`${ADMIN_BASE}/finance/properties/${hotelId}?${qs({ fy })}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 
 /** Saves a downloaded file (Blob) under a name. */

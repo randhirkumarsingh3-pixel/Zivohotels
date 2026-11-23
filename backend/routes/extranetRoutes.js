@@ -17,7 +17,7 @@ import { fetchNotifications, markNotificationsRead } from '../controllers/extran
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
 import { getDashboard } from '../controllers/extranet/dashboardController.js';
 import { getPerformance } from '../controllers/extranet/performanceController.js';
-import { getFinancialOverview, getSettlementDetails, getPayoutHistory, getFinanceHub, downloadFinanceDocument, downloadStatement } from '../controllers/extranet/financeController.js';
+import { getFinancialOverview, getSettlementDetails, getPayoutHistory, getFinanceHub, downloadFinanceDocument, downloadStatement, downloadDocumentsZip } from '../controllers/extranet/financeController.js';
 import { getHotelWallet } from '../controllers/walletController.js';
 import { getHotelMembership, putHotelMembership } from '../controllers/membershipController.js';
 
@@ -107,6 +107,7 @@ router.get('/finance/overview', getFinancialOverview);
 router.get('/finance/settlements/:settlementId', getSettlementDetails);
 router.get('/finance/payouts', getPayoutHistory);
 router.get('/finance/hub', getFinanceHub);
+router.get('/finance/documents/zip', downloadDocumentsZip);
 router.get('/finance/documents/:id/pdf', downloadFinanceDocument);
 router.get('/finance/statement', downloadStatement);
 router.get('/wallet', getHotelWallet);

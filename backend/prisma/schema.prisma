@@ -972,6 +972,9 @@ model Settlement {
   sgstAmount          Decimal   @default(0) @db.Decimal(12, 2)
   /// The monthly commission tax invoice that covers this stay (FinanceDocument), once issued
   invoiceId           String?
+  /// The rates used when the stay was settled: { commissionPercent, commissionGstPercent,
+  /// tcsPercent, tdsPercent } (Admin → Finance settings can change them for later stays)
+  rates               Json?
 
   @@index([hotelId])
   @@index([status])

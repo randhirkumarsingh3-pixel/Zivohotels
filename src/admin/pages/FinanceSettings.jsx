@@ -77,12 +77,12 @@ const FinanceSettings = () => {
             {Object.entries(data.states).sort((a, b) => a[1].localeCompare(b[1])).map(([c, nme]) => <option key={c} value={c}>{nme} ({c})</option>)}
           </select></label>
         </div>
-        <p className="mt-2 text-xs text-gray-500">Commission GST: hotels in {data.states[form.company.stateCode]} are charged CGST 9% + SGST 9%; hotels in every other state IGST 18%.</p>
+        <p className="mt-2 text-xs text-gray-500">Commission GST: hotels in {data.states[form.company.stateCode]} are charged CGST {form.rates.commissionGstPercent / 2}% + SGST {form.rates.commissionGstPercent / 2}%; hotels in every other state IGST {form.rates.commissionGstPercent}%.</p>
       </section>
 
       <section className={card} aria-label="TCS registrations">
         <h2 className="font-bold text-gray-900">TCS registrations by state</h2>
-        <p className="text-sm text-gray-600">ZivoPlus collects TCS (GST section 52, 0.5%) from GST-registered hotels and needs a TCS registration in each state where its hotels are. It is printed on each hotel&apos;s statement and TCS sheet.</p>
+        <p className="text-sm text-gray-600">ZivoPlus collects TCS (GST section 52, {form.rates.tcsPercent}%) from GST-registered hotels and needs a TCS registration in each state where its hotels are. It is printed on each hotel&apos;s statement and TCS sheet.</p>
         <div className="mt-3 space-y-2">
           {tcsStates.length === 0 && <p className="text-sm text-gray-500">No live hotels yet.</p>}
           {tcsStates.map((code) => (
@@ -102,6 +102,20 @@ const FinanceSettings = () => {
             </div>
           )}
         </div>
+      </section>
+
+      <section className={card} aria-label="Tax rates">
+        <h2 className="font-bold text-gray-900">Tax rates</h2>
+        <p className="text-sm text-gray-600">Used for stays settled from now on. Each stay keeps the rates it was settled with, so changing them never alters past stays, invoices or statements.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          {[['commissionGstPercent', 'GST on commission (%)', 'Split CGST + SGST in your state, IGST elsewhere', 28], ['tcsPercent', 'TCS under GST section 52 (%)', 'On the online value before GST, GST-registered hotels only', 2], ['tdsPercent', 'TDS under section 194-O (%)', 'On the sale value before GST', 5]].map(([k, label, hint, max]) => (
+            <label key={k} className="text-sm font-semibold text-gray-700">{label}
+              <input type="number" min={0} max={max} step="0.01" className={input} disabled={ro} value={form.rates[k]} onChange={(e) => set('rates', k, e.target.value)} />
+              <span className="mt-1 block text-xs font-normal text-gray-500">{hint}</span>
+            </label>
+          ))}
+        </div>
+        {form.rates.changedAt && <p className="mt-2 text-xs text-gray-500">Last changed {new Date(form.rates.changedAt).toLocaleString('en-IN')}.</p>}
       </section>
 
       <section className={card} aria-label="Invoice numbering">

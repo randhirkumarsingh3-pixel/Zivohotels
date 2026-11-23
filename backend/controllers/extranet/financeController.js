@@ -1,5 +1,6 @@
 import prisma from '../../config/db.js';
 import financeDocs from '../../services/finance/financeDocuments.js';
+import { currentRates } from '../../services/finance/financeSettings.js';
 
 /**
  * Controller for Extranet Financial Operations.
@@ -85,6 +86,8 @@ export const getSettlementDetails = async (req, res) => {
     const collectedOnline = netPayable + commission + commissionGst + tcs + tds;
     const collectedAtHotel = Math.max(0, gross - collectedOnline);
     const gstSplit = n(settlement.igstAmount) > 0 ? 'IGST' : 'CGST + SGST';
+    // The rates this stay was settled with (older stays: the standard rates)
+    const r = { commissionGstPercent: 18, tcsPercent: 0.5, tdsPercent: 0.1, ...(settlement.rates || {}) };
     const kindLabel = { STAY: 'Stay', CANCELLATION: 'Cancellation fee kept', NO_SHOW: 'No-show charge kept' }[settlement.kind] || 'Stay';
 
     // "Explain Money" Breakdown: grossBooking - deductions = netPayable
@@ -102,9 +105,9 @@ export const getSettlementDetails = async (req, res) => {
           ? [{ label: 'Paid by the guest at the hotel (already with you)', amount: collectedAtHotel, type: 'COLLECTED_AT_HOTEL' }]
           : []),
         { label: 'Zivo commission (on amount before GST)', amount: commission, type: 'COMMISSION' },
-        { label: `GST 18% on commission (${gstSplit})`, amount: commissionGst, type: 'COMMISSION_GST' },
-        ...(tcs > 0 ? [{ label: 'TCS 0.5% (GST section 52)', amount: tcs, type: 'TCS' }] : []),
-        { label: 'TDS 0.1% (Income Tax section 194-O)', amount: tds, type: 'TDS' }
+        { label: `GST ${r.commissionGstPercent}% on commission (${gstSplit})`, amount: commissionGst, type: 'COMMISSION_GST' },
+        ...(tcs > 0 ? [{ label: `TCS ${r.tcsPercent}% (GST section 52)`, amount: tcs, type: 'TCS' }] : []),
+        { label: `TDS ${r.tdsPercent}% (Income Tax section 194-O)`, amount: tds, type: 'TDS' }
       ],
       info: [
         { label: 'GST included in booking (remitted by the hotel)', amount: tax, type: 'TAX' }
@@ -166,6 +169,7 @@ export const getFinanceHub = async (req, res) => {
         ...rest,
         recipient: { legalName: recipient.legalName, property: recipient.property, gstin: recipient.gstin, pan: recipient.pan, stateName: recipient.stateName },
         zivo: { legalName: supplier.legalName, gstin: supplier.gstin, tan: supplier.tan, tcsGstin: supplier.tcsGstin },
+        rates: await currentRates(),
         earnings, tax,
         documents: documents.map((d) => ({ ...d, total: num(d.total) })),
         balance: { dueNow: Math.round(dueNow * 100) / 100, onHold: Math.round(held.reduce((a, s) => a + num(s.netPayable), 0) * 100) / 100, nextDate },
@@ -199,6 +203,22 @@ export const downloadStatement = async (req, res) => {
     res.setHeader('Content-Type', xlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="ZivoPlus-Statement-${period}.${xlsx ? 'xlsx' : 'pdf'}"`);
     res.send(buf);
+  } catch (error) {
+    res.status(error.status || 500).json({ success: false, message: error.message });
+  }
+};
+
+/** ZIP of the property's invoice and credit-note PDFs for a financial year (?fy=2026-27). */
+export const downloadDocumentsZip = async (req, res) => {
+  try {
+    const fy = /^\d{4}-\d{2}$/.test(String(req.query.fy || '')) ? String(req.query.fy) : financeDocs.financialYear();
+    const y = Number(fy.slice(0, 4));
+    const docs = await prisma.financeDocument.findMany({ where: { hotelId: req.scopedHotelId, period: { gte: `${y}-04`, lte: `${y + 1}-03` } }, orderBy: [{ period: 'asc' }, { number: 'asc' }] });
+    if (!docs.length) return res.status(404).json({ success: false, message: 'No invoices for this financial year yet' });
+    const zip = await financeDocs.documentsZip(docs);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="ZivoPlus-invoices-FY${fy}.zip"`);
+    res.send(zip);
   } catch (error) {
     res.status(error.status || 500).json({ success: false, message: error.message });
   }

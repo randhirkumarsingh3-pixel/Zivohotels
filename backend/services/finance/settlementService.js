@@ -1,3 +1,4 @@
+import { currentRates } from './financeSettings.js';
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/db.js';
 import ledgerService from './ledgerService.js';
@@ -66,7 +67,7 @@ const pct = (amount, percent) => D(amount).times(percent).dividedBy(100).toDecim
  * netPayable = collected + zivoFunded - commission - GST on commission - TCS - TDS. Negative means
  * the hotel holds the money (pay-at-hotel) and owes ZivoPlus; it is netted against later payouts.
  */
-export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0 }) => {
+export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0, commissionGstPercent = COMMISSION_GST_PERCENT, tcsPercent = TCS_PERCENT, tdsPercent = TDS_PERCENT }) => {
   const gross = D(grossAmount);
   const tax = D(taxAmount);
   const funded = Prisma.Decimal.max(0, D(zivoFunded));
@@ -77,17 +78,17 @@ export const computeSettlement = ({ grossAmount, taxAmount, collected, commissio
   const commission = pct(saleValue, commissionPercent);
   let cgst = D(0), sgst = D(0), igst = D(0);
   if (sameState) {
-    cgst = pct(commission, COMMISSION_GST_PERCENT / 2);
-    sgst = pct(commission, COMMISSION_GST_PERCENT / 2);
+    cgst = pct(commission, commissionGstPercent / 2);
+    sgst = pct(commission, commissionGstPercent / 2);
   } else {
-    igst = pct(commission, COMMISSION_GST_PERCENT);
+    igst = pct(commission, commissionGstPercent);
   }
   const commissionGst = cgst.plus(sgst).plus(igst);
 
   // TCS on the pre-GST value of what was collected online (proportionally), registered hotels only
   const collectedPreTax = (gross.isZero() ? D(0) : preTax.times(collectedOnline).dividedBy(gross)).plus(funded);
-  const tcs = hotelGstRegistered ? pct(collectedPreTax, TCS_PERCENT) : D(0);
-  const tds = pct(saleValue, TDS_PERCENT);
+  const tcs = hotelGstRegistered ? pct(collectedPreTax, tcsPercent) : D(0);
+  const tds = pct(saleValue, tdsPercent);
 
   const netPayable = collectedOnline.plus(funded).minus(commission).minus(commissionGst).minus(tcs).minus(tds);
   return { gross, preTax, tax, collected: collectedOnline, zivoFunded: funded, commission, cgst, sgst, igst, commissionGst, tcs, tds, netPayable };
@@ -146,6 +147,8 @@ export const settlementTermsForHotel = async (tx, hotelId) => {
       select: { payoutCycle: true, dynamicCommissionRate: true, gstin: true, state: true, integrationSettings: true }
     }),
   ]);
+  // GST on commission, TCS and TDS rates: Admin → Finance settings (defaults 18%, 0.5%, 0.1%)
+  const rates = await currentRates().catch(() => ({}));
   const zivoState = zivoGstStateCode();
   const hotelState = hotelGstStateCode({ gstin: hotel?.gstin, state: hotel?.state || hotel?.integrationSettings?.addressDetails?.state });
   return {
@@ -154,6 +157,7 @@ export const settlementTermsForHotel = async (tx, hotelId) => {
     hotelGstRegistered: Boolean(hotel?.gstin && String(hotel.gstin).trim()),
     hotelState,
     payoutCycle: hotel?.payoutCycle,
+    ...rates,
   };
 };
 
@@ -186,6 +190,7 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
       tcsAmount: m.tcs,
       tdsAmount: m.tds,
       placeOfSupply: hotelState,
+      rates: { commissionPercent, commissionGstPercent: terms.commissionGstPercent ?? COMMISSION_GST_PERCENT, tcsPercent: terms.tcsPercent ?? TCS_PERCENT, tdsPercent: terms.tdsPercent ?? TDS_PERCENT },
       netPayable: m.netPayable,
       status: 'PENDING',
       holdUntil: nextPayoutDate(terms.payoutCycle, booking.checkOut),
@@ -197,9 +202,9 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
   const what = `${KIND_LABEL[kind]} for booking ${booking.bookingRef}`;
   const entries = [
     { referenceId: ref, account: 'ZIVO', type: 'CREDIT', amount: m.commission, description: `Commission (${commissionPercent}% of pre-GST) on ${what}` },
-    { referenceId: ref, account: 'GST_ON_COMMISSION', type: 'CREDIT', amount: m.commissionGst, description: `GST ${COMMISSION_GST_PERCENT}% on commission (${sameState ? 'CGST+SGST' : 'IGST'}), ${what}` },
-    { referenceId: ref, account: 'TCS_PAYABLE', type: 'CREDIT', amount: m.tcs, description: `TCS ${TCS_PERCENT}% on ${what}` },
-    { referenceId: ref, account: 'TDS_PAYABLE', type: 'CREDIT', amount: m.tds, description: `TDS ${TDS_PERCENT}% (194-O) on ${what}` },
+    { referenceId: ref, account: 'GST_ON_COMMISSION', type: 'CREDIT', amount: m.commissionGst, description: `GST ${terms.commissionGstPercent ?? COMMISSION_GST_PERCENT}% on commission (${sameState ? 'CGST+SGST' : 'IGST'}), ${what}` },
+    { referenceId: ref, account: 'TCS_PAYABLE', type: 'CREDIT', amount: m.tcs, description: `TCS ${terms.tcsPercent ?? TCS_PERCENT}% on ${what}` },
+    { referenceId: ref, account: 'TDS_PAYABLE', type: 'CREDIT', amount: m.tds, description: `TDS ${terms.tdsPercent ?? TDS_PERCENT}% (194-O) on ${what}` },
     m.netPayable.isNegative()
       ? { referenceId: ref, account: 'HOTEL', type: 'DEBIT', amount: m.netPayable.abs(), description: `Owed by hotel (collected at hotel), ${what}` }
       : { referenceId: ref, account: 'HOTEL', type: 'CREDIT', amount: m.netPayable, description: `Net payable, ${what}` },
