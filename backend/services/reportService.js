@@ -361,6 +361,60 @@ const REPORTS = {
     },
   },
 
+  collections: {
+    title: 'Collections & refunds', finance: true,
+    dateFields: { money: 'Date the money moved' },
+    groupDate: 'date', defaultGroup: 'property',
+    // One row per money movement (a payment received, paid at the hotel, a failed payment, a
+    // refund); shown as one line per property by default, or by month, or row by row
+    async run(f) {
+      const payments = (await REPORTS.payments.run(f)).rows;
+      const refunds = await prisma.refund.findMany({
+        where: { OR: [{ status: 'SUCCESS', updatedAt: momentRange(f.from, f.to) }, { status: { not: 'SUCCESS' }, createdAt: momentRange(f.from, f.to) }], booking: { ...bookingHotel(f), ...stayWhere(f), ...(f.paymentType ? { paymentType: f.paymentType } : {}) } },
+        select: { amount: true, status: true, createdAt: true, updatedAt: true, razorpayRefundId: true, booking: { select: { bookingRef: true, guestName: true, hotel: hotelSel } } },
+        take: ROW_LIMIT + 1,
+      });
+      const counted = new Set();
+      const rows = [];
+      for (const p of payments) {
+        const failed = p.status === 'Failed';
+        const atHotel = p.what === 'Paid at hotel';
+        const firstForBooking = !failed && !counted.has(p.ref);
+        if (firstForBooking) counted.add(p.ref);
+        rows.push({
+          date: p.date, property: p.property, city: p.city, ref: p.ref, guest: p.guest,
+          what: failed ? 'Payment failed' : p.what, reference: p.gatewayRef,
+          bookings: firstForBooking ? 1 : 0,
+          online: failed || atHotel ? 0 : p.amount, zivoCash: failed || atHotel ? 0 : p.wallet, atHotel: atHotel ? p.amount : 0,
+          refunded: 0, refundPending: 0, failed: failed ? 1 : 0,
+          net: failed ? 0 : p.amount,
+        });
+      }
+      for (const x of refunds) {
+        const done = x.status === 'SUCCESS';
+        rows.push({
+          date: done ? x.updatedAt : x.createdAt, property: x.booking?.hotel?.name, city: x.booking?.hotel?.city, ref: x.booking?.bookingRef, guest: x.booking?.guestName,
+          what: done ? 'Refund' : x.status === 'FAILED' ? 'Refund failed (retrying)' : 'Refund in progress', reference: x.razorpayRefundId || '',
+          bookings: 0, online: 0, zivoCash: 0, atHotel: 0,
+          refunded: done ? r2(n(x.amount)) : 0, refundPending: done ? 0 : r2(n(x.amount)), failed: 0,
+          net: done ? -r2(n(x.amount)) : 0,
+        });
+      }
+      rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+      return {
+        columns: [
+          { key: 'date', label: 'Date', type: 'datetime' }, { key: 'property', label: 'Property' }, { key: 'ref', label: 'Booking' }, { key: 'guest', label: 'Guest' },
+          { key: 'what', label: 'Movement' }, { key: 'reference', label: 'Razorpay ID' },
+          { key: 'bookings', label: 'Bookings paid', type: 'int' },
+          { key: 'online', label: 'Received online', type: 'money' }, { key: 'zivoCash', label: 'of which Zivo Cash', type: 'money' }, { key: 'atHotel', label: 'Paid at hotel', type: 'money' },
+          { key: 'refunded', label: 'Refunded', type: 'money' }, { key: 'refundPending', label: 'Refunds pending', type: 'money' }, { key: 'failed', label: 'Failed payments', type: 'int' },
+          { key: 'net', label: 'Net collected', type: 'money' },
+        ],
+        rows,
+      };
+    },
+  },
+
   offers: {
     title: 'Offers & loyalty', finance: false,
     dateFields: { used: 'Used on' },
