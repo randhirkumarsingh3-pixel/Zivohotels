@@ -12,6 +12,7 @@ import { expect } from 'chai';
 import minimist from 'minimist';
 import prisma from '../../config/db.js';
 import { scrubDeletedAccounts } from '../../services/retentionService.js';
+import { queueService } from '../../services/queueService.js';
 
 const argv = minimist(process.argv.slice(2));
 const BASE = argv.url || process.env.E2E_URL || 'http://localhost:5000';
@@ -106,5 +107,26 @@ describe('Data protection', function () {
     expect(after.email).to.match(/@deleted\.zivoplus\.invalid$/);
     expect(after.phone).to.equal(null);
     expect((await api.post('/auth/login', { email: `gone.${n}@example.com`, password: 'Unused-Pass-99' })).status).to.not.equal(200);
+  });
+
+  it('never shows or keeps sign-in codes in the email log', async () => {
+    const a = await api.post('/auth/login', { email: 'admin@zivoplus.com', password: 'admin123' });
+    const admin = { headers: { Authorization: `Bearer ${a.data.data.token}` } };
+    // Scheduled for later so the email worker doesn't pick it up during the test
+    const job = await queueService.enqueue('email', 'SEND_OTP', { to: `code.${n}@example.com`, subject: '481516 is your ZivoPlus sign-in code', html: '<p>481516</p>' }, { runAt: new Date(Date.now() + 3600000) });
+    try {
+      const log = await api.get('/admin/delivery', admin);
+      expect(log.status, JSON.stringify(log.data)).to.equal(200);
+      const row = log.data.data.recent.find((r) => r.id === job.id);
+      expect(row, 'the email is listed').to.exist;
+      expect(row.subject).to.equal('•••••• is your ZivoPlus sign-in code');
+      expect(JSON.stringify(log.data)).to.not.include('481516');
+      await queueService.complete(job.id);
+      const stored = await prisma.backgroundJob.findUnique({ where: { id: job.id } });
+      expect(JSON.stringify(stored.payload)).to.not.include('481516');
+      expect(stored.payload.scrubbed).to.equal(true);
+    } finally {
+      await prisma.backgroundJob.delete({ where: { id: job.id } }).catch(() => {});
+    }
   });
 });

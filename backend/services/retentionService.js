@@ -10,6 +10,7 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { scrubCodeEmails } from './encryptionSweep.js';
 import prisma from '../config/db.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -67,6 +68,7 @@ export const runRetention = async () => {
   await del('readNotifications', () => prisma.userNotification.deleteMany({ where: { isRead: true, createdAt: { lt: ago(RETENTION.readNotifications) } } }));
   await del('finishedJobs', () => prisma.backgroundJob.deleteMany({ where: { status: { in: ['COMPLETED', 'FAILED'] }, updatedAt: { lt: ago(RETENTION.finishedJobs) } } }));
   await del('expiredCodes', () => prisma.emailOTP.deleteMany({ where: { expiresAt: { lt: new Date() } } }));
+  await del('codeEmailsScrubbed', async () => ({ count: await scrubCodeEmails() }));
   await del('deletedAccountsScrubbed', async () => ({ count: await scrubDeletedAccounts() }));
 
   await del('logFiles', async () => {
