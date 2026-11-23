@@ -40,6 +40,11 @@ export const seoPage = async (req, res) => {
       return res.redirect(301, `${page.redirect}${qs && !page.redirect.includes('?') ? `?${qs}` : ''}`);
     }
     const html = await seo.renderPage(page);
+    // These are website pages, not API answers: they load photos, maps, Google sign-in and the
+    // Razorpay checkout from other sites, and the rest of the website (served by Nginx) has no
+    // such policy. The API's strict defaults would block all of that for the whole visit.
+    res.removeHeader('Content-Security-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
     res.status(page.status || 200).type('html')
       .set('Cache-Control', 'no-cache')
       .set('X-Robots-Tag', !seo.indexingAllowed() || page.noindex ? 'noindex, follow' : 'all')

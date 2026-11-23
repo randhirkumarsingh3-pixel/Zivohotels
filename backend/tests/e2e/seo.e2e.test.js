@@ -59,6 +59,9 @@ describe('SEO end to end', function () {
     expect(types).to.include('BreadcrumbList');
     expect(types.some((t) => ['Hotel', 'Resort'].includes(t))).to.equal(true);
     expect(r.data).to.include(`<h1 class="mt-2 text-3xl font-bold text-navy-900">`);
+    // Same headers as the rest of the website: nothing that blocks photos, maps or the payment script
+    expect(r.headers['content-security-policy']).to.equal(undefined);
+    expect(r.headers['cross-origin-opener-policy']).to.equal(undefined);
   });
 
   it('has city pages and sitemaps listing the readable addresses', async () => {
