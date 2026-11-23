@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import prisma from '../config/db.js';
 import { encryptFile, isEncryptedFile } from '../utils/dataCrypto.js';
+import { CODE_EMAIL_TYPES, CODE_EMAIL_MAX_AGE_MS, scrubbedPayload } from '../utils/sensitiveEmail.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const KYC_DIR = path.join(__dirname, '../private_uploads');
@@ -45,12 +46,38 @@ export const sweepKycFiles = async () => {
   return n;
 };
 
+/**
+ * Sign-in code emails stored before codes were scrubbed: sent or failed ones lose the code and
+ * body; ones still waiting after their code expired are given up (and scrubbed).
+ */
+export const scrubCodeEmails = async () => {
+  const jobs = await prisma.backgroundJob.findMany({
+    where: { queue: 'email', jobType: { in: CODE_EMAIL_TYPES } },
+    select: { id: true, status: true, payload: true, createdAt: true },
+  });
+  let n = 0;
+  for (const j of jobs) {
+    if (j.payload?.scrubbed) continue;
+    const expired = Date.now() - new Date(j.createdAt).getTime() > CODE_EMAIL_MAX_AGE_MS;
+    if (['COMPLETED', 'FAILED'].includes(j.status)) {
+      await prisma.backgroundJob.update({ where: { id: j.id }, data: { payload: scrubbedPayload(j.payload) } });
+      n += 1;
+    } else if (expired && j.status !== 'PROCESSING') {
+      await prisma.backgroundJob.update({ where: { id: j.id }, data: { status: 'FAILED', failedAt: new Date(), lastError: j.status === 'PENDING' ? 'Code expired before it was sent' : undefined, payload: scrubbedPayload(j.payload) } });
+      n += 1;
+    }
+  }
+  return n;
+};
+
 export const runEncryptionSweep = async () => {
   try {
     const rows = await sweepBankDetails();
     const files = await sweepKycFiles();
+    const codes = await scrubCodeEmails();
     if (rows || files) console.log(`🔐 Encrypted at rest: ${rows} bank detail record(s), ${files} KYC file(s)`);
-    return { rows, files };
+    if (codes) console.log(`🔐 Sign-in codes removed from ${codes} stored email(s)`);
+    return { rows, files, codes };
   } catch (err) {
     console.error('❌ Encryption sweep failed:', err.message);
     return { rows: 0, files: 0, error: err.message };

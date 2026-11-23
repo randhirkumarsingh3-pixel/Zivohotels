@@ -51,3 +51,15 @@ describe('Encryption at rest', () => {
     }
   });
 });
+
+describe('Sign-in codes in stored emails', () => {
+  it('masks codes in subjects and keeps only who and a masked subject', async () => {
+    const { maskCodes, scrubbedPayload, isCodeEmail } = await import('../../utils/sensitiveEmail.js');
+    expect(maskCodes('466351 is your ZivoPlus sign-in code')).to.equal('•••••• is your ZivoPlus sign-in code');
+    expect(maskCodes('Booking ZIVO-AB12 confirmed')).to.equal('Booking ZIVO-AB12 confirmed');
+    const s = scrubbedPayload({ to: 'a@b.co', subject: '123456 is your ZivoPlus code', html: '<b>123456</b>' });
+    expect(s).to.deep.equal({ to: 'a@b.co', subject: '•••••• is your ZivoPlus code', scrubbed: true });
+    expect(isCodeEmail('SEND_OTP')).to.equal(true);
+    expect(isCodeEmail('SEND_BOOKING_CONFIRMATION')).to.equal(false);
+  });
+});

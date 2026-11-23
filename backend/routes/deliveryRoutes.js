@@ -1,5 +1,6 @@
 import express from 'express';
 import prisma from '../config/db.js';
+import { isCodeEmail, maskCodes } from '../utils/sensitiveEmail.js';
 import { authorizeRoles } from '../middleware/authMiddleware.js';
 import { emailTestMode } from '../services/otpService.js';
 import { smsProvider, smsTestMode } from '../services/smsService.js';
@@ -40,7 +41,7 @@ router.get('/', async (req, res, next) => {
         last7Days: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
         recent: recent.map((j) => ({
           id: j.id, type: j.jobType, status: j.status, attempts: j.attempts, error: j.lastError,
-          createdAt: j.createdAt, sentAt: j.completedAt, to: maskTo(j.payload?.to), subject: String(j.payload?.subject || '').slice(0, 120),
+          createdAt: j.createdAt, sentAt: j.completedAt, to: maskTo(j.payload?.to), subject: (isCodeEmail(j.jobType) ? maskCodes(j.payload?.subject) : String(j.payload?.subject || '')).slice(0, 120),
         })),
       },
     });

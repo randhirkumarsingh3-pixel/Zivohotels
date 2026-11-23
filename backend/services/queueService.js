@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { isCodeEmail, scrubbedPayload, CODE_EMAIL_MAX_AGE_MS } from '../utils/sensitiveEmail.js';
 
 
 // Exponential backoff strategy (in milliseconds)
@@ -70,7 +71,7 @@ export const queueService = {
    * Mark a job as successfully completed.
    */
   async complete(jobId) {
-    return prisma.backgroundJob.update({
+    const job = await prisma.backgroundJob.update({
       where: { id: jobId },
       data: {
         status: 'COMPLETED',
@@ -78,6 +79,11 @@ export const queueService = {
         lockedBy: null,
       },
     });
+    // A sent sign-in code is not kept: the stored copy loses the code and the email body
+    if (isCodeEmail(job.jobType)) {
+      return prisma.backgroundJob.update({ where: { id: jobId }, data: { payload: scrubbedPayload(job.payload) } });
+    }
+    return job;
   },
 
   /**
@@ -89,8 +95,10 @@ export const queueService = {
 
     const attempts = job.attempts + 1;
     const maxAttempts = job.maxAttempts;
+    // A code email that couldn't go out before its code expired gives up (retrying is useless)
+    const codeExpired = isCodeEmail(job.jobType) && Date.now() - new Date(job.createdAt).getTime() > CODE_EMAIL_MAX_AGE_MS;
 
-    if (attempts >= maxAttempts) {
+    if (attempts >= maxAttempts || codeExpired) {
       // Dead letter
       return prisma.backgroundJob.update({
         where: { id: jobId },
@@ -100,6 +108,7 @@ export const queueService = {
           attempts,
           lastError: errorMsg,
           lockedBy: null,
+          ...(isCodeEmail(job.jobType) ? { payload: scrubbedPayload(job.payload) } : {}),
         },
       });
     }
