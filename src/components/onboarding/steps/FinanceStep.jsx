@@ -28,6 +28,16 @@ const INCORPORATION_TYPES = [
   { value: "PUBLIC_LTD", label: "Public Limited Company" }
 ];
 
+/** What each payout cycle means, under the cycle on the fee card. */
+const payoutCycleNote = (cycle) => {
+  const c = String(cycle || 'Weekly');
+  const t = c.match(/^T\+(\d+)$/i);
+  if (t) return `${t[1]} day${t[1] === '1' ? '' : 's'} after the guest checks out`;
+  if (c === 'Monthly') return 'First week of the month';
+  if (c === '15 days') return 'On the 1st and 16th';
+  return 'Every Wednesday';
+};
+
 const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
   // Read from auth context directly so this works even in old cached bundles
   // that may not pass the isAdmin prop
@@ -178,7 +188,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto animate-fade-in pb-16">
+    <div className="p-0 sm:p-4 max-w-5xl mx-auto animate-fade-in pb-16">
       
       <div className="mb-10">
         <h2 className="text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">Legal & Financials</h2>
@@ -191,41 +201,38 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
           <p className="text-sm font-medium">Certain financial and compliance fields are locked. Please contact support to modify them.</p>
         </div>
       )}
-      {/* Commission & Fee Summary Card */}
-      <div className="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+      {/* Commission & Fee Summary Card: text on top, the two figures below. (Side by side, the
+          figures overflowed the editor's narrow column and "Payout cycle" was cut off.) */}
+      <div className="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-10 flex flex-col gap-6 relative overflow-hidden">
         {/* Abstract background shapes */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 rounded-full bg-indigo-500/30 blur-2xl pointer-events-none"></div>
 
-        <div className="relative z-10 max-w-lg">
+        <div className="relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-black uppercase tracking-widest mb-4">
             <Landmark size={12} /> Standard Partnership
           </div>
           <h3 className="text-2xl font-extrabold mb-2">Platform Fee Structure</h3>
-          <p className="text-blue-200 text-sm leading-relaxed">
+          <p className="text-blue-200 text-sm leading-relaxed max-w-prose">
             We operate on a performance-based model. You only pay when a guest successfully books and completes their stay. There are no hidden setup or subscription fees.
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-          <div className="text-center px-4">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="text-center bg-white/10 border border-white/10 rounded-2xl p-4 min-w-0">
             <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-black">{formData.commission !== undefined ? formData.commission : 15}</span>
+              <span className="text-4xl font-black">{formData.commission !== undefined && formData.commission !== '' ? formData.commission : 15}</span>
               <span className="text-xl font-bold text-blue-300">%</span>
             </div>
             <p className="text-xs text-blue-300 mt-1">per completed booking</p>
           </div>
-          <div className="w-px h-16 bg-white/20 hidden sm:block"></div>
-          <div className="h-px w-full bg-white/20 sm:hidden"></div>
-          <div className="text-center px-4">
+          <div className="text-center bg-white/10 border border-white/10 rounded-2xl p-4 min-w-0">
             <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-2xl font-black">{formData.payoutCycle || 'Weekly'}</span>
+              <span className="text-4xl font-black break-words">{formData.payoutCycle || 'Weekly'}</span>
             </div>
-            <p className="text-xs text-blue-300 mt-1">
-              {formData.payoutCycle === 'Monthly' ? 'First week of month' : formData.payoutCycle === '15 days' ? '1st & 16th' : 'Every Wednesday'}
-            </p>
+            <p className="text-xs text-blue-300 mt-1">{payoutCycleNote(formData.payoutCycle)}</p>
           </div>
         </div>
       </div>
