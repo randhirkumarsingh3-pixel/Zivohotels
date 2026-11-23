@@ -449,6 +449,23 @@ export const adminGoogleApi = {
   accuracy: () => apiFetch(`${GH()}/accuracy`, { method: 'POST' }, 0).then((r) => r?.data),
 };
 
+// Admin → Reports
+const RP = () => `${ADMIN_BASE}/reports`;
+const qs = (o) => new URLSearchParams(Object.entries(o || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined)).toString();
+export const adminReportsApi = {
+  list: () => apiFetch(RP(), { cache: 'no-store' }, 0).then((r) => r?.data),
+  run: (key, filters) => apiFetch(`${RP()}/${key}?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  download: (key, filters, format) => apiFetch(`${RP()}/${key}?${qs({ ...filters, format })}`, { responseType: 'blob' }, 0),
+};
+
+// Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)
+export const adminFinanceApi = {
+  ledger: (filters) => apiFetch(`${ADMIN_BASE}/finance/ledger?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  payouts: () => apiFetch(`${ADMIN_BASE}/finance/payouts`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  due: (hotelId) => apiFetch(`${ADMIN_BASE}/wallets/hotels/${hotelId}/payout`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  record: (hotelId, reference) => apiFetch(`${ADMIN_BASE}/wallets/hotels/${hotelId}/payout`, jsonBody('POST', { reference }), 0).then((r) => r?.data),
+};
+
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const getAdminHotels = async () => apiFetch(`${ADMIN_BASE}/hotels`).then(res => res?.data);
 export const getAdminBookings = async (params = {}) => apiFetch(`${ADMIN_BASE}/bookings?${new URLSearchParams(params).toString()}`);

@@ -32,6 +32,8 @@ import userRoutes from './routes/userRoutes.js';
 import { acceptInvite } from './controllers/userController.js';
 import { robotsTxt, sitemapXml, sitemapPart, seoPage } from './controllers/seoController.js';
 import { hotelList as googleHotelList, pointOfSale as googlePointOfSale, query as googleQuery, hint as googleHint } from './controllers/googleHotelsController.js';
+import adminFinanceRoutes from './routes/adminFinanceRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 import googleAdminRoutes from './routes/googleAdminRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
@@ -318,6 +320,8 @@ app.use('/api/v1/admin', protect, authorizeRoles('ADMIN', 'OWNER'), adminLimiter
 app.use('/api/v1/admin/staff',      staffRoutes);
 app.use('/api/v1/admin/seo',        seoAdminRoutes);
 app.use('/api/v1/admin/google',     googleAdminRoutes);
+app.use('/api/v1/admin/reports',    reportRoutes);
+app.use('/api/v1/admin/finance',    adminFinanceRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
 app.use('/api/v1/admin/hotels',     hotelRoutes);

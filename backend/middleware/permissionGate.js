@@ -58,6 +58,8 @@ const RULES = [
   [/^\/admin\/wallets/, ['finance.view', 'finance.manage'], null],
   [/^\/admin\/users/, ['users.view', 'users.manage'], null],
   [/^\/admin\/(seo|google)/, ['seo.manage', 'seo.manage'], null],
+  [/^\/admin\/reports/, ['dashboard.view', 'dashboard.view'], null],
+  [/^\/admin\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/admin\/(system|delivery)/, ['settings.view', 'settings.manage'], null],
   [/^\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/master\/finance/, ['finance.view', 'finance.manage'], null],
