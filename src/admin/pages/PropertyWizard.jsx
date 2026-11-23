@@ -29,7 +29,8 @@ const getAuthHeaders = () => {
 
 /** One readable line from a failed save (first field error, or the message). */
 const saveErrorMessage = (json, fallback) => {
-  const fieldErrors = json?.errors?.fieldErrors;
+  // The API's response wrapper puts details under data.errors
+  const fieldErrors = (json?.errors || json?.data?.errors)?.fieldErrors;
   const field = fieldErrors && Object.keys(fieldErrors)[0];
   if (field) return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldErrors[field][0]}`;
   return json?.message || fallback;
@@ -254,8 +255,9 @@ const PropertyWizard = () => {
           return;
         }
 
-        if (data.errors && data.errors.fieldErrors) {
-          const fieldErrors = data.errors.fieldErrors;
+        const errs = data.errors || data.data?.errors;
+        if (errs && errs.fieldErrors && Object.keys(errs.fieldErrors).length) {
+          const fieldErrors = errs.fieldErrors;
           const firstField = Object.keys(fieldErrors)[0];
           const firstMsg = fieldErrors[firstField][0];
           throw new Error(`${firstField.charAt(0).toUpperCase() + firstField.slice(1)}: ${firstMsg}`);

@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { 
   Building2, 
-  Edit3, Save, CheckCircle2, Clock, Shield,
-  Wifi, Car, Coffee, Waves, Dumbbell, Wind, Loader2, Image as ImageIcon, MapPin, ListChecks, AlertCircle, ArrowRight
+  Edit3, Save, Clock, Shield,
+  Wifi, Car, Coffee, Waves, Dumbbell, Wind, Loader2, ArrowRight
 } from 'lucide-react';
-import { fetchProperty, updateProperty } from '../../services/extranetApi';
+import { fetchProperty, updateProperty, fetchPropertyOverview } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
+import useAccess from '../../hooks/useAccess';
+import PropertyHeader from '../components/PropertyHeader';
+import { EDIT_SECTIONS, editLink, scoreTone } from '../components/propertySections';
 
 const _amenities = [
   { icon: Wifi, name: 'Free Wi-Fi', key: 'wifi' },
@@ -23,8 +26,13 @@ const _amenities = [
 const ExtranetProperty = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [full, setFull] = useState(null); // the whole listing, for the "Your listing" summary
-  const { addToast, registerDirtyState } = useExtranet();
+  const [, setFull] = useState(null);
+  const [overview, setOverview] = useState(null); // header, guest rating, content score
+  const { addToast, registerDirtyState, hotelId } = useExtranet();
+  const { access } = useAccess();
+  const isOwner = !access || !hotelId || Boolean(access.hotels?.[hotelId]?.owner);
+  const loadOverview = () => fetchPropertyOverview().then(setOverview).catch(() => {});
+  useEffect(() => { loadOverview(); }, [hotelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { register, handleSubmit, reset, formState: { isDirty }, watch } = useForm({
     defaultValues: {
@@ -83,6 +91,7 @@ const ExtranetProperty = () => {
       sessionStorage.removeItem('draft_property');
       reset(data); // Resets dirty state
       setIsEditing(false);
+      loadOverview();
     } catch (error) {
       addToast(error.message, 'error');
     } finally {
@@ -96,24 +105,51 @@ const ExtranetProperty = () => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <PropertyHeader overview={overview} isOwner={isOwner} />
+
+      {/* Each part of the listing, with its share of the content score; opens that part of the editor */}
+      {overview && (
+        <section aria-labelledby="listing-parts">
+          <div className="flex items-end justify-between gap-3 mb-3">
+            <div>
+              <h2 id="listing-parts" className="text-lg font-bold text-gray-900">Your listing</h2>
+              <p className="text-sm text-gray-600">Open any part to edit it; changes go live when you save.</p>
+            </div>
+            <Link to="/extranet/property/score" className="text-sm font-semibold text-navy-700 hover:underline whitespace-nowrap">All tips</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {EDIT_SECTIONS.filter((x) => !x.owner || isOwner).map((x) => {
+              const sec = overview.content.sections.find((c) => c.key === x.key);
+              const pct = sec ? Math.round((sec.score / sec.max) * 100) : null;
+              const todo = sec ? sec.checks.find((c) => !c.done) : null;
+              return (
+                <Link key={x.key} to={editLink(overview.hotel.id, x.key)} className="group bg-white rounded-card border border-gray-200 shadow-sm p-4 hover:border-navy-300 hover:shadow-md transition-all flex flex-col">
+                  <span className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-lg bg-navy-50 flex items-center justify-center"><x.icon size={18} className="text-navy-700" aria-hidden="true" /></span>
+                    <span className="flex-1 font-semibold text-gray-900">{x.label}</span>
+                    {sec ? <span className="text-sm font-semibold text-gray-700">{sec.score}/{sec.max}</span> : null}
+                  </span>
+                  {sec ? (
+                    <>
+                      <span className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true"><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: scoreTone(pct).ring }} /></span>
+                      <span className={`mt-2 text-xs ${todo ? 'text-gray-600' : 'text-green-800'}`}>{todo ? todo.tip : 'Complete'}</span>
+                    </>
+                  ) : <span className="mt-2 text-xs text-gray-600">PAN, GST, bank account and documents</span>}
+                  <span className="mt-auto pt-3 text-sm font-semibold text-navy-700 flex items-center gap-1">Edit <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true" /></span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Quick edit: name, description and times without opening the full editor */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Property Information</h1>
-          <p className="text-gray-500 font-medium mt-1">Manage your hotel&apos;s profile as displayed on Zivo.</p>
+          <h2 className="text-lg font-bold text-gray-900">Quick edit</h2>
+          <p className="text-sm text-gray-600">Name, description and check-in times.</p>
         </div>
         <div className="flex items-center gap-3">
-          {['LIVE', 'ACTIVE'].includes(full?.status) ? (
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-800 rounded-lg border border-green-200">
-              <CheckCircle2 size={14} aria-hidden="true" />
-              <span className="text-sm font-semibold">Live on ZivoPlus</span>
-            </div>
-          ) : full?.status && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-900 rounded-lg border border-amber-200">
-              <AlertCircle size={14} aria-hidden="true" />
-              <span className="text-sm font-semibold">Not live yet ({String(full.status).replace(/_/g, ' ').toLowerCase()})</span>
-            </div>
-          )}
           {isEditing ? (
             <div className="flex gap-2">
               <button 
@@ -209,39 +245,6 @@ const ExtranetProperty = () => {
 
         {/* Right: Sidebar */}
         <div className="space-y-8">
-          {/* Everything else about the listing is edited in the property wizard */}
-          {full && (() => {
-            const photos = Array.isArray(full.media) ? full.media.length : 0;
-            const amenities = Array.isArray(full.amenities) ? full.amenities.length : 0;
-            const nearby = Array.isArray(full.nearbyPlaces) ? full.nearbyPlaces.length : 0;
-            const pinned = Boolean(full.latitude && full.longitude);
-            const rules = full.integrationSettings?.policyRules ? Object.keys(full.integrationSettings.policyRules).length : 0;
-            const items = [
-              { icon: ImageIcon, label: 'Photos', value: `${photos}`, ok: photos >= 5, hint: photos < 5 ? 'Add at least 5' : '' },
-              { icon: ListChecks, label: 'Amenities', value: `${amenities}`, ok: amenities >= 5, hint: amenities < 5 ? 'Add what you offer' : '' },
-              { icon: MapPin, label: 'Map pin', value: pinned ? 'Set' : 'Not set', ok: pinned },
-              { icon: MapPin, label: "What's nearby", value: `${nearby} places`, ok: nearby > 0 },
-              { icon: Shield, label: 'House rules', value: rules ? `${rules} answered` : 'Not set', ok: rules > 0 },
-            ];
-            return (
-              <div className="bg-white rounded-card border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900">Your listing</h3>
-                <p className="text-sm text-gray-600 mt-1">Photos, amenities, location, nearby places, rooms and house rules are edited in the full listing editor.</p>
-                <ul className="mt-4 divide-y divide-gray-100">
-                  {items.map((it) => (
-                    <li key={it.label} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                      <span className="flex items-center gap-2 text-gray-700"><it.icon size={16} className="text-navy-700" aria-hidden="true" /> {it.label}</span>
-                      <span className={`font-semibold ${it.ok ? 'text-green-800' : 'text-amber-800'}`}>{it.value}{it.hint ? ` · ${it.hint}` : ''}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link to={`/extranet/onboarding/${full.id}`} className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white text-sm font-semibold">
-                  Edit full listing <ArrowRight size={16} aria-hidden="true" />
-                </Link>
-              </div>
-            );
-          })()}
-
           {/* Policies */}
           <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
             <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">

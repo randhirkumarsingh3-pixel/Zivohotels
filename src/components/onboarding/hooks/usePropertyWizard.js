@@ -202,7 +202,7 @@ export const usePropertyWizard = (options) => {
       });
       const resJson = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const fieldErrors = resJson.errors?.fieldErrors;
+        const fieldErrors = (resJson.errors || resJson.data?.errors)?.fieldErrors;
         const firstField = fieldErrors && Object.keys(fieldErrors)[0];
         const message = firstField
           ? `${firstField.charAt(0).toUpperCase() + firstField.slice(1)}: ${fieldErrors[firstField][0]}`
@@ -251,6 +251,8 @@ export const usePropertyWizard = (options) => {
   };
 
   return {
+    /** Load the saved property again (after saving one section of a listed property) */
+    reloadProperty: fetchProperty,
     formData,
     setFormData,
     updateForm,

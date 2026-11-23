@@ -207,6 +207,13 @@ export const submitForReview = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Onboarding session not found' });
     }
 
+    // Only a property that isn't approved yet goes (back) to review. Saving changes to an approved
+    // or live property must never take it off sale by sending it for review again.
+    const SUBMITTABLE = ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'INFORMATION_REQUESTED', 'PENDING', null, undefined];
+    if (!SUBMITTABLE.includes(hotel.status)) {
+      return res.status(409).json({ success: false, code: 'ALREADY_APPROVED', message: 'This property is already approved; your changes are saved and it stays as it is.', status: hotel.status });
+    }
+
     // Validation Check before submission
     const errors = [];
     if (!hotel.gstin) errors.push('Missing GSTIN');

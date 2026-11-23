@@ -16,6 +16,7 @@ import {
   Wallet,
   Crown,
   Users,
+  Gauge,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -54,7 +55,8 @@ const MENU = [
   {
     label: 'Property',
     items: [
-      { name: 'Property Info', path: '/extranet/property', icon: <Building2 size={18} />, perm: 'property.edit' },
+      { name: 'Property Info', path: '/extranet/property', icon: <Building2 size={18} />, exact: true, perm: 'property.edit' },
+      { name: 'Content Score', path: '/extranet/property/score', icon: <Gauge size={18} />, perm: 'dashboard.view' },
       { name: 'Add New Property', path: '/extranet/onboarding', state: { resetDraft: true }, icon: <Plus size={18} />, owner: true },
       { name: 'Rooms & Rate Plans', path: '/extranet/rooms', icon: <BedDouble size={18} />, perm: 'rates.view' },
       { name: 'Inventory Calendar', path: '/extranet/inventory', icon: <CalendarDays size={18} />, perm: 'rates.view' },
