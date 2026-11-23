@@ -489,7 +489,7 @@ export const exists = (key) => Boolean(REPORTS[key]);
 /** Runs a report: { title, filters, columns, rows, totals, cards, truncated, grouped }. */
 export const runReport = async (key, query) => {
   const report = REPORTS[key];
-  if (!report) throw Object.assign(new Error('Unknown report'), { status: 404 });
+  if (!report) throw Object.assign(new Error('Unknown report'), { status: 404, statusCode: 404 });
   const f = normaliseFilters(query);
   if (!report.dateFields[f.dateField]) f.dateField = Object.keys(report.dateFields)[0];
   const by = f.groupBy || report.defaultGroup || 'none';

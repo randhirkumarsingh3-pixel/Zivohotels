@@ -1,35 +1,6 @@
 import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Clock, 
-  LayoutDashboard,
-  Ticket,
-  MessageSquareText,
-  Award,
-  Crown,
-  Building2, 
-  CalendarDays, 
-  IndianRupee, 
-  ClipboardList, 
-  Users, 
-  Network, 
-  BarChart3, 
-  Settings,
-  LogOut,
-  FileSignature,
-  ClipboardCheck,
-  TrendingUp,
-  Wallet,
-  Zap,
-  Target,
-  FlaskConical,
-  Activity,
-  AlertTriangle,
-  X,
-  BookOpenCheck,
-  ShieldCheck,
-  Globe,
-  MapPinned
-} from 'lucide-react';
+import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useAccess from '../../../hooks/useAccess';
 import Logo from '../../../components/brand/Logo';
@@ -146,6 +117,8 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         <NavGroup title="Finance">
           <NavItem perm="finance.view" name="Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} />
           <NavItem perm="finance.view" name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} />
+          <NavItem perm="finance.view" name="Invoices & Statements" path="/admin/finance/documents" icon={<Receipt size={18} />} />
+          <NavItem perm="finance.view" name="Finance Settings" path="/admin/finance/settings" icon={<SlidersHorizontal size={18} />} />
         </NavGroup>
 
         <NavGroup title="Wallet & Credit">

@@ -27,13 +27,16 @@ export const payoutService = {
         }
       });
 
-      if (settlements.length === 0) {
+      // Amounts owed outside a stay (commission given back with a credit note)
+      const adjustments = await tx.hotelAdjustment.findMany({ where: { hotelId, status: 'PENDING' } });
+
+      if (settlements.length === 0 && adjustments.length === 0) {
         throw bad('Nothing is due yet: no settlement has reached its payout date.');
       }
 
       // Calculate total using Decimal
-      const totalAmount = settlements.reduce(
-        (sum, s) => sum.plus(s.netPayable), 
+      const totalAmount = [...settlements.map((s) => s.netPayable), ...adjustments.map((a) => a.amount)].reduce(
+        (sum, v) => sum.plus(v),
         new Prisma.Decimal(0)
       );
 
@@ -59,6 +62,10 @@ export const payoutService = {
         data: { status: 'PAID', payoutDate: new Date() }
       });
 
+      if (adjustments.length) {
+        await tx.hotelAdjustment.updateMany({ where: { id: { in: adjustments.map((a) => a.id) } }, data: { status: 'PAID', payoutId: payout.id } });
+      }
+
       // 4. Record Ledger entry (HOTEL Debit -> Payout)
       await ledgerService.record([
         {
@@ -82,10 +89,12 @@ export const payoutService = {
       prisma.settlement.findMany({ where: { hotelId, OR: [{ status: 'READY' }, { status: 'PENDING', holdUntil: { lte: new Date() } }] }, select: { id: true, netPayable: true, kind: true, holdUntil: true, bookingId: true } }),
       prisma.bankDetail.findUnique({ where: { hotelId }, select: { bankName: true, accountName: true, accountNumber: true, ifscCode: true } }),
     ]);
-    const total = settlements.reduce((s, x) => s + Number(x.netPayable), 0);
+    const adjustments = await prisma.hotelAdjustment.findMany({ where: { hotelId, status: 'PENDING' }, select: { amount: true, reason: true } });
+    const total = settlements.reduce((s, x) => s + Number(x.netPayable), 0) + adjustments.reduce((s, a) => s + Number(a.amount), 0);
     return {
       due: Math.round(total * 100) / 100,
       count: settlements.length,
+      adjustments: adjustments.map((a) => ({ amount: Number(a.amount), reason: a.reason })),
       bank: bank ? { bankName: bank.bankName, accountName: bank.accountName, last4: String(bank.accountNumber).slice(-4), ifsc: bank.ifscCode } : null,
     };
   }

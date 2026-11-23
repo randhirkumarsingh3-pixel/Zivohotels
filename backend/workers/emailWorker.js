@@ -23,6 +23,10 @@ const processJob = async (job) => {
   
   try {
     const { to, subject, html, text } = job.payload;
+    // Finance documents (invoice, statement, workbook) are built when sent, not stored in the job
+    const attachments = job.payload.financeAttachments?.length
+      ? await (await import('../services/finance/financeMail.js')).buildAttachments(job.payload.financeAttachments)
+      : undefined;
     
     // Send email using Resend
     // Important: In a real system you may also enforce Idempotency by storing an IdempotencyKey
@@ -32,6 +36,7 @@ const processJob = async (job) => {
       subject,
       html,
       text,
+      ...(attachments?.length ? { attachments } : {}),
     });
 
     if (error) {

@@ -58,6 +58,8 @@ const ExtranetMembership = lazy(() => import('./extranet/pages/ExtranetMembershi
 const AdminMembership = lazy(() => import('./admin/pages/Membership'));
 const FinanceLedger = lazy(() => import('./admin/pages/FinanceLedger'));
 const FinancePayouts = lazy(() => import('./admin/pages/FinancePayouts'));
+const FinanceDocuments = lazy(() => import('./admin/pages/FinanceDocuments'));
+const FinanceSettings = lazy(() => import('./admin/pages/FinanceSettings'));
 const FraudRiskCenter = lazy(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazy(() => import('./admin/pages/OperatorDecisionCenter'));
 const SessionExplorer = lazy(() => import('./admin/pages/SessionExplorer'));
@@ -193,6 +195,8 @@ function App() {
               {/* Finance */}
               <Route path="finance/ledger" element={<FinanceLedger />} />
               <Route path="finance/payouts" element={<FinancePayouts />} />
+              <Route path="finance/documents" element={<FinanceDocuments />} />
+              <Route path="finance/settings" element={<FinanceSettings />} />
               <Route path="wallets" element={<WalletControl />} />
 
               {/* Risk */}
