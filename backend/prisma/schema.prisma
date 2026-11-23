@@ -128,7 +128,6 @@ model Hotel {
   roomTypes          RoomType[]
   kycRecords         KYCRecord[]
   tasks              PropertyTask[]
-  audits             PropertyAudit[]
   agreements         PropertyAgreement[]
   channelMappings    ChannelMapping[]
   lead               PropertyLead?
@@ -315,7 +314,6 @@ model Booking {
   bookingRooms        BookingRoom[]
   stayRequests        StayRequest[]
   intelligence        BookingIntelligence?
-  notificationSyncs   NotificationSyncLog[]
 
   @@index([hotelId])
   @@index([userId])
@@ -1314,21 +1312,6 @@ model PropertyTask {
   @@index([hotelId, status])
 }
 
-model PropertyAudit {
-  id          String        @id @default(uuid())
-  hotelId     String
-  auditorId   String
-  score       Float         @default(0)
-  breakdown   Json          @default("{}")
-  severity    AuditSeverity @default(LOW)
-  actionItems String[]      @default([])
-  findings    String?
-  timestamp   DateTime      @default(now())
-  hotel       Hotel         @relation(fields: [hotelId], references: [id], onDelete: Cascade)
-
-  @@index([hotelId, timestamp])
-}
-
 model PropertyAgreement {
   id          String          @id @default(uuid())
   hotelId     String
@@ -1374,23 +1357,6 @@ model DecisionLog {
   @@index([timestamp])
 }
 
-model SessionRecord {
-  id           String   @id @default(uuid())
-  sessionId    String   @unique
-  userId       String?
-  path         Json
-  revenue      Decimal  @default(0) @db.Decimal(20, 4)
-  dropOffPoint String?
-  isConverted  Boolean  @default(false)
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
-  @@index([isConverted])
-  @@index([createdAt])
-}
-
 model SessionAggregate {
   id            String   @id @default(uuid())
   date          DateTime @unique @db.Date
@@ -1415,17 +1381,6 @@ model SystemActionLog {
   timestamp   DateTime  @default(now())
 
   @@index([actionType])
-  @@index([timestamp])
-}
-
-model SystemEvent {
-  id        String   @id @default(uuid())
-  type      String
-  payload   Json
-  source    String
-  timestamp DateTime @default(now())
-
-  @@index([type])
   @@index([timestamp])
 }
 
@@ -1511,13 +1466,6 @@ enum DocumentStatus {
   VERIFIED
   REJECTED
   EXPIRED
-}
-
-enum AuditSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
 }
 
 enum TaskStatus {
@@ -1629,18 +1577,6 @@ model BookingIntelligence {
   trafficAlert    String?
   aiTags          String[] @default([])
   booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-}
-
-model NotificationSyncLog {
-  id        String   @id @default(uuid())
-  bookingId String
-  channel   String
-  status    String
-  recipient String
-  sentAt    DateTime @default(now())
-  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-
-  @@index([bookingId])
 }
 
 enum JobStatus {

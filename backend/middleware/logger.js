@@ -2,6 +2,22 @@ import crypto from 'crypto';
 import systemCache from '../utils/systemCache.js';
 import prisma from '../config/db.js';
 import winston from 'winston';
+import cluster from 'cluster';
+import fs from 'fs';
+import path from 'path';
+
+// On the server, logs are also written to files in LOG_DIR (a Docker volume, so they survive
+// redeploys): one file set per server process, 20 MB each, the newest 15 kept (about 30-90 days).
+const fileTransports = [];
+if (process.env.LOG_DIR) {
+  try {
+    fs.mkdirSync(process.env.LOG_DIR, { recursive: true });
+    const name = `api-${cluster.isWorker ? `w${cluster.worker.id}` : 'main'}.log`;
+    fileTransports.push(new winston.transports.File({ filename: path.join(process.env.LOG_DIR, name), maxsize: 20 * 1024 * 1024, maxFiles: 15, tailable: true }));
+  } catch (err) {
+    console.error('Log files unavailable:', err.message);
+  }
+}
 
 const logger = winston.createLogger({
   level: 'info',
@@ -13,6 +29,7 @@ const logger = winston.createLogger({
     new winston.transports.Console({
       format: winston.format.simple(),
     }),
+    ...fileTransports,
   ],
 });
 

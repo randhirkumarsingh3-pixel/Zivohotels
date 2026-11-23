@@ -8,10 +8,18 @@
 # Settings: deploy/vps/.env (copy from .env.example). Run everything via deploy.sh.
 name: zivoplus-app
 
+# Container output is kept on disk and rotated: 10 files of 20 MB per container
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "10"
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     # Sized for a VPS shared with another project (about 31 GB RAM): room for every server process's
     # connections (WEB_CONCURRENCY x DB_POOL_PER_PROCESS), 1 GB cache, SSD-friendly planning
     command:
@@ -48,6 +56,7 @@ services:
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
     volumes:
       - redis-data:/data
@@ -62,6 +71,7 @@ services:
     build:
       context: ../../backend
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -115,7 +125,12 @@ services:
       ZIVO_ADDRESS: ${ZIVO_ADDRESS:-Makundpur Karpuri Gram, Karpoorigram, Samastipur 848129, Bihar, India}
       ZIVO_SUPPORT_EMAIL: ${ZIVO_SUPPORT_EMAIL:-support@zivoplus.com}
       ZIVO_SUPPORT_PHONE: ${ZIVO_SUPPORT_PHONE:-9663035520}
+      # Encryption at rest for bank details and KYC documents (created once by deploy.sh; keep a copy off the server)
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Run deploy.sh: it creates DATA_ENCRYPTION_KEY in deploy/vps/.env}
+      # App logs on disk (rotated daily-ish by size, 30 files kept), survive redeploys
+      LOG_DIR: /app/logs
     volumes:
+      - logs:/app/logs                         # app request and error logs
       - uploads:/app/public/uploads            # hotel photos (public)
       - private-uploads:/app/private_uploads   # KYC documents (private)
       - invoices:/app/public/invoices          # guest invoice PDFs (served only via the API)
@@ -141,6 +156,7 @@ services:
         VITE_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
         VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
     restart: unless-stopped
+    logging: *logging
     depends_on:
       api:
         condition: service_healthy
@@ -160,3 +176,4 @@ volumes:
   uploads: {}
   private-uploads: {}
   invoices: {}
+  logs: {}

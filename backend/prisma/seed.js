@@ -40,7 +40,6 @@ async function main() {
   await prisma.propertyLead.deleteMany();
   await prisma.kYCRecord.deleteMany();
   await prisma.propertyTask.deleteMany();
-  await prisma.propertyAudit.deleteMany();
   await prisma.propertyAgreement.deleteMany();
   await prisma.channelMapping.deleteMany();
 

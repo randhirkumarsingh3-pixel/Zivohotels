@@ -14,6 +14,14 @@ const getAuthHeaders = () => {
   };
 };
 
+/** Fields that never go into the browser draft. */
+const PRIVATE_FIELDS = ['accountNumber', 'reAccountNumber', 'confirmAccountNumber', 'ifscCode', 'accountName', 'bankName', 'branchName', 'upiId', 'pan', 'gstin', 'aadhaar', 'msme'];
+const withoutPrivateFields = (data) => {
+  const out = { ...data };
+  for (const f of PRIVATE_FIELDS) delete out[f];
+  return out;
+};
+
 export const usePropertyWizard = (options) => {
   const { isEditing, effectiveId, storageKeyPrefix, onFetchError } = options;
   
@@ -133,7 +141,9 @@ export const usePropertyWizard = (options) => {
 
   useEffect(() => {
     if (formData.name) {
-      localStorage.setItem(draftKey, JSON.stringify(formData));
+      // Legal and bank details are never kept in the browser (a shared computer would keep them):
+      // they're saved to the server only
+      localStorage.setItem(draftKey, JSON.stringify(withoutPrivateFields(formData)));
     }
   }, [formData, draftKey]);
 

@@ -48,7 +48,11 @@ describe('Commission invoices and statements end to end', function () {
     if (!settlement) return;
     const docs = await prisma.financeDocument.findMany({ where: { OR: [{ id: invoice?.id || '-' }, { originalId: invoice?.id || '-' }] }, select: { id: true } });
     const ids = docs.map((d) => d.id);
-    await prisma.ledgerEntry.deleteMany({ where: { referenceId: { in: ids } } });
+    // The ledger is append-only in the database; test clean-up uses the same one-transaction exception as the retention job
+    await prisma.$transaction([
+      prisma.$executeRaw`SELECT set_config('zivo.allow_audit_change', 'on', true)`,
+      prisma.ledgerEntry.deleteMany({ where: { referenceId: { in: ids } } }),
+    ]);
     await prisma.hotelAdjustment.deleteMany({ where: { documentId: { in: ids } } });
     await prisma.financeDocument.deleteMany({ where: { id: { in: ids } } });
     if (createdSettlement) await prisma.settlement.delete({ where: { id: settlement.id } });

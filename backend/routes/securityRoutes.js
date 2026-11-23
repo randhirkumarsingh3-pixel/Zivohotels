@@ -50,4 +50,22 @@ router.post('/csp-report', parse, async (req, res) => {
   } catch { /* a bad report is ignored */ }
 });
 
+/**
+ * GET /api/v1/security/qr/<booking reference>.png: the QR code on booking emails and vouchers,
+ * drawn here (it used to come from an outside QR service, which received every booking reference).
+ * Only booking-reference characters are accepted; the image encodes just that text.
+ */
+router.get('/qr/:ref.png', async (req, res) => {
+  const ref = String(req.params.ref || '');
+  if (!/^[A-Za-z0-9-]{4,40}$/.test(ref)) return res.status(404).end();
+  try {
+    const { default: QRCode } = await import('qrcode');
+    const png = await QRCode.toBuffer(ref, { type: 'png', width: 300, margin: 1, errorCorrectionLevel: 'M' });
+    res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+    res.send(png);
+  } catch {
+    res.status(500).end();
+  }
+});
+
 export default router;
