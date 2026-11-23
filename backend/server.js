@@ -79,6 +79,8 @@ import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 import prisma from './config/db.js';
 import { isAllowedOrigin } from './config/origins.js';
+import { startRetentionJob } from './services/retentionService.js';
+import { runEncryptionSweep } from './services/encryptionSweep.js';
 import securityRoutes from './routes/securityRoutes.js';
 
 import expressRateLimit from 'express-rate-limit';
@@ -181,7 +183,7 @@ app.use('/api', globalLimiter);
 
 // Browser reports of blocked content (Content Security Policy): its own small parser and limit,
 // mounted before the JSON parser because browsers send application/csp-report
-const cspReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: false, legacyHeaders: false, handler: (req, res) => res.status(204).end() });
+const cspReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: false, legacyHeaders: false, skip: (req) => req.path.startsWith('/qr/'), handler: (req, res) => res.status(204).end() });
 app.use('/api/v1/security', cspReportLimiter, securityRoutes);
 
 // Body Parsing
@@ -399,6 +401,8 @@ server.listen(PORT, HOST, () => {
     startMembershipJob();
     startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
+    startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
+    runEncryptionSweep(); // encrypts bank details / KYC files stored before encryption at rest
     console.log('✉️  Timed jobs and email worker started in this process');
   }
 });

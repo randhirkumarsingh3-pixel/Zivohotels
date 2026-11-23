@@ -203,16 +203,31 @@ Then apply it with `bash /opt/zivoplus-app/deploy/vps/deploy.sh`.
 | Stop / start | `$ZC stop` / `$ZC start`. Use `stop`, not `down`, while Caddy is attached to our network. |
 | Re-link Caddy now | `bash /opt/zivoplus-app/deploy/vps/caddy-link.sh` |
 | Re-link history | `tail /var/log/zivoplus-app-caddy.log` |
+| App log files | `ls /var/lib/docker/volumes/zivoplus-app_logs/_data` |
 
-**Backups:** a nightly database dump, keeping 14 days:
+## Backups (automatic)
+deploy.sh schedules them; nothing to do by hand.
+- **Every night at 03:15**, `backup.sh` saves the database, hotel photos, KYC documents, guest
+  invoices and app logs as one encrypted archive in `/var/backups/zivoplus-app` (kept 14 days).
+- **Off-site copy:** add `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY` (and
+  `BACKUP_S3_ENDPOINT` for Cloudflare R2, Backblaze B2 or Wasabi) to `.env`. Each archive is then
+  also copied there. Set the bucket to keep files 30+ days.
+- **Restore test on the 1st of every month:** `restore.sh --test` decrypts the newest backup and
+  restores it into a throwaway database. Results are in `/var/log/zivoplus-app-backup.log`.
+- **Keys:** `DATA_ENCRYPTION_KEY` and `BACKUP_PASSPHRASE` in `.env` (created by deploy.sh). Keep a
+  copy of both off the server; backups and encrypted data can't be read without them.
+
+Run a backup now, or test one:
 ```bash
-mkdir -p /var/backups/zivoplus-app
+bash /opt/zivoplus-app/deploy/vps/backup.sh
 ```
 ```bash
-echo '15 3 * * * root docker exec zivoplus-app-db-1 pg_dump -U zivoplus -Fc zivoplus > /var/backups/zivoplus-app/db-$(date +\%F).dump && find /var/backups/zivoplus-app -name "*.dump" -mtime +14 -delete' > /etc/cron.d/zivoplus-app-backup
+bash /opt/zivoplus-app/deploy/vps/restore.sh --test
 ```
-Uploads are in the Docker volumes `zivoplus-app_uploads` (photos) and
-`zivoplus-app_private-uploads` (KYC documents). Hostinger snapshots include them.
+Restore for real (asks you to type RESTORE):
+```bash
+bash /opt/zivoplus-app/deploy/vps/restore.sh --apply /var/backups/zivoplus-app/zivoplus-<date>.tar.enc
+```
 
 ## Remove it completely (undo everything)
 This permanently deletes our database and uploads; the other project is untouched.

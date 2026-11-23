@@ -41,8 +41,9 @@ const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => 
   const taxBreakdown = booking.metadata?.taxBreakdown;
   const gstLabel = taxBreakdown?.length > 1 ? taxBreakdown.map((t) => `${t.percentage}%`).join(' + ') : `${booking.metadata?.taxPercentage ?? 5}%`;
   
-  // Dynamic QR Code url
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(booking.bookingRef)}`;
+  // QR code of the booking reference, drawn by our own API (no outside service sees the reference)
+  const apiBase = (String(process.env.API_PUBLIC_URL || process.env.FRONTEND_URL || '').replace(/\/$/, '')) + '/api/v1';
+  const qrCodeUrl = `${apiBase}/security/qr/${encodeURIComponent(booking.bookingRef)}.png`;
   
   // The hotel's cover photo (it looked for hotel.images, which doesn't exist, so every email showed
   // the same stock photo). Uploaded photos are site paths, so the site address goes in front.

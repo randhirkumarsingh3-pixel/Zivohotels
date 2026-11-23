@@ -11,6 +11,7 @@
  * The stored key is never sent to browsers. Files are read back only through the
  * authenticated GET /api/v1/kyc/documents/:id/file endpoint.
  */
+import { encryptFile, decryptFile } from '../utils/dataCrypto.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
@@ -54,7 +55,9 @@ const getBucket = async () => {
  * Stores a validated KYC file and returns its private storage key
  * ("local:kyc/<hotelId>/<uuid>.<ext>" or "gs://<bucket>/kyc/<hotelId>/<uuid>.<ext>").
  */
-export const saveKycFile = async (buffer, { ext, mimeType }, hotelId) => {
+export const saveKycFile = async (plain, { ext, mimeType }, hotelId) => {
+  // Encrypted at rest (AES-256-GCM, utils/dataCrypto.js); decrypted only when served
+  const buffer = encryptFile(plain);
   const objectPath = `kyc/${hotelId}/${crypto.randomUUID()}.${ext}`;
 
   if (storeOnLocalDisk()) {
@@ -67,7 +70,7 @@ export const saveKycFile = async (buffer, { ext, mimeType }, hotelId) => {
   const bucket = await getBucket();
   await bucket.file(objectPath).save(buffer, {
     resumable: false,
-    metadata: { contentType: mimeType, cacheControl: 'private, no-store' },
+    metadata: { contentType: 'application/octet-stream', cacheControl: 'private, no-store', metadata: { originalType: mimeType } },
   });
   return `gs://${bucket.name}/${objectPath}`;
 };
@@ -80,14 +83,14 @@ export const readKycFile = async (key) => {
     const fullPath = path.resolve(LOCAL_DIR, key.slice('local:'.length));
     // Refuse anything that would escape the private directory
     if (!fullPath.startsWith(LOCAL_DIR + path.sep)) return null;
-    return fs.readFile(fullPath);
+    return decryptFile(await fs.readFile(fullPath));
   }
 
   const match = key.match(/^gs:\/\/([^/]+)\/(kyc\/.+)$/);
   if (match) {
     const { Storage } = await import('@google-cloud/storage');
     const [contents] = await new Storage().bucket(match[1]).file(match[2]).download();
-    return contents;
+    return decryptFile(contents);
   }
 
   // Legacy rows held arbitrary URLs supplied by the browser; those are not served.

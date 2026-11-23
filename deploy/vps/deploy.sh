@@ -20,6 +20,17 @@ for v in APP_DOMAIN DB_PASSWORD JWT_SECRET RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET; 
   [ -n "${!v:-}" ] || fail "$v is empty in $HERE/.env"
 done
 [ "${#JWT_SECRET}" -ge 32 ] || fail "JWT_SECRET must be at least 32 characters (openssl rand -hex 32)"
+# Keys created once and kept in .env: the encryption key for bank details and KYC documents, and the
+# backup passphrase. Without them encrypted data and backups can't be read: keep a copy OFF this server.
+NEW_KEYS=""
+if [ -z "${DATA_ENCRYPTION_KEY:-}" ]; then
+  DATA_ENCRYPTION_KEY="$(openssl rand -base64 32)"; printf '\nDATA_ENCRYPTION_KEY=%s\n' "$DATA_ENCRYPTION_KEY" >> "$HERE/.env"; NEW_KEYS="$NEW_KEYS DATA_ENCRYPTION_KEY"
+fi
+if [ -z "${BACKUP_PASSPHRASE:-}" ]; then
+  BACKUP_PASSPHRASE="$(openssl rand -base64 33 | tr -d '\n=/+')"; printf 'BACKUP_PASSPHRASE=%s\n' "$BACKUP_PASSPHRASE" >> "$HERE/.env"; NEW_KEYS="$NEW_KEYS BACKUP_PASSPHRASE"
+fi
+chmod 600 "$HERE/.env"
+export DATA_ENCRYPTION_KEY BACKUP_PASSPHRASE
 CADDY="${CADDY_CONTAINER:-staging-caddy}"
 docker inspect "$CADDY" >/dev/null 2>&1 || fail "Caddy container '$CADDY' not found (set CADDY_CONTAINER in .env)"
 for other in APP_HOST API_HOST S3_HOST; do
@@ -71,6 +82,23 @@ CRON=/etc/cron.d/zivoplus-app-caddy
 if [ -w /etc/cron.d ] && [ ! -f "$CRON" ]; then
   echo "*/5 * * * * root bash $HERE/caddy-link.sh --quiet >> /var/log/zivoplus-app-caddy.log 2>&1" > "$CRON"
   echo "Installed $CRON (re-links Caddy after the other project's deploys)"
+fi
+
+# ---- backups ------------------------------------------------------------------------------
+if [ -w /etc/cron.d ]; then
+  cat > /etc/cron.d/zivoplus-app-backup <<CRON
+# Nightly encrypted backup (03:15) and a monthly restore test (1st, 04:30). See $HERE/backup.sh
+15 3 * * * root bash $HERE/backup.sh >> /var/log/zivoplus-app-backup.log 2>&1
+30 4 1 * * root bash $HERE/restore.sh --test >> /var/log/zivoplus-app-backup.log 2>&1
+CRON
+  echo "Backups scheduled: /etc/cron.d/zivoplus-app-backup (log: /var/log/zivoplus-app-backup.log)"
+fi
+[ -n "${BACKUP_S3_BUCKET:-}" ] || echo "⚠️  Off-site backup copies are not set up yet: add BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY (and BACKUP_S3_ENDPOINT for R2/B2/Wasabi) to $HERE/.env"
+if [ -n "$NEW_KEYS" ]; then
+  echo
+  echo "🔑 Created:$NEW_KEYS in $HERE/.env"
+  echo "   Copy these values into your password manager NOW. Without them, bank details, KYC documents"
+  echo "   and backups cannot be read if this server is lost:   grep -E 'DATA_ENCRYPTION_KEY|BACKUP_PASSPHRASE' $HERE/.env"
 fi
 
 # ---- check --------------------------------------------------------------------------------

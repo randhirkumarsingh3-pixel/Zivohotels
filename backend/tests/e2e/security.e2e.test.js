@@ -41,8 +41,7 @@ describe('Security protections', function () {
     if (made.hotels.length) await prisma.hotel.deleteMany({ where: { id: { in: made.hotels } } }).catch(() => {});
     for (const id of made.users) {
       await prisma.userNotification.deleteMany({ where: { userId: id } }).catch(() => {});
-      await prisma.securityLog.deleteMany({ where: { userId: id } }).catch(() => {});
-      await prisma.auditLog.deleteMany({ where: { userId: id } }).catch(() => {});
+      // Audit and security log rows are append-only: they stay (they record what the test did)
       await prisma.user.delete({ where: { id } }).catch(() => {});
     }
   });
