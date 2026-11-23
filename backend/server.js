@@ -79,6 +79,7 @@ import { requestLogger } from './middleware/logger.js';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware.js';
 import prisma from './config/db.js';
 import { isAllowedOrigin } from './config/origins.js';
+import securityRoutes from './routes/securityRoutes.js';
 
 import expressRateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
@@ -178,6 +179,11 @@ app.use(maintenanceMiddleware);
 // 4. APPLY GLOBAL RATE LIMITING
 app.use('/api', globalLimiter);
 
+// Browser reports of blocked content (Content Security Policy): its own small parser and limit,
+// mounted before the JSON parser because browsers send application/csp-report
+const cspReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: false, legacyHeaders: false, handler: (req, res) => res.status(204).end() });
+app.use('/api/v1/security', cspReportLimiter, securityRoutes);
+
 // Body Parsing
 // Small default limit to protect memory; only uploads that carry a base64 file inside JSON
 // (hotel images, KYC documents) get a large one. 15mb of base64 ≈ an 11MB file.
@@ -204,7 +210,14 @@ if (!fs.existsSync(uploadDir)) {
 
 // Serve uploaded images statically. Uploaded file names never change (time + hash), so browsers
 // may keep them for a year.
-app.use('/uploads', express.static(uploadDir, { maxAge: '365d', immutable: true, index: false }));
+// Uploaded files are shown as files only: no scripts can run from them (an old SVG with a script,
+// or anything else), and browsers must not guess another type
+const UPLOAD_HEADERS = (res) => {
+  res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+};
+app.use('/uploads', express.static(uploadDir, { maxAge: '365d', immutable: true, index: false, dotfiles: 'deny', setHeaders: UPLOAD_HEADERS }));
 
 // Photos at the width a page shows them: /img/w800/uploads/<file> -> WebP, made once, then from disk
 app.get(/^\/img\/w(\d+)\/uploads\/(.+)$/, async (req, res) => {

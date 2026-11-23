@@ -54,7 +54,7 @@ describe('Staff roles end to end', function () {
     const support = team.roles.find((r) => r.key === 'admin.support');
     const r = await api.post('/admin/staff/invite', { email: emails[0], name: 'Asha Agent', roleId: support.id }, admin);
     expect(r.status, JSON.stringify(r.data)).to.equal(200);
-    const agent = await acceptAs(emails[0], 'Agent@2026pass');
+    const agent = await acceptAs(emails[0], 'Velvet-Comet-2026');
     expect((await api.get('/admin/bookings?page=1&limit=5', agent)).status).to.not.equal(403);
     expect((await api.put('/admin/system/config', { x: 1 }, agent)).status).to.equal(403);
     expect((await api.get('/admin/staff', agent)).status).to.equal(403);
@@ -74,7 +74,7 @@ describe('Staff roles end to end', function () {
     const fd = hotelTeam.roles.find((x) => x.key === 'extranet.frontdesk');
     const r = await api.post('/extranet/team/invite', { email: emails[1], name: 'Ravi Desk', roleId: fd.id }, owner);
     expect(r.status, JSON.stringify(r.data)).to.equal(200);
-    const desk = await acceptAs(emails[1], 'Desk@2026pass');
+    const desk = await acceptAs(emails[1], 'Marble-Signal-2026');
     expect((await api.get('/extranet/bookings', desk)).status).to.equal(200);
     expect((await api.get('/extranet/rooms', desk)).status).to.equal(200);
     expect((await api.put('/extranet/property', { name: 'X' }, desk)).status).to.equal(403);

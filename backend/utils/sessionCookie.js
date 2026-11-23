@@ -11,8 +11,8 @@
  */
 const COOKIE = 'zivo_session';
 
-const maxAgeMs = () => {
-  const v = String(process.env.JWT_EXPIRES_IN || '7d').trim();
+const maxAgeMs = (expires) => {
+  const v = String(expires || process.env.JWT_EXPIRES_IN || '7d').trim();
   const m = v.match(/^(\d+)\s*([smhd])?$/);
   if (!m) return 7 * 86400000;
   return Number(m[1]) * ({ s: 1000, m: 60000, h: 3600000, d: 86400000 }[m[2] || 's']);
@@ -20,9 +20,9 @@ const maxAgeMs = () => {
 
 const secure = () => process.env.NODE_ENV === 'production';
 
-export const setSessionCookie = (res, token) => {
+export const setSessionCookie = (res, token, expires) => {
   if (!token) return;
-  res.cookie(COOKIE, token, { httpOnly: true, secure: secure(), sameSite: 'lax', path: '/', maxAge: maxAgeMs() });
+  res.cookie(COOKIE, token, { httpOnly: true, secure: secure(), sameSite: 'lax', path: '/', maxAge: maxAgeMs(expires) });
 };
 
 export const clearSessionCookie = (res) => {

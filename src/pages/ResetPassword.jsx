@@ -58,7 +58,7 @@ const ResetPassword = () => {
               <div>
                 <label htmlFor="rp-new" className="block text-sm font-medium text-gray-700 mb-1">New password</label>
                 <input id="rp-new" type="password" autoComplete="new-password" required minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} className={inputCls} aria-describedby="rp-hint" />
-                <p id="rp-hint" className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
+                <p id="rp-hint" className="text-xs text-gray-500 mt-1">At least 8 characters (10 for staff and hotel teams). Avoid common passwords and your name, email or phone.</p>
               </div>
               <div>
                 <label htmlFor="rp-confirm" className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>

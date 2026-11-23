@@ -1,3 +1,4 @@
+import { weakPasswordReason } from '../utils/passwordPolicy.js';
 import prisma from '../config/db.js';
 import { availablePoints } from '../services/loyaltyService.js';
 import { toMoney } from '../utils/money.js';
@@ -228,6 +229,8 @@ export const acceptInvite = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(400).json({ success: false, message: 'Invalid or expired token', requestId: req.id });
   }
+  const weak = weakPasswordReason(password, user);
+  if (weak) return res.status(422).json({ success: false, message: weak, requestId: req.id });
 
   const hashedPw = await bcrypt.hash(password, 12);
   await prisma.user.update({

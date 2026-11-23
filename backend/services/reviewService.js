@@ -1,3 +1,4 @@
+import { sanitizeImage } from './imageVariants.js';
 import crypto from 'crypto';
 import { awardReviewBonus } from './loyaltyService.js';
 import prisma from '../config/db.js';
@@ -79,13 +80,15 @@ const storePhotos = async (photos, reviewKey, existing = []) => {
     const value = typeof p === 'string' ? p : p?.url;
     if (!value) continue;
     if (keep.has(value)) { out.push({ url: value }); continue; }
-    const m = /^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/.exec(value);
+    const m = /^data:image\/[a-z0-9.+-]+;base64,(.+)$/i.exec(value);
     if (!m) throw fail('Photos must be JPG, PNG or WebP images');
-    const buffer = Buffer.from(m[2], 'base64');
-    if (buffer.length > MAX_PHOTO_BYTES) throw fail('Each photo must be 5 MB or smaller');
-    const ext = m[1].split('/')[1].replace('jpeg', 'jpg');
-    const name = `${Date.now()}-${crypto.createHash('md5').update(buffer).digest('hex').slice(0, 8)}.${ext}`;
-    const url = await mediaService.storage.uploadFile(buffer, `reviews/${reviewKey}/${name}`, m[1], false);
+    const raw = Buffer.from(m[1], 'base64');
+    if (raw.length > MAX_PHOTO_BYTES) throw fail('Each photo must be 5 MB or smaller');
+    // Must really be a photo; re-made so no hidden data or location (guests' homes) is kept
+    let safe;
+    try { safe = await sanitizeImage(raw, { maxBytes: MAX_PHOTO_BYTES }); } catch (e) { throw fail(e.message); }
+    const name = `${Date.now()}-${crypto.createHash('md5').update(safe.buffer).digest('hex').slice(0, 8)}.${safe.ext}`;
+    const url = await mediaService.storage.uploadFile(safe.buffer, `reviews/${reviewKey}/${name}`, safe.mimeType, false);
     out.push({ url });
   }
   return out;

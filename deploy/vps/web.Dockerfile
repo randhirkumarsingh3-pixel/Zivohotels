@@ -15,4 +15,5 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY deploy/vps/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/vps/security-headers.conf /etc/nginx/snippets/zivo-security-headers.conf
 COPY --from=build /src/dist /usr/share/nginx/html

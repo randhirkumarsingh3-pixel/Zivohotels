@@ -1,3 +1,5 @@
+import { weakPasswordReason } from '../utils/passwordPolicy.js';
+import { unlock } from '../services/loginGuard.js';
 import { sendPasswordChanged } from '../services/accountEmails.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -22,7 +24,8 @@ const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('h
 
 const signToken = (id, role, hotelId, tokenVersion) => jwt.sign({ id, role, hotelId, tokenVersion }, process.env.JWT_SECRET, {
   algorithm: 'HS256',
-  expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // Staff (admin console) sessions last at most 12 hours, as at sign-in
+  expiresIn: role === 'ADMIN' ? '12h' : (process.env.JWT_EXPIRES_IN || '7d'),
 });
 
 const fail = (res, req, status, message) => res.status(status).json({ success: false, message, requestId: req.id });
@@ -33,8 +36,10 @@ export const changePassword = asyncHandler(async (req, res) => {
   if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
   const { currentPassword, newPassword } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, password: true } });
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, password: true, email: true, phone: true, name: true } });
   if (!user || !(await bcrypt.compare(currentPassword, user.password))) return fail(res, req, 400, 'Your current password is not right');
+  const weak = weakPasswordReason(newPassword, user);
+  if (weak) return fail(res, req, 422, weak);
   if (await bcrypt.compare(newPassword, user.password)) return fail(res, req, 400, 'Choose a password different from your current one');
 
   const updated = await prisma.user.update({
@@ -47,7 +52,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   await prisma.auditLog.create({ data: { action: 'PASSWORD_CHANGED', entityType: 'USER', entityId: updated.id, userId: updated.id, requestId: req.id, details: {} } }).catch(() => {});
   // A new session for this device (the old one stopped working with the version bump)
   const token = signToken(updated.id, updated.role, hotel?.id || null, updated.tokenVersion);
-  setSessionCookie(res, token);
+  setSessionCookie(res, token, updated.role === 'ADMIN' ? '12h' : undefined);
   res.json({ success: true, message: 'Password changed. Other devices have been signed out.', token, requestId: req.id });
 });
 
@@ -83,8 +88,10 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
   const parsed = z.object({ token: z.string().min(20, 'This reset link is not valid'), password: PASSWORD_RULE }).safeParse(req.body || {});
   if (!parsed.success) return fail(res, req, 422, parsed.error.issues[0].message);
-  const user = await prisma.user.findFirst({ where: { passwordResetToken: hashToken(parsed.data.token), passwordResetExpiry: { gt: new Date() } }, select: { id: true, status: true } });
+  const user = await prisma.user.findFirst({ where: { passwordResetToken: hashToken(parsed.data.token), passwordResetExpiry: { gt: new Date() } }, select: { id: true, status: true, role: true, email: true, phone: true, name: true } });
   if (!user) return fail(res, req, 400, 'This reset link has expired or was already used. Ask for a new one.');
+  const weak = weakPasswordReason(parsed.data.password, user);
+  if (weak) return fail(res, req, 422, weak);
   const changed = await prisma.user.update({
     where: { id: user.id },
     select: { id: true, name: true, email: true },
@@ -97,6 +104,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     },
   });
   sendPasswordChanged(changed, { ip: req.ip }).catch(() => {});
+  await unlock(user.id); // a reset lifts a sign-in pause
   await prisma.auditLog.create({ data: { action: 'PASSWORD_RESET', entityType: 'USER', entityId: user.id, userId: user.id, requestId: req.id, details: {} } }).catch(() => {});
   res.json({ success: true, message: 'Password updated. Log in with your new password.', requestId: req.id });
 });

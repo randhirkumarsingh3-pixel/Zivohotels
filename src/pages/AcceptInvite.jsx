@@ -32,8 +32,8 @@ const AcceptInvite = () => {
       setError('Passwords do not match.');
       return;
     }
-    if (form.password.length < 8 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) {
-      setError('Password must be at least 8 characters with at least 1 letter and 1 number.');
+    if (form.password.length < 10 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      setError('Password must be at least 10 characters with at least 1 letter and 1 number.');
       return;
     }
 
@@ -101,7 +101,7 @@ const AcceptInvite = () => {
                 </button>
               </div>
               <ul className="mt-1.5 text-xs text-gray-400 space-y-0.5 list-disc list-inside">
-                <li>At least 8 characters</li>
+                <li>At least 10 characters, not a common password</li>
                 <li>At least 1 letter and 1 number</li>
               </ul>
             </div>
