@@ -39,6 +39,7 @@ const RULES = [
   [/^\/admin\/images/, ['properties.view', 'properties.manage'], ['property.edit', 'property.edit']],
   [/^\/admin\/hotels/, ['properties.view', 'properties.manage'], ['dashboard.view', 'property.edit']],
   [/^\/admin\/properties\/[^/]+\/submit/, ['properties.manage', 'properties.manage'], ['property.edit', 'property.edit']],
+  [/^\/admin\/content-scores/, ['properties.view', 'properties.view'], null],
   [/^\/admin\/properties/, ['properties.view', 'properties.approve'], null],
   [/^\/admin\/agreements\/[^/]+\/sign/, ['properties.approve', 'properties.approve'], ['property.edit', 'property.edit']],
   [/^\/admin\/agreements/, ['properties.view', 'properties.approve'], null],

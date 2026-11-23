@@ -458,6 +458,12 @@ export const adminReportsApi = {
   download: (key, filters, format) => apiFetch(`${RP()}/${key}?${qs({ ...filters, format })}`, { responseType: 'blob' }, 0),
 };
 
+// Admin → Content Scores: every property's listing completeness, and one property's detail
+export const adminContentApi = {
+  list: (filters = {}) => apiFetch(`${ADMIN_BASE}/content-scores?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  detail: (hotelId) => apiFetch(`${ADMIN_BASE}/content-scores/${encodeURIComponent(hotelId)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+};
+
 // Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)
 export const adminFinanceApi = {
   ledger: (filters) => apiFetch(`${ADMIN_BASE}/finance/ledger?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),

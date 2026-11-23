@@ -51,4 +51,26 @@ describe('Extranet property hub', function () {
     expect(r.data.code).to.equal('ALREADY_APPROVED');
     expect((await prisma.hotel.findUnique({ where: { id: hotelId }, select: { status: true } })).status).to.equal('LIVE');
   });
+
+  it('gives ZivoPlus staff every property\'s score, filters, and one property\'s detail', async () => {
+    const a = await api.post('/auth/login', { email: 'admin@zivoplus.com', password: 'admin123' });
+    const admin = { headers: { Authorization: `Bearer ${a.data.data.token}` } };
+    const list = await api.get('/admin/content-scores', admin);
+    expect(list.status, JSON.stringify(list.data)).to.equal(200);
+    const { summary, properties } = list.data.data;
+    expect(summary.properties).to.equal(properties.length);
+    expect(summary.averageScore).to.be.within(0, 100);
+    expect(Object.values(summary.bands).reduce((t, v) => t + v, 0)).to.equal(summary.properties);
+    expect(summary.sectionAverages).to.have.length(6);
+    const mine = properties.find((p) => p.id === hotelId);
+    expect(mine, 'the test hotel is listed').to.exist;
+    expect(mine.sections.photos.max).to.equal(25);
+    const band = await api.get(`/admin/content-scores?band=${mine.band}`, admin);
+    expect(band.data.data.properties.every((p) => p.band === mine.band)).to.equal(true);
+    const detail = await api.get(`/admin/content-scores/${hotelId}`, admin);
+    expect(detail.status).to.equal(200);
+    expect(detail.data.data.content.score).to.equal(mine.score);
+    expect(detail.data.data.owner.email).to.equal('extranet@zivotechretreat.com');
+    expect((await api.get('/admin/content-scores', auth)).status, 'hotel accounts are refused').to.equal(403);
+  });
 });

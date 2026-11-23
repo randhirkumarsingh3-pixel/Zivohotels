@@ -81,6 +81,7 @@ import prisma from './config/db.js';
 import { isAllowedOrigin } from './config/origins.js';
 import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
+import adminContentRoutes from './routes/adminContentRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 
 import expressRateLimit from 'express-rate-limit';
@@ -337,6 +338,7 @@ app.use('/api/v1/admin/staff',      staffRoutes);
 app.use('/api/v1/admin/seo',        seoAdminRoutes);
 app.use('/api/v1/admin/google',     googleAdminRoutes);
 app.use('/api/v1/admin/reports',    reportRoutes);
+app.use('/api/v1/admin/content-scores', adminContentRoutes);
 app.use('/api/v1/admin/finance',    adminFinanceRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);
