@@ -3,66 +3,21 @@
  * Everything comes from the stored document (or the statement data); nothing is looked up again,
  * so a document always prints the way it was issued.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { esc, money, inr, day, amountInWords, num as n, CSS as THEME_CSS, header, signature } from '../documents/theme.js';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-let MARK = '';
-try { MARK = fs.readFileSync(path.join(HERE, '../../assets/zivo-mark-112.png')).toString('base64'); } catch { /* the logo is optional */ }
-
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const n = (v) => Number(v || 0);
-const money = (v) => n(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const inr = (v) => `${n(v) < 0 ? '−' : ''}₹${money(Math.abs(n(v)))}`;
-const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '');
+export { amountInWords };
 const dateOnly = (d) => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 const monthLabel = (p) => new Date(`${p}-01T00:00:00Z`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-/** Indian-style amount in words: "Rupees Seven Thousand Three Hundred Forty Five and Fifty Paise Only". */
-export const amountInWords = (amount) => {
-  const ones = 'Zero One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve Thirteen Fourteen Fifteen Sixteen Seventeen Eighteen Nineteen'.split(' ');
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  const w = (x) => {
-    if (x < 20) return ones[x];
-    if (x < 100) return tens[Math.floor(x / 10)] + (x % 10 ? ` ${ones[x % 10]}` : '');
-    if (x < 1000) return `${ones[Math.floor(x / 100)]} Hundred${x % 100 ? ` ${w(x % 100)}` : ''}`;
-    for (const [d, name] of [[1e7, 'Crore'], [1e5, 'Lakh'], [1e3, 'Thousand']]) if (x >= d) return `${w(Math.floor(x / d))} ${name}${x % d ? ` ${w(x % d)}` : ''}`;
-    return '';
-  };
-  const v = Math.abs(Math.round(n(amount) * 100));
-  const rupees = Math.floor(v / 100); const paise = v % 100;
-  return `Rupees ${w(rupees)}${paise ? ` and ${w(paise)} Paise` : ''} Only`;
-};
-
-const CSS = `
-* { box-sizing: border-box } body { font-family: Inter, "Segoe UI", Arial, sans-serif; color:#0f172a; font-size:10.5px; margin:0 }
-.page { page-break-after: always } .page:last-child { page-break-after: auto }
-.top { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #e11d48; padding-bottom:10px }
-.brand { display:flex; gap:10px; align-items:center } .brand img { width:40px; height:40px }
-.brand b { font-size:22px; letter-spacing:-.5px; color:#13294b } .brand b span { color:#e11d48 } .muted { color:#64748b }
-.doc { text-align:right } .doc h1 { margin:0; font-size:18px; color:#13294b } .pill { display:inline-block; padding:2px 8px; border-radius:99px; background:#ecfdf5; color:#047857; font-weight:700; font-size:9.5px; margin-top:6px }
-.pill.test { background:#fef3c7; color:#92400e }
-.grid { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid #e2e8f0; border-radius:8px; margin-top:12px; overflow:hidden }
-.grid div { padding:7px 9px; border-right:1px solid #e2e8f0 } .grid div:last-child { border-right:0 }
-.k { color:#64748b; font-size:9px; text-transform:uppercase; letter-spacing:.06em } .v { font-weight:700; margin-top:2px }
-.parties { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px }
-.box { border:1px solid #e2e8f0; border-radius:8px; padding:9px 11px } .box h3 { margin:0 0 4px; font-size:9.5px; color:#e11d48; text-transform:uppercase; letter-spacing:.08em } .box .n { font-weight:800; font-size:11.5px }
-table { width:100%; border-collapse:collapse; margin-top:12px } th { background:#13294b; color:#fff; text-align:left; padding:6px 7px; font-size:9.5px }
-td { padding:5px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top } .r { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
-tr.t td { font-weight:800; background:#f8fafc; border-top:2px solid #13294b }
-.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px } .card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px } .card .v { font-size:13px }
-.words { margin-top:8px; padding:7px 10px; background:#fff1f2; border-radius:6px; font-weight:600 }
-.notes { margin-top:10px; color:#475569; font-size:9.5px; line-height:1.5 } h2 { font-size:13px; color:#13294b; margin:14px 0 0 }
-.sig { text-align:right; margin-top:16px } .sig .line { margin-top:26px; border-top:1px solid #94a3b8; padding-top:3px; display:inline-block; min-width:200px }
-.minus { color:#be123c } .plus { color:#047857 }
-.wm { position:fixed; top:38%; left:6%; font-size:64px; color:rgba(217,119,6,.10); transform:rotate(-24deg); font-weight:900; white-space:nowrap }
+// The shared ZivoPlus document look (services/documents/theme.js), plus this module's own names
+const CSS = `${THEME_CSS}
+.grid { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid #e2e8f0; border-radius:10px; overflow:hidden }
+.grid > div { padding:8px 10px; border-right:1px solid #e2e8f0 } .grid > div:last-child { border-right:0 }
 `;
 
 const shell = (title, body, test) => `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${CSS}</style></head><body>${test ? '<div class="wm">TEST · NOT A TAX INVOICE</div>' : ''}${body}</body></html>`;
 
-const head = (s, title, sub, pill, test) => `<div class="top"><div class="brand">${MARK ? `<img src="data:image/png;base64,${MARK}" alt="">` : ''}<div><b>Zivo<span>Plus</span></b><div class="muted">${esc(s.legalName)}</div></div></div>
-<div class="doc"><h1>${esc(title)}</h1><div class="muted">${esc(sub)}</div><div class="pill${test ? ' test' : ''}">${esc(pill)}</div></div></div>`;
+const head = (s, title, sub, pill, test) => header({ brandSub: s.legalName, title, sub, ref: pill, status: test ? { label: 'Test', tone: 'test' } : null });
 
 const parties = (s, r) => `<div class="parties"><div class="box"><h3>From (supplier)</h3><div class="n">${esc(s.legalName)}</div><div class="muted">${esc(s.address)}</div>
 <div>GSTIN <b>${esc(s.gstin || '—')}</b> · PAN ${esc(s.pan || '—')}${s.cin ? ` · CIN ${esc(s.cin)}` : ''}</div><div class="muted">State: ${esc(s.stateName)} (${esc(s.stateCode)})${s.email ? ` · ${esc(s.email)}` : ''}</div></div>
@@ -104,8 +59,8 @@ ${parties(s, r)}
 <div class="notes">${isCN
     ? '<b>How this is settled:</b> the commission and its GST above are given back to you and added to your next payout.<br><b>GST:</b> reported in ZivoPlus\'s GSTR-1 as a credit note against the original invoice; reverse the matching input tax credit for the month it appears in your GSTR-2B.'
     : `<b>How this is settled:</b> the commission and its GST were deducted from your payouts for these stays (see the ${monthLabel(d.period)} Statement of Account); for stays paid at the hotel the commission is taken from your next payouts.<br><b>Input tax credit:</b> ${r.gstin ? 'this invoice is reported in ZivoPlus\'s GSTR-1 under your GSTIN, so the GST appears in your GSTR-2B.' : 'add your GSTIN in the Extranet to receive B2B invoices and claim input tax credit.'}`}
-${s.tcsGstin ? `<br>ZivoPlus TCS registration in ${esc(r.stateName)}: ${esc(s.tcsGstin)}.` : ''} ${s.tan ? `ZivoPlus TAN (TDS 194-O): ${esc(s.tan)}.` : ''}<br>This is a computer-generated document.</div>
-<div class="sig">For ${esc(s.legalName)}<br><span class="line">${esc(s.signatory || 'Authorised signatory')}</span></div></div>`;
+${s.tcsGstin ? `<br>ZivoPlus TCS registration in ${esc(r.stateName)}: ${esc(s.tcsGstin)}.` : ''} ${s.tan ? `ZivoPlus TAN (TDS 194-O): ${esc(s.tan)}.` : ''}</div>
+${signature(s.legalName, s.signatory || 'Authorised signatory')}</div>`;
   const rows = lines.map((l, i) => `<tr><td>${i + 1}</td><td><b>${esc(l.ref)}</b><br><span class="muted">${esc(l.stay)} · ${esc(l.kind)}</span></td><td>${esc(l.guest)}</td><td>${dateOnly(l.checkIn)} – ${dateOnly(l.checkOut)}</td><td class="r">${l.nights || '–'}</td><td>${esc(l.payment)}</td>
 <td class="r">${money(l.value)}</td><td class="r">${n(l.rate).toFixed(1)}%</td><td class="r">${money(l.commission)}</td>${cols.map((c) => `<td class="r">${money(l[c])}</td>`).join('')}<td class="r">${money(l.total)}</td></tr>`).join('');
   const page2 = `<div class="page">${head(s, 'Annexure A', `Booking-wise ${isCN ? 'credit' : 'commission'} · ${d.number}`, d.number, test)}

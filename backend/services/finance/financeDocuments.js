@@ -17,7 +17,7 @@
 import prisma from '../../config/db.js';
 import { getFinanceSettings, STATE_NAMES } from './financeSettings.js';
 import { hotelGstStateCode } from '../../constants/finance.js';
-import { getBrowser } from '../../utils/browser.js';
+import { renderPdf as renderThemedPdf, footerLine } from '../documents/theme.js';
 import { buildXlsx } from '../../utils/xlsx.js';
 import html from './financeDocumentHtml.js';
 import ledgerService from './ledgerService.js';
@@ -64,9 +64,9 @@ const supplierOf = (s, hotelStateCode) => ({
   tcsGstin: s.tcsRegistrations[hotelStateCode] || null,
 });
 
-const hotelSelect = { id: true, name: true, legalName: true, brandName: true, gstin: true, pan: true, location: true, city: true, state: true, pincode: true, integrationSettings: true, owner: { select: { name: true, email: true } } };
+export const hotelSelect = { id: true, name: true, legalName: true, brandName: true, gstin: true, pan: true, location: true, city: true, state: true, pincode: true, integrationSettings: true, owner: { select: { name: true, email: true } } };
 
-const recipientOf = (h) => {
+export const recipientOf = (h) => {
   const stateCode = hotelGstStateCode({ gstin: h.gstin, state: h.state || h.integrationSettings?.addressDetails?.state });
   return {
     hotelId: h.id,
@@ -375,13 +375,10 @@ export const documentsZip = async (docs) => {
 
 // ─── Files ──────────────────────────────────────────────────────────────────────────────────────
 
+// Every page carries ZivoPlus's legal line and page numbers (services/documents/theme.js)
 const pdfFrom = async (markup) => {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-  try {
-    await page.setContent(markup, { waitUntil: 'load' });
-    return Buffer.from(await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '14mm', left: '12mm', right: '12mm' } }));
-  } finally { await page.close(); }
+  const { company } = await getFinanceSettings();
+  return renderThemedPdf(markup, { footer: footerLine(company, {}) });
 };
 
 export const documentPdf = async (doc) => {

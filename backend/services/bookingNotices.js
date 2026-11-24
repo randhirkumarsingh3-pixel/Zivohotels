@@ -12,14 +12,14 @@
  */
 import prisma from '../config/db.js';
 import { notifyUser, notifyHotel } from './notifyService.js';
-import { emailLayout, emailDay, inr } from './emailLayout.js';
+import { emailLayout, emailDay, inr, moneyTable } from './emailLayout.js';
 import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
 import { escapeHtml as h } from '../utils/html.js';
 
-const load = (id) => prisma.booking.findUnique({
+export const loadForNotice = (id) => prisma.booking.findUnique({
   where: { id },
   include: {
-    hotel: { select: { id: true, name: true, location: true, city: true, integrationSettings: true } },
+    hotel: { select: { id: true, name: true, location: true, city: true, integrationSettings: true, checkInTime: true, checkOutTime: true } },
     roomType: { select: { name: true } },
     ...BOOKING_ROOMS_INCLUDE,
   },
@@ -56,8 +56,58 @@ const guestRows = (b) => [
   ['Guest', b.guestName], ['Phone', b.guestPhone], ['Email', b.guestEmail],
 ];
 
+/** The hotel's "New booking" email (subject, html, attachment), also used for previews. */
+export const hotelBookingEmail = async (b) => {
+  const when = whenText(b);
+  // What the hotel collects at check-in and what it receives after commission (hotelier voucher figures)
+  let figures = null;
+  try {
+    const v = await import('./voucherService.js');
+    const data = await v.loadVoucherData(b.id);
+    figures = data ? await v.hotelierFigures(data) : null;
+  } catch (e) { console.error('[Notify] hotel figures:', e.message); }
+  const total = Number(b.totalAmount) || 0;
+  const paidOnline = Number(b.paidAmount) || 0;
+  const collect = Math.max(0, Math.round((total - paidOnline) * 100) / 100);
+  const settings = await (await import('./documents/documentSettings.js')).getDocumentSettings().catch(() => null);
+  const hhmm = (v, fb) => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ''); if (!m) return fb; const H = +m[1]; return `${((H + 11) % 12) + 1}:${m[2]} ${H < 12 ? 'am' : 'pm'}`; };
+
+  return {
+  jobType: 'SEND_NEW_BOOKING_HOTEL',
+  priority: 2,
+  subject: hourly(b) ? `New hourly booking ${b.bookingRef}: ${b.guestName}, ${whenText(b)}` : `New booking ${b.bookingRef}: ${b.guestName}, ${emailDay(b.checkIn)}`,
+  html: await emailLayout({
+    eyebrow: 'New booking',
+    ref: b.bookingRef,
+    status: { label: b.paymentStatus === 'PAID' ? 'Paid online' : paidOnline > 0 ? 'Part-paid online' : 'Pay at hotel', tone: b.paymentStatus === 'PAID' ? 'ok' : 'warn' },
+    preheader: `${b.guestName} · ${when}`,
+    title: `New booking at ${b.hotel.name}`,
+    body: `<p style="margin:0">A guest has booked through ZivoPlus. The rooms are already blocked in your inventory. The hotelier voucher (PDF) with the full payment breakup is attached.</p>`,
+    rows: [
+      ...(hourly(b)
+        ? [['Hourly stay', whenText(b)]]
+        : [['Check-in', `${emailDay(b.checkIn)}, from ${hhmm(b.hotel?.checkInTime, '2:00 pm')}`], ['Check-out', `${emailDay(b.checkOut)}, by ${hhmm(b.hotel?.checkOutTime, '11:00 am')}`]]),
+      ['Rooms', roomsSummary(b.bookingRooms, b, b.roomType?.name)],
+      ['Guests', guestsLabel(b.adults, b.children)],
+      ['Guest', b.guestName], ['Phone', b.guestPhone], ['Email', b.guestEmail],
+    ],
+    sections: [
+      { title: 'Money', html: moneyTable([
+        ['Booking value (incl. GST)', inr(total)],
+        ['Paid online to ZivoPlus', inr(paidOnline), 'plus'],
+        ['Collect from the guest at check-in', inr(collect), collect ? 'sub' : undefined],
+        figures ? [figures.netPayable < 0 ? 'You owe ZivoPlus (taken from your payouts)' : 'ZivoPlus pays you after check-out', inr(Math.abs(figures.netPayable)), 'total'] : null,
+      ]) },
+    ],
+    cta: { label: 'Open in the extranet', href: '/extranet/bookings' },
+    note: `${settings?.guestInvoice?.mode === 'HOTEL_ISSUES' ? 'Issue the GST invoice to the guest at check-out.' : 'ZivoPlus issues the guest\'s GST invoice for the stay; invoice the guest only for extras.'} You get this email at your reception email, the owner email, the booking emails in Extranet → Settings, and team members who handle bookings.`,
+  }),
+    ...(settings?.email?.attachHotelVoucher !== false ? { financeAttachments: [{ type: 'hotelVoucher', bookingId: b.id }] } : {}),
+  };
+};
+
 export const onBookingConfirmed = async (bookingId) => {
-  const b = await load(bookingId);
+  const b = await loadForNotice(bookingId);
   if (!b || b.status !== 'CONFIRMED' || !(await claim(b, 'confirmed'))) return;
   const when = whenText(b);
 
@@ -77,18 +127,7 @@ export const onBookingConfirmed = async (bookingId) => {
     title: `${hourly(b) ? 'New hourly booking' : 'New booking'}: ${b.guestName}`,
     message: `${b.bookingRef} · ${when} · ${roomsSummary(b.bookingRooms, b, b.roomType?.name)} · ${inr(b.totalAmount)}`,
     metadata: { bookingId: b.id },
-    email: {
-      jobType: 'SEND_NEW_BOOKING_HOTEL',
-      priority: 2,
-      subject: hourly(b) ? `New hourly booking ${b.bookingRef}: ${b.guestName}, ${whenText(b)}` : `New booking ${b.bookingRef}: ${b.guestName}, ${emailDay(b.checkIn)}`,
-      html: await emailLayout({
-        title: `New booking at ${b.hotel.name}`,
-        body: `<p>You have a new confirmed booking${b.paymentStatus === 'PAID' ? ', paid online' : ''}.</p>`,
-        rows: [...stayRows(b), ...guestRows(b), ['Amount', `${inr(b.totalAmount)} incl. GST`]],
-        cta: { label: 'Open in the extranet', href: '/extranet/bookings' },
-        note: 'You get this email at your reception email, the owner email and the booking emails set in Extranet → Settings.',
-      }),
-    },
+    email: await hotelBookingEmail(b),
   });
 };
 
@@ -97,7 +136,7 @@ export const onBookingConfirmed = async (bookingId) => {
  * `refundTo`: 'wallet' | 'source' | null.
  */
 export const onBookingCancelled = async (bookingId, { initiatedBy = 'GUEST', refundAmount = 0, refundTo = null, reason = null } = {}) => {
-  const b = await load(bookingId);
+  const b = await loadForNotice(bookingId);
   if (!b || !(await claim(b, 'cancelled'))) return;
   const by = { GUEST: 'You cancelled', HOTEL: `${b.hotel.name} cancelled`, ADMIN: 'ZivoPlus cancelled', SYSTEM: 'We cancelled' }[initiatedBy] || 'We cancelled';
   const refundLine = refundAmount > 0
@@ -148,7 +187,7 @@ export const onBookingCancelled = async (bookingId, { initiatedBy = 'GUEST', ref
 
 /** One room of a multi-room booking was cancelled. */
 export const onRoomCancelled = async (bookingId, { roomNumber, refundAmount = 0, initiatedBy = 'GUEST' } = {}) => {
-  const b = await load(bookingId);
+  const b = await loadForNotice(bookingId);
   if (!b) return;
   if (b.userId) {
     await notifyUser(b.userId, {
@@ -183,7 +222,7 @@ export const sendStayMessages = async (now = new Date()) => {
     select: { id: true }, take: 300,
   });
   for (const { id } of arriving) {
-    const b = await load(id);
+    const b = await loadForNotice(id);
     if (!b || b.metadata?.notices?.checkinReminder || !(await claim(b, 'checkinReminder'))) continue;
     const contact = b.hotel.integrationSettings?.contactInfo || {};
     const email = b.guestEmail ? {
@@ -213,7 +252,7 @@ export const sendStayMessages = async (now = new Date()) => {
     select: { id: true }, take: 300,
   });
   for (const { id } of soon) {
-    const b = await load(id);
+    const b = await loadForNotice(id);
     if (!b || b.metadata?.notices?.hourlyReminder || !(await claim(b, 'hourlyReminder'))) continue;
     const contact = b.hotel.integrationSettings?.contactInfo || {};
     if (b.userId) {
@@ -242,7 +281,7 @@ export const sendStayMessages = async (now = new Date()) => {
     select: { id: true }, take: 300,
   });
   for (const { id } of left) {
-    const b = await load(id);
+    const b = await loadForNotice(id);
     if (!b || b.metadata?.notices?.reviewRequest || !(await claim(b, 'reviewRequest'))) continue;
     await notifyUser(b.userId, {
       type: 'REVIEW_REQUEST', title: `How was ${b.hotel.name}?`, message: 'Rate your stay: it takes a minute and helps other guests.',

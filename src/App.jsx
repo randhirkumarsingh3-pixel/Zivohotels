@@ -80,6 +80,8 @@ const ExtranetPerformance = lazy(() => import('./extranet/pages/ExtranetPerforma
 const ExtranetLogin = lazy(() => import('./extranet/pages/ExtranetLogin'));
 const ExtranetProperty = lazy(() => import('./extranet/pages/ExtranetProperty'));
 const ContentScores = lazy(() => import('./admin/pages/ContentScores'));
+const SetupChecklist = lazy(() => import('./admin/pages/SetupChecklist'));
+const DocumentSettings = lazy(() => import('./admin/pages/DocumentSettings'));
 const ExtranetContentScore = lazy(() => import('./extranet/pages/ExtranetContentScore'));
 const ExtranetRooms = lazy(() => import('./extranet/pages/ExtranetRooms'));
 const ExtranetBookings = lazy(() => import('./extranet/pages/ExtranetBookings'));
@@ -172,6 +174,8 @@ function App() {
               <Route path="properties" element={<Properties />} />
               <Route path="properties/review" element={<PropertyReview />} />
               <Route path="content-scores" element={<ContentScores />} />
+              <Route path="setup" element={<SetupChecklist />} />
+              <Route path="documents" element={<DocumentSettings />} />
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
               <Route path="bookings" element={<AdminBookings />} />

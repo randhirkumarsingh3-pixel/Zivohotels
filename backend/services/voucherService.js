@@ -1,7 +1,9 @@
-import { getBrowser } from '../utils/browser.js';
+import { esc, inr as tInr, money, shell, header, meta, box, totals, renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
+import { bookingFigures, MEAL as TMEAL } from './documents/bookingFigures.js';
+import { brandContext } from './documents/documentSettings.js';
+import { houseRules } from './documents/houseRules.js';
 import { getSupportContacts } from '../config/supportContacts.js';
 import prisma from '../config/db.js';
-import { escapeHtml as h } from '../utils/html.js';
 import { toMoney, roundMoney } from '../utils/money.js';
 import { policyFieldsForCode } from '../utils/refundCalculator.js';
 import {
@@ -29,22 +31,10 @@ const time12 = (hhmm) => {
   return `${((H + 11) % 12) + 1}:${String(M).padStart(2, '0')} ${H < 12 ? 'AM' : 'PM'}`;
 };
 
-const MEAL = { NONE: 'Room only', EP: 'Room only', CP: 'Breakfast included', MAP: 'Breakfast and one meal', AP: 'All meals included' };
 const IST_MS = 330 * 60 * 1000;
 const indiaDay = (d) => new Date(new Date(d).getTime() + IST_MS).toISOString().slice(0, 10);
 const nightsBetween = (a, b) => Math.max(1, Math.round((new Date(indiaDay(b)) - new Date(indiaDay(a))) / 86400000));
 
-const company = () => ({
-  name: process.env.ZIVO_LEGAL_NAME || 'ZivoPlus',
-  pan: process.env.ZIVO_PAN || '',
-  gstin: process.env.ZIVO_GSTIN || '',
-  cin: process.env.ZIVO_CIN || '',
-  address: process.env.ZIVO_ADDRESS || '',
-  email: process.env.ZIVO_SUPPORT_EMAIL || '',
-  phone: process.env.ZIVO_SUPPORT_PHONE || '',
-});
-// With the support contacts from Admin → Platform Settings → Support (d.support, loaded with the voucher)
-const companyWithSupport = (support) => ({ ...company(), ...(support?.email ? { email: support.email } : {}), ...(support?.phone ? { phone: support.phone } : {}) });
 
 /** Who may download which voucher. Guests: their own; owners: their hotels'; admins: any. */
 export const canDownloadVoucher = (booking, hotel, user, type) => {
@@ -69,7 +59,7 @@ export const loadVoucherData = async (bookingId) => {
     prisma.bookingTimelineEvent.findFirst({ where: { bookingId, status: 'CONFIRMED' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
     loadBookingRooms(bookingId),
   ]);
-  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt, rooms, support: await getSupportContacts() };
+  return { booking, hotel, roomType, ratePlan, policy, settlement, confirmedAt: timeline?.createdAt, rooms, support: await getSupportContacts(), brand: await brandContext() };
 };
 
 // ── shared pieces ─────────────────────────────────────────────────────────────
@@ -80,7 +70,7 @@ const address = (hotel) => {
     .filter((v, i, arr) => arr.indexOf(v) === i).join(', ');
 };
 
-const cancellationText = (booking, policy) => {
+export const cancellationText = (booking, policy) => {
   if (booking.stayType === 'HOURLY') {
     const hrs = Number(booking.metadata?.hourly?.freeCancelHours ?? 2);
     return hrs > 0
@@ -121,203 +111,107 @@ const paymentSummary = (booking) => {
 
 const STATUS_LABEL = { PENDING: 'Awaiting payment', CONFIRMED: 'Confirmed', CHECKED_IN: 'Checked in', COMPLETED: 'Checked out', CANCELLED: 'Cancelled', NO_SHOW: 'No-show' };
 
-const baseCss = `
-  @page { size: A4; margin: 14mm 12mm; }
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; font-size: 11.5px; line-height: 1.5; margin: 0; }
-  .band { background: #111827; color: #fff; border-radius: 14px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; }
-  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
-  .brand span { color: #f43f5e; }
-  .doc { text-align: right; }
-  .doc .t { font-size: 15px; font-weight: 700; }
-  .doc .s { color: #9ca3af; font-size: 10.5px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; break-inside: avoid; }
-  .section, table, tr { break-inside: avoid; }
-  .card h3 { margin: 0 0 8px; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #6b7280; }
-  .big { font-size: 15px; font-weight: 700; color: #111827; }
-  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
-  .kv div span { display: block; color: #6b7280; font-size: 9.5px; text-transform: uppercase; letter-spacing: .8px; }
-  .kv div b { font-size: 12.5px; color: #111827; }
-  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; background: #ecfdf5; color: #047857; }
-  .pill.warn { background: #fff7ed; color: #c2410c; }
-  .pill.off { background: #f3f4f6; color: #4b5563; }
-  .section { margin-top: 14px; }
-  .section h2 { font-size: 13px; margin: 0 0 8px; color: #111827; border-left: 3px solid #f43f5e; padding-left: 8px; }
-  ul { margin: 0; padding-left: 16px; } li { margin: 2px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: right; font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; color: #6b7280; font-weight: 600; padding: 6px 6px; border-bottom: 1px solid #e5e7eb; }
-  td { text-align: right; padding: 6px 6px; border-bottom: 1px solid #f3f4f6; }
-  th:first-child, td:first-child { text-align: left; }
-  tr.total td { font-weight: 700; border-top: 1.5px solid #111827; border-bottom: none; }
-  .rows div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #e5e7eb; }
-  .rows div.sub { font-weight: 700; border-bottom: 1px solid #d1d5db; }
-  .rows div.grand { font-size: 14px; font-weight: 800; border-bottom: none; padding-top: 8px; }
-  .muted { color: #6b7280; font-size: 10.5px; }
-  .foot { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 10px; }
-`;
+// ── shared pieces (themed) ──────────────────────────────────────────────────
 
-const companyLines = (support) => {
-  const c = companyWithSupport(support);
-  const reg = [c.pan && `PAN ${h(c.pan)}`, c.gstin && `GSTIN ${h(c.gstin)}`, c.cin && `CIN ${h(c.cin)}`].filter(Boolean).join(' · ');
-  const contact = [c.email && h(c.email), c.phone && h(c.phone)].filter(Boolean).join(' · ');
-  return `<div class="foot"><b>${h(c.name)}</b>${c.address ? ` · ${h(c.address)}` : ''}${reg ? `<br>${reg}` : ''}${contact ? `<br>Support: ${contact}` : ''}</div>`;
-};
+const statusTone = (st) => (st === 'CANCELLED' || st === 'NO_SHOW' ? 'off' : st === 'PENDING' ? 'warn' : '');
+const guestsText = (b) => `${b.adults || b.guests || 1} adult${(b.adults || 1) > 1 ? 's' : ''}${b.children ? `, ${b.children} child${b.children > 1 ? 'ren' : ''}` : ''}`;
+const timeOf = (x) => new Date(x).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 
-const stayCard = (d) => {
-  const { booking, hotel } = d;
-  const nights = nightsBetween(booking.checkIn, booking.checkOut);
-  if (booking.stayType === 'HOURLY') {
-    const t = (x) => new Date(x).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
-    const g = `${booking.adults || booking.guests || 1} adult${(booking.adults || 1) > 1 ? 's' : ''}${booking.children ? `, ${booking.children} child${booking.children > 1 ? 'ren' : ''}` : ''}`;
-    return `
-    <div class="card">
-      <h3>Hourly stay</h3>
-      <div class="kv">
-        <div><span>Date</span><b>${fmtDate(booking.slotStart || booking.checkIn, { weekday: 'short' })}</b></div>
-        <div><span>Check-in</span><b>${h(t(booking.slotStart || booking.checkIn))}</b></div>
-        <div><span>Check-out</span><b>${h(t(booking.slotEnd || booking.checkOut))}</b><div class="muted">${booking.hours} hours</div></div>
-        <div><span>Guests</span><b>${h(g)}</b></div>
-      </div>
-    </div>`;
+/** Check-in, check-out, nights (or the hourly slot) and guests, as the meta strip. */
+const stayMeta = (d) => {
+  const { booking: b, hotel } = d;
+  if (b.stayType === 'HOURLY') {
+    return meta([
+      ['Date', fmtDate(b.slotStart || b.checkIn, { weekday: 'short' })],
+      ['Check-in', esc(timeOf(b.slotStart || b.checkIn))],
+      ['Check-out', `${esc(timeOf(b.slotEnd || b.checkOut))} <span class="muted">· ${b.hours} h</span>`],
+      ['Guests', esc(guestsText(b))],
+    ]);
   }
-  const guests = `${booking.adults || booking.guests || 1} adult${(booking.adults || 1) > 1 ? 's' : ''}${booking.children ? `, ${booking.children} child${booking.children > 1 ? 'ren' : ''}` : ''}`;
-  return `
-    <div class="card">
-      <h3>Stay</h3>
-      <div class="kv">
-        <div><span>Check-in</span><b>${fmtDate(booking.checkIn, { weekday: 'short' })}</b><div class="muted">from ${h(time12(hotel?.checkInTime) || '2:00 PM')}</div></div>
-        <div><span>Check-out</span><b>${fmtDate(booking.checkOut, { weekday: 'short' })}</b><div class="muted">by ${h(time12(hotel?.checkOutTime) || '11:00 AM')}</div></div>
-        <div><span>Nights</span><b>${nights}</b></div>
-        <div><span>Guests</span><b>${h(guests)}</b></div>
-      </div>
-    </div>`;
+  const nights = nightsBetween(b.checkIn, b.checkOut);
+  return meta([
+    ['Check-in', `${fmtDate(b.checkIn, { weekday: 'short' })}<div class="muted" style="font-weight:400">from ${esc(time12(hotel?.checkInTime) || '2:00 PM')}</div>`],
+    ['Check-out', `${fmtDate(b.checkOut, { weekday: 'short' })}<div class="muted" style="font-weight:400">by ${esc(time12(hotel?.checkOutTime) || '11:00 AM')}</div>`],
+    ['Nights', String(nights)],
+    ['Guests', esc(guestsText(b))],
+  ]);
 };
 
-const roomBlock = (d) => {
-  const { booking, roomType, ratePlan, rooms = [] } = d;
-  // Each room with its type, plan, guests and lead guest
-  if (rooms.length) return `
-    <div class="section">
-      <h2>${rooms.filter((r) => !r.cancelledAt).length} room${rooms.filter((r) => !r.cancelledAt).length > 1 ? 's' : ''}</h2>
-      ${rooms.map((r) => `
-      <div class="card" style="margin-bottom:8px${r.cancelledAt ? ';opacity:.6' : ''}">
-        <div class="big">Room ${r.roomNumber}: ${h(r.roomType?.name || 'Room')}${r.cancelledAt ? ' (cancelled)' : ''}</div>
-        <div class="muted">${h(r.ratePlan?.name || 'Standard rate')} · ${h(MEAL[r.ratePlan?.mealPlan] || 'Room only')} · ${h(guestsLabel(r.adults, r.children))}</div>
-        <div>Lead guest: <b>${h(r.guestName)}</b></div>
-      </div>`).join('')}
-    </div>`;
-  return `
-    <div class="section">
-      <h2>${booking.rooms} room${booking.rooms > 1 ? 's' : ''}</h2>
-      <div class="card">
-        <div class="big">${booking.rooms} × ${h(roomType?.name || 'Room')}</div>
-        <div class="muted">${h(ratePlan?.name || (booking.stayType === 'HOURLY' ? `Hourly stay · ${booking.hours} hours` : 'Standard rate'))} · ${h(MEAL[ratePlan?.mealPlan] || 'Room only')}${booking.extraBeds ? ` · ${booking.extraBeds} extra bed${booking.extraBeds > 1 ? 's' : ''}` : ''}</div>
-      </div>
-    </div>`;
+const roomsSection = (d) => {
+  const { booking: b, roomType, ratePlan, rooms = [] } = d;
+  const active = rooms.filter((r) => !r.cancelledAt).length;
+  const list = rooms.length
+    ? rooms.map((r) => `<div class="room${r.cancelledAt ? ' off' : ''}"><div><b>Room ${r.roomNumber}: ${esc(r.roomType?.name || 'Room')}</b>${r.cancelledAt ? ' <span class="status off">Cancelled</span>' : ''}<div class="muted">${esc(r.ratePlan?.name || 'Standard rate')} · ${esc(TMEAL[r.ratePlan?.mealPlan] || 'Room only')} · ${esc(guestsLabel(r.adults, r.children))}</div></div><div class="r">Lead guest<br><b>${esc(r.guestName)}</b></div></div>`).join('')
+    : `<div class="room"><div><b>${b.rooms} × ${esc(roomType?.name || 'Room')}</b><div class="muted">${esc(ratePlan?.name || (b.stayType === 'HOURLY' ? `Hourly stay · ${b.hours} hours` : 'Standard rate'))} · ${esc(TMEAL[ratePlan?.mealPlan] || 'Room only')}${b.extraBeds ? ` · ${b.extraBeds} extra bed${b.extraBeds > 1 ? 's' : ''}` : ''}</div></div><div class="r">Lead guest<br><b>${esc(b.guestName)}</b></div></div>`;
+  return `<h2>${rooms.length ? active : b.rooms} room${(rooms.length ? active : b.rooms) === 1 ? '' : 's'}</h2>${list}`;
 };
 
-const cancellationBlock = (d) => `
-  <div class="section"><h2>Cancellation policy</h2>
-    <ul>${cancellationText(d.booking, d.policy).map(t => `<li>${h(t)}</li>`).join('')}</ul>
-  </div>`;
+const propertyBox = (hotel) => {
+  const contact = hotel?.integrationSettings?.contactInfo || {};
+  const map = hotel?.latitude && hotel?.longitude ? `https://www.google.com/maps?q=${hotel.latitude},${hotel.longitude}` : '';
+  return box({ label: 'Property', name: hotel?.name, lines: [
+    `<span class="muted">${esc(address(hotel))}</span>`,
+    contact.receptionPhone ? `Front desk: <b>${esc(contact.receptionPhone)}</b>` : '',
+    map ? `<span class="muted">Map: ${esc(map)}</span>` : '',
+  ] });
+};
 
-const companyBlock = (booking) => booking.guestCompanyName ? `
-  <div class="card"><h3>Billing (GST invoice)</h3>
-    <div class="big">${h(booking.guestCompanyName)}</div>
-    ${booking.guestCompanyGstin ? `<div>GSTIN ${h(booking.guestCompanyGstin)}</div>` : ''}
-    ${booking.guestCompanyAddress ? `<div class="muted">${h(booking.guestCompanyAddress)}</div>` : ''}
-  </div>` : '';
+const billingBox = (b, fallback) => (b.guestCompanyName
+  ? box({ label: 'Billing (GST)', name: b.guestCompanyName, lines: [b.guestCompanyGstin ? `GSTIN <b>${esc(b.guestCompanyGstin)}</b>` : '', b.guestCompanyAddress ? `<span class="muted">${esc(b.guestCompanyAddress)}</span>` : ''] })
+  : fallback);
+
+/** What each document says about the guest's tax invoice, by Admin → Documents setting. */
+const invoiceLine = (mode, b, who) => {
+  const company = b.guestCompanyGstin ? ` in the name of ${b.guestCompanyName} (GSTIN ${b.guestCompanyGstin})` : '';
+  if (who === 'guest') {
+    return mode === 'HOTEL_ISSUES'
+      ? `The property issues the GST invoice for your stay${company}; ask for it at check-out.`
+      : `Your GST invoice for the stay comes from ZivoPlus${company}: download it from My Bookings → Financials. The property bills you separately only for extras you use.`;
+  }
+  if (mode === 'ON_BEHALF') return `ZivoPlus issues the guest's GST invoice for this stay on your behalf (your GSTIN as supplier)${company}; include it in your GST returns. Do not issue another invoice for the room: invoice the guest only for extras.`;
+  if (mode === 'ZIVO_SUPPLIER') return `ZivoPlus issues the guest's GST invoice for this stay as the supplier${company}. Do not invoice the guest for the room: invoice only extras.`;
+  return `Issue the tax invoice to the guest for the property gross charges${company}.`;
+};
+
+const footerFor = (d) => footerLine(d.brand?.company || {}, d.support || {});
 
 // ── guest voucher ─────────────────────────────────────────────────────────────
 
 export const guestVoucherHtml = (d) => {
-  const { booking, hotel } = d;
-  const pay = paymentSummary(booking);
-  const extras = (toMoney(booking.extraGuestCharges) || 0) + (toMoney(booking.extraBedCharges) || 0) + (toMoney(booking.mealCharges) || 0);
-  const discount = toMoney(booking.metadata?.discountAmount) || 0;
-  const roomCharges = toMoney(booking.roomPrice) || Math.max(0, (toMoney(booking.baseAmount) || 0) + discount - extras);
-  const taxPct = booking.metadata?.taxPercentage;
-  const contact = hotel?.integrationSettings?.contactInfo || {};
-  const map = hotel?.latitude && hotel?.longitude ? `https://www.google.com/maps?q=${hotel.latitude},${hotel.longitude}` : '';
-  const statusCls = booking.status === 'CANCELLED' ? 'off' : booking.status === 'PENDING' ? 'warn' : '';
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking ${h(booking.bookingRef)}</title><style>${baseCss}</style></head><body>
-    <div class="band">
-      <div class="brand">Zivo<span>Plus</span></div>
-      <div class="doc"><div class="t">Booking Confirmation</div><div class="s">Show this at check-in</div></div>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h3>Booking</h3>
-        <div class="big">${h(booking.bookingRef)}</div>
-        <div style="margin-top:6px"><span class="pill ${statusCls}">${h(STATUS_LABEL[booking.status] || booking.status)}</span></div>
-        <div class="muted" style="margin-top:6px">Booked on ${fmtDateTime(booking.createdAt)} IST</div>
-      </div>
-      <div class="card">
-        <h3>Property</h3>
-        <div class="big">${h(hotel?.name)}</div>
-        <div class="muted">${h(address(hotel))}</div>
-        ${contact.receptionPhone ? `<div>Front desk: ${h(contact.receptionPhone)}</div>` : ''}
-        ${map ? `<div class="muted">Map: ${h(map)}</div>` : ''}
-      </div>
-      <div class="card">
-        <h3>Primary guest</h3>
-        <div class="big">${h(booking.guestName)}</div>
-        <div class="muted">${h(booking.guestPhone)} · ${h(booking.guestEmail)}</div>
-      </div>
-      ${stayCard(d)}
-    </div>
-
-    ${roomBlock(d)}
-
-    <div class="grid">
-      <div class="card">
-        <h3>Price</h3>
-        <div class="rows">
-          <div><span>Room charges</span><span>${inr(roomCharges)}</span></div>
-          ${extras ? `<div><span>Extra guest / bed / meals</span><span>${inr(extras)}</span></div>` : ''}
-          ${(() => {
-            const promo = booking.metadata?.promotion;
-            const promoAmt = toMoney(promo?.discountAmount) || 0;
-            const pts = booking.metadata?.loyalty;
-            const ptsAmt = toMoney(pts?.discountAmount) || 0;
-            const mem = booking.metadata?.membership;
-            const memAmt = roundMoney((toMoney(mem?.hotelDiscount) || 0) + (toMoney(mem?.zivoDiscount) || 0));
-            const other = roundMoney(discount - promoAmt - ptsAmt - memAmt);
-            return (promoAmt ? `<div><span>Offer: ${h(promo.name)}${promo.code ? ` (${h(promo.code)})` : ''}</span><span>− ${inr(promoAmt)}</span></div>` : '')
-              + (memAmt ? `<div><span>${h(mem.plan)} price</span><span>− ${inr(memAmt)}</span></div>` : '')
-              + (ptsAmt ? `<div><span>Zivo Rewards (${Number(pts.pointsRedeemed).toLocaleString('en-IN')} points)</span><span>− ${inr(ptsAmt)}</span></div>` : '')
-              + (other > 0 ? `<div><span>${booking.metadata?.prepaidDiscountAmount ? 'Pay-now discount' : 'Discount'}</span><span>− ${inr(other)}</span></div>` : '');
-          })()}
-          <div><span>GST${taxPct != null ? ` @ ${h(taxPct)}%` : ''}</span><span>${inr(booking.taxAmount)}</span></div>
-          <div class="grand"><span>Total</span><span>${inr(pay.total)}</span></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Payment</h3>
-        <div class="big">${h(pay.label)}</div>
-        <div class="rows" style="margin-top:6px">
-          <div><span>Paid online</span><span>${inr(pay.paid)}</span></div>
-          ${booking.status !== 'CANCELLED' ? `<div class="sub"><span>To pay at the hotel</span><span>${inr(pay.dueAtHotel)}</span></div>` : ''}
-          ${pay.refunded ? `<div><span>Refunded</span><span>${inr(pay.refunded)}</span></div>` : ''}
-        </div>
-      </div>
-      ${companyBlock(booking)}
-    </div>
-
-    ${cancellationBlock(d)}
-
-    <div class="section"><h2>Good to know</h2>
-      <ul>
-        <li>Carry a government photo ID (Aadhaar, passport, driving licence or voter ID) for every adult guest.</li>
-        <li>The property may ask for a refundable security deposit and charges extras (minibar, laundry, etc.) separately.</li>
-        <li>The tax invoice for the stay is issued by the property${booking.guestCompanyGstin ? ' in the company name and GSTIN above' : ''}.</li>
-      </ul>
-    </div>
-    ${companyLines(d.support)}
-  </body></html>`;
+  const { booking: b, hotel } = d;
+  const pay = paymentSummary(b);
+  const f = bookingFigures(b, d.rooms || [], { roomTypeName: d.roomType?.name, ratePlan: d.ratePlan });
+  const settings = d.brand?.settings || { guestInvoice: { mode: 'ON_BEHALF' }, voucher: { guestNotes: [] } };
+  const body = `${header({ brandSub: 'Booking voucher', title: 'Booking Confirmation', sub: 'Show this at check-in, on your phone or printed', ref: b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
+${stayMeta(d)}
+<div class="parties three">
+  ${propertyBox(hotel)}
+  ${box({ label: 'Primary guest', name: b.guestName, lines: [`<span class="muted">${esc(b.guestPhone || '')}</span>`, `<span class="muted">${esc(b.guestEmail || '')}</span>`] })}
+  ${billingBox(b, box({ label: 'Booking', name: b.bookingRef, lines: [`<span class="muted">Booked on ${esc(fmtDateTime(b.createdAt))} IST</span>`, `Payment: <b>${esc(pay.label)}</b>`, '<span class="muted">Booked via ZivoPlus</span>'] }))}
+</div>
+${roomsSection(d)}
+<div class="cols">
+  <div>
+    <h2>Cancellation policy</h2>
+    <div class="notes"><ul>${cancellationText(b, d.policy).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    ${houseRules(hotel).length ? `<h2>House rules</h2><div class="notes"><ul>${houseRules(hotel).map((r) => `<li>${r.allowed === true ? '✓ ' : r.allowed === false ? '✕ ' : ''}${esc(r.text)}</li>`).join('')}</ul></div>` : ''}
+    <h2>Good to know</h2>
+    <div class="notes"><ul>${[...(settings.voucher.guestNotes || []), invoiceLine(settings.guestInvoice.mode, b, 'guest')].map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+  </div>
+  <div>
+    <h2>Price</h2>
+    <div style="margin-top:8px">${totals([
+      ...f.lines.map((l) => [esc(l.label), money(l.amount)]),
+      ...f.discounts.map(([k, v]) => [esc(k), `− ${money(v)}`, 'less']),
+      [`GST${f.taxPct != null ? ` @ ${esc(f.taxPct)}%` : ''}`, money(f.tax)],
+      ['Total', tInr(f.total), 'grand'],
+      ['Paid online', tInr(pay.paid), 'plus'],
+      b.status !== 'CANCELLED' ? ['To pay at the hotel', tInr(pay.dueAtHotel), 'sub'] : null,
+      pay.refunded ? ['Refunded', tInr(pay.refunded), 'less'] : null,
+    ])}</div>
+  </div>
+</div>`;
+  return shell(`Booking ${b.bookingRef}`, body);
 };
 
 // ── hotelier voucher ──────────────────────────────────────────────────────────
@@ -355,116 +249,81 @@ export const hotelierFigures = async (d) => {
 };
 
 export const hotelierVoucherHtml = (d, f) => {
-  const { booking, hotel, roomType } = d;
-  const pay = paymentSummary(booking);
-  const nights = nightsBetween(booking.checkIn, booking.checkOut);
-  const days = Array.from({ length: nights }, (_, i) => new Date(new Date(booking.checkIn).getTime() + i * 86400000));
+  const { booking: b, hotel, roomType } = d;
+  const pay = paymentSummary(b);
+  const nights = b.stayType === 'HOURLY' ? 1 : nightsBetween(b.checkIn, b.checkOut);
+  const days = Array.from({ length: nights }, (_, i) => new Date(new Date(b.checkIn).getTime() + i * 86400000));
   const R = splitNights(f.roomCharges, nights), E = splitNights(f.extras, nights), T = splitNights(f.tax, nights);
-  const G = splitNights(f.gross, nights), C = splitNights(f.commission + f.commissionGst, nights);
+  const G = splitNights(f.gross, nights), C = splitNights(f.commission + f.commissionGst, nights), D = splitNights(f.tcs + f.tds, nights);
   const commissionInclGst = roundMoney(f.commission + f.commissionGst);
   const deductions = roundMoney(f.tcs + f.tds);
   const collectedAtHotel = roundMoney(Math.max(0, f.gross - f.collected));
   const owed = f.netPayable < 0;
   const gstSplit = f.terms.sameState ? 'CGST + SGST' : 'IGST';
+  const settings = d.brand?.settings || { guestInvoice: { mode: 'ON_BEHALF' }, voucher: { hotelNotes: [] } };
+  // Night-wise payable after commission and TCS/TDS; the last night takes the rounding so the column adds up
+  const P = days.map((_, i) => roundMoney(G[i] - C[i] - D[i]));
+  const sumP = roundMoney(P.reduce((t, v) => t + v, 0));
+  const target = roundMoney(f.gross - commissionInclGst - deductions);
+  if (P.length) P[P.length - 1] = roundMoney(P[P.length - 1] + (target - sumP));
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hotelier voucher ${h(booking.bookingRef)}</title><style>${baseCss}</style></head><body>
-    <div class="band">
-      <div class="brand">Zivo<span>Plus</span> <span style="color:#9ca3af;font-weight:600;font-size:13px">Partner</span></div>
-      <div class="doc"><div class="t">Hotelier Booking Voucher</div><div class="s">${h(hotel?.name)} · ${h(address(hotel))}</div></div>
-    </div>
+  const body = `${header({ brandSub: 'Partner', title: 'Hotelier Booking Voucher', sub: `${hotel?.name || ''} · ${address(hotel)}`, ref: b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
+${stayMeta(d)}
+<div class="parties three">
+  ${box({ label: 'Booking', name: b.bookingRef, lines: [`<span class="muted">Booked on ${esc(fmtDateTime(b.createdAt))}</span>`, `Payment: <b>${esc(pay.label)}</b>`, '<span class="muted">Booked via ZivoPlus</span>'] })}
+  ${box({ label: 'Primary guest', name: b.guestName, lines: [`<span class="muted">${esc(b.guestPhone || '')}</span>`, `<span class="muted">${esc(b.guestEmail || '')}</span>`] })}
+  ${billingBox(b, box({ label: 'Billing', name: 'Individual guest', lines: ['<span class="muted">No company GST details given.</span>'] }))}
+</div>
+<div class="cards">
+  <div class="card hero"><div class="k">${owed ? 'Payable by property to ZivoPlus' : 'Payable to property'}</div><div class="v">${tInr(Math.abs(f.netPayable))}</div></div>
+  <div class="card"><div class="k">Property gross charges</div><div class="v">${tInr(f.gross)}</div></div>
+  <div class="card"><div class="k">Commission incl. GST</div><div class="v">${tInr(commissionInclGst)}</div></div>
+  <div class="card"><div class="k">${owed ? 'Collect at check-in' : 'Payout date'}</div><div class="v">${owed ? tInr(collectedAtHotel) : esc(fmtDate(f.releaseOn))}</div></div>
+</div>
+${roomsSection(d)}
 
-    <div class="grid">
-      <div class="card">
-        <h3>Booking</h3>
-        <div class="kv">
-          <div><span>Booking ID</span><b>${h(booking.bookingRef)}</b></div>
-          <div><span>Booked on</span><b>${fmtDateTime(booking.createdAt)}</b></div>
-          <div><span>Status</span><b>${h(STATUS_LABEL[booking.status] || booking.status)}</b></div>
-          <div><span>Payment</span><b>${h(pay.label)}</b></div>
-          <div><span>Booked via</span><b>ZivoPlus</b></div>
-          <div><span>Property</span><b>${h(hotel?.name)}</b></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Primary guest</h3>
-        <div class="big">${h(booking.guestName)}</div>
-        <div class="muted">${h(booking.guestPhone)} · ${h(booking.guestEmail)}</div>
-      </div>
-      ${stayCard(d)}
-      ${companyBlock(booking) || `<div class="card"><h3>Billing</h3><div class="muted">Invoice to the guest (no company GST details given).</div></div>`}
-    </div>
+<h2>Night-wise breakup (₹)</h2>
+<table><tr><th>Night</th><th class="r">Room (R)</th><th class="r">Extras (E)</th><th class="r">GST (T)</th><th class="r">Gross (G)</th><th class="r">Commission incl. GST (C)</th><th class="r">TCS + TDS (D)</th><th class="r">Payable (G−C−D)</th></tr>
+<tr class="group"><td colspan="8">${esc(roomsSummary(d.rooms, b, roomType?.name))}</td></tr>
+${days.map((dd, i) => `<tr><td>${b.stayType === 'HOURLY' ? 'Hourly stay' : fmtDate(dd)}</td><td class="r">${money(R[i])}</td><td class="r">${money(E[i])}</td><td class="r">${money(T[i])}</td><td class="r">${money(G[i])}</td><td class="r">${money(C[i])}</td><td class="r">${money(D[i])}</td><td class="r"><b>${money(P[i])}</b></td></tr>`).join('')}
+<tr class="t"><td>Total</td><td class="r">${money(f.roomCharges)}</td><td class="r">${money(f.extras)}</td><td class="r">${money(f.tax)}</td><td class="r">${money(f.gross)}</td><td class="r">${money(commissionInclGst)}</td><td class="r">${money(deductions)}</td><td class="r">${money(target)}</td></tr></table>
+${f.zivoFunded > 0 || collectedAtHotel ? '<div class="notes">The payable amount below also includes offers paid by ZivoPlus and takes off what the guest pays at the property.</div>' : ''}
 
-    ${roomBlock(d)}
-    ${cancellationBlock(d)}
-
-    <div class="section"><h2>Payment</h2>
-      <div class="grid" style="margin-top:0">
-        <div class="card"><h3>Property gross charges</h3><div class="big">${inr(f.gross)}</div>
-          <div class="muted">Room ${inr(f.roomCharges)}${f.extras ? ` + extras ${inr(f.extras)}` : ''} + GST ${inr(f.tax)}</div></div>
-        <div class="card"><h3>${owed ? 'Payable by property to ZivoPlus' : 'Payable to property'}</h3><div class="big">${inr(Math.abs(f.netPayable))}</div>
-          <div class="muted">${owed
-            ? `The guest pays ${inr(collectedAtHotel)} at the property. The amount above is netted against your next payout.`
-            : `Released on ${fmtDate(f.releaseOn)} (your payout cycle after check-out); bank credit usually takes 1–3 working days.`}</div></div>
-      </div>
-    </div>
-
-    <div class="section"><h2>Night-wise breakup (₹)</h2>
-      <table>
-        <thead><tr><th>Night</th><th>Room (R)</th><th>Extras (E)</th><th>GST (T)</th><th>Gross (G=R+E+T)</th><th>Commission incl. GST (C)</th><th>Net (G−C)</th></tr></thead>
-        <tbody>
-          <tr><td colspan="7" style="color:#f43f5e;font-weight:600">${h(roomsSummary(d.rooms, booking, roomType?.name))}</td></tr>
-          ${days.map((day, i) => `<tr><td>${fmtDate(day)}</td><td>${R[i].toFixed(2)}</td><td>${E[i].toFixed(2)}</td><td>${T[i].toFixed(2)}</td><td>${G[i].toFixed(2)}</td><td>${C[i].toFixed(2)}</td><td>${(G[i] - C[i]).toFixed(2)}</td></tr>`).join('')}
-          <tr class="total"><td>Total</td><td>${f.roomCharges.toFixed(2)}</td><td>${f.extras.toFixed(2)}</td><td>${f.tax.toFixed(2)}</td><td>${f.gross.toFixed(2)}</td><td>${commissionInclGst.toFixed(2)}</td><td>${(f.gross - commissionInclGst).toFixed(2)}</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="section"><h2>Settlement calculation</h2>
-      <div class="card"><div class="rows">
-        <div><span>1. Room charges</span><span>${inr(f.roomCharges)}</span></div>
-        <div><span>2. Extra guest / bed / meal charges</span><span>${inr(f.extras)}</span></div>
-        <div><span>3. GST charged to the guest</span><span>${inr(f.tax)}</span></div>
-        <div class="sub"><span>(A) Property gross charges (1+2+3)</span><span>${inr(f.gross)}</span></div>
-        ${f.zivoFunded > 0 ? `<div><span>Plus: Zivo-funded discount (offer / reward points, paid by ZivoPlus; commission is on the full price)</span><span>+ ${inr(f.zivoFunded)}</span></div>` : ''}
-        ${collectedAtHotel ? `<div><span>Less: collected by the property from the guest</span><span>− ${inr(collectedAtHotel)}</span></div>
-        <div class="sub"><span>(A′) Collected online by ZivoPlus</span><span>${inr(f.collected)}</span></div>` : ''}
-        <div><span>4. ZivoPlus commission @ ${h(f.terms.commissionPercent)}% of pre-GST amount</span><span>${inr(f.commission)}</span></div>
-        <div><span>5. GST on commission @ ${f.terms.commissionGstPercent ?? COMMISSION_GST_PERCENT}% (${gstSplit})</span><span>${inr(f.commissionGst)}</span></div>
-        <div class="sub"><span>(B) Commission incl. GST (4+5)</span><span>${inr(commissionInclGst)}</span></div>
-        <div><span>6. TCS @ ${f.terms.tcsPercent ?? TCS_PERCENT}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', not applicable: property not GST-registered'}</span><span>${inr(f.tcs)}</span></div>
-        <div><span>7. TDS @ ${f.terms.tdsPercent ?? TDS_PERCENT}% (Income-tax s.194-O)</span><span>${inr(f.tds)}</span></div>
-        <div class="sub"><span>(C) Tax deductions (6+7)</span><span>${inr(deductions)}</span></div>
-        <div class="grand"><span>${owed ? 'Payable by property' : 'Payable to property'} (${collectedAtHotel ? 'A′' : 'A'}${f.zivoFunded > 0 ? ' + promotion' : ''} − B − C)</span><span>${inr(Math.abs(f.netPayable))}</span></div>
-      </div></div>
-      <div class="muted" style="margin-top:6px">${f.final ? 'Final figures from the settlement created at check-out.' : 'Provisional: the settlement is created at check-out and reflects any changes or cancellations.'}</div>
-    </div>
-
-    <div class="section"><h2>Notes for the property</h2>
-      <ul>
-        <li>TCS and TDS are subject to reconciliation and are reported against the property's PAN / GSTIN.</li>
-        <li>ZivoPlus deducts TDS under section 194-O on this booking; the property should not deduct TDS on ZivoPlus' commission.</li>
-        <li>Issue the tax invoice to the guest for the property gross charges${booking.guestCompanyGstin ? `, in the name of ${h(booking.guestCompanyName)} (GSTIN ${h(booking.guestCompanyGstin)})` : ''}.</li>
-        <li>Do not charge the guest again for anything paid online. Collect only ${collectedAtHotel ? `${inr(collectedAtHotel)} for the stay plus ` : ''}extra services they use.</li>
-        <li>If the guest cancels or changes this booking, you will be notified and this voucher will no longer be valid.</li>
-      </ul>
-    </div>
-    ${companyLines(d.support)}
-  </body></html>`;
+<div class="cols">
+  <div>
+    <h2>Cancellation policy</h2>
+    <div class="notes"><ul>${cancellationText(b, d.policy).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    <h2>Notes for the property</h2>
+    <div class="notes"><ul>${[
+      invoiceLine(settings.guestInvoice.mode, b, 'hotel'),
+      `Do not charge the guest again for anything paid online. Collect only ${collectedAtHotel ? `${tInr(collectedAtHotel)} for the stay plus ` : ''}extra services they use.`,
+      ...(settings.voucher.hotelNotes || []),
+    ].map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+  </div>
+  <div>
+    <h2>Settlement calculation</h2>
+    <div style="margin-top:8px">${totals([
+      ['1. Room charges', money(f.roomCharges)],
+      ['2. Extra guest / bed / meals', money(f.extras)],
+      ['3. GST charged to the guest', money(f.tax)],
+      ['(A) Property gross charges', tInr(f.gross), 'sub'],
+      f.zivoFunded > 0 ? ['Plus: offers paid by ZivoPlus', `+ ${money(f.zivoFunded)}`, 'plus'] : null,
+      collectedAtHotel ? ['Less: collected by the property', `− ${money(collectedAtHotel)}`, 'less'] : null,
+      [`4. Commission @ ${esc(f.terms.commissionPercent)}% of pre-GST`, `− ${money(f.commission)}`, 'less'],
+      [`5. GST on commission @ ${esc(f.terms.commissionGstPercent ?? COMMISSION_GST_PERCENT)}% (${gstSplit})`, `− ${money(f.commissionGst)}`, 'less'],
+      [`6. TCS @ ${esc(f.terms.tcsPercent ?? TCS_PERCENT)}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', n/a'}`, `− ${money(f.tcs)}`, 'less'],
+      [`7. TDS @ ${esc(f.terms.tdsPercent ?? TDS_PERCENT)}% (Income-tax s.194-O)`, `− ${money(f.tds)}`, 'less'],
+      [owed ? 'Payable by property' : 'Payable to property', tInr(Math.abs(f.netPayable)), 'grand'],
+    ])}</div>
+    <div class="notes">${f.final ? 'Final figures from the settlement created at check-out.' : 'Provisional: the settlement is created at check-out and reflects any changes or cancellations.'}${owed ? '' : ` Released on ${esc(fmtDate(f.releaseOn))}; bank credit usually takes 1–3 working days.`}</div>
+  </div>
+</div>`;
+  return shell(`Hotelier voucher ${b.bookingRef}`, body);
 };
 
 // ── PDF ───────────────────────────────────────────────────────────────────────
 
-export const renderPdf = async (html) => {
-  const page = await (await getBrowser()).newPage();
-  try {
-    // Vouchers need no network: block every request so nothing in the HTML can reach out
-    await page.setRequestInterception(true);
-    page.on('request', (req) => (req.url().startsWith('data:') ? req.continue() : req.abort()));
-    await page.setContent(html, { waitUntil: 'load' });
-    return await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
-  } finally {
-    await page.close();
-  }
-};
+/** The voucher PDF, with the company line and page numbers on every page. */
+export const renderPdf = async (html, d = null) => renderThemedPdf(html, { footer: d ? footerFor(d) : '' });
 
 export default { loadVoucherData, canDownloadVoucher, guestVoucherHtml, hotelierVoucherHtml, hotelierFigures, renderPdf };

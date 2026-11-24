@@ -22,7 +22,7 @@
     "worker:report": "node workers/runWorker.js report",
     "test:unit": "mocha 'tests/unit/**/*.test.js'",
     "test:smoke": "mocha tests/smoke/smoke.test.js --exit",
-    "test:e2e": "mocha tests/e2e/booking.e2e.test.js tests/e2e/auth.e2e.test.js tests/e2e/hourly.e2e.test.js tests/e2e/roles.e2e.test.js tests/e2e/seo.e2e.test.js tests/e2e/google.e2e.test.js tests/e2e/reports.e2e.test.js tests/e2e/financeDocs.e2e.test.js tests/e2e/security.e2e.test.js tests/e2e/propertyHub.e2e.test.js tests/e2e/dataProtection.e2e.test.js tests/e2e/capacity.e2e.test.js tests/e2e/guestJourney.e2e.test.js --exit"
+    "test:e2e": "mocha tests/e2e/booking.e2e.test.js tests/e2e/auth.e2e.test.js tests/e2e/hourly.e2e.test.js tests/e2e/roles.e2e.test.js tests/e2e/seo.e2e.test.js tests/e2e/google.e2e.test.js tests/e2e/reports.e2e.test.js tests/e2e/financeDocs.e2e.test.js tests/e2e/security.e2e.test.js tests/e2e/propertyHub.e2e.test.js tests/e2e/dataProtection.e2e.test.js tests/e2e/capacity.e2e.test.js tests/e2e/guestJourney.e2e.test.js tests/e2e/documents.e2e.test.js --exit"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.21.0",

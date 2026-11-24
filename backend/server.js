@@ -83,6 +83,7 @@ import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
 import { startInvoiceCatchUpJob } from './services/invoiceService.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
+import { documentsRouter as adminDocumentsRoutes, setupRouter as adminSetupRoutes } from './routes/adminDocumentsRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 
 import expressRateLimit from 'express-rate-limit';
@@ -347,6 +348,9 @@ app.use('/api/v1/admin/seo',        seoAdminRoutes);
 app.use('/api/v1/admin/google',     googleAdminRoutes);
 app.use('/api/v1/admin/reports',    reportRoutes);
 app.use('/api/v1/admin/content-scores', adminContentRoutes);
+// Documents & emails settings (guest invoice issuer, notes, attachments) and the setup checklist
+app.use('/api/v1/admin/documents', adminDocumentsRoutes);
+app.use('/api/v1/admin/setup', adminSetupRoutes);
 app.use('/api/v1/admin/finance',    adminFinanceRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
 app.use('/api/v1/admin/hourly',     hourlyAdminRoutes);

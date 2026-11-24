@@ -408,7 +408,7 @@ export const downloadVoucher = async (req, res, next) => {
     const html = type === 'hotelier'
       ? voucherService.hotelierVoucherHtml(data, await voucherService.hotelierFigures(data))
       : voucherService.guestVoucherHtml(data);
-    const pdf = await voucherService.renderPdf(html);
+    const pdf = await voucherService.renderPdf(html, data);
     const file = `${type === 'hotelier' ? 'Hotelier-Voucher' : 'Booking-Voucher'}-${data.booking.bookingRef}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
