@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getHotelById, trackEvent, getMyMembership, previewBookingApi, getHotelHourly, getGuestOffers } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import SignInOfferPopup from '../components/hotel/SignInOfferPopup';
 import { offerText } from '../utils/guestOffers';
 import { Link as RouterLink } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
@@ -432,7 +431,6 @@ const Detail = () => {
   return (
     <div className="pt-16 pb-28 lg:pb-20 bg-gray-50">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hotelJsonLd(hotel, stars, fromPrice)).replace(/</g, '\\u003c') }} />
-      {!isAuthenticated && <SignInOfferPopup offers={guestOffers} hotelName={hotel.name} />}
 
       {/* 1. Name, star category, type, review score, place, and the price for your dates */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
