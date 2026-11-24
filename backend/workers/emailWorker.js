@@ -22,7 +22,9 @@ const processJob = async (job) => {
   console.log(`[${workerId}] Processing job: ${job.id} | Type: ${job.jobType}`);
   
   try {
-    const { to, subject, html, text } = job.payload;
+    const { to, subject, text } = job.payload;
+    // Every email in the ZivoPlus look, also older ones built without the shared layout
+    const html = await (await import('../services/emailLayout.js')).brandEmail(job.payload.html);
     // Finance documents (invoice, statement, workbook) are built when sent, not stored in the job
     const attachments = job.payload.financeAttachments?.length
       ? await (await import('../services/finance/financeMail.js')).buildAttachments(job.payload.financeAttachments)

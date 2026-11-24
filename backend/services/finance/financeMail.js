@@ -67,6 +67,14 @@ export const buildAttachments = async (list = []) => {
       if (d) out.push({ filename: `${d.number.replace(/\//g, '-')}.pdf`, content: await docs.documentPdf(d) });
     } else if (a.type === 'statement') {
       out.push({ filename: `ZivoPlus-Statement-${a.period}.pdf`, content: await docs.statementPdf(a.hotelId, a.period) });
+    } else if (a.type === 'guestVoucher' || a.type === 'hotelVoucher') {
+      // Booking vouchers attached to the booking emails (Admin → Settings → Documents & emails)
+      const v = await import('../voucherService.js');
+      const data = await v.loadVoucherData(a.bookingId);
+      if (data) {
+        const html = a.type === 'guestVoucher' ? v.guestVoucherHtml(data) : v.hotelierVoucherHtml(data, await v.hotelierFigures(data));
+        out.push({ filename: `${a.type === 'guestVoucher' ? 'Booking' : 'Hotelier-Voucher'}-${data.booking.bookingRef}.pdf`, content: await v.renderPdf(html, data) });
+      }
     } else if (a.type === 'workbook') {
       out.push({ filename: `ZivoPlus-Statement-${a.period}.xlsx`, content: await docs.statementWorkbook(a.hotelId, a.period) });
     }

@@ -1,6 +1,6 @@
 import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge } from 'lucide-react';
+import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge, ListChecks, FileText } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useAccess from '../../../hooks/useAccess';
 import Logo from '../../../components/brand/Logo';
@@ -134,7 +134,9 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem perm="settings.manage" name="System Control" path="/admin/control-center" icon={<Zap size={18} />} badge="Preview" />
           <NavItem perm="staff.manage" name="Staff & Roles" path="/admin/staff" icon={<ShieldCheck size={18} />} />
           <NavItem perm="users.view" name="Guest & Partner Accounts" path="/admin/users" icon={<Users size={18} />} />
+          <NavItem perm="settings.view" name="Setup Checklist" path="/admin/setup" icon={<ListChecks size={18} />} />
           <NavItem perm="settings.manage" name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
+          <NavItem perm="settings.view" name="Documents & Emails" path="/admin/documents" icon={<FileText size={18} />} />
           <NavItem perm="settings.view" name="System Health" path="/admin/settings" icon={<Settings size={18} />} badge="Preview" />
         </NavGroup>
         <div className="px-6 pt-2">

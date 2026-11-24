@@ -1,25 +1,12 @@
 import crypto from 'crypto';
-import { getBrowser, closeBrowser } from '../utils/browser.js';
+import { closeBrowser } from '../utils/browser.js';
 import fs from 'fs/promises';
 import path from 'path';
 import prisma from '../config/db.js';
-import invoiceDomain from '../domains/invoiceDomain.js';
 import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
-import { getSupportContacts } from '../config/supportContacts.js';
-
-// The company that runs ZivoPlus (the booking platform), printed on every invoice
-const platformDetails = async () => {
-  const support = await getSupportContacts();
-  return {
-    name: process.env.ZIVO_LEGAL_NAME || '',
-    gstin: process.env.ZIVO_GSTIN || '',
-    cin: process.env.ZIVO_CIN || '',
-    pan: process.env.ZIVO_PAN || '',
-    address: process.env.ZIVO_ADDRESS || '',
-    email: support.email,
-    phone: support.phone,
-  };
-};
+import { guestInvoiceHtml } from './documents/guestInvoiceHtml.js';
+import { brandContext, getDocumentSettings } from './documents/documentSettings.js';
+import { renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
 
 // Shared browser (falls back to an installed Chrome where the bundled one can't run)
 process.on('SIGINT', async () => {
@@ -42,7 +29,7 @@ const withRenderSlot = async (fn) => {
 
 const loadBooking = (bookingId) => prisma.booking.findUnique({
   where: { id: bookingId },
-  include: { hotel: true, user: true, ...BOOKING_ROOMS_INCLUDE },
+  include: { hotel: true, user: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE },
 });
 
 /**
@@ -50,31 +37,19 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
  * transaction: nothing is locked while the browser works. Returns the file's address.
  */
 const renderPdf = async (booking, invoiceRef) => {
-  const htmlContent = invoiceDomain.generateHTML({
-    booking,
-    hotel: booking.hotel,
-    invoiceRef,
-    issueDate: new Date(),
-    platform: await platformDetails(),
-  });
+  const brand = await brandContext();
+  const htmlContent = guestInvoiceHtml({ booking, hotel: booking.hotel, rooms: booking.bookingRooms || [], invoiceRef, issueDate: new Date(), brand });
   return withRenderSlot(async () => {
-    const browser = await getBrowser();
-    const page = await browser.newPage();
-    try {
-      // The invoice is self-contained HTML; don't wait for the network to go quiet
-      await page.setContent(htmlContent, { waitUntil: 'load', timeout: 20000 });
-      const safeInvoiceRef = invoiceRef.replace(/\//g, '_');
-      const invoicesDir = path.join(process.cwd(), 'public', 'invoices', booking.hotelId, booking.id);
-      await fs.mkdir(invoicesDir, { recursive: true });
-      const fileName = `${safeInvoiceRef}.pdf`;
-      const filePath = path.join(invoicesDir, fileName);
-      const tmpPath = `${filePath}.tmp`;
-      await page.pdf({ path: tmpPath, format: 'A4', printBackground: true, timeout: 20000 });
-      await fs.rename(tmpPath, filePath); // replace in one step
-      return `/invoices/${booking.hotelId}/${booking.id}/${fileName}`;
-    } finally {
-      await page.close().catch(() => {});
-    }
+    const pdf = await renderThemedPdf(htmlContent, { footer: footerLine(brand.company, brand.support) });
+    const safeInvoiceRef = invoiceRef.replace(/\//g, '_');
+    const invoicesDir = path.join(process.cwd(), 'public', 'invoices', booking.hotelId, booking.id);
+    await fs.mkdir(invoicesDir, { recursive: true });
+    const fileName = `${safeInvoiceRef}.pdf`;
+    const filePath = path.join(invoicesDir, fileName);
+    const tmpPath = `${filePath}.tmp`;
+    await fs.writeFile(tmpPath, pdf);
+    await fs.rename(tmpPath, filePath); // replace in one step
+    return `/invoices/${booking.hotelId}/${booking.id}/${fileName}`;
   });
 };
 
@@ -95,6 +70,8 @@ export const invoiceService = {
   createRecord: async (bookingId) => {
     const year = new Date().getFullYear();
     const id = crypto.randomUUID();
+    // Series prefix from Admin → Settings → Documents & emails (default ZIV); one counter per year
+    const prefix = (await getDocumentSettings()).guestInvoice.prefix || 'ZIV';
     try {
       const rows = await prisma.$queryRaw`
         WITH seq AS (
@@ -103,7 +80,7 @@ export const invoiceService = {
           RETURNING "counter"
         )
         INSERT INTO "Invoice" ("id", "invoiceRef", "bookingId", "status", "createdAt")
-        SELECT ${id}, 'ZIV/' || ${year}::text || '/' || lpad("counter"::text, 6, '0'), ${bookingId}, ${INVOICE_STATUS.PENDING}, now()
+        SELECT ${id}, ${prefix} || '/' || ${year}::text || '/' || lpad("counter"::text, 6, '0'), ${bookingId}, ${INVOICE_STATUS.PENDING}, now()
         FROM seq
         RETURNING *;
       `;

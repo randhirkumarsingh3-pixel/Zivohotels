@@ -462,6 +462,14 @@ export const adminContentApi = {
   detail: (hotelId) => apiFetch(`${ADMIN_BASE}/content-scores/${encodeURIComponent(hotelId)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 
+// Admin → Documents & emails (guest invoice issuer, voucher notes, attachments) and the setup checklist
+export const adminDocumentsApi = {
+  get: () => apiFetch(`${ADMIN_BASE}/documents`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  save: (body) => apiFetch(`${ADMIN_BASE}/documents`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  preview: (kind) => apiFetch(`${ADMIN_BASE}/documents/preview/${encodeURIComponent(kind)}`, { responseType: 'blob' }, 0),
+  setup: () => apiFetch(`${ADMIN_BASE}/setup`, { cache: 'no-store' }, 0).then((r) => r?.data),
+};
+
 // Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)
 export const adminFinanceApi = {
   ledger: (filters) => apiFetch(`${ADMIN_BASE}/finance/ledger?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),

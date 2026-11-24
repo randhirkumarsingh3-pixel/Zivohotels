@@ -18,7 +18,7 @@ const warn = (what, e) => console.error(`[Notify] ${what}:`, e?.message || e);
 const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
 
 const queueEmail = (to, email, jobType = 'NOTIFY') => queueService
-  .enqueue('email', email.jobType || jobType, { to, subject: email.subject, html: email.html }, { priority: email.priority || 3 })
+  .enqueue('email', email.jobType || jobType, { to, subject: email.subject, html: email.html, ...(email.financeAttachments ? { financeAttachments: email.financeAttachments } : {}) }, { priority: email.priority || 3 })
   .catch((e) => warn(`email to ${to} not queued`, e));
 
 /**

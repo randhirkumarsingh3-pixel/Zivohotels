@@ -1,662 +1,74 @@
-import { siteUrl } from '../config/brand.js';
 import prisma from '../config/db.js';
-import { getSupportContacts, whatsappDigits } from '../config/supportContacts.js';
-import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
-import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
+import { BOOKING_ROOMS_INCLUDE, guestsLabel } from './bookingRoomsView.js';
 import { queueService } from './queueService.js';
+import { emailLayout, emailDay, moneyTable, bullets } from './emailLayout.js';
+import { bookingFigures, MEAL } from './documents/bookingFigures.js';
+import { houseRules } from './documents/houseRules.js';
+import { getDocumentSettings } from './documents/documentSettings.js';
+import { cancellationText } from './voucherService.js';
+
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 
 
 /**
- * Generate premium HTML Booking Confirmation Email & Hotel Voucher
- * @param {object} booking - Booking data from database
- * @param {object} hotel - Hotel details
- * @param {object} roomType - Room type details
- * @param {object} ratePlan - Rate plan details
- * @returns {string} - HTML body
+ * The guest's booking confirmation email, in the ZivoPlus email look (services/emailLayout.js):
+ * hotel and stay, each room, the price with each discount by name, payment, the cancellation
+ * deadline, the hotel's own house rules, and buttons to manage the booking and get directions.
+ * Everything comes from the booking and the hotel's own data; nothing is made up.
  */
-const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const generateEmailHtml = (booking, hotel, roomType, ratePlan, support = {}) => {
-  // Hourly stays show the slot's times (India time); nightly stays the dates
-  const hourly = booking.stayType === 'HOURLY';
-  const ist = { timeZone: 'Asia/Kolkata' };
-  const at = (d) => new Date(d).toLocaleString('en-IN', { ...ist, weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  const checkInDate = hourly ? at(booking.slotStart || booking.checkIn) : new Date(booking.checkIn).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-  const checkOutDate = hourly ? at(booking.slotEnd || booking.checkOut) : new Date(booking.checkOut).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-  
-  const nights = Math.max(1, Math.round((new Date(booking.checkOut) - new Date(booking.checkIn)) / (1000 * 60 * 60 * 24)));
-  const lengthText = hourly ? `${booking.hours} Hour${booking.hours === 1 ? '' : 's'} (hourly stay)` : `${nights} Night${nights > 1 ? 's' : ''}`;
-  
-  const formattedPaid = booking.paidAmount.toLocaleString('en-IN');
-  const formattedTotal = booking.totalAmount.toLocaleString('en-IN');
-  const formattedRemaining = booking.remainingAmount.toLocaleString('en-IN');
-  
-  // The booking's own amounts (these were estimates: 85% / 15% of the total and a made-up 20%
-  // saving, with GST always shown as 12%)
-  const inr = (v) => Math.round(Number(v) || 0).toLocaleString('en-IN');
-  const taxes = Number(booking.taxAmount) || 0;
-  const roomPrice = Number(booking.baseAmount) || Math.max(0, Number(booking.totalAmount) - taxes);
-  const savings = Math.round(Number(booking.metadata?.discountAmount) || 0);
-  const taxBreakdown = booking.metadata?.taxBreakdown;
-  const gstLabel = taxBreakdown?.length > 1 ? taxBreakdown.map((t) => `${t.percentage}%`).join(' + ') : `${booking.metadata?.taxPercentage ?? 5}%`;
-  
-  // QR code of the booking reference, drawn by our own API (no outside service sees the reference)
-  const apiBase = (String(process.env.API_PUBLIC_URL || process.env.FRONTEND_URL || '').replace(/\/$/, '')) + '/api/v1';
-  const qrCodeUrl = `${apiBase}/security/qr/${encodeURIComponent(booking.bookingRef)}.png`;
-  
-  // The hotel's cover photo (it looked for hotel.images, which doesn't exist, so every email showed
-  // the same stock photo). Uploaded photos are site paths, so the site address goes in front.
-  const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
-  const coverUrl = hotel.media?.[0]?.url || '';
-  const hotelImg = /^https?:\/\//.test(coverUrl) ? coverUrl : coverUrl && site ? `${site}${coverUrl.startsWith('/') ? '' : '/'}${coverUrl}` : '';
-  // The hotel's front desk, then ZivoPlus support (was a placeholder +91 99999 99999)
+const confirmationEmailHtml = async ({ booking: b, hotel, rooms, policy, settings }) => {
+  const f = bookingFigures(b, rooms, { roomTypeName: b.roomType?.name, ratePlan: b.ratePlan });
+  const hourly = b.stayType === 'HOURLY';
+  const t = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+  const hhmm = (v, fb) => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ''); if (!m) return fb; const H = +m[1]; return `${((H + 11) % 12) + 1}:${m[2]} ${H < 12 ? 'am' : 'pm'}`; };
   const contact = hotel.integrationSettings?.contactInfo || {};
-  const hotelPhone = contact.receptionPhone || contact.guestLandline || '';
-  // ZivoPlus support: Admin → Platform Settings → Support (or the server's ZIVO_SUPPORT_* settings)
-  const supportPhone = support.phone || '';
-  const supportEmail = support.email || '';
-  const waDigits = whatsappDigits(hotelPhone || support.whatsapp || supportPhone);
-  const mapsQuery = hotel.latitude && hotel.longitude ? `${hotel.latitude},${hotel.longitude}` : `${hotel.name}, ${hotel.city}`;
+  const place = [hotel.location, hotel.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
+  const maps = hotel.latitude && hotel.longitude ? `https://www.google.com/maps/search/?api=1&query=${hotel.latitude},${hotel.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hotel.name}, ${hotel.city || ''}`)}`;
+  const paid = f.paid >= f.total && f.total > 0;
+  const roomsList = (rooms.filter((r) => !r.cancelledAt).length ? rooms.filter((r) => !r.cancelledAt) : [{ roomNumber: 1, roomType: b.roomType, ratePlan: b.ratePlan, adults: b.adults, children: b.children, guestName: b.guestName }])
+    .map((r) => `${rooms.length > 1 ? `Room ${r.roomNumber}: ` : ''}${r.roomType?.name || 'Room'} · ${MEAL[r.ratePlan?.mealPlan] || 'Room only'} · ${guestsLabel(r.adults, r.children)} · lead guest ${r.guestName}`);
+  const rules = houseRules(hotel);
+  const invoiceNote = settings.guestInvoice.mode === 'HOTEL_ISSUES'
+    ? 'The property issues the GST invoice for your stay at check-out.'
+    : 'Your GST invoice is in My Bookings → Financials.';
 
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZivoPlus - Booking Confirmation</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f8fafc;
-      color: #0f172a;
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #ffffff;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    }
-    .header {
-      background-color: #0f172a;
-      color: #ffffff;
-      padding: 32px 24px;
-      text-align: center;
-      position: relative;
-    }
-    .brand-logo {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      color: #ffffff;
-      margin: 0 0 16px 0;
-      text-decoration: none;
-      display: inline-block;
-    }
-    .status-badge {
-      display: inline-block;
-      background-color: #16a34a;
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 6px 16px;
-      border-radius: 9999px;
-      margin-bottom: 12px;
-    }
-    .booking-ref-title {
-      font-size: 14px;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin: 0 0 4px 0;
-    }
-    .booking-ref-val {
-      font-size: 28px;
-      font-weight: 800;
-      color: #38bdf8;
-      margin: 0 0 8px 0;
-      font-family: monospace;
-    }
-    .verified-banner {
-      background-color: rgb(37 99 235 / 0.1);
-      color: #38bdf8;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 4px 12px;
-      border-radius: 9999px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .hero-section {
-      position: relative;
-    }
-    .hotel-image {
-      width: 100%;
-      height: 220px;
-      object-cover: cover;
-      display: block;
-    }
-    .hotel-details {
-      padding: 24px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .hotel-name {
-      font-size: 20px;
-      font-weight: 800;
-      margin: 0 0 8px 0;
-      color: #0f172a;
-    }
-    .rating-stars {
-      color: #f59e0b;
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-    .hotel-address {
-      font-size: 14px;
-      color: #475569;
-      margin: 0 0 16px 0;
-      line-height: 1.5;
-    }
-    .tags-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 16px;
-    }
-    .tag {
-      font-size: 11px;
-      font-weight: 600;
-      background-color: #f1f5f9;
-      color: #475569;
-      padding: 4px 10px;
-      border-radius: 9999px;
-    }
-    .btn {
-      display: inline-block;
-      font-size: 14px;
-      font-weight: 700;
-      text-align: center;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-sizing: border-box;
-    }
-    .btn-primary {
-      background-color: #2563eb;
-      color: #ffffff !important;
-    }
-    .btn-secondary {
-      background-color: #f1f5f9;
-      color: #0f172a !important;
-      border: 1px solid #cbd5e1;
-    }
-    .btn-danger {
-      background-color: #fef2f2;
-      color: #dc2626 !important;
-    }
-    .card {
-      background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 24px;
-    }
-    .card-title {
-      font-size: 16px;
-      font-weight: 800;
-      margin: 0 0 16px 0;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #475569;
-    }
-    .stay-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      gap: 12px;
-    }
-    .stay-col {
-      flex: 1;
-    }
-    .stay-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .stay-value {
-      font-size: 14px;
-      font-weight: 700;
-      color: #0f172a;
-    }
-    .divider {
-      height: 1px;
-      background-color: #e2e8f0;
-      margin: 16px 0;
-    }
-    .pricing-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-    }
-    .pricing-row td {
-      padding: 8px 0;
-      font-size: 14px;
-      color: #475569;
-    }
-    .pricing-row-total td {
-      padding: 16px 0 8px 0;
-      font-size: 18px;
-      font-weight: 800;
-      color: #0f172a;
-      border-top: 1px dashed #cbd5e1;
-    }
-    .savings-banner {
-      background-color: #dcfce7;
-      border: 1px solid #bbf7d0;
-      color: #15803d;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      margin-top: 16px;
-      text-align: center;
-    }
-    .status-chip {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-    .status-chip-paid {
-      background-color: #dcfce7;
-      color: #15803d;
-    }
-    .status-chip-pending {
-      background-color: #fef3c7;
-      color: #d97706;
-    }
-    .ai-insights {
-      background-color: #eff6ff;
-      border: 1px solid #dbeafe;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 24px;
-    }
-    .ai-insight-item {
-      font-size: 13px;
-      color: #1e40af;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      line-height: 1.5;
-    }
-    .policy-item {
-      font-size: 12px;
-      line-height: 1.6;
-      color: #475569;
-      margin-bottom: 8px;
-    }
-    .badge-allowed {
-      background-color: #dcfce7;
-      color: #15803d;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      text-transform: uppercase;
-    }
-    .badge-restricted {
-      background-color: #fee2e2;
-      color: #b91c1c;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      text-transform: uppercase;
-    }
-    .actions-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin: 24px;
-    }
-    .voucher-print {
-      border: 2px dashed #94a3b8;
-      border-radius: 16px;
-      padding: 24px;
-      margin: 24px;
-      background-color: #ffffff;
-    }
-    .voucher-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-    }
-    .voucher-title {
-      font-size: 18px;
-      font-weight: 800;
-      margin: 0;
-      color: #0f172a;
-    }
-    .voucher-qr {
-      width: 90px;
-      height: 90px;
-    }
-    .footer {
-      background-color: #0f172a;
-      color: #94a3b8;
-      padding: 32px 24px;
-      text-align: center;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    .footer-links a {
-      color: #38bdf8;
-      text-decoration: none;
-      margin: 0 8px;
-    }
-    @media print {
-      body {
-        background-color: #ffffff;
-      }
-      .email-container {
-        box-shadow: none;
-        max-width: 100%;
-      }
-      .no-print {
-        display: none !important;
-      }
-      .voucher-print {
-        border: none;
-        margin: 0;
-        padding: 0;
-        page-break-before: always;
-      }
-    }
-    @media (max-width: 480px) {
-      .stay-row {
-        flex-direction: column;
-        gap: 12px;
-      }
-      .actions-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="email-container">
-    
-    <!-- 1. HEADER -->
-    <div class="header">
-      <a href="${siteUrl()}" class="brand-logo">ZivoPlus</a><br>
-      <div class="status-badge">Confirmed</div>
-      <div class="booking-ref-title">Booking Reference</div>
-      <div class="booking-ref-val">${booking.bookingRef}</div>
-      <div class="verified-banner">
-        <span>🛡️</span> Secured & Verified Booking
-      </div>
-    </div>
+  return emailLayout({
+    eyebrow: hourly ? 'Hourly stay confirmed' : 'Booking confirmed',
+    ref: b.bookingRef,
+    status: { label: paid ? 'Paid' : f.paid > 0 ? 'Part-paid' : 'Pay at hotel', tone: paid ? 'ok' : 'warn' },
+    preheader: `${hotel.name}, ${hourly ? `${emailDay(b.slotStart || b.checkIn)} ${t(b.slotStart || b.checkIn)}` : `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`}`,
+    title: `You're booked at ${hotel.name}`,
+    body: `<p style="margin:0 0 4px">Hi ${esc(String(b.guestName || '').split(' ')[0] || 'there')}, your ${hourly ? 'hourly stay' : 'stay'} is confirmed. Show the attached voucher (or this email) at check-in with a photo ID.</p><p style="margin:0;color:#64748b">${esc(place)}</p>`,
+    rows: hourly
+      ? [['Date', emailDay(b.slotStart || b.checkIn)], ['Check-in', t(b.slotStart || b.checkIn)], ['Check-out', `${t(b.slotEnd || b.checkOut)} (${b.hours} hours)`], ['Guests', guestsLabel(b.adults, b.children)]]
+      : [['Check-in', `${emailDay(b.checkIn)}, from ${hhmm(hotel.checkInTime, '2:00 pm')}`], ['Check-out', `${emailDay(b.checkOut)}, by ${hhmm(hotel.checkOutTime, '11:00 am')}`], ['Stay', `${f.nights} night${f.nights === 1 ? '' : 's'} · ${b.rooms} room${b.rooms === 1 ? '' : 's'} · ${guestsLabel(b.adults, b.children)}`], ['Front desk', contact.receptionPhone || '']],
+    sections: [
+      { title: rooms.length > 1 ? 'Your rooms' : 'Your room', html: bullets(roomsList) },
+      { title: 'Price', html: moneyTable([
+        ...f.lines.map((l) => [l.label, `₹${f.lines.length ? Math.round(l.amount).toLocaleString('en-IN') : 0}`]),
+        ...f.discounts.map(([k, v]) => [k, `− ₹${Math.round(v).toLocaleString('en-IN')}`, 'less']),
+        [`GST${f.taxPct != null ? ` (${f.taxPct}%)` : ''}`, `₹${Math.round(f.tax).toLocaleString('en-IN')}`],
+        ['Total', `₹${Math.round(f.total).toLocaleString('en-IN')}`, 'total'],
+        ['Paid online', `₹${Math.round(f.paid).toLocaleString('en-IN')}`, 'plus'],
+        f.due ? ['To pay at the hotel', `₹${Math.round(f.due).toLocaleString('en-IN')}`, 'sub'] : null,
+      ]) },
+      { title: 'Cancellation', html: bullets(cancellationText(b, policy)) },
+      rules.length ? { title: 'House rules', html: bullets(rules) } : null,
+    ],
+    cta: { label: 'Manage booking', href: '/my-bookings' },
+    cta2: { label: 'Get directions', href: maps },
+    note: `${invoiceNote} The property may ask for a refundable security deposit and charges extras separately.`,
+  });
+};
 
-    <!-- 2. HERO HOTEL SECTION -->
-    <div class="hero-section">
-      ${hotelImg ? `<img src="${esc(hotelImg)}" alt="${esc(hotel.name)}" class="hotel-image">` : ''}
-    </div>
-    
-    <div class="hotel-details">
-      <h2 class="hotel-name">${hotel.name}</h2>
-      <div class="rating-stars">
-        ${Array.from({ length: Math.round(hotel.rating || 5) }).map(() => '★').join('')}
-        <span style="color: #475569; font-size: 13px; font-weight: bold; margin-left: 4px;">${hotel.rating} / 5</span>
-      </div>
-      <p class="hotel-address">${hotel.location}, ${hotel.city}</p>
-      
-      
-      <div style="display: flex; gap: 8px;" class="no-print">
-        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}" class="btn btn-secondary" style="flex: 1; padding: 10px 12px; font-size: 13px;">Get Directions</a>
-        ${waDigits ? `<a href="https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi, I have a booking at ${hotel.name} with reference ${booking.bookingRef}`)}" class="btn btn-primary" style="flex: 1; padding: 10px 12px; font-size: 13px; background-color: #16a34a;">${hotelPhone ? 'WhatsApp the hotel' : 'WhatsApp ZivoPlus'}</a>` : ''}
-      </div>
-    </div>
-
-    <!-- 3. STAY DETAILS CARD -->
-    <div class="card">
-      <h3 class="card-title">Stay Details</h3>
-      
-      <div class="stay-row">
-        <div class="stay-col">
-          <div class="stay-label">📅 Check-in</div>
-          <div class="stay-value">${checkInDate}</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">From 02:00 PM</div>
-        </div>
-        <div class="stay-col">
-          <div class="stay-label">📅 Check-out</div>
-          <div class="stay-value">${checkOutDate}</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Until 11:00 AM</div>
-        </div>
-      </div>
-      
-      <div class="stay-row">
-        <div class="stay-col">
-          <div class="stay-label">🏨 Room Type</div>
-          <div class="stay-value">${esc(roomType.name)}</div>
-        </div>
-        <div class="stay-col">
-          <div class="stay-label">🍽️ Meal Plan</div>
-          <div class="stay-value">${ratePlan.mealPlan === 'NONE' ? 'Room Only' : ratePlan.mealPlan === 'BREAKFAST' ? 'Breakfast Included' : 'Half Board'}</div>
-        </div>
-      </div>
-      
-      <div class="divider"></div>
-      
-      <div class="stay-row" style="margin-bottom: 0;">
-        <div class="stay-col">
-          <div class="stay-label">👤 Guests</div>
-          <div class="stay-value">${booking.adults} Adults ${booking.children > 0 ? `, ${booking.children} Children` : ''}</div>
-        </div>
-        <div class="stay-col">
-          <div class="stay-label">🔑 Booking Summary</div>
-          <div class="stay-value">${booking.rooms} Room x ${lengthText}</div>
-        </div>
-      </div>
-      ${(booking.bookingRooms || []).length > 1 ? `
-      <div class="divider"></div>
-      <div class="stay-label">🛏️ Rooms and lead guests</div>
-      ${booking.bookingRooms.filter((r) => !r.cancelledAt).map((r) => `<div class="stay-value" style="margin-top:6px">Room ${r.roomNumber}: ${esc(r.roomType?.name || 'Room')} · ${esc(r.ratePlan?.name || '')} · ${esc(guestsLabel(r.adults, r.children))}<br><span style="font-weight:400">Lead guest: ${esc(r.guestName)}</span></div>`).join('')}` : ''}
-    </div>
-
-    <!-- 4. PRICE BREAKDOWN -->
-    <div class="card" style="background-color: #ffffff; border-color: #e2e8f0;">
-      <h3 class="card-title">Price Breakdown</h3>
-      
-      <table class="pricing-table">
-        <tr class="pricing-row">
-          <td>Room Charges (${booking.rooms} Room${booking.rooms > 1 ? 's' : ''} x ${lengthText}${savings > 0 ? ', after discounts' : ''})</td>
-          <td style="text-align: right; font-weight: 700;">₹${inr(roomPrice)}</td>
-        </tr>
-        <tr class="pricing-row">
-          <td>GST (${gstLabel})</td>
-          <td style="text-align: right; font-weight: 700;">₹${inr(taxes)}</td>
-        </tr>
-        <tr class="pricing-row">
-          <td>Service Fees</td>
-          <td style="text-align: right; font-weight: 700; color: #16a34a;">FREE</td>
-        </tr>
-        <tr class="pricing-row-total">
-          <td>Grand Total</td>
-          <td style="text-align: right; font-weight: 800; color: #2563eb;">₹${formattedTotal}</td>
-        </tr>
-      </table>
-      
-      ${savings > 0 ? `<div class="savings-banner">
-        🎉 You are saving ₹${inr(savings)} on this booking!
-      </div>` : ''}
-      
-      <div class="divider"></div>
-      
-      <div class="stay-row" style="margin-bottom: 0;">
-        <div class="stay-col">
-          <div class="stay-label">Payment Status</div>
-          <div style="margin-top: 4px;">
-            <span class="status-chip ${booking.paymentStatus === 'PAID' ? 'status-chip-paid' : 'status-chip-pending'}">
-              ${booking.paymentStatus === 'PAID' ? 'Fully Paid' : booking.paymentStatus === 'PARTIAL_PAID' ? 'Deposit Paid' : 'Pay At Hotel'}
-            </span>
-          </div>
-        </div>
-        <div class="stay-col">
-          <div class="stay-label">Amount Paid</div>
-          <div class="stay-value" style="color: #16a34a;">₹${formattedPaid}</div>
-        </div>
-        ${booking.remainingAmount > 0 ? `
-        <div class="stay-col">
-          <div class="stay-label">Balance Due</div>
-          <div class="stay-value" style="color: #dc2626;">₹${formattedRemaining}</div>
-        </div>
-        ` : ''}
-      </div>
-    </div>
-
-    <!-- 5. AI SMART INSIGHTS -->
-    <div class="ai-insights">
-      <h3 class="card-title" style="color: #1e3a8a; display: flex; align-items: center; gap: 6px; font-size: 14px;">
-        ✨ Zivo AI Assistant
-      </h3>
-      <div class="ai-insight-item">
-        <span>⚡</span> <span><strong>Fast Check-in:</strong> Property check-in usually takes less than 5 minutes. Early check-in option is subject to availability.</span>
-      </div>
-      <div class="ai-insight-item">
-        <span>📶</span> <span><strong>Connectivity:</strong> Guests consistently rate this property's Wi-Fi as "Exceptional" (Avg 85 Mbps).</span>
-      </div>
-      <div class="ai-insight-item">
-        <span>🚙</span> <span><strong>Transit Hint:</strong> Weekday traffic near the hotel location is typically low. Free parking is secured for you.</span>
-      </div>
-    </div>
-
-    <!-- 6. POLICIES & INFORMATION -->
-    <div class="card" style="background-color: #ffffff;">
-      <h3 class="card-title">Policies & Important Info</h3>
-      <div class="policy-item">
-        <span class="badge-allowed">Allowed</span> <strong>ID Requirements:</strong> Government approved photo ID (Aadhaar, Passport, Driving License) is mandatory for check-in. Local IDs are accepted.
-      </div>
-      <div class="policy-item">
-        <span class="badge-allowed">Allowed</span> <strong>Couple Policy:</strong> Couples are welcome. Safe and friendly environment for guests.
-      </div>
-      <div class="policy-item">
-        <span class="badge-restricted">Restricted</span> <strong>Pet Policy:</strong> Pets are not allowed inside the property premises.
-      </div>
-      <div class="policy-item">
-        <span class="badge-restricted">Restricted</span> <strong>Smoking Policy:</strong> All guest rooms are 100% non-smoking. Designated smoking zones are available.
-      </div>
-      <div class="policy-item" style="margin-top: 12px; font-size: 11px; color: #64748b;">
-        <strong>Cancellation Rule:</strong> ${ratePlan.cancellationPolicy || 'Standard cancellation policies apply.'}
-      </div>
-    </div>
-
-    <!-- 7. GUEST SUPPORT BLOCK -->
-    <div style="padding: 0 24px; text-align: center;">
-      <h4 style="margin: 0 0 4px 0; color: #475569; font-size: 14px;">Need help with check-in or changes?</h4>
-      <p style="margin: 0 0 16px 0; color: #64748b; font-size: 12px;">${hotelPhone ? `The hotel: ${esc(hotelPhone)}. ` : ''}${site ? `Manage or cancel your booking in My Bookings: ${esc(site)}/my-bookings` : ''}</p>
-      ${supportPhone || supportEmail ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 24px;">
-        ZivoPlus support: ${[supportPhone && `📞 ${esc(supportPhone)}`, supportEmail && `✉️ ${esc(supportEmail)}`].filter(Boolean).join(' &nbsp;|&nbsp; ')}
-      </div>` : ''}
-    </div>
-
-    <!-- 8. ACTIONS -->
-    <div class="actions-grid no-print">
-      <a href="${siteUrl()}/my-bookings" class="btn btn-primary">Manage Booking</a>
-      <button onclick="window.print()" class="btn btn-secondary">Print Voucher</button>
-    </div>
-
-    <!-- 9. HOTEL VOUCHER SECTION -->
-    <div class="voucher-print">
-      <div class="voucher-header">
-        <div>
-          <div class="voucher-title">ZivoPlus Voucher</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Booked via ZivoPlus</div>
-          <div style="font-size: 14px; font-weight: 700; color: #2563eb; margin-top: 12px;">CONFIRMED RESERVATION</div>
-        </div>
-        <img src="${qrCodeUrl}" alt="QR Code" class="voucher-qr">
-      </div>
-      
-      <div class="divider"></div>
-      
-      <div style="margin-bottom: 20px;">
-        <div class="stay-label">Lead Guest</div>
-        <div class="stay-value" style="font-size: 16px;">${booking.guestName}</div>
-        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Email: ${booking.guestEmail} &nbsp;·&nbsp; Phone: ${booking.guestPhone}</div>
-      </div>
-      
-      <table style="width: 100%; font-size: 13px; line-height: 1.8; margin-bottom: 20px;">
-        <tr>
-          <td style="color: #64748b; font-weight: 700; width: 35%;">Hotel Name</td>
-          <td style="font-weight: 700; color: #0f172a;">${hotel.name}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Address</td>
-          <td style="color: #475569;">${hotel.location}, ${hotel.city}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Check-in Date</td>
-          <td style="font-weight: 700; color: #0f172a;">${checkInDate}${hourly ? '' : ' (after 02:00 PM)'}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Check-out Date</td>
-          <td style="font-weight: 700; color: #0f172a;">${checkOutDate}${hourly ? '' : ' (before 11:00 AM)'}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Room Type</td>
-          <td style="font-weight: 700; color: #0f172a;">${esc(roomType.name)}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Rooms & Guests</td>
-          <td style="font-weight: 700; color: #0f172a;">${booking.rooms} Room x ${booking.adults} Adults ${booking.children > 0 ? `, ${booking.children} Children` : ''}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Total Paid Amount</td>
-          <td style="font-weight: 800; color: #16a34a; font-size: 15px;">₹${formattedPaid}</td>
-        </tr>
-        ${booking.remainingAmount > 0 ? `
-        <tr>
-          <td style="color: #64748b; font-weight: 700;">Balance Due at Desk</td>
-          <td style="font-weight: 800; color: #dc2626; font-size: 15px;">₹${formattedRemaining}</td>
-        </tr>
-        ` : ''}
-      </table>
-      
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; font-size: 11px; text-align: center; color: #64748b;">
-        📢 <strong>Notice to Guest:</strong> Please present this voucher and a government approved ID card at the front desk.
-      </div>
-    </div>
-
-    <!-- 11. FOOTER -->
-    <div class="footer">
-      <div style="font-weight: 800; margin-bottom: 8px; color: #ffffff;">ZivoPlus Security</div>
-      <p style="margin: 0 0 16px 0;">This is an automated, secure booking notification. Your data is protected by Zivo Security standards. A copy of this voucher and tax invoice has been stored in your profile.</p>
-      
-      <div class="footer-links" style="margin-bottom: 24px;">
-        <a href="${siteUrl()}/terms">Terms & Conditions</a> &nbsp;·&nbsp;
-        <a href="${siteUrl()}/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-        <a href="${siteUrl()}/support">Help Desk</a>
-      </div>
-      
-      <div>© 2026 ZivoPlus Private Limited. All Rights Reserved.</div>
-    </div>
-
-  </div>
-</body>
-</html>
-  `;
+/** The confirmation email for a booking (loaded with hotel, room type, rate plan, rooms). */
+export const buildConfirmationEmail = async (booking) => {
+  const [policy, settings] = await Promise.all([
+    booking.stayType === 'HOURLY' ? null : prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }),
+    getDocumentSettings(),
+  ]);
+  return { html: await confirmationEmailHtml({ booking, hotel: booking.hotel, rooms: booking.bookingRooms || [], policy, settings }), settings };
 };
 
 /**
@@ -668,37 +80,22 @@ export const sendBookingConfirmationEmail = async (bookingId) => {
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: {
-        hotel: { include: { media: { ...COVER_PHOTO_FIRST, select: { url: true } } } },
-        roomType: true,
-        ratePlan: true,
-        ...BOOKING_ROOMS_INCLUDE
-      }
+      include: { hotel: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE },
     });
-
     if (!booking) {
       console.error(`[EmailService] Booking not found: ${bookingId}`);
       return false;
     }
-
-    // Several rooms: "2 × Premium Suite, 1 × Standard Room"
-    const roomLabel = { ...booking.roomType, name: roomsSummary(booking.bookingRooms, booking, booking.roomType?.name) };
-    // Hourly stays have no rate plan: room only, with the hourly cancellation rule
-    const hrs = Number(booking.metadata?.hourly?.freeCancelHours ?? 2);
-    const plan = booking.ratePlan || { name: 'Hourly stay', mealPlan: 'NONE', cancellationPolicy: hrs > 0 ? `Free cancellation until ${hrs} hour${hrs === 1 ? '' : 's'} before check-in; no refund after that.` : 'Non-refundable once booked.' };
-    const emailHtml = generateEmailHtml(booking, booking.hotel, roomLabel, plan, await getSupportContacts());
-
-    console.log(`[EmailService] Enqueuing confirmation email job for booking ${booking.bookingRef} to ${booking.guestEmail}...`);
-    
+    const { html, settings } = await buildConfirmationEmail(booking);
     await queueService.enqueue('email', 'SEND_BOOKING_CONFIRMATION', {
       to: booking.guestEmail,
       subject: booking.stayType === 'HOURLY'
-        ? `Hourly stay confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`
-        : `Booking Confirmed at ${booking.hotel.name} - Ref: ${booking.bookingRef}`,
-      html: emailHtml
+        ? `Hourly stay confirmed at ${booking.hotel.name} · ${booking.bookingRef}`
+        : `Booking confirmed at ${booking.hotel.name} · ${booking.bookingRef}`,
+      html,
+      // The booking voucher PDF, drawn when the email is sent
+      ...(settings.email.attachGuestVoucher ? { financeAttachments: [{ type: 'guestVoucher', bookingId }] } : {}),
     }, { priority: 2 });
-    
-    console.log(`[EmailService] Booking Confirmation Email enqueued successfully!`);
     // Bell / SMS for the guest and the "New booking" alert + email for the hotel (once per booking)
     import('./bookingNotices.js').then((m) => m.onBookingConfirmed(bookingId)).catch((e) => console.error('[Notify] booking confirmed:', e.message));
     return true;

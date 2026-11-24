@@ -62,6 +62,7 @@ const RULES = [
   [/^\/admin\/reports/, ['dashboard.view', 'dashboard.view'], null],
   [/^\/admin\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/admin\/(system|delivery)/, ['settings.view', 'settings.manage'], null],
+  [/^\/admin\/(documents|setup)/, ['settings.view', 'settings.manage'], null],
   [/^\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/master\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/master/, ['dashboard.view', 'settings.manage'], null],
