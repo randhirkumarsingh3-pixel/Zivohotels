@@ -180,7 +180,7 @@ const Reports = () => {
       {data && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Stat label={data.grouped ? 'Rows in report' : 'Rows'} value={(data.grouped ? data.totals.count : data.rows.length).toLocaleString('en-IN')} />
+            <Stat label={data.grouped ? 'Rows in report' : 'Rows'} value={(data.grouped ? data.totals.count : (data.rowCount ?? data.rows.length)).toLocaleString('en-IN')} />
             {moneyTotals.slice(0, 3).map((c) => <Stat key={c.key} label={c.label} value={inr(data.totals[c.key])} />)}
             {(data.cards || []).map((c) => <Stat key={c.label} label={c.label} value={fmt(c.value, c.type)} />)}
           </div>
@@ -215,10 +215,10 @@ const Reports = () => {
                 </table>
               </div>
             )}
-            {(data.rows.length > SHOW || data.truncated) && (
+            {((data.rowCount ?? data.rows.length) > SHOW || data.truncated) && (
               <p className="px-4 py-2 text-xs text-gray-600 border-t border-gray-100">
                 {data.truncated ? 'This report has more than 20,000 rows: narrow the dates or filters. ' : ''}
-                Showing the first {SHOW.toLocaleString('en-IN')} of {data.rows.length.toLocaleString('en-IN')} rows; the totals and downloads include all of them.
+                Showing the first {SHOW.toLocaleString('en-IN')} of {(data.rowCount ?? data.rows.length).toLocaleString('en-IN')} rows; the totals and downloads include all of them.
               </p>
             )}
           </section>

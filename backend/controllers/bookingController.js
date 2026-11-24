@@ -589,7 +589,6 @@ export const getMyBookings = async (req, res, next) => {
         ratePlan: { select: { id: true, name: true, mealPlan: true } },
         invoice: { select: { id: true, invoiceRef: true, status: true } },
         timelineEvents: { orderBy: { createdAt: 'asc' } },
-        notificationSyncs: true,
         review: { select: { id: true, rating: true, comment: true } }
       },
       orderBy: { createdAt: 'desc' }

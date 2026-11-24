@@ -2,7 +2,7 @@ import { weakPasswordReason } from '../utils/passwordPolicy.js';
 import { unlock } from '../services/loginGuard.js';
 import { sendPasswordChanged } from '../services/accountEmails.js';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import jwt from 'jsonwebtoken';
 import { setSessionCookie } from '../utils/sessionCookie.js';
 import { z } from 'zod';

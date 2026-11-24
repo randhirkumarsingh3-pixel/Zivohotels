@@ -1,6 +1,10 @@
 import { Prisma } from '@prisma/client';
+
 import { scheduleRecompute } from '../services/dynamicPricingService.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
+
+/** A refusal the guest should see as it is (sold out, closed), not as a server error. */
+const refusal = (statusCode, message) => Object.assign(new Error(message), { statusCode, status: statusCode, code: statusCode === 409 ? 'SOLD_OUT' : 'NOT_FOUND' });
 
 export const inventoryRepository = {
 
@@ -21,7 +25,7 @@ export const inventoryRepository = {
       select: { totalInventory: true }
     });
     if (!roomType) {
-      throw new Error("RoomType not found");
+      throw refusal(404, "This room type is no longer available");
     }
 
     const inventoryData = dateRange.map(date => ({
@@ -51,7 +55,7 @@ export const inventoryRepository = {
       select: { date: true }
     });
     if (closed) {
-      throw new Error(`Not available on ${closed.date.toDateString()} (closed for sale)`);
+      throw refusal(409, `This room isn't available on ${closed.date.toDateString()} (closed for sale). Please choose other dates or another room.`);
     }
 
     // 2. Atomic Bulk Update
@@ -68,7 +72,8 @@ export const inventoryRepository = {
     });
 
     if (updateResult.count !== dateRange.length) {
-      throw new Error("Sold out for the requested dates");
+      // Someone else took the last room between search and booking: a normal answer, not a server error
+      throw refusal(409, "Sorry, this room has just sold out for your dates. Please choose another room or other dates.");
     }
 
     // 3. Hard Guard against Negative Inventory

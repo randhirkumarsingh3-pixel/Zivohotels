@@ -113,38 +113,64 @@ export const resolveBest = async (ctx) => {
  */
 export const displayOffers = async ({ hotelId, checkIn, checkOut, plans, membership = null, stayType = 'NIGHTLY' }) => {
   if (!checkIn || !checkOut || !plans.length) return {};
-  // Member-only offers show only to members who can use them; hourly stays only offers for them
-  const list = (await candidates(hotelId, null)).filter((p) => !p.code && !p.firstBookingOnly && canUseAudience(membership, p.audience) && (stayType !== 'HOURLY' || p.forHourly));
+  const many = await displayOffersMany({ hotels: [{ hotelId, plans }], checkIn, checkOut, membership, stayType });
+  return many[hotelId] || {};
+};
+
+/** Automatic offers a guest may see (no code, not first-booking-only, audience and stay type fit). */
+const showable = (p, membership, stayType) => !p.code && !p.firstBookingOnly && canUseAudience(membership, p.audience) && (stayType !== 'HOURLY' || p.forHourly);
+
+/**
+ * displayOffers for many properties at once (search results): one query for the offers of all of
+ * them, and each offer's usage limits checked once. hotels: [{ hotelId, plans }].
+ * Returns { [hotelId]: { [ratePlanId]: offer } }.
+ */
+export const displayOffersMany = async ({ hotels, checkIn, checkOut, membership = null, stayType = 'NIGHTLY' }) => {
+  const wanted = hotels.filter((h) => h.plans?.length);
+  if (!checkIn || !checkOut || !wanted.length) return {};
+  const ids = [...new Set(wanted.map((h) => h.hotelId))];
+  const rows = await prisma.promotion.findMany({
+    where: { isActive: true, code: null, OR: [{ hotelId: { in: ids } }, { hotelId: null }] },
+  });
+  const list = rows.filter((p) => showable(p, membership, stayType));
   if (!list.length) return {};
   const usable = [];
   for (const p of list) if (!(await limitProblem(p, null))) usable.push(p);
+  if (!usable.length) return {};
+
   const nights = Math.max(1, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000));
-  const out = {};
-  for (const plan of plans) {
-    const subtotal = Math.round(Number(plan.nightlyPrice) * nights);
-    let best = null;
-    for (const p of usable) {
-      if (!checkEligibility(p, { hotelId, roomTypeId: plan.roomTypeId, ratePlanId: plan.ratePlanId, checkIn, checkOut, subtotal }).ok) continue;
-      const discount = discountFor(p, subtotal);
-      if (discount > 0 && (!best || discount > best.discount)) best = { p, discount };
+  const result = {};
+  for (const { hotelId, plans } of wanted) {
+    const mine = usable.filter((p) => (p.hotelId === hotelId || p.hotelId === null) && coversHotel(p, hotelId));
+    if (!mine.length) continue;
+    const out = {};
+    for (const plan of plans) {
+      const subtotal = Math.round(Number(plan.nightlyPrice) * nights);
+      let best = null;
+      for (const p of mine) {
+        if (!checkEligibility(p, { hotelId, roomTypeId: plan.roomTypeId, ratePlanId: plan.ratePlanId, checkIn, checkOut, subtotal }).ok) continue;
+        const discount = discountFor(p, subtotal);
+        if (discount > 0 && (!best || discount > best.discount)) best = { p, discount };
+      }
+      if (best) {
+        out[plan.ratePlanId] = {
+          id: best.p.id,
+          name: best.p.name,
+          label: promotionLabel(best.p),
+          audience: best.p.audience,
+          discountType: best.p.discountType,
+          value: Number(best.p.value),
+          maxDiscount: best.p.maxDiscount != null ? Number(best.p.maxDiscount) : null,
+          discountTotal: best.discount,
+          discountPerNight: Math.round(best.discount / nights),
+          nightlyPriceAfter: Math.round((subtotal - best.discount) / nights),
+          fundedBy: best.p.fundedBy,
+        };
+      }
     }
-    if (best) {
-      out[plan.ratePlanId] = {
-        id: best.p.id,
-        name: best.p.name,
-        label: promotionLabel(best.p),
-        audience: best.p.audience,
-        discountType: best.p.discountType,
-        value: Number(best.p.value),
-        maxDiscount: best.p.maxDiscount != null ? Number(best.p.maxDiscount) : null,
-        discountTotal: best.discount,
-        discountPerNight: Math.round(best.discount / nights),
-        nightlyPriceAfter: Math.round((subtotal - best.discount) / nights),
-        fundedBy: best.p.fundedBy,
-      };
-    }
+    if (Object.keys(out).length) result[hotelId] = out;
   }
-  return out;
+  return result;
 };
 
 /**
@@ -180,4 +206,4 @@ export const performance = async (promotionIds) => {
   return out;
 };
 
-export default { resolveBest, displayOffers, redeem, performance };
+export default { resolveBest, displayOffers, displayOffersMany, redeem, performance };

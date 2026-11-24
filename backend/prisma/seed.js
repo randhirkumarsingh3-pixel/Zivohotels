@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import hotelsData from '../data/hotels.js';
 
 const prisma = new PrismaClient();

@@ -313,10 +313,6 @@ export const getHotelById = (id, stay = {}) => {
   const q = stay.checkIn && stay.checkOut ? `?${new URLSearchParams({ checkin: stay.checkIn, checkout: stay.checkOut })}` : '';
   return apiFetch(`${PUBLIC_BASE}/hotels/${id}${q}`).then(res => res?.data);
 };
-export const getHotelAvailability = (id, params) => {
-  const qs = new URLSearchParams(params).toString();
-  return apiFetch(`${PUBLIC_BASE}/hotels/${id}/availability?${qs}`).then(res => res?.data);
-};
 // What's nearby (onboarding Location step)
 export const suggestNearbyPlaces = (lat, lng) => apiFetch(`${PUBLIC_BASE}/hotels/nearby/suggest`, { method: 'POST', body: JSON.stringify({ lat, lng }) }).then(res => res?.data || []);
 export const lookupNearbyPlace = (q, lat, lng) => apiFetch(`${PUBLIC_BASE}/hotels/nearby/lookup`, { method: 'POST', body: JSON.stringify({ q, lat, lng }) }).then(res => res?.data || []);

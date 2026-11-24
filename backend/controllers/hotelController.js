@@ -6,13 +6,13 @@ import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
 import { getShared, setShared } from '../utils/sharedCache.js';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import { mediaService } from '../services/MediaService.js';
 import { queueService } from '../services/queueService.js';
 import { STAY_BOOKING_STATUSES } from '../constants/bookingStatus.js';
 import { CANCELLATION_POLICY_CODES, policyFieldsForCode } from '../utils/refundCalculator.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
-import { displayOffers } from '../services/promotionService.js';
+import { displayOffers, displayOffersMany } from '../services/promotionService.js';
 import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
 import { stayNightlyPrice } from '../services/ariService.js';
@@ -25,10 +25,6 @@ import { hotelSlug } from '../utils/hotelSlug.js';
 import { seoChanged } from '../services/seoService.js';
 
 const SEARCH_BATCH = 200;
-/** Runs fn over items, `size` at a time (keeps the database pool free for other visitors). */
-const inBatches = async (items, size, fn) => {
-  for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
-};
 
 // --- ZOD SCHEMAS ---
 
@@ -1125,11 +1121,15 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // Best automatic offer per hotel (promotions without a code), on the plan it makes cheapest
   const searchEnd = new Date(stayNights[stayNights.length - 1]);
   searchEnd.setDate(searchEnd.getDate() + 1);
-  await inBatches(mappedHotels, 20, async (h) => {
+  const offersByHotel = await displayOffersMany({
+    hotels: mappedHotels.map((h) => ({ hotelId: h.id, plans: h.bookablePlans })),
+    checkIn: stayNights[0], checkOut: searchEnd,
+  });
+  for (const h of mappedHotels) {
     const plans = h.bookablePlans;
     delete h.bookablePlans;
-    if (!plans.length) return;
-    const offers = await displayOffers({ hotelId: h.id, checkIn: stayNights[0], checkOut: searchEnd, plans });
+    const offers = offersByHotel[h.id];
+    if (!plans.length || !offers) continue;
     let best = null;
     for (const p of plans) {
       const o = offers[p.ratePlanId];
@@ -1137,7 +1137,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
       if (o && (!best || after < best.nightlyPriceAfter)) best = { ...o, nightlyPriceBefore: p.nightlyPrice };
     }
     if (best && best.nightlyPriceAfter < h.price) h.offer = best;
-  });
+  }
 
   // Apply filters. A hotel with rooms left but not enough (or none big enough) for the group is left
   // out; a fully sold-out one is still listed as sold out.

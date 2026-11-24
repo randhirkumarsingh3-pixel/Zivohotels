@@ -10,7 +10,7 @@
  */
 import 'dotenv/config';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import prisma from '../config/db.js';
 
 const TEST_EMAILS = ['admin@zivoplus.com', 'extranet@zivotechretreat.com', 'user@zivoplus.com'];

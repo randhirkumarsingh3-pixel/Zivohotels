@@ -3,7 +3,7 @@ import { lockedFor, recordFailure, recordSuccess } from '../services/loginGuard.
 import prisma from '../config/db.js';
 import { firstHotelFor, accessForClient } from '../services/accessService.js';
 import { awardSignupBonus } from '../services/loyaltyService.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import jwt from 'jsonwebtoken';
 import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
