@@ -24,7 +24,7 @@ const inDays = (n) => ymd(new Date(Date.now() + n * 86400000));
 
 describe('Google Hotels end to end', function () {
   this.timeout(60000);
-  let hotel; let admin; let owner; let guest; let saved; let savedIntegration; let token;
+  let hotel; let admin; let owner; let saved; let savedIntegration; let token;
   const feed = (path, body) => (body === undefined ? raw.get(`/google/${token}/${path}`) : raw.post(`/google/${token}/${path}`, body));
   const listed = async () => (await feed('hotel-list.xml')).data;
 
@@ -37,7 +37,6 @@ describe('Google Hotels end to end', function () {
     saved = await prisma.systemConfig.findUnique({ where: { key: 'google_hotels' } });
     admin = await login('admin@zivoplus.com', process.env.SEED_ADMIN_PASSWORD || 'admin123');
     owner = await login('extranet@zivotechretreat.com', process.env.SEED_OWNER_PASSWORD || 'ZivoExtranet@2026');
-    guest = await login('user@zivoplus.com', process.env.SEED_CUSTOMER_PASSWORD || 'customer123');
     const g = { ...(savedIntegration?.googleHotels || {}) }; delete g.optIn; delete g.adminExcluded;
     await prisma.hotel.update({ where: { id: hotel.id }, data: { integrationSettings: { ...(savedIntegration || {}), googleHotels: g } } });
   });
@@ -74,7 +73,8 @@ describe('Google Hotels end to end', function () {
     const bundle = /<RoomBundle>\s*<RoomID>([^<]+)<\/RoomID>\s*<PackageID>([^<]+)<\/PackageID>\s*<Baserate currency="INR">([\d.]+)<\/Baserate>\s*<Tax currency="INR">([\d.]+)<\/Tax>/.exec(r.data);
     expect(bundle, r.data).to.not.equal(null);
     const [, roomTypeId, ratePlanId, baserate, tax] = bundle;
-    const p = await api.post('/bookings/preview', { hotelId: hotel.id, roomTypeId, ratePlanId, checkIn: checkin, checkOut: inDays(22), adults: 2, children: 0, rooms: 1, extraBeds: 0, paymentType: 'PREPAID' }, guest);
+    const p = await api.post('/bookings/preview', { hotelId: hotel.id, roomTypeId, ratePlanId, checkIn: checkin, checkOut: inDays(22), adults: 2, children: 0, rooms: 1, extraBeds: 0, paymentType: 'PREPAID' });
+    // Google shows the public price (signed out); signed-in guests then pay their lower sign-in price
     expect(p.status, JSON.stringify(p.data)).to.equal(200);
     expect(Number(baserate)).to.be.closeTo(Number(p.data.data.baseAmount), 0.01);
     expect(Number(tax)).to.be.closeTo(Number(p.data.data.taxAmount), 0.01);

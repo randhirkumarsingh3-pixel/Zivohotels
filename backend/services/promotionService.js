@@ -34,7 +34,7 @@ const countRedemptions = async (db, where) => {
 };
 
 /** Usage-limit checks (need the database). Returns null if fine, else a reason. */
-const limitProblem = async (promotion, userId, db = prisma) => {
+const limitProblem = async (promotion, userId, db = prisma, { excludeBookingId = null } = {}) => {
   if (promotion.usageLimit) {
     const used = await countRedemptions(db, { promotionId: promotion.id });
     if (used >= promotion.usageLimit) return 'This offer has been fully used';
@@ -45,7 +45,8 @@ const limitProblem = async (promotion, userId, db = prisma) => {
   }
   if (promotion.firstBookingOnly) {
     if (!userId) return 'Log in to use this offer';
-    const prior = await db.booking.count({ where: { userId, ...ACTIVE_BOOKING } });
+    // The booking being saved (when the offer is recorded) is not an earlier booking
+    const prior = await db.booking.count({ where: { userId, ...ACTIVE_BOOKING, ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}) } });
     if (prior > 0) return 'This offer is for your first booking';
   }
   return null;
@@ -181,7 +182,7 @@ export const redeem = async (tx, { promotionId, bookingId, userId, hotelId, disc
   await tx.$queryRaw`SELECT id FROM "Promotion" WHERE id = ${promotionId} FOR UPDATE`;
   const promotion = await tx.promotion.findUnique({ where: { id: promotionId } });
   if (!promotion || !promotion.isActive) throw Object.assign(new Error('This offer is no longer available. Please review the price and try again.'), { statusCode: 409 });
-  const problem = await limitProblem(promotion, userId, tx);
+  const problem = await limitProblem(promotion, userId, tx, { excludeBookingId: bookingId });
   if (problem) throw Object.assign(new Error(`${problem}. Please review the price and try again.`), { statusCode: 409 });
   return tx.promotionRedemption.create({
     data: { promotionId, bookingId, userId: userId || null, hotelId, discountAmount: new Prisma.Decimal(discountAmount), fundedBy: promotion.fundedBy }

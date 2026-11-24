@@ -278,6 +278,13 @@ app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed);
+// What signing in / a new account saves (hotel page pop-up); see services/guestOffers.js
+app.get('/api/v1/public/guest-offers', async (req, res, next) => {
+  try {
+    const { guestOffers } = await import('./services/guestOffers.js');
+    res.json({ success: true, data: await guestOffers(req.query.hotelId ? String(req.query.hotelId).slice(0, 64) : null) });
+  } catch (e) { next(e); }
+});
 // City / area landing pages (/hotels-in-bengaluru): heading, intro and questions
 app.get('/api/v1/public/places/:slug', async (req, res, next) => {
   try {

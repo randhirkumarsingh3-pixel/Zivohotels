@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isHourly, slotText, lengthText, canAddHours } from '../utils/stay';
+import { isHourly, slotText, lengthText, canAddHours, nightsOf } from '../utils/stay';
+import { MEAL_LABELS } from '../components/hotel/ratePlans';
 import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../utils/bookingRooms';
 import RoomCancel from '../components/booking/RoomCancel';
 import { 
@@ -160,6 +161,79 @@ const whatsappNumber = (b) => {
   const d = hotelPhone(b).replace(/\D/g, '');
   if (!d) return '';
   return d.length === 10 ? `91${d}` : d.replace(/^0+/, '');
+};
+
+/** Check-in and check-out, with the hotel's times (hourly stays: the time slot). */
+const IST_DAY = { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+const IST_TIME = { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' };
+const clock = (hhmm) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
+  if (!m) return null;
+  const d = new Date(Date.UTC(2000, 0, 1, Number(m[1]), Number(m[2])));
+  return d.toLocaleTimeString('en-IN', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' });
+};
+const StayDates = ({ booking }) => {
+  const hourly = isHourly(booking);
+  const inAt = hourly ? booking.slotStart || booking.checkIn : booking.checkIn;
+  const outAt = hourly ? booking.slotEnd || booking.checkOut : booking.checkOut;
+  const parts = [
+    { label: 'Check-in', day: new Date(inAt).toLocaleDateString('en-IN', IST_DAY), time: hourly ? new Date(inAt).toLocaleTimeString('en-IN', IST_TIME) : clock(booking.hotel?.checkInTime), prefix: hourly ? 'at' : 'from' },
+    { label: 'Check-out', day: new Date(outAt).toLocaleDateString('en-IN', IST_DAY), time: hourly ? new Date(outAt).toLocaleTimeString('en-IN', IST_TIME) : clock(booking.hotel?.checkOutTime), prefix: hourly ? 'at' : 'by' },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {parts.map((x) => (
+        <div key={x.label} className="border border-gray-100 rounded-2xl p-4">
+          <p className="text-xs text-gray-500 font-bold uppercase mb-1">{x.label}</p>
+          <p className="font-extrabold text-gray-900 text-sm">{x.day}</p>
+          {x.time && <p className="text-xs text-gray-600 mt-0.5">{x.prefix} {x.time}</p>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const PAYMENT_METHOD = { PREPAID: 'Paid online', PARTIAL: 'Part online, rest at the hotel', PAY_AT_HOTEL: 'Pay at the hotel' };
+const rupees = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
+
+/** What the guest paid and still owes, in plain words (pay-at-hotel stays: nothing paid yet). */
+const PaymentSummary = ({ booking }) => {
+  const paid = Number(booking.paidAmount) || 0;
+  const cancelled = ['CANCELLED', 'NO_SHOW'].includes(booking.status);
+  // Not paid yet (pay at the hotel / pay later): the whole balance is still due, even where the
+  // booking does not record it as remaining yet
+  const unpaid = !['PAID', 'PARTIAL_PAID', 'REFUNDED'].includes(booking.paymentStatus);
+  const due = cancelled ? 0 : Math.max(Number(booking.remainingAmount) || 0, unpaid ? (Number(booking.totalAmount) || 0) - paid : 0);
+  const refunded = Number(booking.refundAmount) || 0;
+  const pill = cancelled ? (refunded > 0 ? ['Refunded', 'emerald'] : ['Cancelled', 'gray'])
+    : due > 0 && paid > 0 ? ['Part paid', 'amber']
+      : due > 0 ? ['Pay at the hotel', 'amber']
+        : ['Paid', 'emerald'];
+  const pillCls = { emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20', amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20', gray: 'bg-white/10 text-gray-300 border-white/20' }[pill[1]];
+  return (
+    <div className="bg-gray-900 text-white rounded-2xl p-6">
+      <div className="flex justify-between items-start mb-4 gap-3">
+        <div>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Booking total</p>
+          <p className="text-3xl font-black mt-1">{rupees(booking.totalAmount)}</p>
+        </div>
+        <span className={`text-xs font-black uppercase px-2.5 py-1 rounded-full border ${pillCls}`}>{pill[0]}</span>
+      </div>
+      <div className="border-t border-white/10 pt-4 grid grid-cols-2 gap-4 text-xs text-gray-400">
+        <div><span>Paid online</span><p className="font-bold text-white mt-0.5">{rupees(paid)}</p></div>
+        <div><span>{cancelled ? 'Refunded' : 'To pay at the hotel'}</span><p className="font-bold text-white mt-0.5">{rupees(cancelled ? refunded : due)}</p></div>
+        <div><span>Payment method</span><p className="font-bold text-white mt-0.5">{PAYMENT_METHOD[booking.paymentType] || booking.paymentType}</p></div>
+        <div><span>Reference No.</span><p className="font-mono text-white mt-0.5">{booking.bookingRef}</p></div>
+      </div>
+    </div>
+  );
+};
+
+/** Why there is no invoice to download yet. */
+const invoiceNote = (booking) => {
+  if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) return 'No invoice: this booking was cancelled.';
+  if (booking.status === 'PENDING') return 'The invoice is issued once the booking is confirmed.';
+  return 'Your invoice is being prepared. Check again in a few minutes.';
 };
 
 const MyBookings = () => {
@@ -544,7 +618,7 @@ const MyBookings = () => {
                       { label: 'Rooms',  value: `${activeBooking.rooms} room${activeBooking.rooms === 1 ? '' : 's'}` },
                       isHourly(activeBooking)
                         ? { label: 'Hourly', value: lengthText(activeBooking) }
-                        : { label: 'Nights', value: `${Math.ceil(Math.abs(new Date(activeBooking.checkOut) - new Date(activeBooking.checkIn)) / 86400000)} Nights` }
+                        : { label: 'Nights', value: `${nightsOf(activeBooking)} night${nightsOf(activeBooking) === 1 ? '' : 's'}` }
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50 text-center">
                         <p className="text-xs text-gray-400 font-bold uppercase mb-1">{s.label}</p>
@@ -553,8 +627,10 @@ const MyBookings = () => {
                     ))}
                   </div>
 
+                  <StayDates booking={activeBooking} />
+
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm">Stay Parameters</h4>
+                    <h4 className="font-bold text-gray-900 text-sm">Stay details</h4>
                     <div className="grid grid-cols-2 gap-4 text-xs">
                       <div><span className="text-gray-400">Guest Name</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestName}</p></div>
                       <div><span className="text-gray-400">Contact</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestPhone}</p></div>
@@ -577,7 +653,7 @@ const MyBookings = () => {
                       ) : (
                         <>
                           <div className="col-span-2"><span className="text-gray-400">Room Type</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.roomType?.name}</p></div>
-                          <div className="col-span-2"><span className="text-gray-400">Rate Plan</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.ratePlan?.name} ({activeBooking.ratePlan?.mealPlan || 'No Meal'})</p></div>
+                          <div className="col-span-2"><span className="text-gray-400">Rate Plan</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.ratePlan?.name} ({MEAL_LABELS[activeBooking.ratePlan?.mealPlan] || 'Room only'})</p></div>
                         </>
                       )}
                     </div>
@@ -646,32 +722,20 @@ const MyBookings = () => {
               {/* BILLING */}
               {activeTab === 'billing' && (
                 <div className="space-y-6">
-                  <div className="bg-gray-900 text-white rounded-2xl p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Total Paid</p>
-                        <p className="text-3xl font-black mt-1">₹{activeBooking.paidAmount?.toLocaleString('en-IN')}</p>
-                      </div>
-                      <span className="bg-emerald-500/10 text-emerald-400 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/20">Payment Captured</span>
-                    </div>
-                    <div className="border-t border-white/10 pt-4 grid grid-cols-2 gap-4 text-xs text-gray-400">
-                      <div><span>Payment Method</span><p className="font-bold text-white mt-0.5">{activeBooking.paymentType}</p></div>
-                      <div><span>Reference No.</span><p className="font-mono text-white mt-0.5">{activeBooking.bookingRef}</p></div>
-                    </div>
-                  </div>
+                  <PaymentSummary booking={activeBooking} />
 
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
                     <h4 className="font-bold text-gray-900 text-sm">Invoice & Billing Center</h4>
                     <p className="text-xs text-gray-500">Download official billing receipts for tax declarations.</p>
-                    {activeBooking.invoice ? (
+                    {activeBooking.invoice?.status === 'GENERATED' ? (
                       <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
-                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF</span>
+                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF · {activeBooking.invoice.invoiceRef}</span>
                         <Download size={14} className="text-gray-400" />
                       </button>
                     ) : (
-                      <div className="p-3 rounded-xl bg-amber-50 text-amber-700 text-xs border border-amber-100 flex items-start gap-2">
-                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <span>No invoice found. It may still be generating.</span>
+                      <div className="p-3 rounded-xl bg-gray-50 text-gray-700 text-xs border border-gray-100 flex items-start gap-2">
+                        <Clock size={16} className="shrink-0 mt-0.5" />
+                        <span>{invoiceNote(activeBooking)}</span>
                       </div>
                     )}
                   </div>

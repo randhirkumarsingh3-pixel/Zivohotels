@@ -2,7 +2,7 @@
  * Cancellation money rules (pure: no database or payment calls), shared by cancellationService and
  * unit tests.
  */
-import { calculateRefund } from '../utils/refundCalculator.js';
+import { calculateRefund, policyFieldsForCode } from '../utils/refundCalculator.js';
 import { roundMoney, toMoney } from '../utils/money.js';
 
 /**
@@ -56,3 +56,30 @@ export const roomCancellationQuote = ({ booking, rooms, room, policy, initiatedB
   };
 };
 
+
+/**
+ * When free cancellation ends for a booking (the same instant the refund rules use, including a
+ * membership's extra hours). Non-refundable bookings, and ones made after the free period, end at
+ * the moment they were booked. Hourly stays: freeCancelHours before the slot starts.
+ */
+export const freeCancellationEndsAt = (booking, policy) => {
+  const booked = new Date(booking.createdAt || Date.now());
+  let end;
+  if (booking.stayType === 'HOURLY') {
+    const hrs = Number(booking.metadata?.hourly?.freeCancelHours ?? 2);
+    end = new Date(new Date(booking.slotStart || booking.checkIn).getTime() - hrs * 3600 * 1000);
+  } else {
+    const code = policy?.policyCode || 'FREE_CANCEL_24H';
+    if (code === 'NON_REFUNDABLE') return booked;
+    const { freeCancellationHours } = policyFieldsForCode(code);
+    const extra = Number(booking.metadata?.membership?.freeCancelExtraHours) || 0;
+    end = new Date(new Date(booking.checkIn).getTime() - Math.max(0, freeCancellationHours - extra) * 3600 * 1000);
+  }
+  return end < booked ? booked : end;
+};
+
+/**
+ * Guests can send requests to the hotel (late arrival, pickup…) once free cancellation has ended,
+ * so hotels only prepare for stays that are firm. Returns when they open.
+ */
+export const requestsOpenAt = (booking, policy) => freeCancellationEndsAt(booking, policy);

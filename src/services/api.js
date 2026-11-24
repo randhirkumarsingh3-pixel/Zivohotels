@@ -277,6 +277,8 @@ export const getPopularDestinations = (options = {}) => apiFetch(`${PUBLIC_BASE}
 export const searchDestinations = (query, options = {}) => apiFetch(`${PUBLIC_BASE}/public/search?q=${encodeURIComponent(query)}`, options).then(res => res?.data);
 // Home page: cities with live counts, top-rated hotels, live offers, reviews, sign-up and membership
 export const getHomeFeed = () => apiFetch(`${PUBLIC_BASE}/public/home`).then(res => res?.data);
+// What signing in / a new account saves on a hotel (sign-in price, first-booking offer)
+export const getGuestOffers = (hotelId) => apiFetch(`${PUBLIC_BASE}/public/guest-offers${hotelId ? `?hotelId=${encodeURIComponent(hotelId)}` : ''}`).then(res => res?.data || null);
 export const nearbyDestinations = (lat, lng, options = {}) => apiFetch(`${PUBLIC_BASE}/public/search/nearby?lat=${lat}&lng=${lng}`, options).then(res => res?.data);
 
 export const getHotels = async (searchParams = {}, filters = {}) => {

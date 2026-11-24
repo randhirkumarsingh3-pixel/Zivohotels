@@ -15,7 +15,7 @@ const STATUS = {
   DECLINED: { label: 'Not possible', cls: 'bg-red-50 text-red-800 border-red-200', Icon: XCircle },
   CANCELLED: { label: 'Withdrawn', cls: 'bg-gray-50 text-gray-600 border-gray-200', Icon: Ban },
 };
-const when = (d) => new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const when = (d) => new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 const StayRequests = ({ booking }) => {
   const [list, setList] = useState([]);
@@ -23,7 +23,11 @@ const StayRequests = ({ booking }) => {
   const [form, setForm] = useState({ type: '', requestedTime: '', details: '' });
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState(null);
-  const canAsk = ['CONFIRMED', 'CHECKED_IN'].includes(booking.status) && new Date(booking.checkOut) > new Date();
+  const active = ['CONFIRMED', 'CHECKED_IN'].includes(booking.status) && new Date(booking.checkOut) > new Date();
+  // Requests open once free cancellation has ended (the hotel prepares only for firm stays)
+  const opensAt = booking.requestsOpenAt ? new Date(booking.requestsOpenAt) : null;
+  const notYet = active && opensAt && opensAt > new Date();
+  const canAsk = active && !notYet;
   const type = REQUEST_TYPES.find((t) => t.id === form.type);
 
   const load = useCallback(() => {
@@ -95,7 +99,11 @@ const StayRequests = ({ booking }) => {
           </button>
         </form>
       ) : (
-        <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3">Requests can be sent for confirmed bookings until check-out.</p>
+        <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3">
+          {notYet
+            ? <>You can send requests to the hotel (late arrival, early check-in, airport pickup…) from <strong>{when(opensAt)}</strong>, when free cancellation ends.</>
+            : 'Requests can be sent for confirmed bookings until check-out.'}
+        </p>
       )}
 
       <div>

@@ -59,21 +59,32 @@ export const notifyAdmins = async ({ type, title, message, link = null, metadata
 };
 
 /**
- * Where a hotel's booking emails go: the reception email, the owner's login email, and any
- * extra addresses the hotel added in Extranet → Settings → Booking emails. No duplicates.
+ * Where a hotel's booking emails go: the reception email, the owner's login email, any extra
+ * addresses the hotel added in Extranet → Settings → Booking emails, and the hotel's team members
+ * (Extranet → Team) whose role can see bookings. No duplicates.
  */
 export const hotelEmailRecipients = (hotel) => {
   const contact = hotel?.integrationSettings?.contactInfo || {};
   const extra = Array.isArray(contact.bookingEmails) ? contact.bookingEmails : [];
+  const team = (hotel?.staff || [])
+    .filter((m) => m.status === 'ACTIVE' && m.user?.status !== 'BLOCKED' && (m.role?.permissions || []).some((p) => p === 'bookings.view' || p === 'bookings.manage'))
+    .map((m) => m.user?.email);
   const seen = new Set();
-  return [contact.receptionEmail, hotel?.owner?.email, ...extra]
+  return [contact.receptionEmail, hotel?.owner?.email, ...extra, ...team]
     .map((e) => String(e || '').trim().toLowerCase())
     .filter((e) => isEmail(e) && !seen.has(e) && seen.add(e));
 };
 
+/** What hotelEmailRecipients needs, for a Prisma select on a hotel. */
+export const HOTEL_RECIPIENTS_SELECT = {
+  integrationSettings: true,
+  owner: { select: { email: true, name: true } },
+  staff: { where: { scope: 'EXTRANET', status: 'ACTIVE' }, select: { status: true, user: { select: { email: true, status: true } }, role: { select: { permissions: true } } } },
+};
+
 const loadHotel = (hotelId) => prisma.hotel.findUnique({
   where: { id: hotelId },
-  select: { id: true, name: true, integrationSettings: true, owner: { select: { email: true, name: true } } },
+  select: { id: true, name: true, ...HOTEL_RECIPIENTS_SELECT },
 });
 
 /**
