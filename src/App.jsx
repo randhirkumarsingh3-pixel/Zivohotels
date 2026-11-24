@@ -30,6 +30,7 @@ const SetPassword = lazy(() => import('./pages/SetPassword'));
 const ListProperty = lazy(() => import('./pages/ListProperty'));
 const HourlyCheckout = lazy(() => import('./pages/HourlyCheckout'));
 import AccountGuard from './components/auth/AccountGuard';
+import SignInNudge from './components/SignInNudge';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
@@ -108,6 +109,7 @@ function App() {
     <ExperimentProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AccountGuard />
+        <SignInNudge />
         <Suspense fallback={<LoaderFallback />}>
           <Routes>
             {/* PUBLIC & CUSTOMER ROUTES */}
