@@ -166,8 +166,7 @@ export const applyExtension = async (bookingId, { orderId, paymentId, paidPaise 
       message: `${b.guestName} added ${result.hours} hour${result.hours === 1 ? '' : 's'} (${b.roomType?.name}): now ${result.label}.`,
       metadata: { bookingId: b.id },
     }).catch(() => {});
-    // An invoice already issued (stay over) is redrawn; otherwise it is issued at departure
-    import('./invoiceService.js').then((m) => m.invoiceService.regenerateInvoice(b.id)).catch(() => {});
+    import('./invoiceService.js').then((m) => m.invoiceService.regenerateInvoice(b.id).catch(() => m.invoiceService.generateInvoice(b.id))).catch((err) => console.error('[HourlyExtension] Invoice not updated:', err.message));
   }
   return { applied: true, booking: result.booking };
 };

@@ -229,13 +229,11 @@ const PaymentSummary = ({ booking }) => {
   );
 };
 
-/** Why there is no invoice yet, and when there will be. */
+/** Why there is no invoice to download yet. */
 const invoiceNote = (booking) => {
-  if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) return 'No stay invoice: this booking was cancelled.';
-  if (booking.status === 'PENDING') return 'The invoice is issued after payment, on your departure date.';
-  if (booking.invoice) return 'Your invoice is being prepared. Check again in a few minutes.';
-  const out = new Date(isHourly(booking) ? booking.slotEnd || booking.checkOut : booking.checkOut);
-  return `Your GST invoice will be ready here on ${out.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}, your departure date. We also email it to you.`;
+  if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) return 'No invoice: this booking was cancelled.';
+  if (booking.status === 'PENDING') return 'The invoice is issued once the booking is confirmed.';
+  return 'Your invoice is being prepared. Check again in a few minutes.';
 };
 
 const MyBookings = () => {
@@ -728,7 +726,7 @@ const MyBookings = () => {
 
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
                     <h4 className="font-bold text-gray-900 text-sm">Invoice & Billing Center</h4>
-                    <p className="text-xs text-gray-500">Your GST invoice is issued on your departure date, so it shows exactly what you paid for the stay.</p>
+                    <p className="text-xs text-gray-500">Download official billing receipts for tax declarations.</p>
                     {activeBooking.invoice?.status === 'GENERATED' ? (
                       <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
                         <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF · {activeBooking.invoice.invoiceRef}</span>

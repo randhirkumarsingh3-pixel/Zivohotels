@@ -49,7 +49,7 @@ describe('Capacity fixes (load test)', function () {
     }
   });
 
-  it('issues each invoice on the departure date, not at payment, even when many are drawn together', async () => {
+  it('issues an invoice with its PDF for every payment, even when they arrive together', async () => {
     // Six bookings on different nights, then all six paid at the same moment
     const made = [];
     for (let i = 0; i < 6; i += 1) {
@@ -71,26 +71,15 @@ describe('Capacity fixes (load test)', function () {
     pays.forEach((p) => expect(p.status, JSON.stringify(p.data)).to.equal(200));
     paidIds.push(...made.map((b) => b.id));
 
-    // Paying does not issue the invoice: it comes on the departure date
-    await sleep(1500);
-    expect(await prisma.invoice.count({ where: { bookingId: { in: paidIds } } }), 'no invoice before departure').to.equal(0);
-    const early = await invoiceService.generateInvoice(paidIds[0]).catch((e) => e);
-    expect(early.code).to.equal('NOT_YET');
-
-    // Departure day arrives for all six: their invoices are drawn at the same moment
-    const ago = new Date(Date.now() - 2 * 86400000);
-    await prisma.booking.updateMany({ where: { id: { in: paidIds } }, data: { checkIn: ago, checkOut: new Date(ago.getTime() + 86400000) } });
-    await Promise.all(paidIds.map((id) => invoiceService.generateInvoice(id)));
-    const invoices = await prisma.invoice.findMany({ where: { bookingId: { in: paidIds } } });
+    let invoices = [];
+    for (let t = 0; t < 60; t += 1) {
+      invoices = await prisma.invoice.findMany({ where: { bookingId: { in: paidIds } } });
+      if (invoices.length === 6 && invoices.every((x) => x.status === 'GENERATED' && x.pdfUrl)) break;
+      await sleep(1000);
+    }
     expect(invoices.length, 'one invoice per paid booking').to.equal(6);
     expect(invoices.every((x) => x.status === 'GENERATED' && x.pdfUrl), JSON.stringify(invoices.map((x) => x.status))).to.equal(true);
     expect(new Set(invoices.map((x) => x.invoiceRef)).size, 'invoice numbers are unique').to.equal(6);
-    let told = 0;
-    for (let t = 0; t < 20 && !told; t += 1) {
-      told = await prisma.userNotification.count({ where: { type: 'INVOICE_READY', metadata: { path: ['bookingId'], equals: paidIds[0] } } });
-      if (!told) await sleep(250);
-    }
-    expect(told, 'the guest is told the invoice is ready').to.equal(1);
   });
 
   it('draws invoices whose PDF failed earlier, keeping their number', async () => {
@@ -104,9 +93,10 @@ describe('Capacity fixes (load test)', function () {
     expect(after.invoiceRef).to.equal(inv.invoiceRef);
   });
 
-  it('issues the invoice of a stay whose departure date has come (hotel did not check out)', async () => {
+  it('issues a missing invoice for a confirmed booking', async () => {
     const inv = await prisma.invoice.findFirst({ where: { bookingId: paidIds[2] } });
     await prisma.invoice.delete({ where: { id: inv.id } });
+    await prisma.$executeRaw`UPDATE "Booking" SET "updatedAt" = now() - interval '10 minutes' WHERE "id" = ${paidIds[2]}`;
     const done = await invoiceService.catchUp();
     expect(done.issued).to.be.at.least(1);
     const again = await prisma.invoice.findUnique({ where: { bookingId: paidIds[2] } });

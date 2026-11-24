@@ -26,10 +26,8 @@ export const subscribeEvent = (event, handler) => {
 };
 
 // --- INITIALIZE HANDLERS ---
-// The guest's GST invoice is issued on the departure date (accurate billing): when the hotel
-// checks the guest out, or by the invoice job on the check-out date (services/invoiceService.js).
-// Not at booking or payment.
 subscribeEvent('CHECKOUT_COMPLETED', handleInvoiceEvents);
+subscribeEvent('BOOKING_CONFIRMED', handleInvoiceEvents);
 
 export default {
   emitEvent,

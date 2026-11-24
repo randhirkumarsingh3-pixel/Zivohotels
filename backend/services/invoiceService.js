@@ -81,53 +81,8 @@ const renderPdf = async (booking, invoiceRef) => {
 /** Invoice statuses: PENDING (number taken, PDF not drawn yet), GENERATED, PDF_FAILED (retried). */
 export const INVOICE_STATUS = { PENDING: 'PENDING', GENERATED: 'GENERATED', PDF_FAILED: 'PDF_FAILED' };
 
-/** Bookings that get an invoice once their departure date arrives: confirmed, in house, checked out. */
+/** Bookings that should have an invoice: confirmed, in house or checked out. */
 const INVOICED_STATUSES = ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'];
-
-/** Today's date in India as the stored check-out dates hold it (midnight UTC of that date). */
-const indiaToday = (now = new Date()) => new Date(`${new Date(now.getTime() + 330 * 60000).toISOString().slice(0, 10)}T00:00:00Z`);
-
-/**
- * Has the stay reached its departure? Nightly stays: on the check-out date (India time). Hourly
- * stays: once the slot has ended. A guest the hotel has checked out (COMPLETED) has departed.
- */
-export const hasDeparted = (booking, now = new Date()) => booking.status === 'COMPLETED'
-  || (booking.stayType === 'HOURLY' ? new Date(booking.checkOut) <= now : new Date(booking.checkOut) <= indiaToday(now));
-
-/** The same rule as a database filter. */
-const departedWhere = (now = new Date()) => ({
-  OR: [
-    { status: 'COMPLETED' },
-    { stayType: 'HOURLY', checkOut: { lte: now } },
-    { NOT: { stayType: 'HOURLY' }, checkOut: { lte: indiaToday(now) } },
-  ],
-});
-
-/** Tells the guest their invoice is ready (bell + email), once. */
-const tellGuestInvoiceReady = (booking, invoice) => {
-  import('./notifyService.js').then(async ({ notifyUser }) => {
-    if (!booking.userId) return;
-    const { emailLayout } = await import('./emailLayout.js');
-    await notifyUser(booking.userId, {
-      type: 'INVOICE_READY',
-      title: `Your invoice for ${booking.hotel?.name || 'your stay'} is ready`,
-      message: `${invoice.invoiceRef} · booking ${booking.bookingRef}`,
-      link: '/my-bookings',
-      metadata: { bookingId: booking.id, invoiceId: invoice.id },
-      email: {
-        jobType: 'SEND_INVOICE_READY',
-        to: booking.guestEmail || undefined,
-        subject: `Your GST invoice ${invoice.invoiceRef} for booking ${booking.bookingRef}`,
-        html: await emailLayout({
-          title: 'Your invoice is ready',
-          body: `<p>Thank you for staying at ${booking.hotel?.name || 'the hotel'}. Your GST invoice for booking ${booking.bookingRef} is ready to download in My Bookings → Financials.</p>`,
-          rows: [['Invoice', invoice.invoiceRef], ['Booking', booking.bookingRef]],
-          cta: { label: 'Download the invoice', href: '/my-bookings' },
-        }),
-      },
-    });
-  }).catch((e) => console.error('[Invoice] guest not told:', e.message));
-};
 
 export const invoiceService = {
 
@@ -175,17 +130,10 @@ export const invoiceService = {
 
     const booking = await loadBooking(bookingId);
     if (!booking) throw new Error('Booking not found');
-    // Issued on the departure date only, so it shows exactly what the stay cost
-    if (!invoice && !(INVOICED_STATUSES.includes(booking.status) && hasDeparted(booking))) {
-      throw Object.assign(new Error('The invoice is issued on the departure date'), { code: 'NOT_YET' });
-    }
 
-    const isNew = !invoice;
     if (!invoice) invoice = await invoiceService.createRecord(bookingId);
     if (invoice.pdfUrl && invoice.status === INVOICE_STATUS.GENERATED) return invoice;
-    const drawn = await invoiceService.drawPdf(invoice, booking);
-    if (isNew || !invoice.pdfUrl) tellGuestInvoiceReady(booking, drawn);
-    return drawn;
+    return invoiceService.drawPdf(invoice, booking);
   },
 
   /** Draws (or redraws) the PDF for an existing invoice record and saves its address. */
@@ -211,10 +159,10 @@ export const invoiceService = {
   },
 
   /**
-   * Issues invoices for stays whose departure date has arrived (the hotel may not have checked the
-   * guest out), and draws PDFs that failed or never finished. Returns what it did.
+   * Catches up: draws PDFs that failed or never finished, and issues invoices for confirmed
+   * bookings that have none (for example after a server restart). Returns what it did.
    */
-  catchUp: async ({ limit = 100 } = {}) => {
+  catchUp: async ({ limit = 25 } = {}) => {
     const stuckBefore = new Date(Date.now() - 2 * 60 * 1000); // leave ones being drawn right now
     const unfinished = await prisma.invoice.findMany({
       where: { OR: [{ status: { in: [INVOICE_STATUS.PDF_FAILED, INVOICE_STATUS.PENDING] } }, { pdfUrl: null }], createdAt: { lt: stuckBefore } },
@@ -222,19 +170,14 @@ export const invoiceService = {
       take: limit,
     });
     const missing = await prisma.booking.findMany({
-      where: { status: { in: INVOICED_STATUSES }, invoice: null, ...departedWhere() },
+      where: { status: { in: INVOICED_STATUSES }, invoice: null, updatedAt: { lt: stuckBefore } },
       select: { id: true },
       orderBy: { createdAt: 'desc' }, // newest first: those guests are waiting now
       take: limit,
     });
     const done = { redrawn: 0, issued: 0, failed: 0 };
     for (const inv of unfinished) {
-      try {
-        const booking = await loadBooking(inv.bookingId);
-        const drawn = await invoiceService.drawPdf(inv, booking);
-        if (!inv.pdfUrl) tellGuestInvoiceReady(booking, drawn); // first time it can be downloaded
-        done.redrawn += 1;
-      } catch { done.failed += 1; }
+      try { await invoiceService.drawPdf(inv); done.redrawn += 1; } catch { done.failed += 1; }
     }
     for (const b of missing) {
       try { await invoiceService.generateInvoice(b.id); done.issued += 1; } catch { done.failed += 1; }
@@ -243,7 +186,7 @@ export const invoiceService = {
   },
 };
 
-/** Every 10 minutes in the process that runs timed jobs: departures get their invoice that day. */
+/** Every 10 minutes in the process that runs timed jobs. */
 export const startInvoiceCatchUpJob = () => {
   const run = async () => {
     const r = await invoiceService.catchUp().catch((e) => ({ error: e.message }));

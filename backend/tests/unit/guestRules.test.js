@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { freeCancellationEndsAt } from '../../domains/cancellationRules.js';
 import { hotelEmailRecipients } from '../../services/notifyService.js';
-import { hasDeparted } from '../../services/invoiceService.js';
 
 const H = 3600 * 1000;
 
@@ -25,19 +24,6 @@ describe('Free cancellation end (requests to the hotel open then)', () => {
   it('hourly stays: the free hours before the slot starts', () => {
     const hourly = { createdAt: booked, stayType: 'HOURLY', slotStart: new Date('2026-12-05T08:00:00Z'), metadata: { hourly: { freeCancelHours: 2 } } };
     expect(freeCancellationEndsAt(hourly, null).toISOString()).to.equal('2026-12-05T06:00:00.000Z');
-  });
-});
-
-describe('Invoice on the departure date', () => {
-  const now = new Date('2026-12-10T08:00:00Z'); // 1:30 pm in India
-  it('nightly stays: from the check-out date (India time)', () => {
-    expect(hasDeparted({ status: 'CONFIRMED', checkOut: new Date('2026-12-10T00:00:00Z') }, now)).to.equal(true);
-    expect(hasDeparted({ status: 'CONFIRMED', checkOut: new Date('2026-12-11T00:00:00Z') }, now)).to.equal(false);
-  });
-  it('hourly stays: once the slot has ended; checked-out guests always', () => {
-    expect(hasDeparted({ status: 'CONFIRMED', stayType: 'HOURLY', checkOut: new Date('2026-12-10T07:00:00Z') }, now)).to.equal(true);
-    expect(hasDeparted({ status: 'CONFIRMED', stayType: 'HOURLY', checkOut: new Date('2026-12-10T09:00:00Z') }, now)).to.equal(false);
-    expect(hasDeparted({ status: 'COMPLETED', checkOut: new Date('2026-12-12T00:00:00Z') }, now)).to.equal(true);
   });
 });
 

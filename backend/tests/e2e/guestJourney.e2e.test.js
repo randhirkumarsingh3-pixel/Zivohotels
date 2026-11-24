@@ -99,8 +99,4 @@ describe('Guest journey: offers, requests, booking hub', function () {
     const now = await post(`/bookings/${bookingId}/requests`, { type: 'LATE_ARRIVAL', requestedTime: '11 pm' }, auth);
     expect(now.status, JSON.stringify(now.data)).to.be.oneOf([200, 201]);
   });
-
-  it('does not issue an invoice before the departure date', async () => {
-    expect(await prisma.invoice.count({ where: { bookingId } })).to.equal(0);
-  });
 });

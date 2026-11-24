@@ -15,7 +15,6 @@ export const handleInvoiceEvents = async (payload) => {
     await invoiceService.generateInvoice(bookingId);
 
   } catch (error) {
-    if (error.code === 'NOT_YET') return; // issued on the departure date by the invoice job
     console.error(`[InvoiceHandler] Event Failed for Booking ${bookingId}:`, error.message);
     
     // Log failure to Audit Log without blocking main thread
