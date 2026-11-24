@@ -46,6 +46,19 @@ export const errorHandler = (err, req, res, next) => {  // eslint-disable-line n
     });
   }
 
+  // Database busy or briefly unreachable (no free connection, timeout, transaction expired):
+  // a temporary problem, so ask the visitor to try again rather than showing a server error
+  if (['P2024', 'P1001', 'P1002', 'P1008', 'P1017', 'P2028'].includes(err.code)) {
+    res.set('Retry-After', '5');
+    return res.status(503).json({
+      success: false,
+      message: 'We are very busy right now. Please try again in a moment.',
+      code:    'SERVICE_BUSY',
+      data:    null,
+      requestId: req.id,
+    });
+  }
+
   // ── JWT Errors ─────────────────────────────────────────────────────────────
   if (err.name === 'TokenExpiredError') {
     return res.status(401).json({

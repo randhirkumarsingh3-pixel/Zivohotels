@@ -82,9 +82,9 @@ services:
       BEHIND_CLOUDFLARE: ${BEHIND_CLOUDFLARE:-false}
       STORAGE_DRIVER: local
       # Server processes (one per CPU core used); they share state through Redis
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-6}
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://zivoplus:${DB_PASSWORD}@db:5432/zivoplus?connection_limit=${DB_POOL_PER_PROCESS:-10}
+      DATABASE_URL: postgresql://zivoplus:${DB_PASSWORD}@db:5432/zivoplus?connection_limit=${DB_POOL_PER_PROCESS:-15}
       DIRECT_URL: postgresql://zivoplus:${DB_PASSWORD}@db:5432/zivoplus
       CORS_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN in deploy/vps/.env}
       FRONTEND_URL: https://${APP_DOMAIN}

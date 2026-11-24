@@ -12,7 +12,7 @@
  * Every change is written to the audit log.
  */
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import prisma from '../config/db.js';
 import { queueService } from './queueService.js';
 import { ALL, allows, catalogue, cleanPermissions, expand, SCOPES } from '../constants/permissions.js';

@@ -10,8 +10,8 @@ export const handleInvoiceEvents = async (payload) => {
   try {
     if (!bookingId) throw new Error('Missing bookingId in event payload');
 
-    // Generate Invoice
-    // This function is idempotent and uses puppeteer safely
+    // Idempotent. If the PDF can't be drawn now, the invoice is kept (PDF_FAILED) and the
+    // catch-up job (every 10 minutes) draws it.
     await invoiceService.generateInvoice(bookingId);
 
   } catch (error) {

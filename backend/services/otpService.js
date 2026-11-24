@@ -14,7 +14,7 @@
  * EMAIL_TEST_MODE=true (e.g. staging before the Resend domain is verified). Never set it live.
  */
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import prisma from '../config/db.js';
 import { sendOTPEmail } from './emailService.js';
 import { sendSms, smsTestMode } from './smsService.js';

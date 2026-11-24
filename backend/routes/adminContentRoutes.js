@@ -5,13 +5,22 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import prisma from '../config/db.js';
+import { getShared, setShared } from '../utils/sharedCache.js';
 import { portfolioScores, propertyOverview } from '../services/contentScore.js';
 
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req, res) => {
   const { search, status, band } = req.query;
-  res.json({ success: true, data: await portfolioScores({ search, status, band }) });
+  // Scoring every property is heavy: the list is worked out at most once every 2 minutes per
+  // filter (one property's own page, below, is always current)
+  const key = `content-scores:${JSON.stringify([search || '', status || '', band || ''])}`;
+  let data = await getShared(key);
+  if (!data) {
+    data = { ...await portfolioScores({ search, status, band }), computedAt: new Date().toISOString() };
+    setShared(key, data, 2 * 60 * 1000);
+  }
+  res.json({ success: true, data });
 }));
 
 router.get('/:hotelId', asyncHandler(async (req, res) => {

@@ -12,7 +12,7 @@
  */
 import 'dotenv/config';
 import readline from 'readline';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import { parseArgs } from 'util';
 import prisma from '../config/db.js';
 

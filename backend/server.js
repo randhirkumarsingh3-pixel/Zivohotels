@@ -81,6 +81,7 @@ import prisma from './config/db.js';
 import { isAllowedOrigin } from './config/origins.js';
 import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
+import { startInvoiceCatchUpJob } from './services/invoiceService.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 
@@ -404,6 +405,7 @@ server.listen(PORT, HOST, () => {
     startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
     startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
+    startInvoiceCatchUpJob(); // every 10 min: draws invoice PDFs that failed, issues missing invoices
     runEncryptionSweep(); // encrypts bank details / KYC files stored before encryption at rest
     console.log('✉️  Timed jobs and email worker started in this process');
   }

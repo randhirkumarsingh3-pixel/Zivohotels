@@ -5,6 +5,9 @@ import { loadAccess } from '../services/accessService.js';
 import { requestToken } from '../utils/sessionCookie.js';
 import { isAllowedOrigin as isConfiguredOrigin } from '../config/origins.js';
 
+/** Errors that mean the token itself is bad (jsonwebtoken), as opposed to a server problem. */
+const TOKEN_ERRORS = new Set(['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError']);
+
 // The page's own address (same-origin requests), or one of the configured site addresses
 const isAllowedOrigin = (origin, req) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
@@ -84,8 +87,14 @@ export const protect = async (req, res, next) => {
     req.user.access = await loadAccess(req.user);
     next();
   } catch (error) {
-    console.error('Auth Error:', error.message);
-    res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    // Only a bad or expired token signs the user out. If the database is busy or unreachable, say
+    // so (503) — otherwise a busy server would look to guests like they had been signed out.
+    if (TOKEN_ERRORS.has(error.name)) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+    console.error('Auth check failed (not a token problem):', error.message);
+    res.set('Retry-After', '5');
+    return res.status(503).json({ success: false, code: 'SERVICE_BUSY', message: 'We are very busy right now. Please try again in a moment.' });
   }
 };
 

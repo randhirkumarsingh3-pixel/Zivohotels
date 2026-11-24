@@ -2,7 +2,7 @@ import { weakPasswordReason } from '../utils/passwordPolicy.js';
 import prisma from '../config/db.js';
 import { availablePoints } from '../services/loyaltyService.js';
 import { toMoney } from '../utils/money.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from '../utils/bcrypt.js';
 import crypto from 'crypto';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
