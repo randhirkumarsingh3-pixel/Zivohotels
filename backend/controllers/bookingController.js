@@ -1,5 +1,7 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
+import { getDefaultPolicy } from '../utils/refundCalculator.js';
+import { requestsOpenAt } from '../domains/cancellationRules.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { z } from 'zod';
 import { cancelBookingWithRefund, initiatorForRole, CancellationError, previewGuestCancellation, previewRoomCancellation, cancelBookingRoom } from '../services/cancellationService.js';
@@ -643,6 +645,13 @@ export const getMyBookings = async (req, res, next) => {
         };
         delete booking.hotel.integrationSettings;
       }
+    }
+
+    // When guests may send requests to the hotel: once free cancellation has ended
+    const hotelIds = [...new Set(bookings.filter((b) => b.stayType !== 'HOURLY').map((b) => b.hotelId))];
+    const policies = new Map((await prisma.cancellationPolicy.findMany({ where: { hotelId: { in: hotelIds } } })).map((p) => [p.hotelId, p]));
+    for (const booking of bookings) {
+      booking.requestsOpenAt = requestsOpenAt(booking, booking.stayType === 'HOURLY' ? null : policies.get(booking.hotelId) || getDefaultPolicy());
     }
 
     res.status(200).json({

@@ -278,6 +278,13 @@ app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed);
+// What signing in / a new account saves (hotel page pop-up); see services/guestOffers.js
+app.get('/api/v1/public/guest-offers', async (req, res, next) => {
+  try {
+    const { guestOffers } = await import('./services/guestOffers.js');
+    res.json({ success: true, data: await guestOffers(req.query.hotelId ? String(req.query.hotelId).slice(0, 64) : null) });
+  } catch (e) { next(e); }
+});
 // City / area landing pages (/hotels-in-bengaluru): heading, intro and questions
 app.get('/api/v1/public/places/:slug', async (req, res, next) => {
   try {
@@ -405,7 +412,7 @@ server.listen(PORT, HOST, () => {
     startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
     startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
-    startInvoiceCatchUpJob(); // every 10 min: draws invoice PDFs that failed, issues missing invoices
+    startInvoiceCatchUpJob(); // every 10 min: invoices for today's departures; redraws failed PDFs
     runEncryptionSweep(); // encrypts bank details / KYC files stored before encryption at rest
     console.log('✉️  Timed jobs and email worker started in this process');
   }

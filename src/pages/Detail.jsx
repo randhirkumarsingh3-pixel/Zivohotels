@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getHotelById, trackEvent, getMyMembership, previewBookingApi, getHotelHourly } from '../services/api';
+import { getHotelById, trackEvent, getMyMembership, previewBookingApi, getHotelHourly, getGuestOffers } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SignInOfferPopup from '../components/hotel/SignInOfferPopup';
+import { offerText } from '../utils/guestOffers';
 import { Link as RouterLink } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { MapPin, Star, BedDouble, ShieldCheck, Flame, CreditCard, CalendarDays, Users } from 'lucide-react';
@@ -106,6 +108,8 @@ const Detail = () => {
   useEffect(() => {
     if (isAuthenticated && user?.role === 'CUSTOMER') getMyMembership().then((m) => setMembership(m?.current || null)).catch(() => {});
   }, [isAuthenticated, user]);
+  // Signed out: what signing in / a new account would save here (pop-up and price box hint)
+  const [guestOffers, setGuestOffers] = useState(null);
   const { checkIn, checkOut, guests, rooms } = searchParams;
 
   // The link (search results, a reload or a shared link) carries the search: dates, guests, rooms
@@ -356,6 +360,11 @@ const Detail = () => {
 
   // While the hotel loads: the page's shape (photos, name, rooms, price box), not a spinner, so it
   // feels ready sooner and nothing jumps when the details arrive
+  useEffect(() => {
+    if (isAuthenticated || !hotel?.id) { setGuestOffers(null); return; }
+    getGuestOffers(hotel.id).then(setGuestOffers).catch(() => setGuestOffers(null));
+  }, [isAuthenticated, hotel?.id]);
+
   if (loading) return (
     <div className="min-h-screen bg-gray-50 pt-20 md:pt-24" aria-busy="true" aria-label="Loading hotel">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 animate-pulse">
@@ -400,7 +409,7 @@ const Detail = () => {
   const memberPct = Number(hotel.memberDiscountPercent) || 0;
   const mb        = membership?.benefits;
   const memberHotelOff = membership && mb?.hotelMemberRates ? Math.round(((baseTotal - offerOff) * memberPct) / 100) : 0;
-  let   memberZivoOff  = membership?.isPaid ? Math.round(((baseTotal - offerOff - memberHotelOff) * (mb.zivoDiscountPercent || 0)) / 100) : 0;
+  let   memberZivoOff  = membership ? Math.round(((baseTotal - offerOff - memberHotelOff) * (mb.zivoDiscountPercent || 0)) / 100) : 0;
   if (mb?.zivoDiscountMax > 0) memberZivoOff = Math.min(memberZivoOff, mb.zivoDiscountMax);
   const afterOffer= baseTotal - offerOff - memberHotelOff - memberZivoOff;
   const taxRate   = (nights && nightsN ? afterOffer / (nights * nightsN) : pricePerNight) <= 7500 ? 0.05 : 0.18;
@@ -423,6 +432,7 @@ const Detail = () => {
   return (
     <div className="pt-16 pb-28 lg:pb-20 bg-gray-50">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hotelJsonLd(hotel, stars, fromPrice)).replace(/</g, '\\u003c') }} />
+      {!isAuthenticated && <SignInOfferPopup offers={guestOffers} hotelName={hotel.name} />}
 
       {/* 1. Name, star category, type, review score, place, and the price for your dates */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
@@ -649,10 +659,14 @@ const Detail = () => {
                     {quote.promotionDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>{quote.promotion?.name || 'Offer'}</span><span>− {fmt(quote.promotionDiscountAmount)}</span></div>}
                     {quote.memberDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Member price</span><span>− {fmt(quote.memberDiscountAmount)}</span></div>}
                     {quote.prepaidDiscountAmount > 0 && <div className="flex justify-between text-green-700 font-medium"><span>Pay-now saving</span><span>− {fmt(quote.prepaidDiscountAmount)}</span></div>}
-                    {memberPct > 0 && !membership && (
+                    {!isAuthenticated && (guestOffers?.signIn || guestOffers?.firstBooking) && (
                       <p className="text-xs text-navy-800 bg-navy-50 rounded-lg px-2 py-1.5">
-                        {memberPct}% off for members. {isAuthenticated ? 'Member prices are for guest accounts.' : <><RouterLink to="/login" className="font-bold underline">Log in</RouterLink> or <RouterLink to="/signup" className="font-bold underline">sign up free</RouterLink> to get it.</>}
+                        {guestOffers.signIn ? `${guestOffers.signIn.percent}% off with the sign-in price` : ''}{guestOffers.signIn && guestOffers.firstBooking ? ', plus ' : ''}{guestOffers.firstBooking ? `${guestOffers.signIn ? '' : 'Extra '}${offerText(guestOffers.firstBooking)} on your first booking` : ''}.{' '}
+                        <RouterLink to="/login" state={{ from: { pathname: location.pathname, search: location.search } }} className="font-bold underline">Sign in</RouterLink> or <RouterLink to="/signup" state={{ from: { pathname: location.pathname, search: location.search } }} className="font-bold underline">create a free account</RouterLink>.
                       </p>
+                    )}
+                    {memberPct > 0 && !membership && isAuthenticated && (
+                      <p className="text-xs text-navy-800 bg-navy-50 rounded-lg px-2 py-1.5">{memberPct}% off for members. Member prices are for guest accounts.</p>
                     )}
                     <div className="flex justify-between text-gray-600">
                       <span>GST {quote.taxBreakdown?.length > 1 ? `(${quote.taxBreakdown.map((t) => `${t.percentage}%`).join(' + ')})` : `(${quote.taxPercentage ?? Math.round(taxRate * 100)}%)`}</span>

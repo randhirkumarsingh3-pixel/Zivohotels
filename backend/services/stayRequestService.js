@@ -5,6 +5,8 @@
  * sees the answer in My Bookings.
  */
 import prisma from '../config/db.js';
+import { getDefaultPolicy } from '../utils/refundCalculator.js';
+import { requestsOpenAt } from '../domains/cancellationRules.js';
 import { createNotification } from './notificationService.js';
 import { queueService } from './queueService.js';
 import { eventBus } from './eventBus.js';
@@ -30,7 +32,7 @@ export class StayRequestError extends Error {
 const site = () => String(process.env.FRONTEND_URL || '').replace(/\/$/, '');
 const fmtDay = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
-import { hotelEmailRecipients, notifyUser } from './notifyService.js';
+import { hotelEmailRecipients, notifyUser, HOTEL_RECIPIENTS_SELECT } from './notifyService.js';
 import { managesHotel } from '../utils/hotelAccess.js';
 
 const sendEmail = (to, subject, html) => (to
@@ -51,10 +53,16 @@ const canSeeBooking = (booking, user) => {
 
 const loadBooking = (bookingId) => prisma.booking.findUnique({
   where: { id: bookingId },
-  include: { hotel: { select: { id: true, name: true, ownerId: true, integrationSettings: true, owner: { select: { email: true } } } } },
+  include: { hotel: { select: { id: true, name: true, ownerId: true, ...HOTEL_RECIPIENTS_SELECT } } },
 });
 
 const clean = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+
+/** When this booking's guest may start sending requests (free cancellation has ended). */
+export const openTime = async (booking) => {
+  const policy = booking.stayType === 'HOURLY' ? null : await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
+  return requestsOpenAt(booking, policy);
+};
 
 /** The guest's requests for one booking, newest first. */
 export const listForBooking = async (bookingId, user) => {
@@ -69,6 +77,11 @@ export const createRequest = async (bookingId, user, input = {}) => {
   if (!booking || (booking.userId !== user.id && user.role !== 'ADMIN')) throw new StayRequestError('Booking not found', 404);
   if (!['CONFIRMED', 'CHECKED_IN'].includes(booking.status)) throw new StayRequestError('Requests can be sent for confirmed bookings only.');
   if (new Date(booking.checkOut) <= new Date()) throw new StayRequestError('This stay has ended.');
+  const opensAt = await openTime(booking);
+  if (opensAt > new Date()) {
+    const when = opensAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    throw new StayRequestError(`Requests to the hotel open when free cancellation ends, on ${when}.`, 409);
+  }
 
   const type = String(input.type || '').toUpperCase();
   if (!REQUEST_TYPES[type]) throw new StayRequestError('Choose what you would like to ask the hotel.');
