@@ -4,6 +4,7 @@ import { useExtranet } from '../context/ExtranetContext';
 import { Check, Sparkles } from 'lucide-react';
 
 import PropertyWizardLayout from '../../components/onboarding/PropertyWizardLayout';
+import PropertyLoadGate from '../../components/onboarding/PropertyLoadGate';
 import BasicInfoStep from '../../components/onboarding/steps/BasicInfoStep';
 import LocationStep from '../../components/onboarding/steps/LocationStep';
 import AmenitiesStep from '../../components/onboarding/steps/AmenitiesStep';
@@ -76,7 +77,9 @@ const PropertyOnboarding = () => {
     handleResetDraft,
     saveDraftIfNeeded,
     clearSavedProgress,
-    reloadProperty
+    reloadProperty,
+    propertyLoad,
+    retryLoadProperty
   } = usePropertyWizard({
     isEditing,
     effectiveId,
@@ -434,6 +437,11 @@ const PropertyOnboarding = () => {
         return <BasicInfoStep formData={formData} updateForm={updateForm} />;
     }
   };
+
+  // Editing: no form until the property has loaded (a failed load must never show an empty form)
+  if (propertyLoad === 'loading' || propertyLoad === 'failed') {
+    return <PropertyLoadGate state={propertyLoad} onRetry={retryLoadProperty} onBack={() => navigate('/extranet/property')} />;
+  }
 
   return (
     <>
