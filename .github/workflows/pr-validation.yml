@@ -47,6 +47,10 @@ jobs:
       EMAIL_TEST_MODE: 'true'
       SMS_PROVIDER: test
       AUTH_RATE_LIMIT_PER_15_MIN: 200
+      # Aadhaar eSign test: the API talks to a stand-in Leegality the test starts on port 5099
+      LEEGALITY_BASE_URL: http://127.0.0.1:5099
+      LEEGALITY_AUTH_TOKEN: ci-leegality-token
+      LEEGALITY_PRIVATE_SALT: ci-leegality-salt
 
     steps:
       - name: Checkout Code

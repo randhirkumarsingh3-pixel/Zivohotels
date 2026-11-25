@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, FileText, Send, Download, Search, Settings2, X, FileSignature, Trash2 } from 'lucide-react';
+import { Loader2, FileText, Send, Download, Search, Settings2, X, FileSignature, Trash2, RefreshCw } from 'lucide-react';
 import { agreementApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 import useAccess from '../../hooks/useAccess';
@@ -8,7 +8,8 @@ import useAccess from '../../hooks/useAccess';
 /**
  * Admin → Agreements: every property's listing agreement. ZivoPlus prepares it from the template
  * (Agreement template) and the property's onboarding details, with the commission agreed for that
- * property; the owner gets an email to read and sign it online (typed name + emailed code).
+ * property; the owner gets an email to read and sign it online (typed name + emailed code, or
+ * Aadhaar eSign through Leegality when that's switched on under Agreement template).
  */
 const STATUS = {
   DRAFT: ['bg-gray-100 text-gray-700', 'Draft'],
@@ -102,6 +103,15 @@ const Agreements = () => {
     setErr(''); setMsg('');
     try { await agreementApi.cancel(a.id); setMsg(`Agreement ${a.reference || ''} cancelled.${a.status === 'SIGNED' ? ' The property is back to pending.' : ''}`); load(); } catch (e) { setErr(e.message); }
   };
+  const [checking, setChecking] = useState('');
+  const checkLeegality = async (a) => {
+    setErr(''); setMsg(''); setChecking(a.hotelId);
+    try {
+      const d = await agreementApi.refresh(a.hotelId);
+      setMsg(d.status === 'SIGNED' ? `${a.reference}: signed with Aadhaar eSign.` : `${a.reference}: Leegality says ${String(d.leegalityStatus || 'sent').toLowerCase()}, not signed yet.`);
+      load();
+    } catch (e) { setErr(e.message); } finally { setChecking(''); }
+  };
   const recordOffline = async () => {
     setErr('');
     try { await agreementApi.markSigned(offline.hotelId, offline.note); setOffline(null); setMsg('Paper signature recorded.'); load(); } catch (e) { setErr(e.message); }
@@ -167,11 +177,13 @@ const Agreements = () => {
                     <td className="px-4 py-3 text-xs">{a.reference || <span className="text-gray-400">Not prepared</span>}{a.templateVersion ? <span className="block text-gray-500">template v{a.templateVersion}</span> : null}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">{a.commissionRate != null ? `${a.commissionRate}%` : <span className="text-red-600">Not set</span>}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${st[0]}`}>{st[1]}</span>{a.viewedAt && a.status === 'PENDING_SIGNATURE' ? <span className="block text-xs text-gray-500 mt-1">Opened {when(a.viewedAt)}</span> : null}</td>
-                    <td className="px-4 py-3 text-xs">{a.signedAt ? <>Signed {when(a.signedAt)}<span className="block text-gray-500">{a.signerName}{a.signatureMethod === 'OFFLINE' ? ' (paper)' : ''}</span></> : a.sentAt ? `Sent ${when(a.sentAt)}` : '—'}</td>
+                    <td className="px-4 py-3 text-xs">{a.signedAt ? <>Signed {when(a.signedAt)}<span className="block text-gray-500">{a.signerName}{a.signatureMethod === 'OFFLINE' ? ' (paper)' : a.signatureMethod === 'AADHAAR_ESIGN' ? ' (Aadhaar eSign)' : ''}</span></> : a.sentAt ? `Sent ${when(a.sentAt)}` : '—'}{!a.signedAt && a.leegalityStatus && a.leegalityContentHash === a.contentHash ? <span className={`block mt-0.5 ${a.leegalityStatus === 'SENT' ? 'text-blue-700' : 'text-red-700'}`}>Leegality: {{ SENT: 'signing started', REJECTED: 'declined', EXPIRED: 'link expired', FAILED: 'failed' }[a.leegalityStatus] || a.leegalityStatus.toLowerCase()}</span> : null}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap justify-end gap-1.5">
                         {a.reference && <button type="button" onClick={() => openBlob(() => agreementApi.adminPdf(a.hotelId), setErr)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold"><Download size={13} /> PDF</button>}
                         {canManage && !['SIGNED', 'ACTIVE'].includes(a.status) && a.hotel && <button type="button" onClick={() => setPreparing({ ...a.hotel, agreement: a })} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold"><Send size={13} /> {a.reference ? 'Update & resend' : 'Prepare'}</button>}
+                        {a.signatureMethod === 'AADHAAR_ESIGN' && <button type="button" onClick={() => openBlob(() => agreementApi.adminAuditTrail(a.hotelId), setErr)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold"><Download size={13} /> Audit trail</button>}
+                        {canManage && a.status === 'PENDING_SIGNATURE' && a.leegalityDocumentId && <button type="button" disabled={checking === a.hotelId} onClick={() => checkLeegality(a)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold disabled:opacity-50"><RefreshCw size={13} className={checking === a.hotelId ? 'animate-spin' : ''} /> Check Leegality</button>}
                         {canManage && a.status === 'PENDING_SIGNATURE' && <button type="button" onClick={() => setOffline({ hotelId: a.hotelId, note: '' })} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold"><FileSignature size={13} /> Paper copy</button>}
                         {canManage && <button type="button" onClick={() => cancel(a)} aria-label={`Cancel agreement for ${a.hotel?.name}`} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>}
                       </div>

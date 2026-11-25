@@ -81,6 +81,12 @@ export const buildAttachments = async (list = []) => {
       const ag = await prisma.agreement.findUnique({ where: { hotelId: a.hotelId }, select: { reference: true } });
       const pdf = await agreementPdf(a.hotelId);
       if (pdf) out.push({ filename: `ZivoPlus-Agreement-${ag?.reference || a.hotelId.slice(0, 8)}.pdf`, content: pdf });
+    } else if (a.type === 'agreementAudit') {
+      // Leegality's audit trail for an agreement signed with Aadhaar eSign
+      const { agreementPdf } = await import('../agreements/agreementService.js');
+      const ag = await prisma.agreement.findUnique({ where: { hotelId: a.hotelId }, select: { reference: true } });
+      const pdf = await agreementPdf(a.hotelId, { auditTrail: true });
+      if (pdf) out.push({ filename: `ZivoPlus-Agreement-${ag?.reference || a.hotelId.slice(0, 8)}-audit-trail.pdf`, content: pdf });
     } else if (a.type === 'workbook') {
       out.push({ filename: `ZivoPlus-Statement-${a.period}.xlsx`, content: await docs.statementWorkbook(a.hotelId, a.period) });
     }

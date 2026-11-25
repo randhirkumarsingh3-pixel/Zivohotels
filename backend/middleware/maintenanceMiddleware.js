@@ -19,6 +19,7 @@ const ALWAYS_OPEN = [
   /^\/api\/v1\/(admin|extranet|master|finance|kyc)\b/,
   /^\/api\/v1\/bookings\/webhook/,
   /^\/api\/v1\/payments\/webhook/,
+  /^\/api\/v1\/webhooks\//,
   /^\/api\/v1\/system\/config/,
 ];
 // Price checks (/preview) stay open so hotel pages keep showing prices

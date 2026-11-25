@@ -500,6 +500,13 @@ export const agreementApi = {
   adminPdf: (hotelId) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/pdf`, { responseType: 'blob' }, 0),
   template: () => apiFetch(`${ADMIN_BASE}/agreement-template`, { cache: 'no-store' }, 0).then((r) => r?.data),
   saveTemplate: (body) => apiFetch(`${ADMIN_BASE}/agreement-template`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  // Aadhaar eSign through Leegality
+  startAadhaar: (hotelId, body) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}/aadhaar`, jsonBody('POST', body), 0).then((r) => r?.data),
+  auditTrail: (hotelId) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}/audit-trail`, { responseType: 'blob' }, 0),
+  adminAuditTrail: (hotelId) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/audit-trail`, { responseType: 'blob' }, 0),
+  refresh: (hotelId) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/refresh`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  signing: () => apiFetch(`${ADMIN_BASE}/agreement-template/signing`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveSigning: (body) => apiFetch(`${ADMIN_BASE}/agreement-template/signing`, jsonBody('PUT', body), 0).then((r) => r?.data),
 };
 
 // Admin operations: System control, System health, Demand forecasting, Revenue per search,

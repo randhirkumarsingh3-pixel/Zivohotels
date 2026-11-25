@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Save, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, Copy } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, Copy, Fingerprint } from 'lucide-react';
 import { agreementApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 import useAccess from '../../hooks/useAccess';
@@ -11,6 +11,69 @@ import useAccess from '../../hooks/useAccess';
  * from the property's onboarding details when an agreement is prepared.
  */
 const input = 'mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50';
+
+/** How owners sign: emailed code, or Aadhaar eSign through Leegality. */
+const SigningSettings = ({ canEdit }) => {
+  const [s, setS] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  useEffect(() => { agreementApi.signing().then(setS).catch((e) => setMsg({ ok: false, text: e.message })); }, []);
+  if (!s) return msg ? <p className="text-sm text-red-700">{msg.text}</p> : null;
+  const lg = s.leegality || {};
+  const webhook = `${window.location.origin}${lg.webhookPath || '/api/v1/webhooks/leegality'}`;
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const d = await agreementApi.saveSigning({ method: s.method, leegalityProfileId: s.leegalityProfileId, allowEmailFallback: s.allowEmailFallback });
+      setS(d); setMsg({ ok: true, text: d.active === 'LEEGALITY_AADHAAR' ? 'Saved. Owners now sign with Aadhaar eSign.' : 'Saved. Owners sign with an emailed code.' });
+    } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
+  };
+  return (
+    <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4" aria-labelledby="signing-h">
+      <div>
+        <h2 id="signing-h" className="font-bold text-gray-900 flex items-center gap-2"><Fingerprint size={18} aria-hidden="true" /> How owners sign</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Applies to agreements waiting for a signature, including ones already sent.</p>
+      </div>
+      <fieldset className="grid gap-2 sm:grid-cols-2" disabled={!canEdit}>
+        <legend className="sr-only">Signing method</legend>
+        {[
+          ['EMAIL_OTP', 'Emailed code', 'Typed name, consent and a one-time code sent to the owner\'s email.'],
+          ['LEEGALITY_AADHAAR', 'Aadhaar eSign (Leegality)', 'The owner signs on Leegality with an OTP to their Aadhaar-linked mobile. You get the signed PDF and an audit trail.'],
+        ].map(([v, label, help]) => (
+          <label key={v} className={`flex gap-3 p-3 rounded-xl border cursor-pointer ${s.method === v ? 'border-navy-800 bg-navy-50' : 'border-gray-200'}`}>
+            <input type="radio" name="signing-method" className="mt-1" checked={s.method === v} onChange={() => setS({ ...s, method: v })} />
+            <span><span className="block text-sm font-semibold text-gray-900">{label}</span><span className="block text-xs text-gray-600">{help}</span></span>
+          </label>
+        ))}
+      </fieldset>
+      {s.method === 'LEEGALITY_AADHAAR' && (
+        <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+          <p className={`text-xs font-semibold ${lg.configured ? 'text-green-800' : 'text-red-700'}`}>
+            {lg.configured ? `Leegality keys found on the server (${lg.sandbox ? 'sandbox: test signatures only' : 'live'}).` : 'Leegality keys are missing on the server: add LEEGALITY_BASE_URL, LEEGALITY_AUTH_TOKEN and LEEGALITY_PRIVATE_SALT to .env and redeploy.'}
+          </p>
+          <label className="block text-xs font-semibold text-gray-700 max-w-md">Leegality workflow ID
+            <input className={input} value={s.leegalityProfileId} disabled={!canEdit} onChange={(e) => setS({ ...s, leegalityProfileId: e.target.value.trim() })} placeholder="From Leegality → Workflows" />
+          </label>
+          <div className="text-xs text-gray-700">
+            <p className="font-semibold">In that Leegality workflow, set the signer&apos;s sign type to Aadhaar eSign, and under More options → custom URLs and webhooks set both Webhook URL and Error Webhook URL to (version v2.5):</p>
+            <code className="block mt-1 break-all bg-white border border-gray-200 rounded px-2 py-1.5">{webhook}</code>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-gray-800">
+            <input type="checkbox" className="mt-1" checked={s.allowEmailFallback} disabled={!canEdit} onChange={(e) => setS({ ...s, allowEmailFallback: e.target.checked })} />
+            <span>Let owners sign with an emailed code instead (for example if their Aadhaar isn&apos;t linked to a mobile number)</span>
+          </label>
+        </div>
+      )}
+      {canEdit && (
+        <button type="button" onClick={save} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-navy-800 text-white text-sm font-bold disabled:opacity-60">
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save signing method
+        </button>
+      )}
+      {s.method === 'LEEGALITY_AADHAAR' && s.active !== 'LEEGALITY_AADHAAR' && !msg && <p className="text-xs text-amber-800">Not active yet: owners still get the emailed code until the keys and workflow ID are in place and saved.</p>}
+      {msg && <p role="status" className={`text-sm px-3 py-2 rounded-lg ${msg.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>{msg.text}</p>}
+    </section>
+  );
+};
 
 const AgreementTemplate = () => {
   usePageTitle('Agreement template');
@@ -47,6 +110,7 @@ const AgreementTemplate = () => {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4 min-w-0">
+          <SigningSettings canEdit={canEdit} />
           <section className="bg-white border border-gray-200 rounded-2xl p-5 grid gap-4 md:grid-cols-2">
             <label className="text-xs font-semibold text-gray-700 md:col-span-2">Title
               <input className={input} value={t.title} disabled={!canEdit} onChange={(e) => set('title', e.target.value)} />

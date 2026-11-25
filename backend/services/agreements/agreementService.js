@@ -19,6 +19,7 @@ import { esc, day, dateTime, shell, header, meta, renderPdf } from '../documents
 import { brandContext } from '../documents/documentSettings.js';
 import { getTemplate } from './agreementTemplate.js';
 import { sendCode, checkCode, CodeError } from '../otpService.js';
+import { getSigningSettings, startSigning, syncStatus, storedFiles } from './leegality.js';
 
 const bad = (m, code = 400) => Object.assign(new Error(m), { statusCode: code });
 const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -119,7 +120,9 @@ export const prepareAgreement = async (hotelId, user, opts = {}) => {
     termMonths: Number(values.termMonths), templateVersion: template.version, content, contentHash: sha256(content),
     status: opts.send === false ? 'DRAFT' : 'PENDING_SIGNATURE', sentAt: opts.send === false ? null : new Date(), preparedAt: new Date(), preparedBy: user?.email || user?.id || null,
     signedAt: null, viewedAt: null, signerName: null, signerEmail: null, signerUserAgent: null, signatureMethod: null, ipAddress: null, expiryAt: null,
+    leegalityDocumentId: null, leegalitySignUrl: null, leegalityStatus: null, leegalityRequestedAt: null, leegalityContentHash: null, signerCertificate: null,
   };
+  if (existing) await prisma.agreementFile.deleteMany({ where: { agreementId: existing.id } });
   const agreement = existing
     ? await prisma.agreement.update({ where: { hotelId }, data })
     : await prisma.agreement.create({ data: { ...data, hotelId, ownerId: hotel.ownerId } });
@@ -146,8 +149,19 @@ const emailOwnerToSign = async (hotel, agreement) => {
 };
 
 /** What the owner sees in the Extranet. Marks the first time they opened it. */
+const lastSync = new Map(); // agreement id -> time we last asked Leegality (at most every 20 s)
+const syncIfDue = async (agreement) => {
+  if (!agreement?.leegalityDocumentId || agreement.leegalityStatus !== 'SENT' || ['SIGNED', 'ACTIVE'].includes(agreement.status)) return agreement;
+  const t = lastSync.get(agreement.id) || 0;
+  if (Date.now() - t < 20000) return agreement;
+  lastSync.set(agreement.id, Date.now());
+  try { return await syncStatus(agreement, { onSigned: afterAadhaarSign }); } catch (e) { console.error('[Leegality] status check failed:', e.message); return agreement; }
+};
+
 export const ownerView = async (hotelId, user) => {
-  const agreement = await prisma.agreement.findUnique({ where: { hotelId } });
+  let agreement = await prisma.agreement.findUnique({ where: { hotelId } });
+  agreement = await syncIfDue(agreement);
+
   if (!agreement || !agreement.content) return null;
   if (!agreement.viewedAt && agreement.status === 'PENDING_SIGNATURE' && user?.role === 'OWNER') {
     await prisma.agreement.update({ where: { hotelId }, data: { viewedAt: new Date() } });
@@ -157,10 +171,58 @@ export const ownerView = async (hotelId, user) => {
     reference: agreement.reference, status: agreement.status, title: tpl.title, html: agreement.content, contentHash: agreement.contentHash,
     commissionRate: agreement.commissionRate, termMonths: agreement.termMonths, sentAt: agreement.sentAt, signedAt: agreement.signedAt,
     signerName: agreement.signerName, signerEmail: agreement.signerEmail, expiryAt: agreement.expiryAt,
+    signatureMethod: agreement.signatureMethod, signing: await signingOffer(agreement),
   };
 };
 
+/** How the owner can sign this agreement now. */
+const signingOffer = async (agreement) => {
+  const s = await getSigningSettings();
+  const aadhaar = s.active === 'LEEGALITY_AADHAAR';
+  return {
+    method: s.active, emailFallback: aadhaar && s.allowEmailFallback, sandbox: aadhaar ? s.leegality.sandbox : false,
+    leegalityStatus: agreement.leegalityContentHash === agreement.contentHash ? agreement.leegalityStatus : null,
+  };
+};
+
+/**
+ * The owner chose "Sign with Aadhaar": sends this exact agreement to Leegality and returns the
+ * link to Leegality's signing page.
+ */
+export const startAadhaarSigning = async (hotelId, user, { contentHash, consent } = {}) => {
+  const hotel = await loadHotel(hotelId);
+  if (!hotel) throw bad('Property not found', 404);
+  if (!canSign(hotel, user)) throw bad('Only the property\'s owner account can sign the agreement.', 403);
+  const agreement = await prisma.agreement.findUnique({ where: { hotelId } });
+  if (agreement?.status !== 'PENDING_SIGNATURE') throw bad('There is no agreement waiting for your signature.', 409);
+  if (!contentHash || contentHash !== agreement.contentHash) throw bad('The agreement was updated since you opened it. Reload the page and read the new version.', 409);
+  if (consent !== true) throw bad('Tick the box to confirm you agree to sign electronically.');
+  const pdf = await agreementPdf(hotelId, { forEsign: true });
+  return startSigning({ agreement, hotel, owner: { id: user.id, name: user.name, email: user.email, phone: user.phone }, pdf });
+};
+
+/** After Leegality reports the agreement signed: emails the signed copy and audit trail. */
+export const afterAadhaarSign = async (agreement) => {
+  const hotel = await loadHotel(agreement.hotelId);
+  if (hotel) await emailSignedCopies(hotel, agreement);
+};
+
+/** Asks Leegality for the latest state (admin "Check status", webhook). */
+export const refreshFromLeegality = async (where) => {
+  const agreement = await prisma.agreement.findUnique({ where });
+  if (!agreement?.leegalityDocumentId) return agreement;
+  lastSync.set(agreement.id, Date.now());
+  return syncStatus(agreement, { onSigned: afterAadhaarSign });
+};
+
+
 const canSign = (hotel, user) => user?.role === 'OWNER' && hotel.ownerId === user.id;
+
+/** Signing with an emailed code is off when Aadhaar eSign is required without the fallback. */
+const emailSigningAllowed = async () => {
+  const s = await getSigningSettings();
+  if (s.active === 'LEEGALITY_AADHAAR' && !s.allowEmailFallback) throw bad('This agreement is signed with Aadhaar eSign. Use "Sign with Aadhaar".', 409);
+};
 
 export const requestSigningCode = async (hotelId, user, ctx = {}) => {
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { id: true, ownerId: true, name: true } });
@@ -168,6 +230,7 @@ export const requestSigningCode = async (hotelId, user, ctx = {}) => {
   if (!canSign(hotel, user)) throw bad('Only the property\'s owner account can sign the agreement.', 403);
   const agreement = await prisma.agreement.findUnique({ where: { hotelId } });
   if (agreement?.status !== 'PENDING_SIGNATURE') throw bad('There is no agreement waiting for your signature.', 409);
+  await emailSigningAllowed();
   return sendCode({ channel: 'EMAIL', target: user.email, purpose: 'AGREEMENT', ipAddress: ctx.ip, userAgent: ctx.userAgent, name: user.name });
 };
 
@@ -178,6 +241,7 @@ export const signAgreement = async (hotelId, user, { name, code, consent, conten
   const agreement = await prisma.agreement.findUnique({ where: { hotelId } });
   if (agreement?.status !== 'PENDING_SIGNATURE') throw bad('There is no agreement waiting for your signature.', 409);
   if (!contentHash || contentHash !== agreement.contentHash) throw bad('The agreement was updated since you opened it. Reload the page and read the new version.', 409);
+  await emailSigningAllowed();
   const typed = String(name || '').trim().replace(/\s+/g, ' ');
   if (typed.length < 3) throw bad('Type your full name to sign.');
   if (consent !== true) throw bad('Tick the box to confirm you agree to sign electronically.');
@@ -199,7 +263,7 @@ const emailSignedCopies = async (hotel, agreement) => {
   const { notifyUser, notifyAdmins } = await import('../notifyService.js');
   const { emailLayout } = await import('../emailLayout.js');
   const rows = [['Agreement', agreement.reference], ['Property', hotel.name], ['Signed by', `${agreement.signerName} (${agreement.signerEmail})`], ['Signed on', dateTime(agreement.signedAt)]];
-  const financeAttachments = [{ type: 'agreement', hotelId: hotel.id }];
+  const financeAttachments = [{ type: 'agreement', hotelId: hotel.id }, ...(agreement.signatureMethod === 'AADHAAR_ESIGN' ? [{ type: 'agreementAudit', hotelId: hotel.id }] : [])];
   const owner = await emailLayout({ title: 'Agreement signed', eyebrow: 'Listing agreement', ref: agreement.reference, status: 'Signed', body: `Thank you. Your ZivoPlus listing agreement for ${esc(hotel.name)} is signed; a copy is attached. ZivoPlus will now take your property live.`, rows });
   await notifyUser(hotel.ownerId, { type: 'AGREEMENT', title: 'Agreement signed', message: `${hotel.name}: your signed agreement is in your email and the Extranet.`, link: `/extranet/agreement/${hotel.id}`, email: { to: hotel.owner?.email, subject: `Signed: your ZivoPlus agreement ${agreement.reference}`, html: owner, jobType: 'AGREEMENT_SIGNED', financeAttachments } });
   const staff = await emailLayout({ title: `${hotel.name} signed the agreement`, eyebrow: 'Listing agreement', ref: agreement.reference, body: 'The property is ready to go live (Admin → Property review).', rows, cta: { label: 'Open property review', href: '/admin/properties/review' } });
@@ -222,10 +286,17 @@ export const markSignedOffline = async (hotelId, user, { note } = {}) => {
   ]);
 };
 
-export const agreementPdf = async (hotelId) => {
+export const agreementPdf = async (hotelId, { forEsign = false, auditTrail = false } = {}) => {
   const [agreement, hotel, brand, tpl] = await Promise.all([prisma.agreement.findUnique({ where: { hotelId } }), prisma.hotel.findUnique({ where: { id: hotelId }, select: { name: true } }), brandContext(), getTemplate()]);
   if (!agreement?.content) return null;
-  const signedBlock = agreement.status === 'SIGNED' || agreement.status === 'ACTIVE';
+  // Signed with Aadhaar through Leegality: their signed PDF (and audit trail) is the record
+  if (!forEsign && agreement.signatureMethod === 'AADHAAR_ESIGN') {
+    const files = await storedFiles(agreement.id);
+    const f = files.find((x) => x.kind === (auditTrail ? 'AUDIT_TRAIL' : 'SIGNED_PDF'));
+    if (f) return Buffer.from(f.content);
+  }
+  if (auditTrail) return null;
+  const signedBlock = !forEsign && (agreement.status === 'SIGNED' || agreement.status === 'ACTIVE');
   const cert = signedBlock ? `<div class="cert"><h2>Signature certificate</h2><table>
     <tr><td>Agreement</td><td>${esc(agreement.reference)}</td></tr>
     <tr><td>Signed by</td><td>${esc(agreement.signerName || '')}${agreement.signatureMethod === 'EMAIL_OTP' ? ` &lt;${esc(agreement.signerEmail || '')}&gt;` : ''}</td></tr>
@@ -235,12 +306,12 @@ export const agreementPdf = async (hotelId) => {
     ${agreement.signerUserAgent ? `<tr><td>Device</td><td class="mono">${esc(agreement.signerUserAgent)}</td></tr>` : ''}
     <tr><td>Document fingerprint</td><td class="mono">SHA-256 ${esc(agreement.contentHash)}</td></tr>
     <tr><td>Valid until</td><td>${esc(day(agreement.expiryAt))}, then until ended with notice</td></tr></table></div>` : '';
-  const body = `<div class="page">${header({ brandSub: brand.company.legalName, title: tpl.title, sub: hotel?.name || '', ref: agreement.reference, status: signedBlock ? { label: 'Signed', tone: '' } : { label: 'Awaiting signature', tone: 'warn' } })}
+  const body = `<div class="page">${header({ brandSub: brand.company.legalName, title: tpl.title, sub: hotel?.name || '', ref: agreement.reference, status: signedBlock ? { label: 'Signed', tone: '' } : forEsign ? null : { label: 'Awaiting signature', tone: 'warn' } })}
 ${meta([['Prepared', day(agreement.preparedAt || agreement.sentAt)], ['Commission', `${agreement.commissionRate}%`], ['Term', `${agreement.termMonths || 12} months`], ['Template', `v${agreement.templateVersion || 1}`]])}
 ${agreement.content}
-<div class="sigs"><div>For ${esc(brand.company.legalName)}<br><span style="color:#64748b">Accepted electronically by ZivoPlus</span></div><div>For the Partner<br>${signedBlock ? `<b>${esc(agreement.signerName || '')}</b>, ${esc(day(agreement.signedAt))}` : '<span style="color:#64748b">Awaiting signature</span>'}</div></div>
+<div class="sigs"><div>For ${esc(brand.company.legalName)}<br><span style="color:#64748b">Accepted electronically by ZivoPlus</span></div><div>For the Partner<br>${signedBlock ? `<b>${esc(agreement.signerName || '')}</b>, ${esc(day(agreement.signedAt))}` : forEsign ? '<span style="color:#64748b">Signed with Aadhaar eSign (signature below)</span>' : '<span style="color:#64748b">Awaiting signature</span>'}</div></div>
 ${cert}</div>`;
-  return renderPdf(shell(`${tpl.title} ${agreement.reference}`, body, { extraCss: AGREEMENT_CSS, watermark: signedBlock ? null : 'DRAFT' }));
+  return renderPdf(shell(`${tpl.title} ${agreement.reference}`, body, { extraCss: AGREEMENT_CSS, watermark: signedBlock || forEsign ? null : 'DRAFT' }));
 };
 
-export default { agreementData, previewAgreement, prepareAgreement, ownerView, requestSigningCode, signAgreement, markSignedOffline, agreementPdf, renderBody };
+export default { agreementData, previewAgreement, prepareAgreement, ownerView, requestSigningCode, signAgreement, markSignedOffline, agreementPdf, renderBody, startAadhaarSigning, refreshFromLeegality, afterAadhaarSign };
