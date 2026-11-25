@@ -32,6 +32,7 @@ const RULES = [
   [/^\/extranet\/hourly/, ['properties.view', 'hourly.manage'], ['rates.view', 'hourly.manage']],
   [/^\/extranet\/(notifications|activity|dashboard|performance)/, ['properties.view', 'properties.view'], ['dashboard.view', ANY]],
   [/^\/extranet\/(finance|wallet)/, ['finance.view', 'finance.manage'], ['finance.view', 'finance.view']],
+  [/^\/extranet\/business-rates/, ['properties.view', 'properties.manage'], ['rates.view', 'rates.manage']],
   [/^\/extranet\/membership/, ['properties.view', 'loyalty.manage'], ['dashboard.view', 'membership.manage']],
 
   // Shared admin endpoints (hotel teams use them for their own property)
@@ -68,6 +69,9 @@ const RULES = [
   [/^\/admin\/(control|experiments)/, ['settings.view', 'settings.manage'], null],
   [/^\/admin\/health/, ['settings.view', 'settings.view'], null],
   [/^\/admin\/insights/, ['dashboard.view', 'dashboard.view'], null],
+  [/^\/admin\/organisations\/[^/]+\/ledger/, ['business.view', 'finance.manage'], null],
+  [/^\/admin\/organisations/, ['business.view', 'business.manage'], null],
+  [/^\/admin\/business-settings/, ['business.view', 'settings.manage'], null],
   [/^\/admin\/risk/, ['finance.view', 'users.manage'], null],
   [/^\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/master\/finance/, ['finance.view', 'finance.manage'], null],

@@ -119,7 +119,7 @@ export const createBooking = async (req, res, next) => {
     const {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut, roomLines,
       rooms, adults, children, extraBeds, paymentType,
-      guestName, guestEmail, guestPhone, promoCode, usePoints, useWallet, agentId,
+      guestName, guestEmail, guestPhone, promoCode, usePoints, useWallet,
       companyName, companyGstin, companyAddress
     } = validation.data;
 
@@ -135,7 +135,6 @@ export const createBooking = async (req, res, next) => {
       ratePlanId, paymentType, couponCode: promoCode, usePoints, useWallet,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,
-      agentId
     };
 
     const result = await bookingService.createBooking(

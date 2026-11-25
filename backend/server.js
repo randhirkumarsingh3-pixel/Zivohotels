@@ -86,6 +86,8 @@ import { startInvoiceCatchUpJob } from './services/invoiceService.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
 import verificationRoutes from './routes/verificationRoutes.js';
 import leegalityWebhookRoutes from './routes/leegalityWebhookRoutes.js';
+import businessRoutes from './routes/businessRoutes.js';
+import adminOrganisationRoutes, { settingsRouter as businessSettingsRoutes } from './routes/adminOrganisationRoutes.js';
 import { controlRouter as adminControlRoutes, healthRouter as adminHealthRoutes, insightsRouter as adminInsightsRoutes, experimentsRouter as adminExperimentRoutes, riskRouter as adminRiskRoutes } from './routes/adminOpsRoutes.js';
 import { documentsRouter as adminDocumentsRoutes, setupRouter as adminSetupRoutes } from './routes/adminDocumentsRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
@@ -209,7 +211,8 @@ app.use((req, res, next) => {
   const isFileUpload = (req.method === 'POST' || req.method === 'PUT') && (
     /^\/api\/v1\/admin\/images\/?$/.test(req.path) ||
     /^\/api\/v1\/reviews(\/[^/]+)?\/?$/.test(req.path) ||
-    /^\/api\/v1\/kyc\/[^/]+\/upload\/?$/.test(req.path)
+    /^\/api\/v1\/kyc\/[^/]+\/upload\/?$/.test(req.path) ||
+    /^\/api\/v1\/business\/[^/]+\/documents\/?$/.test(req.path)
   );
   return (isFileUpload ? jsonImageUpload : jsonDefault)(req, res, next);
 });
@@ -359,6 +362,9 @@ app.use('/api/v1/admin/reports',    reportRoutes);
 app.use('/api/v1/admin/content-scores', adminContentRoutes);
 // Documents & emails settings (guest invoice issuer, notes, attachments) and the setup checklist
 app.use('/api/v1/admin/documents', adminDocumentsRoutes);
+app.use('/api/v1/business', businessRoutes); // ZivoPlus for Business and Partner Hub (members)
+app.use('/api/v1/admin/organisations', adminOrganisationRoutes);
+app.use('/api/v1/admin/business-settings', businessSettingsRoutes);
 app.use('/api/v1/webhooks/leegality', leegalityWebhookRoutes); // Aadhaar eSign updates (checked with the Private Salt)
 app.use('/api/v1/verification', verificationRoutes); // onboarding checks: PAN, GSTIN, IFSC, payout account
 app.use('/api/v1/admin/control', adminControlRoutes);

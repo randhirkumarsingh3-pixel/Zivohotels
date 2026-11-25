@@ -18,7 +18,7 @@ import {
   Users,
   Gauge,
   X
-, FileSignature } from 'lucide-react';
+, FileSignature, Briefcase } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useExtranet } from '../context/ExtranetContext';
 import useAccess from '../../hooks/useAccess';
@@ -72,6 +72,7 @@ const MENU = [
       { name: 'Wallet', path: '/extranet/wallet', icon: <Wallet size={18} />, perm: 'finance.view' },
       { name: 'Agreement', path: '/extranet/agreement', icon: <FileSignature size={18} />, perm: 'dashboard.view' },
       { name: 'Member Prices', path: '/extranet/member-prices', icon: <Crown size={18} />, perm: 'membership.manage' },
+      { name: 'Business Rates', path: '/extranet/business-rates', icon: <Briefcase size={18} />, perm: 'rates.view' },
       { name: 'Guest Reviews', path: '/extranet/reviews', icon: <Star size={18} />, perm: 'reviews.reply' },
       { name: 'Promotions', path: '/extranet/promotions', icon: <Tag size={18} />, perm: 'promotions.manage' },
     ],

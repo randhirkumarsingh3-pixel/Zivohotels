@@ -5,6 +5,7 @@ import { extranetGet as googleExtranetGet, extranetSet as googleExtranetSet } fr
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { permissionGate } from '../middleware/permissionGate.js';
 import ownerAgreementRoutes from './ownerAgreementRoutes.js';
+import hotelBusinessRateRoutes from './hotelBusinessRateRoutes.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
@@ -38,6 +39,8 @@ router.use(permissionGate); // each path's permission (staff roles)
 
 // The listing agreement: read, get a signing code, sign (routes/ownerAgreementRoutes.js)
 router.use('/agreement', ownerAgreementRoutes);
+// Business rates: discounts for companies and travel agents (routes/hotelBusinessRateRoutes.js)
+router.use('/business-rates', hotelBusinessRateRoutes);
 
 // Property Onboarding (Bypasses scoping during creation)
 router.post('/onboarding/init', initOnboarding);

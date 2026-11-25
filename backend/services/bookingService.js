@@ -11,7 +11,6 @@ import { resolveBest, redeem } from './promotionService.js';
 import { planForCheckout, redeemForBooking, recordEarnForBooking } from './loyaltyService.js';
 import { payForBooking } from './finance/walletService.js';
 import { roundMoney } from '../utils/money.js';
-import agentService from './finance/agentService.js';
 import { getSystemConfig } from '../config/systemConfig.js';
 import { sendBookingConfirmationEmail } from './emailService.js';
 import { roomLinesFrom, roomsPerType } from '../domains/roomLines.js';
@@ -163,7 +162,7 @@ export const bookingService = {
     const { 
       guestName, guestEmail, guestPhone, 
       ratePlanId, paymentType, couponCode, 
-      requestId, agentId, company
+      requestId, company
     } = context;
     // The visit this booking came from (Admin → Revenue per search). Booking.sessionId points at a
     // SessionLog row, so make sure it exists; if that fails the booking goes ahead without it.
@@ -214,11 +213,6 @@ export const bookingService = {
       throw Object.assign(new Error(codeStatus.message), { statusCode: 400 });
     }
     Object.freeze(pricing);
-
-    // 3. B2B Agent Authorization (Phase 8.7)
-    if (agentId) {
-      await agentService.authorizeBooking(agentId, pricing.finalAmount);
-    }
 
     // 4. Execute Transactional Core
     const bookingResult = await prisma.$transaction(async (tx) => {
@@ -439,11 +433,6 @@ export const bookingService = {
           update: { lastAppliedPrice: lastNight.dynamicBreakdown.finalPrice },
           create: { hotelId, roomTypeId: roomType.id, lastAppliedPrice: lastNight.dynamicBreakdown.finalPrice }
         });
-      }
-
-      // H. B2B Agent Credit Utilization (Phase 8.7)
-      if (agentId) {
-        await agentService.utilizeCredit(agentId, pricing.finalAmount, tx);
       }
 
       return booking;

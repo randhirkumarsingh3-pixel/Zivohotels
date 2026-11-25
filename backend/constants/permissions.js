@@ -23,6 +23,8 @@ export const ADMIN_PERMISSIONS = {
   'seo.manage': { group: 'Marketing', label: 'SEO and Google Hotels: page titles, redirects, search engines, Google price feeds' },
   'finance.view': { group: 'Finance', label: 'See payments, settlements, wallets and ledger' },
   'finance.manage': { group: 'Finance', label: 'Record payouts and adjust wallets' },
+  'business.view': { group: 'Business', label: 'See companies and travel agents, their accounts and documents' },
+  'business.manage': { group: 'Business', label: 'Approve companies and travel agents, set their credit and terms' },
   'users.view': { group: 'People', label: 'See guest and partner accounts' },
   'users.manage': { group: 'People', label: 'Block, unblock and edit accounts' },
   'staff.manage': { group: 'People', label: 'Invite ZivoPlus staff and manage roles' },
@@ -54,11 +56,11 @@ export const PRESET_ROLES = [
   { key: 'admin.super', scope: 'ADMIN', name: 'Super Admin', description: 'Everything, including staff and roles.', permissions: [ALL] },
   {
     key: 'admin.operations', scope: 'ADMIN', name: 'Operations', description: 'Bookings, properties and approvals, offers and reviews.',
-    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'properties.view', 'properties.manage', 'properties.approve', 'hourly.manage', 'promotions.manage', 'reviews.moderate', 'seo.manage', 'users.view'],
+    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'properties.view', 'properties.manage', 'properties.approve', 'hourly.manage', 'promotions.manage', 'reviews.moderate', 'seo.manage', 'users.view', 'business.view', 'business.manage'],
   },
   {
     key: 'admin.finance', scope: 'ADMIN', name: 'Finance', description: 'Payments, refunds, settlements and payouts.',
-    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'finance.view', 'finance.manage', 'properties.view', 'users.view'],
+    permissions: ['dashboard.view', 'bookings.view', 'bookings.manage', 'finance.view', 'finance.manage', 'properties.view', 'users.view', 'business.view'],
   },
   {
     key: 'admin.support', scope: 'ADMIN', name: 'Support Agent', description: 'Help guests and hotels: see bookings and accounts, change bookings.',

@@ -47,6 +47,10 @@ const Configuration = lazyPage(() => import('./admin/pages/Configuration'));
 const InventoryPricing = lazyPage(() => import('./admin/pages/InventoryPricing'));
 const Agreements = lazyPage(() => import('./admin/pages/Agreements'));
 const AdminAgreementTemplate = lazyPage(() => import('./admin/pages/AgreementTemplate'));
+const AdminOrganisations = lazyPage(() => import('./admin/pages/Organisations'));
+const AdminBusinessSettings = lazyPage(() => import('./admin/pages/BusinessSettings'));
+const BusinessPortal = lazyPage(() => import('./pages/BusinessPortal'));
+const ExtranetBusinessRates = lazyPage(() => import('./extranet/pages/ExtranetBusinessRates'));
 const AdminBookings = lazyPage(() => import('./admin/pages/Bookings'));
 const ChannelManager = lazyPage(() => import('./admin/pages/ChannelManager'));
 const Users = lazyPage(() => import('./admin/pages/Users'));
@@ -153,6 +157,8 @@ function App() {
               <Route path="/checkout/hourly" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><HourlyCheckout /></ProtectedRoute>} />
               <Route path="/rewards" element={<Rewards />} />
               <Route path="/membership" element={<Membership />} />
+              <Route path="/business" element={<BusinessPortal kind="CORPORATE" />} />
+              <Route path="/partners" element={<BusinessPortal kind="AGENCY" />} />
               <Route path="/wallet" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN', 'OWNER']}><Wallet /></ProtectedRoute>} />
               <Route 
                 path="/my-bookings" 
@@ -184,6 +190,8 @@ function App() {
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
               <Route path="agreement-template" element={<AdminAgreementTemplate />} />
+              <Route path="organisations" element={<AdminOrganisations />} />
+              <Route path="business-settings" element={<AdminBusinessSettings />} />
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="hourly" element={<AdminHourly />} />
 
@@ -289,6 +297,7 @@ function App() {
               <Route path="finance" element={<ExtranetFinance />} />
               <Route path="wallet" element={<ExtranetWallet />} />
               <Route path="member-prices" element={<ExtranetMembership />} />
+              <Route path="business-rates" element={<ExtranetBusinessRates />} />
               <Route path="reviews" element={<ExtranetReviews />} />
               <Route path="promotions" element={<ExtranetPromotions />} />
               <Route path="performance" element={<ExtranetPerformance />} />
