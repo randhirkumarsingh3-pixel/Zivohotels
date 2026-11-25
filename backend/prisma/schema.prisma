@@ -1017,6 +1017,9 @@ model Settlement {
   commissionGstAmount Decimal   @default(0) @db.Decimal(12, 2) // GST on commission (cgst + sgst + igst)
   tcsAmount           Decimal   @default(0) @db.Decimal(12, 2) // TCS (GST s.52)
   tdsAmount           Decimal   @default(0) @db.Decimal(12, 2) // TDS (income tax s.194-O)
+  /// Partner Hub bookings on commission: the travel agent's commission the hotel funds (its agent
+  /// discount), taken from the hotel's payout and credited to the agency
+  agentCommissionAmount Decimal @default(0) @db.Decimal(12, 2)
   status              String
   version             Int       @default(1)
   holdUntil           DateTime? // Payout eligibility date

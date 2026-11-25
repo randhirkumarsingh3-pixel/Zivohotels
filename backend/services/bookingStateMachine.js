@@ -119,6 +119,11 @@ export const transitionBookingStatus = async (bookingId, requestedStatus, userId
     // Check-out: the hotel's settlement (agreed commission, next payout-cycle date) is created now
     if (newStatus === 'COMPLETED') {
       await settlementService.createForCheckout(tx, updated);
+      // Partner Hub on commission: the agent's commission goes to the agency's account, less TDS
+      if (updated.organisationId) {
+        const { creditCommission } = await import('./business/businessBookingService.js');
+        await creditCommission(tx, updated);
+      }
     }
 
     // No-show: whatever the guest paid online is kept, and the hotel's share is settled

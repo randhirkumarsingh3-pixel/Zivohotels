@@ -125,7 +125,11 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     if (refundTo === 'WALLET' && initiatedBy === 'GUEST' && booking.userId) toWallet = refundAmount;
   }
   toWallet = roundMoney(toWallet);
-  const toSource = roundMoney(refundAmount - toWallet);
+  // Business bookings (ZivoPlus for Business / Partner Hub) were paid from the organisation's
+  // account: the refund goes back there
+  const toOrg = booking.organisationId && isPaid ? roundMoney(refundAmount) : 0;
+  if (toOrg > 0) toWallet = 0;
+  const toSource = toOrg > 0 ? 0 : roundMoney(refundAmount - toWallet);
   // Never completed (abandoned at checkout): the Zivo Cash put towards it comes back in full
   const walletReturned = !isPaid && walletUsed > 0 && booking.userId ? walletUsed : 0;
 
@@ -205,6 +209,10 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
 
     await inventoryRepository.restoreInventory(tx, booking);
 
+    if (toOrg > 0) {
+      const { postEntry } = await import('./business/orgLedger.js');
+      await postEntry({ organisationId: booking.organisationId, type: 'REFUND', amount: toOrg, reference: `REFUND-${booking.bookingRef}`, bookingId, note: `Refund for cancelled booking ${booking.bookingRef}`, createdById: userId || null, force: true }, tx);
+    }
     if (toWallet > 0) {
       await moveWallet(tx, { userId: booking.userId, type: 'CREDIT', amount: toWallet, category: 'REFUND', description: `Refund for cancelled booking ${booking.bookingRef}`, bookingId });
     }
@@ -218,7 +226,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         status: 'CANCELLED',
         title: 'Booking Cancelled',
         message: refundAmount > 0
-          ? `Cancelled by ${byLabel}. Refund of ${inr(refundAmount)}: ` + [
+          ? toOrg > 0 ? `Cancelled by ${byLabel}. ${inr(toOrg)} refunded to the organisation's ZivoPlus account.` : `Cancelled by ${byLabel}. Refund of ${inr(refundAmount)}: ` + [
               toWallet > 0 && `${inr(toWallet)} added to your Zivo Cash`,
               toSource > 0 && `${inr(toSource)} to your original payment method (5-7 working days)`,
             ].filter(Boolean).join(', ') + '.'
@@ -247,7 +255,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         userId,
         requestId,
         details: {
-          initiatedBy, refundAmount, retainedAmount, memberWaiver, refundToWallet: toWallet, refundToSource: toSource, walletReturned, status: 'SUCCESS', policy: policyApplied,
+          initiatedBy, refundAmount, retainedAmount, memberWaiver, refundToWallet: toWallet, refundToSource: toSource, refundToOrganisation: toOrg, walletReturned, status: 'SUCCESS', policy: policyApplied,
           razorpayRefundId, paymentId: booking.razorpayPaymentId
         }
       }

@@ -527,6 +527,16 @@ export const businessApi = {
   account: (orgId, page = 1) => apiFetch(`${API_URL}/business/${orgId}/account?page=${page}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   startTopup: (orgId, amount) => apiFetch(`${API_URL}/business/${orgId}/topup`, jsonBody('POST', { amount }), 0).then((r) => r?.data),
   confirmTopup: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/topup/confirm`, jsonBody('POST', body), 0).then((r) => r?.data),
+  branding: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/branding`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  rates: (orgId, hotelIds = '') => apiFetch(`${API_URL}/business/${orgId}/rates?hotelIds=${encodeURIComponent(hotelIds)}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  quote: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/quote`, jsonBody('POST', body), 0).then((r) => r?.data),
+  book: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/bookings`, jsonBody('POST', body), 0).then((r) => r?.data),
+  bookings: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/bookings?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '' && v != null))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  booking: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  payBooking: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/pay`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  cancelBooking: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/cancel`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  voucher: (orgId, id, price = 'NONE') => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/voucher?price=${price}`, { responseType: 'blob' }, 0),
+  commission: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/commission?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 export const adminBusinessApi = {
   list: (q = {}) => apiFetch(`${ADMIN_BASE}/organisations?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),

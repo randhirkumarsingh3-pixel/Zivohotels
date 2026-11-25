@@ -46,6 +46,8 @@ const CAN = {
   'account.view': ['ADMIN', 'FINANCE'],
   'account.topup': ['ADMIN', 'FINANCE'],
   'documents.manage': ['ADMIN'],
+  'bookings.create': ['ADMIN', 'BOOKER', 'TRAVELLER'],
+  'bookings.viewAll': ['ADMIN', 'BOOKER', 'APPROVER', 'FINANCE'],
 };
 export const can = (member, action) => Boolean(member && member.status === 'ACTIVE' && (CAN[action] || []).includes(member.role));
 
@@ -70,6 +72,7 @@ const orgView = (org, settings) => ({
   billingEmail: org.billingEmail, phone: org.phone, website: org.website, status: org.status, statusNote: org.statusNote, reviewedAt: org.reviewedAt,
   tier: org.tier, createdAt: org.createdAt, terms: termsFor(org, settings),
   documents: (Array.isArray(org.documents) ? org.documents : []).map(docView),
+  branding: brandingFor(org),
 });
 
 // ─── Applying ────────────────────────────────────────────────────────────────
@@ -210,6 +213,25 @@ export const updateOrganisation = async (orgId, user, input = {}) => {
     await notifyAdmins({ type: 'ORG_RESUBMITTED', title: 'Organisation updated for review', message: `${updated.name} (${updated.code}) sent updated details.`, link: `/admin/organisations?id=${org.id}` });
   }
   return orgView(updated, s);
+};
+
+/** How the agency appears on vouchers it gives its customers (defaults: its name, phone, billing email). */
+export const brandingFor = (org) => {
+  const b = org.settings?.branding || {};
+  return { name: b.name || org.name, phone: b.phone || org.phone, email: b.email || org.billingEmail, website: b.website || org.website || null };
+};
+
+export const setBranding = async (orgId, user, input = {}) => {
+  const { org } = await membershipFor(orgId, user, 'org.edit');
+  const b = {
+    name: clean(input.name, 80) || null, phone: input.phone ? String(input.phone).replace(/[^\d+ -]/g, '').slice(0, 20) : null,
+    email: input.email ? String(input.email).trim().toLowerCase() : null, website: input.website ? clean(input.website, 120) : null,
+  };
+  if (b.email && !isEmail(b.email)) throw fail('Enter a valid email for your vouchers.');
+  const fresh = await prisma.organisation.findUnique({ where: { id: org.id }, select: { settings: true } });
+  const updated = await prisma.organisation.update({ where: { id: org.id }, data: { settings: { ...(fresh.settings || {}), branding: b } } });
+  await audit('ORG_BRANDING_UPDATED', org.id, user.id, b);
+  return brandingFor(updated);
 };
 
 // ─── KYC documents ───────────────────────────────────────────────────────────

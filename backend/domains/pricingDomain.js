@@ -268,6 +268,8 @@ export const pricingDomain = {
       rooms: roomInputs = [], taxRules, prepaidDiscountPercent, checkInDate, checkOutDate, paymentType,
       appliedPromotion = null, promotionRoomIndexes = null,
       loyaltyDiscountAmount = 0, memberDiscountAmount = 0, dynamicContext = null,
+      // Business rate (ZivoPlus for Business / Partner Hub): the hotel's company or agent discount
+      businessDiscountAmount = 0,
     } = input;
     if (!roomInputs.length) throw new Error('Choose at least one room');
 
@@ -301,7 +303,8 @@ export const pricingDomain = {
     const promotionDiscountAmount = appliedPromotion ? discountFor(appliedPromotion, sum('subtotal', promoRooms)) : 0;
     const memberDiscount = Math.max(0, Math.min(Math.round(Number(memberDiscountAmount) || 0), rawSubtotal - prepaid - promotionDiscountAmount));
     const pointsDiscount = Math.max(0, Math.min(Math.round(Number(loyaltyDiscountAmount) || 0), rawSubtotal - prepaid - promotionDiscountAmount - memberDiscount));
-    const totalDiscountAmount = prepaid + promotionDiscountAmount + memberDiscount + pointsDiscount;
+    const businessDiscount = Math.max(0, Math.min(Math.round(Number(businessDiscountAmount) || 0), rawSubtotal - prepaid - promotionDiscountAmount - memberDiscount - pointsDiscount));
+    const totalDiscountAmount = prepaid + promotionDiscountAmount + memberDiscount + pointsDiscount + businessDiscount;
     const baseAmountAfterDiscount = Math.max(0, rawSubtotal - totalDiscountAmount);
 
     // 3. Each room's share of the discounts (the promotion only over its rooms), exact to the rupee
@@ -316,7 +319,7 @@ export const pricingDomain = {
     };
     const subs = rooms.map((r) => r.subtotal);
     const promoShare = share(promotionDiscountAmount, rooms.map((r, i) => (!promoIdx || promoIdx.has(i) ? r.subtotal : 0)));
-    const otherShare = share(prepaid + memberDiscount + pointsDiscount, subs);
+    const otherShare = share(prepaid + memberDiscount + pointsDiscount + businessDiscount, subs);
 
     // 4. GST slab per room from its tariff per night after discounts; tax per slab
     const findRule = (perNight) => taxRules.find((rule) => (rule.maxThreshold !== null
@@ -346,6 +349,7 @@ export const pricingDomain = {
       promotionDiscountAmount,
       loyaltyDiscountAmount: pointsDiscount,
       memberDiscountAmount: memberDiscount,
+      businessDiscountAmount: businessDiscount,
       baseAmount: baseAmountAfterDiscount,
       taxAmount,
       totalAmount,
