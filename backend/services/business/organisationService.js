@@ -276,7 +276,7 @@ export const readDocument = async (orgId, docId, { user, staff = false }) => {
 };
 
 // ─── Members ─────────────────────────────────────────────────────────────────
-const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
+const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, grade: m.grade || null, approverMemberId: m.approverMemberId || null, costCenter: m.costCenter || null, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
 
 export const listMembers = async (orgId, user) => {
   const { org } = await membershipFor(orgId, user, 'members.view');
@@ -321,13 +321,27 @@ export const inviteMember = async (orgId, actor, { email, name, role } = {}) => 
 
 const activeAdmins = (orgId) => prisma.orgMember.count({ where: { organisationId: orgId, role: 'ADMIN', status: 'ACTIVE' } });
 
-export const updateMember = async (orgId, actor, memberId, { role, status } = {}) => {
+export const updateMember = async (orgId, actor, memberId, { role, status, grade, approverMemberId, costCenter } = {}) => {
   const { org } = await membershipFor(orgId, actor, 'members.manage');
   const m = await prisma.orgMember.findFirst({ where: { id: memberId, organisationId: org.id } });
   if (!m) throw fail('Member not found', 404);
   const data = {};
   if (role !== undefined) { if (!ROLES[role]) throw fail('Choose a role.'); data.role = role; }
   if (status !== undefined) { if (!['ACTIVE', 'PAUSED'].includes(status)) throw fail('Choose active or paused.'); data.status = status; }
+  if (grade !== undefined) {
+    const grades = (org.settings?.policy?.grades || [{ key: 'STANDARD' }, { key: 'SENIOR' }]).map((g) => g.key);
+    if (grade && !grades.includes(grade)) throw fail('Choose a grade from your travel policy.');
+    data.grade = grade || null;
+  }
+  if (approverMemberId !== undefined) {
+    if (approverMemberId) {
+      if (approverMemberId === m.id) throw fail('Someone can\'t approve their own trips.');
+      const a = await prisma.orgMember.findFirst({ where: { id: approverMemberId, organisationId: org.id, status: 'ACTIVE' } });
+      if (!a) throw fail('Choose an approver from your company.');
+    }
+    data.approverMemberId = approverMemberId || null;
+  }
+  if (costCenter !== undefined) data.costCenter = clean(costCenter, 60) || null;
   const losesAdmin = m.role === 'ADMIN' && m.status === 'ACTIVE' && ((data.role && data.role !== 'ADMIN') || data.status === 'PAUSED');
   if (losesAdmin && await activeAdmins(org.id) <= 1) throw fail('An organisation needs at least one active admin. Make someone else admin first.', 409);
   const u = await prisma.orgMember.update({ where: { id: m.id }, data, include: { user: { select: { id: true, name: true, email: true, status: true } } } });

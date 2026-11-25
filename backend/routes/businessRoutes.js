@@ -20,6 +20,10 @@
  *  GET    /:orgId/bookings/:id                POST /:id/pay (held → paid from account)   POST /:id/cancel
  *  GET    /:orgId/bookings/:id/voucher?price=SELL|NONE   the agency-branded voucher (PDF)
  *  GET    /:orgId/commission?from=&to=        commission statement with TDS
+ *  GET    /:orgId/policy   PUT { enabled, approval, requireReason, metroCities, grades, defaultGrade }  (companies)
+ *  GET    /:orgId/approvals                   trips waiting for my approval
+ *  POST   /:orgId/approvals/:id               { decision: APPROVE|REJECT, note }
+ *  GET    /:orgId/reports/spend?from=&to=     spend, savings, policy compliance; /reports/spend.csv with GST details
  */
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -27,6 +31,7 @@ import { protect } from '../middleware/authMiddleware.js';
 import svc, { setBranding, brandingFor, membershipFor } from '../services/business/organisationService.js';
 import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
+import { policyOf, savePolicy } from '../services/business/travelPolicy.js';
 
 const router = express.Router();
 const wrap = (fn) => asyncHandler(async (req, res) => {
@@ -78,5 +83,16 @@ router.get('/:orgId/bookings/:id/voucher', wrap(async (req, res) => {
   res.type('application/pdf').set({ 'Content-Disposition': `inline; filename="Voucher-${b.business?.clientReference || b.bookingRef}.pdf"`, 'Cache-Control': 'private, no-store' }).send(Buffer.from(pdf));
 }));
 router.get('/:orgId/commission', wrap(async (req, res) => ok(res, await booking.commissionStatement(req.params.orgId, req.user, req.query))));
+
+router.get('/:orgId/policy', wrap(async (req, res) => ok(res, policyOf((await membershipFor(req.params.orgId, req.user)).org))));
+router.put('/:orgId/policy', wrap(async (req, res) => ok(res, await savePolicy(req.params.orgId, req.user, req.body || {}))));
+router.get('/:orgId/approvals', wrap(async (req, res) => ok(res, await booking.listApprovals(req.params.orgId, req.user))));
+router.post('/:orgId/approvals/:id', wrap(async (req, res) => ok(res, await booking.decideApproval(req.params.orgId, req.user, req.params.id, req.body || {}, { requestId: req.id }))));
+router.get('/:orgId/reports/spend', wrap(async (req, res) => ok(res, await booking.spendReport(req.params.orgId, req.user, req.query))));
+router.get('/:orgId/reports/spend.csv', wrap(async (req, res) => {
+  const csv = await booking.spendCsv(req.params.orgId, req.user, req.query);
+  res.locals.skipFormat = true;
+  res.type('text/csv').set({ 'Content-Disposition': 'attachment; filename="zivoplus-business-stays.csv"', 'Cache-Control': 'private, no-store' }).send(`\uFEFF${csv}`);
+}));
 
 export default router;

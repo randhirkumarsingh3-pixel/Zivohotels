@@ -31,7 +31,10 @@ export const BookTab = ({ org, onBooked }) => {
   const [pick, setPick] = useState(null); // { roomTypeId, ratePlanId }
   const [pricing, setPricing] = useState({ model: '', markupPct: '' });
   const [quote, setQuote] = useState(null);
-  const [traveller, setTraveller] = useState({ guestName: '', guestPhone: '', customerEmail: '', clientReference: '' });
+  const [traveller, setTraveller] = useState({ guestName: '', guestPhone: '', customerEmail: '', clientReference: '', travellerMemberId: '', policyReason: '' });
+  const [colleagues, setColleagues] = useState([]);
+  const forOthers = !agency && org.myRole !== 'TRAVELLER';
+  useEffect(() => { if (forOthers) businessApi.members(org.id).then((ms) => setColleagues(ms.filter((x) => x.status === 'ACTIVE'))).catch(() => {}); }, [org.id, forOthers]);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState(null);
   const [done, setDone] = useState(null);
@@ -51,18 +54,20 @@ export const BookTab = ({ org, onBooked }) => {
     hotelId: hotel.id, checkIn: stay.checkIn, checkOut: stay.checkOut,
     roomLines: Array.from({ length: Number(stay.rooms) || 1 }, () => ({ roomTypeId: pick.roomTypeId, ratePlanId: pick.ratePlanId, adults: Number(stay.adults) || 1, children: Number(stay.children) || 0 })),
     ...(agency ? { model: pricing.model, markupPct: pricing.model === 'NET' && pricing.markupPct !== '' ? Number(pricing.markupPct) : undefined } : {}),
-  }), [hotel, stay, pick, pricing, agency]);
+    ...(!agency && traveller.travellerMemberId ? { travellerMemberId: traveller.travellerMemberId } : {}),
+  }), [hotel, stay, pick, pricing, agency, traveller.travellerMemberId]);
 
   const getQuote = async () => {
     setBusy('quote'); setMsg(null); setQuote(null);
     try { setQuote(await businessApi.quote(org.id, body())); } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(''); }
   };
-  useEffect(() => { if (hotel && pick) getQuote(); }, [pick, pricing.model]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (hotel && pick) getQuote(); }, [pick, pricing.model, traveller.travellerMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const book = async (hold) => {
     setBusy(hold ? 'hold' : 'book'); setMsg(null);
     try {
-      const b = await businessApi.book(org.id, { ...body(), ...traveller, hold });
+      const { travellerMemberId: _t, ...details } = traveller;
+      const b = await businessApi.book(org.id, { ...body(), ...details, hold });
       setDone(b); onBooked?.();
     } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(''); }
   };
@@ -70,8 +75,8 @@ export const BookTab = ({ org, onBooked }) => {
   if (done) {
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-        <p className="flex items-center gap-2 text-lg font-bold text-gray-900"><CheckCircle2 className="text-green-700" aria-hidden="true" /> {done.status === 'PENDING' ? 'Held' : 'Booked'}: {done.hotel.name}</p>
-        <p className="text-sm text-gray-700">{done.bookingRef} · {day(done.checkIn)} to {day(done.checkOut)} · {done.guestName}. {done.status === 'PENDING' ? `Pay from your account by ${new Date(done.heldUntil).toLocaleString('en-IN')} (Bookings tab), or the rooms are released.` : `${inr(done.total)} paid from your account. The confirmation was emailed to you.`}</p>
+        <p className="flex items-center gap-2 text-lg font-bold text-gray-900"><CheckCircle2 className="text-green-700" aria-hidden="true" /> {done.business?.approval?.status === 'PENDING' ? 'Sent for approval' : done.status === 'PENDING' ? 'Held' : 'Booked'}: {done.hotel.name}</p>
+        <p className="text-sm text-gray-700">{done.bookingRef} · {day(done.checkIn)} to {day(done.checkOut)} · {done.guestName}. {done.business?.approval?.status === 'PENDING' ? `The rooms are held until ${new Date(done.heldUntil).toLocaleString('en-IN')}. It is confirmed and paid when approved; you'll get an email either way.` : done.status === 'PENDING' ? `Pay from your account by ${new Date(done.heldUntil).toLocaleString('en-IN')} (Bookings tab), or the rooms are released.` : `${inr(done.total)} paid from your account. The confirmation was emailed to you.`}</p>
         <div className="flex flex-wrap gap-2">
           {agency && <button type="button" className={`${btn} bg-navy-800 text-white`} onClick={() => openBlob(() => businessApi.voucher(org.id, done.id, 'NONE'), setMsg)}><Download size={15} /> Voucher for your customer</button>}
           {agency && done.business?.sellAmount && <button type="button" className={`${btn} border border-gray-300`} onClick={() => openBlob(() => businessApi.voucher(org.id, done.id, 'SELL'), setMsg)}><Download size={15} /> Voucher with your price ({inr(done.business.sellAmount)})</button>}
@@ -148,6 +153,15 @@ export const BookTab = ({ org, onBooked }) => {
             <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
               <form onSubmit={(e) => { e.preventDefault(); book(false); }} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
                 <h3 className="font-bold text-gray-900">Lead traveller</h3>
+                {forOthers && (
+                  <label className="block text-sm font-semibold text-gray-800">Travelling<select className={input} value={traveller.travellerMemberId} onChange={(e) => { const m = colleagues.find((x) => x.id === e.target.value); setTraveller({ ...traveller, travellerMemberId: e.target.value, guestName: m ? m.user.name : traveller.guestName }); }}><option value="">Me</option>{colleagues.map((m) => <option key={m.id} value={m.id}>{m.user.name}{m.grade ? ` (${m.grade.toLowerCase()})` : ''}</option>)}</select></label>
+                )}
+                {quote.policy?.enabled && (
+                  <p className={`text-sm px-3 py-2 rounded-lg ${quote.policy.within ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>{quote.policy.within ? `Within policy: ${inr(quote.policy.perNight)} a night (limit ${inr(quote.policy.cap)} for ${quote.policy.gradeName}).` : `Over policy: ${inr(quote.policy.perNight)} a night, limit ${inr(quote.policy.cap)} for ${quote.policy.gradeName}${quote.policy.metro ? ' in metro cities' : ''}.`}{quote.needsApproval ? ' This stay needs approval.' : ''}</p>
+                )}
+                {quote.policy?.enabled && !quote.policy.within && quote.policy.requireReason && (
+                  <label className="block text-sm font-semibold text-gray-800">Reason for the exception<input className={input} required value={traveller.policyReason} onChange={(e) => setTraveller({ ...traveller, policyReason: e.target.value })} placeholder="e.g. Client office is next door" /></label>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-sm font-semibold text-gray-800">Name (as on ID)<input className={input} required value={traveller.guestName} onChange={(e) => setTraveller({ ...traveller, guestName: e.target.value })} /></label>
                   <label className="text-sm font-semibold text-gray-800">Phone<input type="tel" className={input} required value={traveller.guestPhone} onChange={(e) => setTraveller({ ...traveller, guestPhone: e.target.value })} /></label>
@@ -157,10 +171,14 @@ export const BookTab = ({ org, onBooked }) => {
                 <p className="text-xs text-gray-500">ZivoPlus sends the confirmation to you, not to the traveller.{agency ? ' Give your customer the voucher with your agency\'s name.' : ''}</p>
                 <Note msg={msg} />
                 <div className="flex flex-wrap gap-2">
-                  <button type="submit" disabled={!!busy || !quote.canPayNow} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white px-6`}>{busy === 'book' ? <Loader2 size={15} className="animate-spin" /> : <IndianRupee size={15} />} Book and pay {inr(quote.price.total)}</button>
-                  {quote.holdUntil && <button type="button" disabled={!!busy} onClick={() => book(true)} className={`${btn} border border-gray-300`}>{busy === 'hold' ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />} Hold until {new Date(quote.holdUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</button>}
+                  {quote.needsApproval ? (
+                    <button type="submit" disabled={!!busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white px-6`}>{busy === 'book' ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />} Send for approval ({inr(quote.price.total)})</button>
+                  ) : (
+                    <button type="submit" disabled={!!busy || !quote.canPayNow} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white px-6`}>{busy === 'book' ? <Loader2 size={15} className="animate-spin" /> : <IndianRupee size={15} />} Book and pay {inr(quote.price.total)}</button>
+                  )}
+                  {quote.holdUntil && !quote.needsApproval && <button type="button" disabled={!!busy} onClick={() => book(true)} className={`${btn} border border-gray-300`}>{busy === 'hold' ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />} Hold until {new Date(quote.holdUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</button>}
                 </div>
-                {!quote.canPayNow && <p className="text-sm text-amber-800">Not enough balance{quote.available != null ? ` (${inr(quote.available)} available)` : ''}. Top up in the Account tab{quote.holdUntil ? ', or hold the rooms and pay later' : ''}.</p>}
+                {!quote.canPayNow && !quote.needsApproval && <p className="text-sm text-amber-800">Not enough balance{quote.available != null ? ` (${inr(quote.available)} available)` : ''}. Top up in the Account tab{quote.holdUntil ? ', or hold the rooms and pay later' : ''}.</p>}
               </form>
               <aside className="bg-white border border-gray-200 rounded-2xl p-5 text-sm space-y-2 self-start">
                 <h3 className="font-bold text-gray-900">{quote.nights} night{quote.nights > 1 ? 's' : ''} · {quote.rooms.length} room{quote.rooms.length > 1 ? 's' : ''}</h3>
