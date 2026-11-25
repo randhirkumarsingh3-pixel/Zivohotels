@@ -62,6 +62,19 @@ export const stayNightlyPrice = (basePrice, nights, overrides) => {
   return roundMoney(total / nights.length);
 };
 
+/**
+ * Nightly price of a rate plan as guests see it on search and the hotel page: the room price for
+ * the stay plus the plan's meals for the adults a room holds at its base occupancy. Checkout adds
+ * meals per adult the same way (pricingDomain), so a meal plan shows the price the guest pays.
+ */
+export const planNightlyPrice = (ratePlan, roomType, nights, overrides) => {
+  const room = stayNightlyPrice(ratePlan.basePrice, nights, overrides);
+  const meals = ratePlan.mealPlan && !['NONE', 'EP'].includes(ratePlan.mealPlan)
+    ? toMoney(ratePlan.mealPriceAdult || 0) * (roomType?.baseOccupancy || 2)
+    : 0;
+  return room > 0 ? roundMoney(room + meals) : room;
+};
+
 /** Calendar for a property: room types with per-day inventory and per-day prices for each rate plan. */
 export const getCalendar = async (hotelId, start, end) => {
   const days = daysBetween(start, end);

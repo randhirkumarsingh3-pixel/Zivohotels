@@ -15,7 +15,7 @@ import { getDatesInRange } from '../utils/dateUtils.js';
 import { displayOffers, displayOffersMany } from '../services/promotionService.js';
 import { membershipFor } from '../services/membershipService.js';
 import { escapeHtml } from '../utils/html.js';
-import { stayNightlyPrice } from '../services/ariService.js';
+import { planNightlyPrice } from '../services/ariService.js';
 import nearbyPlaces from '../services/nearbyPlacesService.js';
 import { hotelIdsForPlace, hotelsNear } from '../services/hotelPlaceMatch.js';
 import { parseLatLng } from '../utils/places.js';
@@ -911,7 +911,7 @@ export const getHotelById = asyncHandler(async (req, res) => {
       const avail = Math.min(...nights.map(n => { const row = inv.get(n.toISOString()); return row ? (row.stopSell ? 0 : row.availableRooms) : rt.totalInventory; }));
       rt.availableForStay = Math.max(0, avail);
       rt.ratePlans.forEach(rp => {
-        rp.stayNightlyPrice = stayNightlyPrice(rp.basePrice, nights, ratesByPlan[rp.id] || {});
+        rp.stayNightlyPrice = planNightlyPrice(rp, rt, nights, ratesByPlan[rp.id] || {});
       });
     });
 
@@ -1068,7 +1068,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
          // plan of a room type that can actually be booked
          if (minAvail > 0) {
            rt.ratePlans.forEach(rp => {
-             const nightly = stayNightlyPrice(rp.basePrice, stayNights, ratesByPlan[rp.id] || {});
+             const nightly = planNightlyPrice(rp, rt, stayNights, ratesByPlan[rp.id] || {});
              if (nightly > 0) bookablePlans.push({ roomTypeId: rt.id, ratePlanId: rp.id, nightlyPrice: nightly });
              if (nightly < hotelMinPrice) hotelMinPrice = nightly;
            });
@@ -1082,7 +1082,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
      // Fully sold out: still show a price so the hotel can be listed as sold out
      if (hotelMinPrice === Infinity) {
        hotel.roomTypes.forEach(rt => rt.ratePlans.forEach(rp => {
-         const nightly = stayNightlyPrice(rp.basePrice, stayNights, ratesByPlan[rp.id] || {});
+         const nightly = planNightlyPrice(rp, rt, stayNights, ratesByPlan[rp.id] || {});
          if (nightly < hotelMinPrice) hotelMinPrice = nightly;
        }));
      }

@@ -153,10 +153,14 @@ const previewLimiter = rateLimit({
   message: { success: false, message: 'Too many price checks. Please wait a moment.' }
 });
 
+// Admin and extranet screens (room set-up, calendar, rates, bookings): counted per signed-in
+// account, not per address, so one busy hotel team behind an office connection doesn't lock each
+// other out. The room calendar alone makes several requests per change.
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100, // 100 admin requests per 15 mins
-  message: { success: false, message: 'Admin rate limit exceeded.' }
+  max: Number(process.env.ADMIN_RATE_LIMIT_PER_15_MIN) || 600,
+  keyGenerator: (req) => `user:${req.user?.id || 'anon'}`,
+  message: { success: false, message: 'Too many changes in a short time. Please wait a few minutes and try again.' }
 });
 
 // 2. Proxy Hardening
@@ -275,7 +279,8 @@ app.use('/api/v1/auth', loginLimiter, authRoutes);
 app.post('/api/v1/users/accept-invite', loginLimiter, acceptInvite);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/hotels', hotelRoutes);
-app.use('/api/v1/rooms', roomRoutes);
+// Room types are managed only at /api/v1/admin/rooms (behind permissionGate: properties.* for
+// ZivoPlus staff, rates.* for hotel teams); the old unguarded /api/v1/rooms address is gone.
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed);
