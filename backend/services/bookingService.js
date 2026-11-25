@@ -114,6 +114,17 @@ const pricingSettings = async () => {
   return { taxRules, systemConfig, prepaidDiscountPercent: systemConfig.prepaidDiscountPercent ?? 5 };
 };
 
+const ensureSession = async (sid, userId) => {
+  const id = typeof sid === 'string' ? sid.trim().slice(0, 64) : '';
+  if (!id || id === 'anonymous') return null;
+  try {
+    await prisma.sessionLog.upsert({ where: { sessionId: id }, update: {}, create: { sessionId: id, userId: userId || null, platform: 'web' } });
+    return id;
+  } catch {
+    return null;
+  }
+};
+
 export const bookingService = {
 
   /**
@@ -152,8 +163,11 @@ export const bookingService = {
     const { 
       guestName, guestEmail, guestPhone, 
       ratePlanId, paymentType, couponCode, 
-      requestId, sessionId, agentId, company
+      requestId, agentId, company
     } = context;
+    // The visit this booking came from (Admin → Revenue per search). Booking.sessionId points at a
+    // SessionLog row, so make sure it exists; if that fails the booking goes ahead without it.
+    const sessionId = await ensureSession(context.sessionId, userId);
 
     // 1. The rooms: each with its room type, plan, guests and lead guest (older clients: one type
     // and plan for all rooms)

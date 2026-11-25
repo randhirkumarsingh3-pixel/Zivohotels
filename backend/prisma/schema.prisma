@@ -1728,3 +1728,23 @@ model HotelAdjustment {
 
   @@index([hotelId, status])
 }
+
+/// One guest search (Admin → Revenue per search, Demand forecasting). Repeats of the same search in
+/// the same visit within 30 minutes (filters, sorting, paging) are counted once.
+model SearchLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  sessionId String?
+  userId    String?
+  place     String
+  checkIn   DateTime @db.Date
+  nights    Int
+  guests    Int
+  rooms     Int
+  results   Int
+  hourly    Boolean  @default(false)
+
+  @@index([createdAt])
+  @@index([checkIn])
+  @@index([place, createdAt])
+}

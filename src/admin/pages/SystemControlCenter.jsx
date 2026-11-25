@@ -1,159 +1,130 @@
-import { 
-  Zap, ShieldAlert, Activity, FlaskConical, Database, Cpu,
-  Layers, HardDrive, RefreshCw, History
-} from 'lucide-react';
-import SampleDataNotice from '../../components/shared/SampleDataNotice';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ShieldAlert, Loader2 } from 'lucide-react';
+import { adminOpsApi } from '../../services/api';
+import usePageTitle from '../../hooks/usePageTitle';
+import useAccess from '../../hooks/useAccess';
+import { PageHeader, Card, Pill, Loading, ErrorNote, Empty, RefreshButton } from '../components/ops/OpsUi';
+import { when } from '../components/ops/opsFormat';
 
-const ControlCard = ({ title, status, active, onToggle, icon: Icon, color }) => (
-  <div className={`bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm group hover:shadow-xl transition-all duration-500`}>
-    <div className="flex justify-between items-start mb-8">
-      <div className={`p-4 rounded-[1.5rem] ${active ? `bg-${color}-600 text-white` : 'bg-gray-100 text-gray-400'} shadow-lg transition-all`}>
-        <Icon size={24} fill={active ? 'currentColor' : 'none'} />
+/**
+ * Admin → System control: the platform's safety switches. Each one is enforced on the server
+ * (backend/services/ops/controlService.js); every change needs a reason and is logged.
+ */
+const SwitchRow = ({ s, canEdit, onAsk }) => (
+  <li className="flex flex-col sm:flex-row sm:items-center gap-3 py-4">
+    <div className="flex-1 min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-semibold text-gray-900">{s.label}</p>
+        {s.key === 'experimentsEnabled'
+          ? <Pill tone={s.on ? 'ok' : 'warn'}>{s.on ? 'On' : 'Off'}</Pill>
+          : <Pill tone={s.on ? (s.danger ? 'down' : 'warn') : 'ok'}>{s.on ? 'On' : 'Off'}</Pill>}
       </div>
-      <button 
-        onClick={onToggle}
-        className={`w-14 h-8 rounded-full relative transition-all duration-300 p-1 ${active ? `bg-${color}-600` : 'bg-gray-200'}`}
-      >
-        <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 transform ${active ? 'translate-x-6' : 'translate-x-0'}`} />
-      </button>
+      <p className="text-sm text-gray-600 mt-1">{s.on ? s.effectOn : s.effectOff}</p>
+      {!s.on && <p className="text-xs text-gray-500 mt-1">When on: {s.effectOn}</p>}
     </div>
-    
-    <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{title}</p>
-    <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-gray-900' : 'text-gray-400'}`}>
-      {status}
-    </h3>
-  </div>
+    {canEdit && (
+      <button type="button" onClick={() => onAsk(s)}
+        className={`shrink-0 min-w-[120px] px-4 py-2 rounded-lg text-sm font-bold border ${s.on ? 'border-gray-300 text-gray-800 hover:bg-gray-50' : s.danger ? 'border-red-600 text-red-700 hover:bg-red-50' : 'border-navy-800 text-navy-800 hover:bg-navy-50'}`}>
+        {s.on ? 'Turn off' : 'Turn on'}
+      </button>
+    )}
+  </li>
 );
 
 const SystemControlCenter = () => {
+  usePageTitle('System control');
+  const { can } = useAccess();
+  const canEdit = can('settings.manage');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(null); // switch being changed
+  const [reason, setReason] = useState('');
+  const [message, setMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  const load = useCallback(() => {
+    setBusy(true); setError('');
+    adminOpsApi.control().then(setData).catch((e) => setError(e.message || 'Could not load the switches.')).finally(() => setBusy(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const openAsk = (s) => { setAsk(s); setReason(''); setSaveError(''); setMessage(data?.maintenanceMessage || ''); };
+  const confirm = async () => {
+    setBusy(true); setSaveError('');
+    try {
+      const d = await adminOpsApi.setSwitch(ask.key, { on: !ask.on, reason, ...(ask.key === 'maintenanceMode' && !ask.on ? { message } : {}) });
+      setData(d); setAsk(null);
+    } catch (e) { setSaveError(e.message || 'Could not change the switch.'); } finally { setBusy(false); }
+  };
+
+  const active = data?.switches?.filter((s) => (s.key === 'experimentsEnabled' ? !s.on : s.on)) || [];
+
   return (
-    <div className="space-y-10 pb-12">
-      <SampleDataNotice what="System control" />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            <span className="text-xs font-black text-red-600 uppercase tracking-[0.2em]">Platform Command Core</span>
+    <div className="space-y-6 max-w-5xl">
+      <PageHeader title="System control" sub="Switches that change what guests can do on ZivoPlus right now. Every change needs a reason and is logged below.">
+        <RefreshButton onClick={load} busy={busy} />
+      </PageHeader>
+
+      {error && <ErrorNote error={error} onRetry={load} />}
+      {!data && !error && <Loading />}
+
+      {data && (
+        <>
+          <div className={`rounded-2xl border px-5 py-4 flex items-start gap-3 ${active.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+            <ShieldAlert size={20} className={active.length ? 'text-amber-700' : 'text-green-700'} aria-hidden="true" />
+            <p className="text-sm text-gray-900">
+              {active.length ? <>Not in the normal position: <b>{active.map((s) => s.label).join(', ')}</b>.</> : <>Everything is running normally. Guests can search, book and pay.</>}
+              {' '}<Link to="/admin/system-health" className="font-semibold underline">System health</Link>
+            </p>
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">System control</h1>
-          <p className="text-gray-500 font-medium mt-1">Global overrides, safety toggles, and systemic state management.</p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-8 py-3 bg-red-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-600/20">
-             <ShieldAlert size={18} /> Global Emergency Stop
-          </button>
-        </div>
-      </div>
+          <Card title="Switches" sub={canEdit ? 'Changes reach every server within a few seconds.' : 'You can see the switches; changing them needs the settings.manage permission.'}>
+            <ul className="divide-y divide-gray-100 -my-4">
+              {data.switches.map((s) => <SwitchRow key={s.key} s={s} canEdit={canEdit} onAsk={openAsk} />)}
+            </ul>
+          </Card>
 
-      {/* Global Toggles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <ControlCard 
-          title="SAFE_MODE Escalation" 
-          status="DISABLED" 
-          active={false} 
-          icon={ShieldAlert}
-          color="red"
-        />
-        <ControlCard 
-          title="Autonomous Throttling" 
-          status="ACTIVE (20%)" 
-          active={true} 
-          icon={Activity}
-          color="orange"
-        />
-        <ControlCard 
-          title="Experiment Engine" 
-          status="04 RUNNING" 
-          active={true} 
-          icon={FlaskConical}
-          color="purple"
-        />
-        <ControlCard 
-          title="AI Pricing Logic" 
-          status="ENABLED" 
-          active={true} 
-          icon={Zap}
-          color="brand"
-        />
-      </div>
+          <Card title="Change log" sub="Who changed a switch, when and why.">
+            {data.log.length === 0 ? <Empty>No changes yet.</Empty> : (
+              <ol className="space-y-3">
+                {data.log.map((l) => (
+                  <li key={l.id} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 text-sm">
+                    <span className="text-xs text-gray-500 w-32 shrink-0 tabular-nums">{when(l.at)}</span>
+                    <span className="min-w-0"><b>{l.label}</b> turned <b>{l.on ? 'on' : 'off'}</b> by {l.by}<span className="text-gray-600"> — {l.reason}</span></span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </>
+      )}
 
-      {/* System Health Pulse */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-gray-900 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
-           <div className="absolute bottom-0 right-0 p-12 opacity-5">
-              <Database size={300} />
-           </div>
-
-           <div className="flex justify-between items-start mb-12 relative z-10">
-              <div>
-                 <h3 className="text-3xl font-black tracking-tight mb-2">Operational Integrity</h3>
-                 <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Real-time distributed diagnostics</p>
-              </div>
-              <button className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all">
-                 <RefreshCw size={24} className="text-brand-500" />
+      {ask && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="sw-title">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4">
+            <h2 id="sw-title" className="text-lg font-bold text-gray-900">{ask.on ? 'Turn off' : 'Turn on'}: {ask.label}</h2>
+            <p className="text-sm text-gray-700">{ask.on ? ask.effectOff : ask.effectOn}</p>
+            {ask.key === 'maintenanceMode' && !ask.on && (
+              <label className="block text-xs font-semibold text-gray-700">Message guests see (optional)
+                <input className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" maxLength={300} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="ZivoPlus is down for maintenance. Please try again in a few minutes." />
+              </label>
+            )}
+            <label className="block text-xs font-semibold text-gray-700">Why? (shown in the change log)
+              <textarea rows={3} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Payment gateway outage, Razorpay status page shows degraded" autoFocus />
+            </label>
+            {saveError && <p role="alert" className="text-sm text-red-700">{saveError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setAsk(null)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold">Cancel</button>
+              <button type="button" onClick={confirm} disabled={busy || reason.trim().length < 5}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50 ${!ask.on && ask.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-800 hover:bg-navy-900'}`}>
+                {busy && <Loader2 size={15} className="animate-spin" />} {ask.on ? 'Turn off' : 'Turn on'}
               </button>
-           </div>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 relative z-10">
-              {[
-                { label: 'Ledger Variance', value: '✔ 0.00', status: 'BALANCED', icon: Layers, color: 'brand' },
-                { label: 'API p99 Latency', value: '42ms', status: 'OPTIMAL', icon: Activity, color: 'green' },
-                { label: 'Worker Uptime', value: '100%', status: 'HEALTHY', icon: Cpu, color: 'blue' },
-                { label: 'Database I/O', value: '24%', status: 'STABLE', icon: HardDrive, color: 'purple' }
-              ].map((h, i) => (
-                <div key={i} className="flex items-center gap-6 group">
-                   <div className={`p-5 bg-white/5 rounded-[1.5rem] text-${h.color}-500 border border-white/5 group-hover:bg-white/10 group-hover:scale-110 transition-all`}>
-                      <h.icon size={32} />
-                   </div>
-                   <div>
-                      <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{h.label}</p>
-                      <h4 className="text-2xl font-black mb-1">{h.value}</h4>
-                      <div className="flex items-center gap-2">
-                         <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                         <span className="text-xs font-black text-green-500 uppercase tracking-widest">{h.status}</span>
-                      </div>
-                   </div>
-                </div>
-              ))}
-           </div>
+            </div>
+          </div>
         </div>
-
-        {/* Recent Actions Feed */}
-        <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm">
-           <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
-              <History className="text-brand-500" size={24} />
-              Command Log
-           </h3>
-           
-           <div className="space-y-8">
-              {[
-                { action: 'SAFE_MODE_REVERT', admin: 'Randhir', time: '14m ago', status: 'SUCCESS' },
-                { action: 'THROTTLE_INCREASE', admin: 'System_AI', time: '2h ago', status: 'AUTO' },
-                { action: 'PAYOUT_FREEZE', admin: 'Fraud_Engine', time: '5h ago', status: 'AUTO' }
-              ].map((l, i) => (
-                <div key={i} className="flex gap-4 group">
-                   <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 rounded-full bg-gray-200 mt-1 border-2 border-white shadow-sm group-hover:bg-brand-500 transition-colors"></div>
-                      <div className="w-px h-full bg-gray-100 my-1"></div>
-                   </div>
-                   <div className="flex-1 pb-6">
-                      <div className="flex justify-between items-start mb-1">
-                         <h4 className="text-sm font-black text-gray-900 uppercase tracking-tighter">{l.action}</h4>
-                         <span className="text-xs font-black text-gray-400">{l.time}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 font-medium">Triggered by <span className="font-black text-gray-900 underline">{l.admin}</span></p>
-                   </div>
-                </div>
-              ))}
-           </div>
-
-           <button className="w-full mt-6 py-4 bg-gray-50 text-gray-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-900 hover:text-white transition-all shadow-sm">
-              View Governance Trail
-           </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

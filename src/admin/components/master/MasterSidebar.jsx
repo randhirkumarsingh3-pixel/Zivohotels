@@ -1,6 +1,6 @@
 import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge, ListChecks, FileText } from 'lucide-react';
+import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge, ListChecks, FileText, HeartPulse } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useAccess from '../../../hooks/useAccess';
 import Logo from '../../../components/brand/Logo';
@@ -103,16 +103,16 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem perm="reviews.moderate" name="Guest Reviews" path="/admin/reviews" icon={<MessageSquareText size={18} />} />
           <NavItem perm="loyalty.manage" name="Loyalty (Zivo Rewards)" path="/admin/loyalty" icon={<Award size={18} />} />
           <NavItem perm="loyalty.manage" name="Membership" path="/admin/membership" icon={<Crown size={18} />} />
-          <NavItem perm="dashboard.view" name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} badge="Preview" />
+          <NavItem perm="dashboard.view" name="Demand Forecasting" path="/admin/forecasting" icon={<Activity size={18} />} />
         </NavGroup>
 
         <NavGroup title="Analytics">
-          <NavItem perm="dashboard.view" name="Revenue per Search" path="/admin/analytics/rps" icon={<Target size={18} />} badge="Preview" />
+          <NavItem perm="dashboard.view" name="Revenue per Search" path="/admin/analytics/rps" icon={<Target size={18} />} />
           <NavItem perm="dashboard.view" name="Reports" path="/admin/reports" icon={<BarChart3 size={18} />} />
         </NavGroup>
 
         <NavGroup title="Experiments">
-          <NavItem perm="settings.view" name="Experiments" path="/admin/experiments" icon={<FlaskConical size={18} />} badge="Preview" />
+          <NavItem perm="settings.view" name="Experiments" path="/admin/experiments" icon={<FlaskConical size={18} />} />
         </NavGroup>
 
         <NavGroup title="Finance">
@@ -127,17 +127,17 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
         </NavGroup>
 
         <NavGroup title="Risk & Fraud">
-          <NavItem perm="finance.view" name="Fraud Center" path="/admin/fraud" icon={<AlertTriangle size={18} />} badge="Preview" />
+          <NavItem perm="finance.view" name="Fraud & Risk Center" path="/admin/fraud" icon={<AlertTriangle size={18} />} />
         </NavGroup>
 
         <NavGroup title="Control Center">
-          <NavItem perm="settings.manage" name="System Control" path="/admin/control-center" icon={<Zap size={18} />} badge="Preview" />
+          <NavItem perm="settings.view" name="System Control" path="/admin/control-center" icon={<Zap size={18} />} />
           <NavItem perm="staff.manage" name="Staff & Roles" path="/admin/staff" icon={<ShieldCheck size={18} />} />
           <NavItem perm="users.view" name="Guest & Partner Accounts" path="/admin/users" icon={<Users size={18} />} />
           <NavItem perm="settings.view" name="Setup Checklist" path="/admin/setup" icon={<ListChecks size={18} />} />
           <NavItem perm="settings.manage" name="Platform Settings" path="/admin/platform-settings" icon={<Settings size={18} />} />
           <NavItem perm="settings.view" name="Documents & Emails" path="/admin/documents" icon={<FileText size={18} />} />
-          <NavItem perm="settings.view" name="System Health" path="/admin/settings" icon={<Settings size={18} />} badge="Preview" />
+          <NavItem perm="settings.view" name="System Health" path="/admin/system-health" icon={<HeartPulse size={18} />} />
         </NavGroup>
         <div className="px-6 pt-2">
           <button type="button" onClick={togglePreview} aria-pressed={showPreview}

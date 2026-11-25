@@ -5,6 +5,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { z } from 'zod';
 import rankingService from '../services/rankingService.js';
 import { getShared, setShared } from '../utils/sharedCache.js';
+import { logSearch } from '../services/ops/searchLog.js';
 import crypto from 'crypto';
 import bcrypt from '../utils/bcrypt.js';
 import { mediaService } from '../services/MediaService.js';
@@ -981,8 +982,16 @@ export const searchHotels = asyncHandler(async (req, res) => {
   // Generate cache key
   const cacheKey = crypto.createHash('md5').update(JSON.stringify(req.query)).digest('hex');
   
+  // Admin → Revenue per search: one row per search (repeats in the same visit count once)
+  const logIt = (data) => logSearch({
+    sessionId: req.headers['x-session-id'], userId: req.user?.id, place: near ? 'Near me' : city, checkIn,
+    nights: getDatesInRange(checkIn, checkOut).length, guests: groupRooms.reduce((a, b) => a + b, 0), rooms: groupRooms.length,
+    results: (data?.hotels || []).filter((h) => !h.badges?.isSoldOut).length,
+  });
+
   const cachedData = await getShared(`search:${cacheKey}`);
   if (cachedData) {
+    logIt(cachedData);
     return res.status(200).json({ success: true, data: cachedData });
   }
 
@@ -1180,6 +1189,7 @@ export const searchHotels = asyncHandler(async (req, res) => {
   const responseData = { hotels: rankedHotels.map(({ commission: _commission, ...h }) => h) };
   
   setShared(`search:${cacheKey}`, responseData, 60000); // 60 s, shared by all server processes
+  logIt(responseData);
 
   res.status(200).json({
     success: true,

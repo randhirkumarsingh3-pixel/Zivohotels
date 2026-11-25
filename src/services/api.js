@@ -36,12 +36,16 @@ export class ApiError extends Error {
 export const getAuthHeaders = () => ({ 'Content-Type': 'application/json' });
 
 const getSessionId = () => {
-  let sid = localStorage.getItem('session_id');
-  if (!sid) {
-    sid = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
-    localStorage.setItem('session_id', sid);
+  try {
+    let sid = localStorage.getItem('session_id');
+    if (!sid) {
+      sid = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
+      localStorage.setItem('session_id', sid);
+    }
+    return sid;
+  } catch {
+    return 'anonymous';
   }
-  return sid;
 };
 
 // ─── HYBRID CACHING STRATEGY ──────────────────────────────────────────────────
@@ -170,7 +174,7 @@ const performNetworkRequest = async (url, options, retriesLeft, backoff, dedupeK
       const errorCode = body?.code || 'API_ERROR';
       const status = response.status;
       
-      if ([502, 503, 504].includes(status) && retriesLeft > 0) {
+      if ([502, 503, 504].includes(status) && retriesLeft > 0 && errorCode !== 'MAINTENANCE') { // maintenance: say so at once
         if (!isBackground) console.warn(`[API] ⚠️ RETRYING (${retriesLeft} left) in ${backoff}ms: ${url}`);
         await new Promise(r => setTimeout(r, backoff));
         return performNetworkRequest(url, options, retriesLeft - 1, backoff * 2, dedupeKey, requestId, isBackground);
@@ -214,6 +218,8 @@ export const apiFetch = async (url, options = {}, retries = 3, backoff = 500) =>
   const headers = {
     'Content-Type': 'application/json',
     'X-Request-ID': requestId,
+    // Anonymous visit id: joins searches, hotel views and bookings for Admin → Revenue per search
+    'x-session-id': getSessionId(),
     ...getAuthHeaders(),
     ...options.headers,
   };
@@ -468,6 +474,26 @@ export const adminDocumentsApi = {
   save: (body) => apiFetch(`${ADMIN_BASE}/documents`, jsonBody('PUT', body), 0).then((r) => r?.data),
   preview: (kind) => apiFetch(`${ADMIN_BASE}/documents/preview/${encodeURIComponent(kind)}`, { responseType: 'blob' }, 0),
   setup: () => apiFetch(`${ADMIN_BASE}/setup`, { cache: 'no-store' }, 0).then((r) => r?.data),
+};
+
+// Admin operations: System control, System health, Demand forecasting, Revenue per search,
+// Experiments, Fraud & risk (backend/routes/adminOpsRoutes.js)
+const noStore = { cache: 'no-store' };
+export const adminOpsApi = {
+  control: () => apiFetch(`${ADMIN_BASE}/control`, noStore, 0).then((r) => r?.data),
+  setSwitch: (key, body) => apiFetch(`${ADMIN_BASE}/control/${encodeURIComponent(key)}`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  health: () => apiFetch(`${ADMIN_BASE}/health`, noStore, 0).then((r) => r?.data),
+  forecast: (f) => apiFetch(`${ADMIN_BASE}/insights/forecast?${qs(f)}`, noStore, 0).then((r) => r?.data),
+  searchRevenue: (f) => apiFetch(`${ADMIN_BASE}/insights/search-revenue?${qs(f)}`, noStore, 0).then((r) => r?.data),
+  experiments: () => apiFetch(`${ADMIN_BASE}/experiments`, noStore, 0).then((r) => r?.data),
+  createExperiment: (body) => apiFetch(`${ADMIN_BASE}/experiments`, jsonBody('POST', body), 0).then((r) => r?.data),
+  updateExperiment: (id, body) => apiFetch(`${ADMIN_BASE}/experiments/${id}`, jsonBody('PATCH', body), 0).then((r) => r?.data),
+  deleteExperiment: (id) => apiFetch(`${ADMIN_BASE}/experiments/${id}`, { method: 'DELETE' }, 0).then((r) => r?.data),
+  experimentResults: (id) => apiFetch(`${ADMIN_BASE}/experiments/${id}/results`, noStore, 0).then((r) => r?.data),
+  risk: (f) => apiFetch(`${ADMIN_BASE}/risk?${qs(f)}`, noStore, 0).then((r) => r?.data),
+  riskAccount: (id) => apiFetch(`${ADMIN_BASE}/risk/accounts/${id}`, noStore, 0).then((r) => r?.data),
+  reviewAccount: (id, body) => apiFetch(`${ADMIN_BASE}/risk/accounts/${id}/review`, jsonBody('POST', body), 0).then((r) => r?.data),
+  blockIp: (body) => apiFetch(`${ADMIN_BASE}/risk/ips`, jsonBody('POST', body), 0).then((r) => r?.data),
 };
 
 // Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)

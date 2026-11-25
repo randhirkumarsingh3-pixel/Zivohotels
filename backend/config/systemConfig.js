@@ -2,7 +2,12 @@ import prisma from './db.js';
 
 let configCache = null;
 let lastFetch = 0;
-const CACHE_TTL = 60 * 1000; // 1 minute
+// Short, because the safety switches (maintenance, pause bookings or payments) are read from here
+// and must reach every server process within seconds of being turned on.
+const CACHE_TTL = 5 * 1000;
+
+/** Forget the cached copy (this process), e.g. right after an admin changes a switch. */
+export const clearSystemConfigCache = () => { configCache = null; lastFetch = 0; };
 
 export const getSystemConfig = async () => {
   const now = Date.now();

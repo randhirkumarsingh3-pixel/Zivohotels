@@ -138,7 +138,7 @@ export const getConfig = asyncHandler(async (req, res) => {
 export const getPublicConfig = asyncHandler(async (req, res) => {
   const configs = await prisma.systemConfig.findMany({
     where: {
-      key: { in: ['partialPaymentPercent', 'prepaidDiscountPercent', 'maintenanceMode', 'isBookingDisabled'] }
+      key: { in: ['partialPaymentPercent', 'prepaidDiscountPercent', 'maintenanceMode', 'isBookingDisabled', 'isPaymentDisabled', 'maintenanceMessage'] }
     }
   });
   

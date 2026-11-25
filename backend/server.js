@@ -56,6 +56,7 @@ import kycRoutes from './routes/kycRoutes.js';
 import socketService from './services/socketService.js';
 import systemCache from './utils/systemCache.js';
 import orchestrationService from './services/orchestrationService.js';
+import { startMetrics } from './services/ops/metrics.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import { startBookingExpiryJob } from './services/bookingExpiryService.js';
 import { startDynamicPricingJob } from './services/dynamicPricingService.js';
@@ -83,6 +84,7 @@ import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
 import { startInvoiceCatchUpJob } from './services/invoiceService.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
+import { controlRouter as adminControlRoutes, healthRouter as adminHealthRoutes, insightsRouter as adminInsightsRoutes, experimentsRouter as adminExperimentRoutes, riskRouter as adminRiskRoutes } from './routes/adminOpsRoutes.js';
 import { documentsRouter as adminDocumentsRoutes, setupRouter as adminSetupRoutes } from './routes/adminDocumentsRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 
@@ -355,6 +357,11 @@ app.use('/api/v1/admin/reports',    reportRoutes);
 app.use('/api/v1/admin/content-scores', adminContentRoutes);
 // Documents & emails settings (guest invoice issuer, notes, attachments) and the setup checklist
 app.use('/api/v1/admin/documents', adminDocumentsRoutes);
+app.use('/api/v1/admin/control', adminControlRoutes);
+app.use('/api/v1/admin/health', adminHealthRoutes);
+app.use('/api/v1/admin/insights', adminInsightsRoutes);
+app.use('/api/v1/admin/experiments', adminExperimentRoutes);
+app.use('/api/v1/admin/risk', adminRiskRoutes);
 app.use('/api/v1/admin/setup', adminSetupRoutes);
 app.use('/api/v1/admin/finance',    adminFinanceRoutes);
 app.use('/api/v1/admin/delivery',   deliveryRoutes);
@@ -403,6 +410,7 @@ server.listen(PORT, HOST, () => {
   
   // Initialize Autonomous Governance
   orchestrationService.init();
+  startMetrics(); // request counts and process heartbeats for Admin → System health
   systemCache.syncBlockedIps();
   
   // Timed jobs (emails, unpaid-booking release, points, memberships…) run in ONE process only:

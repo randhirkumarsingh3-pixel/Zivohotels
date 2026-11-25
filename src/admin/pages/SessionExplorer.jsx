@@ -1,157 +1,120 @@
-import { 
-  Search, Filter, Activity, ChevronRight,
-  ArrowRight, User
-} from 'lucide-react';
-import SampleDataNotice from '../../components/shared/SampleDataNotice';
+import { useCallback, useEffect, useState } from 'react';
+import { adminOpsApi } from '../../services/api';
+import usePageTitle from '../../hooks/usePageTitle';
+import { PageHeader, Card, Stat, Loading, ErrorNote, Empty, RefreshButton, Segmented, Bars, Table } from '../components/ops/OpsUi';
+import { inr, int, pct, day } from '../components/ops/opsFormat';
 
-const SessionRow = ({ id, user, path, revenue, status: _status, duration }) => (
-  <tr className="hover:bg-gray-50/50 transition-all cursor-pointer group">
-    <td className="px-8 py-5">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
-          <Activity size={16} />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-gray-900">{id}</p>
-          <p className="text-xs text-gray-400 font-medium">03 May 2026 · 15:20</p>
-        </div>
-      </div>
-    </td>
-    <td className="px-8 py-5">
-      <div className="flex items-center gap-2">
-        <User size={14} className="text-gray-400" />
-        <p className="text-xs font-bold text-gray-700">{user}</p>
-      </div>
-    </td>
-    <td className="px-8 py-5">
-      <div className="flex items-center gap-2">
-        {path.map((step, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className={`text-xs font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${i === path.length - 1 ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
-              {step}
-            </span>
-            {i < path.length - 1 && <ChevronRight size={10} className="text-gray-300" />}
-          </div>
-        ))}
-      </div>
-    </td>
-    <td className="px-8 py-5">
-      <p className="text-xs font-black text-gray-900">{duration}</p>
-    </td>
-    <td className="px-8 py-5 text-right">
-      <p className={`text-sm font-black ${revenue > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-        ₹ {revenue.toLocaleString()}
-      </p>
-    </td>
-    <td className="px-8 py-5 text-center">
-      <div className="flex justify-center">
-         <ArrowRight size={16} className="text-gray-300 group-hover:text-brand-700 group-hover:translate-x-1 transition-all" />
-      </div>
-    </td>
-  </tr>
-);
+/**
+ * Admin → Revenue per search: how many guest searches turn into bookings and money, per day and
+ * per city, the steps in between, and searches that found nothing (demand without supply).
+ * Data: SearchLog (every search, recorded by the server), hotel page views, checkouts, bookings.
+ */
+const change = (n) => (n === null || n === undefined ? null : `${n > 0 ? '+' : ''}${n}% vs previous period`);
 
-const SessionExplorer = () => {
+const RevenuePerSearch = () => {
+  usePageTitle('Revenue per search');
+  const [days, setDays] = useState('30');
+  const [city, setCity] = useState('');
+  const [cityInput, setCityInput] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    setBusy(true); setError('');
+    adminOpsApi.searchRevenue({ days, city }).then(setData).catch((e) => setError(e.message || 'Could not load the numbers.')).finally(() => setBusy(false));
+  }, [days, city]);
+  useEffect(() => { load(); }, [load]);
+
+  const t = data?.totals;
+  const funnelMax = Math.max(1, ...(data?.funnel || []).map((f) => f.count));
+
   return (
-    <div className="space-y-8 pb-12">
-      <SampleDataNotice what="Revenue per search" />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Revenue per search</h1>
-          <p className="text-gray-500 font-medium mt-1">Deep-dive into search-to-booking funnels and drop-off points.</p>
-        </div>
+    <div className="space-y-6 max-w-6xl">
+      <PageHeader title="Revenue per search" sub="How guest searches turn into bookings and booking value, by day and by city.">
+        <form onSubmit={(e) => { e.preventDefault(); setCity(cityInput.trim()); }} className="flex gap-2">
+          <label htmlFor="rps-city" className="sr-only">City</label>
+          <input id="rps-city" value={cityInput} onChange={(e) => setCityInput(e.target.value)} placeholder="All cities" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+          <button type="submit" className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold">Apply</button>
+        </form>
+        <Segmented label="Period" value={days} onChange={setDays} options={[['7', '7 days'], ['30', '30 days'], ['90', '90 days']]} />
+        <RefreshButton onClick={load} busy={busy} />
+      </PageHeader>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" placeholder="Search Session ID / User..." className="pl-10 pr-4 py-2.5 bg-white border-gray-100 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500/20 w-64" />
+      {error && <ErrorNote error={error} onRetry={load} />}
+      {!data && !error && <Loading />}
+
+      {data && (
+        <>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+            <Stat label="Revenue per search" value={t.rps !== null ? `₹${t.rps.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'} hint="Booking value ÷ searches" />
+            <Stat label="Searches" value={int(t.searches)} hint={change(t.change.searches) || `${int(t.visits)} visits searched`} />
+            <Stat label="Bookings" value={int(t.bookings)} hint={change(t.change.bookings) || (t.conversionPct !== null ? `${pct(t.conversionPct, 2)} of searches` : null)} />
+            <Stat label="Booking value" value={inr(t.revenue)} hint={change(t.change.revenue)} />
+            <Stat label="Average booking" value={inr(t.avgBooking)} hint={`${int(t.bookingsFromSearch)} traced to a search`} />
           </div>
-        </div>
-      </div>
 
-      {/* Funnel Pulse */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Live Sessions</p>
-           <h4 className="text-2xl font-black text-gray-900">1,242</h4>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Avg. Path Length</p>
-           <h4 className="text-2xl font-black text-gray-900">4.2 steps</h4>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Conv. Rate (Live)</p>
-           <h4 className="text-2xl font-black text-green-700">3.8%</h4>
-        </div>
-        <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
-           <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Abnormal Drop-offs</p>
-           <h4 className="text-2xl font-black text-red-500">12%</h4>
-        </div>
-      </div>
+          {t.searches === 0 && (
+            <p className="text-sm px-4 py-3 rounded-xl bg-sky-50 text-sky-900">No searches recorded in this period yet. Searches are recorded from today&apos;s release onward; revenue per search appears once guests search.</p>
+          )}
 
-      {/* Session Table */}
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-4">
-             <div className="flex bg-white rounded-xl border border-gray-200 p-1">
-                <button className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-black uppercase tracking-widest">Live</button>
-                <button className="px-4 py-2 text-gray-400 text-xs font-black uppercase tracking-widest hover:text-gray-600">Converted</button>
-                <button className="px-4 py-2 text-gray-400 text-xs font-black uppercase tracking-widest hover:text-gray-600">Dropped</button>
-             </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card title="From search to booking" sub="Each step of the period.">
+              <ol className="space-y-3">
+                {data.funnel.map((f, i) => {
+                  const prev = i ? data.funnel[i - 1].count : null;
+                  return (
+                    <li key={f.step}>
+                      <div className="flex justify-between text-sm"><span className="font-semibold text-gray-900">{f.step}</span><span className="tabular-nums">{int(f.count)}</span></div>
+                      <div className="h-2 bg-gray-100 rounded-full mt-1 overflow-hidden"><div className="h-full bg-navy-800 rounded-full" style={{ width: `${(f.count / funnelMax) * 100}%` }} /></div>
+                      {prev ? <p className="text-xs text-gray-500 mt-0.5">{pct((f.count / prev) * 100, 1)} of the step before</p> : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            </Card>
+            <Card title="Searches and booking value per day" className="lg:col-span-2">
+              <p className="text-xs text-gray-500 mb-2">Searches</p>
+              <Bars label="Searches per day" data={data.series.map((s) => ({ label: day(s.day), value: s.searches }))} height={90} />
+              <p className="text-xs text-gray-500 mt-4 mb-2">Booking value</p>
+              <Bars label="Booking value per day" data={data.series.map((s) => ({ label: day(s.day), value: s.revenue }))} height={90} format={inr} color="#15803d" />
+            </Card>
           </div>
-          <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
-            <Filter size={16} /> Filters
-          </button>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Session ID / Time</th>
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">User Context</th>
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Path Journey</th>
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Duration</th>
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Value</th>
-                <th className="px-8 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              <SessionRow 
-                id="SES-48291" 
-                user="Arjun (Delhi)" 
-                path={['SEARCH', 'CLICK', 'PREVIEW', 'BOOKING']} 
-                revenue={8420} 
-                duration="4m 12s"
-              />
-              <SessionRow 
-                id="SES-48302" 
-                user="Anonymous (Mumbai)" 
-                path={['SEARCH', 'CLICK', 'DROPPED']} 
-                revenue={0} 
-                duration="1m 05s"
-              />
-              <SessionRow 
-                id="SES-48315" 
-                user="Priya (Bengaluru)" 
-                path={['SEARCH', 'CLICK', 'PREVIEW', 'BOOKING']} 
-                revenue={12400} 
-                duration="8m 45s"
-              />
-              <SessionRow 
-                id="SES-48328" 
-                user="Anonymous (Jaipur)" 
-                path={['SEARCH', 'DROPPED']} 
-                revenue={0} 
-                duration="0m 15s"
-              />
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <Card title="By city" sub="Searches typed for the city, and bookings at hotels in it.">
+            <Table head={['City', '#Searches', '#Avg. hotels found', '#Found nothing', '#Bookings', '#Booking value', '#Revenue / search']} empty={!data.cities.length && <Empty>No searches or bookings yet.</Empty>}>
+              {data.cities.map((c) => (
+                <tr key={c.city}>
+                  <td className="px-5 py-2 font-semibold">{c.city}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{int(c.searches)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{c.avgResults ?? '—'}</td>
+                  <td className={`px-5 py-2 text-right tabular-nums ${c.zeroResultPct >= 20 ? 'text-red-600 font-semibold' : ''}`}>{pct(c.zeroResultPct)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{int(c.bookings)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{inr(c.revenue)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{c.rps !== null ? `₹${c.rps}` : '—'}</td>
+                </tr>
+              ))}
+            </Table>
+          </Card>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card title="Searches that found no hotel" sub="Places guests want that ZivoPlus can't serve yet: candidates for new properties.">
+              {data.zeroResults.length === 0 ? <Empty>Every search found at least one hotel.</Empty> : (
+                <ul className="divide-y divide-gray-50">
+                  {data.zeroResults.map((z) => <li key={z.place} className="flex justify-between py-2 text-sm"><span>{z.place}</span><span className="tabular-nums font-semibold">{int(z.searches)}</span></li>)}
+                </ul>
+              )}
+            </Card>
+            <Card title="How far ahead guests search" sub="Days between the search and the check-in date.">
+              <Bars label="Searches by days ahead" data={data.leadTime.map((l) => ({ label: l.label, value: l.searches }))} height={110} showEvery={1} />
+            </Card>
+          </div>
+
+          <ul className="text-xs text-gray-500 space-y-1 list-disc pl-5">{data.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+        </>
+      )}
     </div>
   );
 };
 
-export default SessionExplorer;
+export default RevenuePerSearch;

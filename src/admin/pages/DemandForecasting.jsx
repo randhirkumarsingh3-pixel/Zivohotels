@@ -1,221 +1,119 @@
-import { useState } from 'react';
-import { 
-  TrendingUp, BarChart3, 
-  Zap, Target, RefreshCw,
-  ArrowRight, MapPin,
-  Sun, Cloud, CloudRain
-} from 'lucide-react';
-import SampleDataNotice from '../../components/shared/SampleDataNotice';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, TrendingDown, Info, AlertTriangle } from 'lucide-react';
+import { adminOpsApi } from '../../services/api';
+import usePageTitle from '../../hooks/usePageTitle';
+import { PageHeader, Card, Stat, Pill, Loading, ErrorNote, Empty, RefreshButton, Segmented, Bars, Table } from '../components/ops/OpsUi';
+import { inr, int, pct } from '../components/ops/opsFormat';
 
-const forecastData = [
-  { date: 'May 16', day: 'Fri', demand: 92, price: 5800, event: 'Weekend', weather: Sun },
-  { date: 'May 17', day: 'Sat', demand: 98, price: 6400, event: 'Weekend Peak', weather: Sun },
-  { date: 'May 18', day: 'Sun', demand: 85, price: 5200, event: null, weather: Cloud },
-  { date: 'May 19', day: 'Mon', demand: 62, price: 4200, event: null, weather: Cloud },
-  { date: 'May 20', day: 'Tue', demand: 58, price: 4000, event: null, weather: CloudRain },
-  { date: 'May 21', day: 'Wed', demand: 65, price: 4300, event: null, weather: Cloud },
-  { date: 'May 22', day: 'Thu', demand: 72, price: 4600, event: 'Corp Season', weather: Sun },
-  { date: 'May 23', day: 'Fri', demand: 88, price: 5500, event: 'Weekend', weather: Sun },
-  { date: 'May 24', day: 'Sat', demand: 95, price: 6200, event: 'Weekend Peak', weather: Sun },
-  { date: 'May 25', day: 'Sun', demand: 78, price: 4800, event: null, weather: Cloud },
-];
-
-const cityDemand = [
-  { city: 'New Delhi', demand: 'HIGH', score: 92, change: '+8%', events: ['IPL Finals', 'Tech Summit'] },
-  { city: 'Mumbai', demand: 'HIGH', score: 88, change: '+5%', events: ['Film Festival'] },
-  { city: 'Bangalore', demand: 'MEDIUM', score: 72, change: '+2%', events: [] },
-  { city: 'Goa', demand: 'LOW', score: 45, change: '-12%', events: ['Off-Season'] },
-  { city: 'Jaipur', demand: 'MEDIUM', score: 68, change: '+15%', events: ['Heritage Week'] },
-];
+/**
+ * Admin → Demand forecasting: for each coming night, rooms for sale, rooms already booked, the
+ * expected final occupancy (from how bookings usually come in that close to arrival over the last
+ * 90 nights) and how many guests searched for it. Suggestions are rules with their reason;
+ * prices are changed by people in the calendar, never automatically from here.
+ */
+const TONE_ICON = { up: TrendingUp, down: TrendingDown, warn: AlertTriangle, info: Info };
+const occTone = (p) => (p === null ? 'off' : p >= 85 ? 'high' : p >= 60 ? 'medium' : 'low');
+const CONF = { good: ['ok', 'Good history'], fair: ['medium', 'Some history'], low: ['warn', 'Little history'], none: ['off', 'No history yet'] };
 
 const DemandForecasting = () => {
-  const [forecastRange, setForecastRange] = useState('10D');
+  usePageTitle('Demand forecasting');
+  const [days, setDays] = useState('30');
+  const [city, setCity] = useState('');
+  const [cityInput, setCityInput] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    setBusy(true); setError('');
+    adminOpsApi.forecast({ days, city }).then(setData).catch((e) => setError(e.message || 'Could not load the forecast.')).finally(() => setBusy(false));
+  }, [days, city]);
+  useEffect(() => { load(); }, [load]);
+
+  const t = data?.totals;
+  const conf = CONF[data?.model?.confidence || 'none'];
 
   return (
-    <div className="space-y-8 pb-12">
-      <SampleDataNotice what="Demand forecasting" />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Demand Forecasting</h1>
-          <p className="text-gray-500 font-medium mt-1">AI-powered demand predictions and pricing recommendations.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-100">
-            <Zap size={14} fill="currentColor" />
-            <span className="text-xs font-black uppercase tracking-widest">AI Model v3.2 — Last trained: 2hrs ago</span>
-          </div>
-          <div className="flex bg-white rounded-2xl border border-gray-100 p-1 shadow-sm">
-            {['10D', '30D', '90D'].map(r => (
-              <button 
-                key={r}
-                onClick={() => setForecastRange(r)}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${forecastRange === r ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/20' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6 max-w-6xl">
+      <PageHeader title="Demand forecasting" sub="Rooms booked and expected for each coming night, with what guests are searching for. Use it to decide where to raise prices or run an offer.">
+        <form onSubmit={(e) => { e.preventDefault(); setCity(cityInput.trim()); }} className="flex gap-2">
+          <label htmlFor="fc-city" className="sr-only">City</label>
+          <input id="fc-city" value={cityInput} onChange={(e) => setCityInput(e.target.value)} placeholder="All cities" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+          <button type="submit" className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold">Apply</button>
+        </form>
+        <Segmented label="Nights ahead" value={days} onChange={setDays} options={[['14', '14 nights'], ['30', '30 nights'], ['90', '90 nights']]} />
+        <RefreshButton onClick={load} busy={busy} />
+      </PageHeader>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
-          <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Predicted Occupancy (7D)</p>
-          <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-3xl font-black">78%</h3>
-            <span className="text-green-400 text-sm font-black mb-1 flex items-center gap-1"><TrendingUp size={14} /> +6%</span>
-          </div>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Optimal ADR</p>
-          <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-3xl font-black text-gray-900">₹ 5,240</h3>
-            <span className="text-green-700 text-sm font-black mb-1">+₹ 340</span>
-          </div>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Revenue Opportunity</p>
-          <h3 className="text-3xl font-black text-brand-700 mt-1">₹ 2.4L</h3>
-          <p className="text-xs text-gray-400 mt-1 font-medium">If pricing recommendations applied.</p>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Forecast Accuracy</p>
-          <h3 className="text-3xl font-black text-green-700 mt-1">94.2%</h3>
-          <p className="text-xs text-gray-400 mt-1 font-medium">MAPE over last 30 days.</p>
-        </div>
-      </div>
+      {error && <ErrorNote error={error} onRetry={load} />}
+      {!data && !error && <Loading />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Daily Forecast Grid */}
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
-              <BarChart3 className="text-brand-700" size={20} />
-              Daily Demand Forecast
-            </h3>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50">
-              <RefreshCw size={14} /> Refresh
-            </button>
-          </div>
-          <div className="p-4">
-            <div className="space-y-1">
-              {/* Header Row */}
-              <div className="grid grid-cols-6 gap-4 px-5 py-3 text-xs font-black text-gray-400 uppercase tracking-widest">
-                <span>Date</span>
-                <span>Demand</span>
-                <span>Demand Level</span>
-                <span>Suggested Rate</span>
-                <span>Event</span>
-                <span className="text-center">Action</span>
-              </div>
-              {forecastData.map((d, i) => {
-                const WeatherIcon = d.weather;
-                return (
-                  <div key={i} className="grid grid-cols-6 gap-4 items-center px-5 py-4 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <WeatherIcon size={16} className="text-gray-400" />
-                      <div>
-                        <p className="text-sm font-black text-gray-900">{d.date}</p>
-                        <p className="text-xs text-gray-400 font-medium">{d.day}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${d.demand >= 90 ? 'bg-red-500' : d.demand >= 70 ? 'bg-orange-500' : 'bg-brand-500'}`} 
-                            style={{ width: `${d.demand}%` }} 
-                          />
-                        </div>
-                        <span className="text-xs font-black text-gray-900 w-8">{d.demand}%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${d.demand >= 90 ? 'bg-red-50 text-red-600 border-red-100' : d.demand >= 70 ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                        {d.demand >= 90 ? 'SURGE' : d.demand >= 70 ? 'HIGH' : 'NORMAL'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-green-700">₹ {d.price.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      {d.event ? (
-                        <span className="px-2 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-lg text-xs font-black uppercase tracking-widest">{d.event}</span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </div>
-                    <div className="text-center">
-                      <button className="px-3 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-brand-700 transition-all">
-                        Apply
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
-            <button className="text-xs font-black text-brand-700 uppercase tracking-widest hover:underline flex items-center gap-2 mx-auto">
-              Apply All Recommendations <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
+      {data && !t && <Empty>No live hotels {city ? `in ${city}` : ''} yet.</Empty>}
 
-        {/* Right: City Demand + Insights */}
-        <div className="space-y-8">
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-            <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-              <MapPin className="text-red-500" size={20} />
-              City Demand Map
-            </h3>
-            <div className="space-y-4">
-              {cityDemand.map((c, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-all">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{c.city}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {c.events.map((e, j) => (
-                        <span key={j} className="text-xs font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded uppercase">{e}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-right flex items-center gap-3">
-                    <span className={`text-xs font-black ${c.change.startsWith('+') ? 'text-green-700' : 'text-red-500'}`}>{c.change}</span>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${c.demand === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' : c.demand === 'MEDIUM' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                      {c.demand}
-                    </span>
-                  </div>
-                </div>
+      {data && t && (
+        <>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+            <Stat label="Booked, next 7 nights" value={pct(t.occupancy7Pct)} hint={`Expected ${pct(t.forecast7Pct)}`} />
+            <Stat label={`Booked, next ${data.period.days} nights`} value={pct(t.occupancyPct)} hint={`Expected ${pct(t.forecastPct)} · ${int(t.booked)} of ${int(t.capacity)} room nights`} />
+            <Stat label="Average room rate booked" value={inr(t.adr)} hint={`${inr(t.revenueOnBooks)} on the books`} />
+            <Stat label="Booking pace" value={`${int(t.pace7)} room nights`} hint={t.paceChangePct !== null ? `booked in the last 7 days, ${t.paceChangePct > 0 ? '+' : ''}${t.paceChangePct}% vs the week before` : 'booked in the last 7 days'} tone={t.paceChangePct > 0 ? 'good' : t.paceChangePct < 0 ? 'bad' : undefined} />
+            <Stat label="Searches for these nights" value={int(t.searches)} hint="made in the last 30 days" />
+          </div>
+
+          {data.suggestions.length > 0 && (
+            <Card title="What to look at" sub="Rules based on the numbers below. Nothing is changed automatically.">
+              <ul className="space-y-3">
+                {data.suggestions.map((s) => {
+                  const Icon = TONE_ICON[s.tone] || Info;
+                  return (
+                    <li key={s.title} className="flex gap-3">
+                      <Icon size={18} className={`shrink-0 mt-0.5 ${s.tone === 'up' ? 'text-green-700' : s.tone === 'down' ? 'text-amber-700' : s.tone === 'warn' ? 'text-red-600' : 'text-sky-700'}`} aria-hidden="true" />
+                      <div><p className="text-sm font-semibold text-gray-900">{s.title}</p><p className="text-sm text-gray-600">{s.detail}</p></div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-xs text-gray-500 mt-4">Change prices or open dates in <Link to="/admin/inventory-pricing" className="underline font-semibold">Inventory &amp; pricing</Link> (or the hotel&apos;s Extranet calendar).</p>
+            </Card>
+          )}
+
+          <Card title="Occupancy by night" sub="Dark: rooms already booked. Grey: rooms for sale. The expected occupancy for each night is in the table below." right={<Pill tone={conf[0]}>{conf[1]}</Pill>}>
+            <Bars label="Rooms booked and expected per night" data={data.nights.map((n) => ({ label: `${n.weekday.slice(0, 2)} ${n.date.slice(8)}`, value: n.booked, value2: n.capacity }))} height={150} />
+            <p className="text-xs text-gray-500 mt-3">{data.model.method} Based on {int(data.model.historyBookings)} bookings.</p>
+          </Card>
+
+          <Card title="Night by night">
+            <Table head={['Night', '#For sale', '#Booked', '#Booked %', '#Expected %', '#Avg rate', '#Searches', '']}>
+              {data.nights.map((n) => (
+                <tr key={n.date} className={n.closed ? 'bg-red-50/40' : ''}>
+                  <td className="px-5 py-2 whitespace-nowrap"><b>{n.weekday}</b> {new Date(`${n.date}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{int(n.capacity)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{int(n.booked)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{pct(n.occupancyPct)}</td>
+                  <td className="px-5 py-2 text-right"><Pill tone={occTone(n.forecastPct)}>{pct(n.forecastPct)}</Pill></td>
+                  <td className="px-5 py-2 text-right tabular-nums">{inr(n.adr)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{int(n.searches)}</td>
+                  <td className="px-5 py-2 text-xs text-red-700">{n.closed ? 'No rooms for sale' : ''}</td>
+                </tr>
               ))}
-            </div>
-          </div>
+            </Table>
+          </Card>
 
-          <div className="bg-gradient-to-br from-blue-700 to-blue-900 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
-            <h3 className="text-lg font-black mb-4 flex items-center gap-3 relative z-10">
-              <Target className="text-blue-300" size={20} />
-              AI Insights
-            </h3>
-            <div className="space-y-4 relative z-10">
-              <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
-                <p className="text-xs font-black text-blue-300 uppercase tracking-widest mb-1">Revenue Opportunity</p>
-                <p className="text-sm font-medium text-blue-100 leading-relaxed">
-                  Increase weekend rates by <strong className="text-white">15%</strong> — demand consistently exceeds supply on Fri-Sat.
-                </p>
-              </div>
-              <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
-                <p className="text-xs font-black text-orange-300 uppercase tracking-widest mb-1">Risk Alert</p>
-                <p className="text-sm font-medium text-blue-100 leading-relaxed">
-                  Midweek demand is <strong className="text-white">dropping 8%</strong> — consider a Tuesday-Thursday promotion.
-                </p>
-              </div>
-            </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card title="By city" sub="Next 14 nights.">
+              <Table head={['City', '#Hotels', '#Room nights', '#Booked']} empty={!data.cities.length && <Empty>No cities.</Empty>}>
+                {data.cities.map((c) => <tr key={c.city}><td className="px-5 py-2 font-semibold">{c.city}</td><td className="px-5 py-2 text-right tabular-nums">{c.hotels}</td><td className="px-5 py-2 text-right tabular-nums">{int(c.capacity)}</td><td className="px-5 py-2 text-right"><Pill tone={occTone(c.occupancyPct)}>{pct(c.occupancyPct)}</Pill></td></tr>)}
+              </Table>
+            </Card>
+            <Card title="By hotel" sub="Next 14 nights, fullest first.">
+              <Table head={['Hotel', '#Booked', '#Avg rate']} empty={!data.hotels.length && <Empty>No hotels.</Empty>}>
+                {data.hotels.map((h) => <tr key={h.id}><td className="px-5 py-2"><span className="font-semibold">{h.name}</span><span className="block text-xs text-gray-500">{h.city}</span></td><td className="px-5 py-2 text-right"><Pill tone={occTone(h.occupancyPct)}>{pct(h.occupancyPct)}</Pill></td><td className="px-5 py-2 text-right tabular-nums">{inr(h.adr)}</td></tr>)}
+              </Table>
+            </Card>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

@@ -61,6 +61,7 @@ export const runRetention = async () => {
 
   await del('analyticsEvents', () => prisma.analyticsEvent.deleteMany({ where: { createdAt: { lt: ago(RETENTION.analytics) } } }));
   await del('hotelViews', () => prisma.hotelView.deleteMany({ where: { createdAt: { lt: ago(RETENTION.analytics) } } }));
+  await del('searchLogs', () => prisma.searchLog.deleteMany({ where: { createdAt: { lt: ago(RETENTION.analytics) } } })); // guest searches (Admin → Revenue per search)
   await del('hotelInteractions', () => prisma.hotelInteraction.deleteMany({ where: { createdAt: { lt: ago(RETENTION.analytics) } } }));
   await del('userBehavior', () => prisma.userBehavior.deleteMany({ where: { updatedAt: { lt: ago(RETENTION.analytics) } } }));
   await del('sessionLogs', () => prisma.sessionLog.deleteMany({ where: { createdAt: { lt: ago(RETENTION.analytics) } } }));

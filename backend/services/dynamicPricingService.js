@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import { getDatesInRange } from '../utils/dateUtils.js';
 import { roundMoney, toMoney } from '../utils/money.js';
+import { isDynamicPricingPaused } from './ops/controlService.js';
 
 /**
  * Rule-based dynamic pricing for a property.
@@ -269,6 +270,8 @@ export const previewRatePlan = async (hotelId, ratePlanId, nights = 14) => {
 
 /** Recomputes every property with dynamic pricing on. */
 export const recomputeAll = async () => {
+  // Admin → System control can pause automatic pricing for every hotel
+  if (await isDynamicPricingPaused()) return 0;
   const enabled = await prisma.dynamicPricingSetting.findMany({ where: { enabled: true }, select: { hotelId: true } });
   let ok = 0;
   for (const { hotelId } of enabled) {
@@ -286,7 +289,7 @@ export const scheduleRecompute = (hotelId) => {
     pending.delete(hotelId);
     try {
       const s = await prisma.dynamicPricingSetting.findUnique({ where: { hotelId }, select: { enabled: true } });
-      if (s?.enabled) await recomputeHotel(hotelId);
+      if (s?.enabled && !(await isDynamicPricingPaused())) await recomputeHotel(hotelId);
     } catch (err) {
       console.error('[DynamicPricing] recompute after booking failed:', err.message);
     }
