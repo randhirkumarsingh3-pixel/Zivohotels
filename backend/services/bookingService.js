@@ -22,7 +22,7 @@ import { sendPayLaterEmail, payLaterLabel } from './payLaterService.js';
  * Loads what pricing needs for each room of a stay: its room type (of this hotel) and rate plan (of
  * that room type), checks no night is closed for sale, and the plan's daily rates.
  */
-const loadStayRooms = async (lines, { hotelId, checkInDate, checkOutDate }) => {
+export const loadStayRooms = async (lines, { hotelId, checkInDate, checkOutDate }) => {
   const typeIds = [...new Set(lines.map((l) => l.roomTypeId))];
   const planIds = [...new Set(lines.map((l) => l.ratePlanId))];
   const [types, plans] = await Promise.all([
@@ -58,7 +58,7 @@ const loadStayRooms = async (lines, { hotelId, checkInDate, checkOutDate }) => {
 };
 
 /** Each room's price with its room type and plan names, for the hotel page, checkout and booking. */
-const describeRooms = (pricing, rooms, lines = []) => pricing.roomsBreakdown.map((r, i) => ({
+export const describeRooms = (pricing, rooms, lines = []) => pricing.roomsBreakdown.map((r, i) => ({
   ...r,
   roomTypeName: rooms[i].roomType.name,
   ratePlanName: rooms[i].ratePlan.name,
@@ -107,7 +107,7 @@ const priceWithPromotion = async (stayInput, ctx) => {
 };
 
 /** Taxes and the pay-now discount, shared by preview and booking */
-const pricingSettings = async () => {
+export const pricingSettings = async () => {
   const taxRules = await prisma.taxRule.findMany({ where: { isActive: true }, orderBy: { effectiveFrom: 'desc' } });
   const systemConfig = await getSystemConfig();
   return { taxRules, systemConfig, prepaidDiscountPercent: systemConfig.prepaidDiscountPercent ?? 5 };
@@ -164,6 +164,10 @@ export const bookingService = {
       ratePlanId, paymentType, couponCode, 
       requestId, company
     } = context;
+    // Business bookings (ZivoPlus for Business / Partner Hub, services/business/businessBookingService.js):
+    // { price(stayInput) -> { pricing, businessPricing }, afterCreate(tx, booking) -> booking,
+    //   organisationId, channel, holdUntil, timeline }
+    const business = context.business || null;
     // The visit this booking came from (Admin → Revenue per search). Booking.sessionId points at a
     // SessionLog row, so make sure it exists; if that fails the booking goes ahead without it.
     const sessionId = await ensureSession(context.sessionId, userId);
@@ -181,7 +185,7 @@ export const bookingService = {
 
     // Reserve now, pay later (PAY_AT_HOTEL): tentative until paid online by the deadline
     let payLaterBy = null;
-    if (paymentType === 'PAY_AT_HOTEL') {
+    if (paymentType === 'PAY_AT_HOTEL' && !business) {
       payLaterBy = payLaterDeadline({ checkIn: checkInDate, settings: payLaterSettings(systemConfig.booking_settings) });
       if (!payLaterBy) {
         throw Object.assign(new Error(payLaterSettings(systemConfig.booking_settings).enabled
@@ -199,9 +203,15 @@ export const bookingService = {
       dynamicContext: { safeMode: true, userSegment: 'STANDARD', device: 'WEB' },
     };
 
-    const { pricing, promotion, codeStatus, loyalty, membership } = await priceWithPromotion(stayInput, {
-      hotelId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode, usePoints: context.usePoints
-    });
+    let pricing; let promotion = null; let codeStatus = null; let loyalty = null; let membership = null; let businessPricing = null;
+    if (business) {
+      // Business rate: no promotions, member prices, points or pay-now discount
+      ({ pricing, businessPricing } = await business.price({ ...stayInput, prepaidDiscountPercent: 0, paymentType: 'PREPAID' }));
+    } else {
+      ({ pricing, promotion, codeStatus, loyalty, membership } = await priceWithPromotion(stayInput, {
+        hotelId, checkIn: checkInDate, checkOut: checkOutDate, userId, code: couponCode, usePoints: context.usePoints
+      }));
+    }
     const rooms = pricing.rooms;
     const adults = pricing.adults;
     const children = pricing.children;
@@ -227,7 +237,7 @@ export const bookingService = {
 
       // C. Create Booking
       // Unpaid bookings are cancelled at expiresAt: 30 minutes to pay now, or the pay-later deadline
-      const expiresAt = payLaterBy || new Date(Date.now() + 30 * 60 * 1000);
+      const expiresAt = business?.holdUntil || payLaterBy || new Date(Date.now() + 30 * 60 * 1000);
       const bookingData = {
         bookingRef: await uniqueBookingRef(tx),
         guestName, guestEmail, guestPhone,
@@ -258,12 +268,14 @@ export const bookingService = {
         requestId,
         userId: userId || null,
         sessionId: sessionId || null,
+        ...(business ? { channel: business.channel, organisationId: business.organisationId, businessPricing } : {}),
         metadata: {
            pricingVersion: 'DDD-V1',
            ...(payLaterBy ? { payLater: { deadline: payLaterBy.toISOString() } } : {}),
            ratePlanName: ratePlan.name,
            discountAmount: pricing.discountAmount,
            couponDiscountAmount: pricing.couponDiscountAmount,
+           ...(business ? { businessDiscountAmount: pricing.businessDiscountAmount } : {}),
            prepaidDiscountAmount: pricing.prepaidDiscountAmount,
            promotion: promotion ? {
              id: promotion.id, name: promotion.name, code: promotion.code, label: promotion.label,
@@ -306,7 +318,9 @@ export const bookingService = {
       // If it covers all of it the booking is confirmed straight away; otherwise the rest is paid
       // online and the wallet part is returned if that never happens.
       let walletPaidInFull = false;
-      if (context.useWallet && userId && paymentType !== 'PAY_AT_HOTEL') {
+      // Business: paid from the organisation's account now, or held until holdUntil
+      if (business) booking = await business.afterCreate(tx, booking);
+      if (!business && context.useWallet && userId && paymentType !== 'PAY_AT_HOTEL') {
         const dueNow = paymentType === 'PARTIAL'
           ? roundMoney(pricing.finalAmount * ((systemConfig.partialPaymentPercent ?? 30) / 100))
           : pricing.finalAmount;
@@ -352,7 +366,9 @@ export const bookingService = {
         }
       });
 
-      if (paymentType === 'PAY_AT_HOTEL') {
+      if (business) {
+        await tx.bookingTimelineEvent.create({ data: { bookingId: booking.id, ...business.timeline(booking) } });
+      } else if (paymentType === 'PAY_AT_HOTEL') {
         await tx.bookingTimelineEvent.create({
           data: {
             bookingId: booking.id,
@@ -445,7 +461,7 @@ export const bookingService = {
     // 8. Loyalty points are recorded inside the transaction above (Zivo Rewards).
 
     // Pay later: "reserved, pay by …" email (the confirmation follows the payment)
-    if (paymentType === 'PAY_AT_HOTEL') {
+    if (paymentType === 'PAY_AT_HOTEL' && !business) {
       sendPayLaterEmail(bookingResult.id, 'reserved').catch(e => console.error('[PayLater] reserved email failed:', e.message));
     }
     if (bookingResult.status === 'CONFIRMED') {

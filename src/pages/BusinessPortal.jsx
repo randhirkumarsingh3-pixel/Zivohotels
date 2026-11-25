@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Briefcase, Handshake, Loader2, CheckCircle2, AlertTriangle, Clock, Ban, Wallet, Users, FileText, Building2,
-  Upload, Download, Trash2, Plus, IndianRupee, Percent, ReceiptText, ShieldCheck,
+  Upload, Download, Trash2, Plus, IndianRupee, Percent, ReceiptText, ShieldCheck, BedDouble, CalendarCheck,
 } from 'lucide-react';
 import { businessApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
+import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
 
 /**
  * ZivoPlus for Business (/business, companies) and ZivoPlus Partner Hub (/partners, travel agents).
@@ -150,7 +151,7 @@ const Overview = ({ org }) => {
         <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">{rows.map(([k, v]) => <div key={k} className="flex justify-between gap-3 border-b border-gray-100 py-1.5"><dt className="text-gray-600">{k}</dt><dd className="font-semibold text-gray-900 text-right">{v}</dd></div>)}</dl>
         <p className="text-xs text-gray-500 mt-3">Set by ZivoPlus for your account. Ask your ZivoPlus contact to change them.</p>
       </section>
-      {org.status === 'ACTIVE' && <p className="text-sm text-gray-600 flex items-center gap-2"><ShieldCheck size={16} className="text-brand-700" aria-hidden="true" /> Booking with your business rates opens here in the next release.</p>}
+      {org.status === 'ACTIVE' && <p className="text-sm text-gray-600 flex items-center gap-2"><ShieldCheck size={16} className="text-brand-700" aria-hidden="true" /> {org.kind === 'AGENCY' ? 'Book hotels at your agent rates in the Book tab; give customers vouchers with your agency\'s name.' : 'Book stays at your company rates in the Book tab.'}</p>}
     </div>
   );
 };
@@ -345,7 +346,8 @@ const Dashboard = ({ orgId, info, user }) => {
   if (!org) return <p className="text-sm text-gray-500 flex items-center gap-2">{err || <><Loader2 size={16} className="animate-spin" /> Loading…</>}</p>;
   const c = COPY[org.kind]; const Icon = c.icon;
   const [SIcon, scls, slabel, stext] = STATUS[org.status] || STATUS.IN_REVIEW;
-  const tabs = [['overview', 'Overview', Building2], org.can['account.view'] && ['account', 'Account', Wallet], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
+  const live = org.status === 'ACTIVE';
+  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
@@ -366,9 +368,12 @@ const Dashboard = ({ orgId, info, user }) => {
       </div>
       <div role="tabpanel">
         {tab === 'overview' && <Overview org={org} />}
+        {tab === 'book' && <BookTab org={org} onBooked={load} />}
+        {tab === 'bookings' && <BookingsTab org={org} onChange={load} />}
+        {tab === 'commission' && <CommissionTab org={org} />}
         {tab === 'account' && <AccountTab org={org} user={user} onChange={load} />}
         {tab === 'team' && <TeamTab org={org} roles={info?.roles} />}
-        {tab === 'details' && <DetailsTab org={org} onSaved={load} />}
+        {tab === 'details' && <div className="space-y-5"><DetailsTab org={org} onSaved={load} />{org.kind === 'AGENCY' && org.can['org.edit'] && <BrandingForm org={org} onSaved={load} />}</div>}
         {tab === 'documents' && <DocumentsTab org={org} types={info?.documentTypes} onChange={load} />}
       </div>
     </div>

@@ -67,7 +67,7 @@ const pct = (amount, percent) => D(amount).times(percent).dividedBy(100).toDecim
  * netPayable = collected + zivoFunded - commission - GST on commission - TCS - TDS. Negative means
  * the hotel holds the money (pay-at-hotel) and owes ZivoPlus; it is netted against later payouts.
  */
-export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0, commissionGstPercent = COMMISSION_GST_PERCENT, tcsPercent = TCS_PERCENT, tdsPercent = TDS_PERCENT }) => {
+export const computeSettlement = ({ grossAmount, taxAmount, collected, commissionPercent, hotelGstRegistered, sameState, zivoFunded = 0, agentCommission = 0, commissionGstPercent = COMMISSION_GST_PERCENT, tcsPercent = TCS_PERCENT, tdsPercent = TDS_PERCENT }) => {
   const gross = D(grossAmount);
   const tax = D(taxAmount);
   const funded = Prisma.Decimal.max(0, D(zivoFunded));
@@ -90,8 +90,10 @@ export const computeSettlement = ({ grossAmount, taxAmount, collected, commissio
   const tcs = hotelGstRegistered ? pct(collectedPreTax, tcsPercent) : D(0);
   const tds = pct(saleValue, tdsPercent);
 
-  const netPayable = collectedOnline.plus(funded).minus(commission).minus(commissionGst).minus(tcs).minus(tds);
-  return { gross, preTax, tax, collected: collectedOnline, zivoFunded: funded, commission, cgst, sgst, igst, commissionGst, tcs, tds, netPayable };
+  // A travel agent's commission the hotel funds (Partner Hub, commission model)
+  const agent = Prisma.Decimal.max(0, D(agentCommission));
+  const netPayable = collectedOnline.plus(funded).minus(commission).minus(commissionGst).minus(tcs).minus(tds).minus(agent);
+  return { gross, preTax, tax, collected: collectedOnline, zivoFunded: funded, commission, cgst, sgst, igst, commissionGst, tcs, tds, agentCommission: agent, netPayable };
 };
 
 /** Pre-tax discounts Zivo pays for: a Zivo-funded promotion and reward points used (0 if none). */
@@ -113,6 +115,7 @@ export const staySettlementInput = (booking) => {
     taxAmount: tax,
     collected: D(booking.paidAmount).minus(D(booking.refundAmount)),
     zivoFunded: zivoFundedDiscount(booking),
+    agentCommission: D(booking.businessPricing?.hotelFundedCommission || 0),
   };
 };
 
@@ -189,6 +192,7 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
       igstAmount: m.igst,
       tcsAmount: m.tcs,
       tdsAmount: m.tds,
+      agentCommissionAmount: m.agentCommission,
       placeOfSupply: hotelState,
       rates: { commissionPercent, commissionGstPercent: terms.commissionGstPercent ?? COMMISSION_GST_PERCENT, tcsPercent: terms.tcsPercent ?? TCS_PERCENT, tdsPercent: terms.tdsPercent ?? TDS_PERCENT },
       netPayable: m.netPayable,
@@ -205,6 +209,7 @@ const createSettlementRecord = async (tx, booking, kind, input) => {
     { referenceId: ref, account: 'GST_ON_COMMISSION', type: 'CREDIT', amount: m.commissionGst, description: `GST ${terms.commissionGstPercent ?? COMMISSION_GST_PERCENT}% on commission (${sameState ? 'CGST+SGST' : 'IGST'}), ${what}` },
     { referenceId: ref, account: 'TCS_PAYABLE', type: 'CREDIT', amount: m.tcs, description: `TCS ${terms.tcsPercent ?? TCS_PERCENT}% on ${what}` },
     { referenceId: ref, account: 'TDS_PAYABLE', type: 'CREDIT', amount: m.tds, description: `TDS ${terms.tdsPercent ?? TDS_PERCENT}% (194-O) on ${what}` },
+    { referenceId: ref, account: 'AGENT_COMMISSION', type: 'CREDIT', amount: m.agentCommission, description: `Travel agent's commission funded by the hotel, ${what}` },
     m.netPayable.isNegative()
       ? { referenceId: ref, account: 'HOTEL', type: 'DEBIT', amount: m.netPayable.abs(), description: `Owed by hotel (collected at hotel), ${what}` }
       : { referenceId: ref, account: 'HOTEL', type: 'CREDIT', amount: m.netPayable, description: `Net payable, ${what}` },

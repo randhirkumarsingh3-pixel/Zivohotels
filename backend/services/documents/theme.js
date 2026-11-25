@@ -102,8 +102,8 @@ export const shell = (title, body, { watermark = null, extraCss = '' } = {}) => 
  * The header band. brandSub: the legal name (or "Partner"); title / sub: the document; ref: its
  * number or booking reference; status: { label, tone: ''|'warn'|'off'|'test' }.
  */
-export const header = ({ brandSub = '', title, sub = '', ref = '', status = null }) => `<div class="band">
-<div class="brand">${MARK ? `<img src="data:image/png;base64,${MARK}" alt="">` : ''}<div><div class="name">Zivo<span>Plus</span></div>${brandSub && brandSub !== 'ZivoPlus' ? `<div class="sub">${esc(brandSub)}</div>` : ''}</div></div>
+export const header = ({ brandSub = '', title, sub = '', ref = '', status = null, brandName = null }) => `<div class="band">
+<div class="brand">${brandName ? `<div><div class="name">${esc(brandName)}</div>${brandSub ? `<div class="sub">${esc(brandSub)}</div>` : ''}</div>` : `${MARK ? `<img src="data:image/png;base64,${MARK}" alt="">` : ''}<div><div class="name">Zivo<span>Plus</span></div>${brandSub && brandSub !== 'ZivoPlus' ? `<div class="sub">${esc(brandSub)}</div>` : ''}</div>`}</div>
 <div class="doc"><h1>${esc(title)}</h1>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}${ref ? `<div class="ref">${esc(ref)}</div>` : ''}${status ? ` <span class="status ${status.tone || ''}">${esc(status.label)}</span>` : ''}</div>
 </div><div class="accent"></div>`;
 

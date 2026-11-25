@@ -19,9 +19,9 @@ export const PRICING_MODELS = ['NET', 'COMMISSION', 'BOTH'];
 export const KINDS = ['CORPORATE', 'AGENCY'];
 
 export const DEFAULTS = {
-  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'ON_BEHALF' },
+  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'ON_BEHALF', holdHours: 24 },
   agency: {
-    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'ON_BEHALF',
+    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'ON_BEHALF', holdHours: 24,
     pricingModel: 'BOTH', defaultMarkupPct: 10, maxMarkupPct: 50, extraCommissionPct: 0,
     // TDS on commission (Income Tax Act section 194H)
     tdsPct: 2,
@@ -61,12 +61,12 @@ export const saveBusinessSettings = async (input = {}, user) => {
     corporate: {
       enabled: Boolean(c.enabled), requireGstin: Boolean(c.requireGstin),
       paymentMode: pick(c.paymentMode, PAYMENT_MODES, 'payment mode'), creditDays: num(c.creditDays, 1, 120, 'Credit days'),
-      invoiceMode: pick(c.invoiceMode, INVOICE_MODES, 'invoice issuer'),
+      invoiceMode: pick(c.invoiceMode, INVOICE_MODES, 'invoice issuer'), holdHours: num(c.holdHours ?? 24, 0, 72, 'Hold hours'),
     },
     agency: {
       enabled: Boolean(a.enabled), requireGstin: Boolean(a.requireGstin),
       paymentMode: pick(a.paymentMode, PAYMENT_MODES, 'payment mode'), creditDays: num(a.creditDays, 1, 120, 'Credit days'),
-      invoiceMode: pick(a.invoiceMode, INVOICE_MODES, 'invoice issuer'),
+      invoiceMode: pick(a.invoiceMode, INVOICE_MODES, 'invoice issuer'), holdHours: num(a.holdHours ?? 24, 0, 72, 'Hold hours'),
       pricingModel: pick(a.pricingModel, PRICING_MODELS, 'pricing model'),
       defaultMarkupPct: num(a.defaultMarkupPct, 0, 100, 'Default markup %'), maxMarkupPct: num(a.maxMarkupPct, 0, 200, 'Maximum markup %'),
       extraCommissionPct: num(a.extraCommissionPct, 0, 30, 'Extra commission %'), tdsPct: num(a.tdsPct, 0, 20, 'TDS %'),

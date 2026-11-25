@@ -214,6 +214,51 @@ ${roomsSection(d)}
   return shell(`Booking ${b.bookingRef}`, body);
 };
 
+// ── travel agent's voucher for their customer (white-label) ──────────────────
+
+/**
+ * The voucher a Partner Hub agent gives their customer: the agency's name and contact instead of
+ * ZivoPlus, the stay, rooms, cancellation terms and house rules. price: 'SELL' shows the agent's
+ * price to the customer (net rate + their markup, or the public price), 'NONE' shows "Prepaid".
+ */
+export const agencyVoucherHtml = (d, { agency, price = 'NONE' }) => {
+  const { booking: b, hotel } = d;
+  const bp = b.businessPricing || {};
+  const contact = [agency.phone && `Phone: <b>${esc(agency.phone)}</b>`, agency.email && esc(agency.email), agency.website && `<span class="muted">${esc(agency.website)}</span>`];
+  const sell = Number(bp.sellAmount || b.totalAmount);
+  const body = `${header({ brandName: agency.name, brandSub: 'Hotel voucher', title: 'Booking Confirmation', sub: 'Show this at check-in, on your phone or printed', ref: bp.clientReference || b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
+${stayMeta(d)}
+<div class="parties three">
+  ${propertyBox(hotel)}
+  ${box({ label: 'Lead guest', name: b.guestName, lines: [`<span class="muted">${esc(b.guestPhone || '')}</span>`] })}
+  ${box({ label: 'Booked through', name: agency.name, lines: [...contact, `Hotel confirmation: <b>${esc(b.bookingRef)}</b>`] })}
+</div>
+${roomsSection(d)}
+<div class="cols">
+  <div>
+    <h2>Cancellation policy</h2>
+    <div class="notes"><ul>${cancellationText(b, d.policy).map((t) => t.replace(/ from My Bookings on ZivoPlus/g, ` through ${agency.name}`).replace(/ZivoPlus/g, agency.name).replace(/ paid online/g, '')).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    ${houseRules(hotel).length ? `<h2>House rules</h2><div class="notes"><ul>${houseRules(hotel).map((r) => `<li>${r.allowed === true ? '✓ ' : r.allowed === false ? '✕ ' : ''}${esc(r.text)}</li>`).join('')}</ul></div>` : ''}
+    <h2>Good to know</h2>
+    <div class="notes"><ul><li>${esc(`The room is prepaid. Pay the property only for extras you use (food, minibar, laundry).`)}</li><li>${esc(`For changes or cancellation, contact ${agency.name}${agency.phone ? ` on ${agency.phone}` : ''}.`)}</li></ul></div>
+  </div>
+  <div>
+    <h2>Payment</h2>
+    <div style="margin-top:8px">${totals(price === 'SELL'
+      ? [['Total for the stay (incl. taxes)', tInr(sell), 'grand'], ['Paid to', esc(agency.name), 'sub']]
+      : [['Room charges', 'Prepaid', 'grand'], ['To pay at the hotel', 'Extras only', 'sub']])}</div>
+  </div>
+</div>`;
+  return shell(`Booking ${b.bookingRef}`, body);
+};
+
+export const agencyVoucherPdf = async (bookingId, { agency, price }) => {
+  const d = await loadVoucherData(bookingId);
+  if (!d) return null;
+  const footer = [agency.name, agency.phone, agency.email].filter(Boolean).map(esc).join(' · ');
+  return renderThemedPdf(agencyVoucherHtml(d, { agency, price }), { footer });
+};
+
 // ── hotelier voucher ──────────────────────────────────────────────────────────
 
 /** Splits an amount over n nights in whole paise, the remainder going to the last night. */
@@ -234,10 +279,10 @@ export const hotelierFigures = async (d) => {
     m = {
       gross: n(settlement.grossAmount), tax: n(settlement.taxAmount), commission: n(settlement.commissionAmount),
       commissionGst: n(settlement.commissionGstAmount), tcs: n(settlement.tcsAmount), tds: n(settlement.tdsAmount),
-      netPayable: n(settlement.netPayable), igst: n(settlement.igstAmount),
+      netPayable: n(settlement.netPayable), igst: n(settlement.igstAmount), agentCommission: n(settlement.agentCommissionAmount),
     };
     m.zivoFunded = toMoney(zivoFundedDiscount(booking)) || 0;
-    m.collected = roundMoney(m.netPayable + m.commission + m.commissionGst + m.tcs + m.tds - m.zivoFunded);
+    m.collected = roundMoney(m.netPayable + m.commission + m.commissionGst + m.tcs + m.tds + m.agentCommission - m.zivoFunded);
   } else {
     const c = computeSettlement({ ...staySettlementInput(booking), ...terms });
     m = Object.fromEntries(Object.entries(c).map(([k, v]) => [k, toMoney(v)]));
@@ -254,9 +299,9 @@ export const hotelierVoucherHtml = (d, f) => {
   const nights = b.stayType === 'HOURLY' ? 1 : nightsBetween(b.checkIn, b.checkOut);
   const days = Array.from({ length: nights }, (_, i) => new Date(new Date(b.checkIn).getTime() + i * 86400000));
   const R = splitNights(f.roomCharges, nights), E = splitNights(f.extras, nights), T = splitNights(f.tax, nights);
-  const G = splitNights(f.gross, nights), C = splitNights(f.commission + f.commissionGst, nights), D = splitNights(f.tcs + f.tds, nights);
+  const G = splitNights(f.gross, nights), C = splitNights(f.commission + f.commissionGst, nights), D = splitNights(f.tcs + f.tds + (f.agentCommission || 0), nights);
   const commissionInclGst = roundMoney(f.commission + f.commissionGst);
-  const deductions = roundMoney(f.tcs + f.tds);
+  const deductions = roundMoney(f.tcs + f.tds + (f.agentCommission || 0));
   const collectedAtHotel = roundMoney(Math.max(0, f.gross - f.collected));
   const owed = f.netPayable < 0;
   const gstSplit = f.terms.sameState ? 'CGST + SGST' : 'IGST';
@@ -283,7 +328,7 @@ ${stayMeta(d)}
 ${roomsSection(d)}
 
 <h2>Night-wise breakup (₹)</h2>
-<table><tr><th>Night</th><th class="r">Room (R)</th><th class="r">Extras (E)</th><th class="r">GST (T)</th><th class="r">Gross (G)</th><th class="r">Commission incl. GST (C)</th><th class="r">TCS + TDS (D)</th><th class="r">Payable (G−C−D)</th></tr>
+<table><tr><th>Night</th><th class="r">Room (R)</th><th class="r">Extras (E)</th><th class="r">GST (T)</th><th class="r">Gross (G)</th><th class="r">Commission incl. GST (C)</th><th class="r">${f.agentCommission > 0 ? 'TCS, TDS, agent (D)' : 'TCS + TDS (D)'}</th><th class="r">Payable (G−C−D)</th></tr>
 <tr class="group"><td colspan="8">${esc(roomsSummary(d.rooms, b, roomType?.name))}</td></tr>
 ${days.map((dd, i) => `<tr><td>${b.stayType === 'HOURLY' ? 'Hourly stay' : fmtDate(dd)}</td><td class="r">${money(R[i])}</td><td class="r">${money(E[i])}</td><td class="r">${money(T[i])}</td><td class="r">${money(G[i])}</td><td class="r">${money(C[i])}</td><td class="r">${money(D[i])}</td><td class="r"><b>${money(P[i])}</b></td></tr>`).join('')}
 <tr class="t"><td>Total</td><td class="r">${money(f.roomCharges)}</td><td class="r">${money(f.extras)}</td><td class="r">${money(f.tax)}</td><td class="r">${money(f.gross)}</td><td class="r">${money(commissionInclGst)}</td><td class="r">${money(deductions)}</td><td class="r">${money(target)}</td></tr></table>
@@ -313,6 +358,7 @@ ${f.zivoFunded > 0 || collectedAtHotel ? '<div class="notes">The payable amount 
       [`5. GST on commission @ ${esc(f.terms.commissionGstPercent ?? COMMISSION_GST_PERCENT)}% (${gstSplit})`, `− ${money(f.commissionGst)}`, 'less'],
       [`6. TCS @ ${esc(f.terms.tcsPercent ?? TCS_PERCENT)}% (GST s.52)${f.terms.hotelGstRegistered ? '' : ', n/a'}`, `− ${money(f.tcs)}`, 'less'],
       [`7. TDS @ ${esc(f.terms.tdsPercent ?? TDS_PERCENT)}% (Income-tax s.194-O)`, `− ${money(f.tds)}`, 'less'],
+      f.agentCommission > 0 ? [`8. Travel agent's commission (your agent discount, ${esc(b.businessPricing?.organisationName || 'Partner Hub')})`, `− ${money(f.agentCommission)}`, 'less'] : null,
       [owed ? 'Payable by property' : 'Payable to property', tInr(Math.abs(f.netPayable)), 'grand'],
     ])}</div>
     <div class="notes">${f.final ? 'Final figures from the settlement created at check-out.' : 'Provisional: the settlement is created at check-out and reflects any changes or cancellations.'}${owed ? '' : ` Released on ${esc(fmtDate(f.releaseOn))}; bank credit usually takes 1–3 working days.`}</div>
@@ -326,4 +372,4 @@ ${f.zivoFunded > 0 || collectedAtHotel ? '<div class="notes">The payable amount 
 /** The voucher PDF, with the company line and page numbers on every page. */
 export const renderPdf = async (html, d = null) => renderThemedPdf(html, { footer: d ? footerFor(d) : '' });
 
-export default { loadVoucherData, canDownloadVoucher, guestVoucherHtml, hotelierVoucherHtml, hotelierFigures, renderPdf };
+export default { loadVoucherData, canDownloadVoucher, guestVoucherHtml, hotelierVoucherHtml, hotelierFigures, renderPdf, agencyVoucherHtml, agencyVoucherPdf };

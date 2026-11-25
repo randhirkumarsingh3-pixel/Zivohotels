@@ -31,7 +31,8 @@ const statusOf = (b, f) => {
  * documentSettings.brandContext() ({ company, support, settings, signatory }).
  */
 export const guestInvoiceHtml = ({ booking: b, hotel, rooms = [], invoiceRef, issueDate = new Date(), brand }) => {
-  const mode = brand.settings.guestInvoice.mode;
+  // A business account can have its own (Admin → Organisations → terms), kept on the booking
+  const mode = b.businessPricing?.invoiceMode || brand.settings.guestInvoice.mode;
   const receipt = mode === 'HOTEL_ISSUES';
   const f = bookingFigures(b, rooms, { roomTypeName: b.roomType?.name, ratePlan: b.ratePlan });
   const hp = recipientOf(hotel);
