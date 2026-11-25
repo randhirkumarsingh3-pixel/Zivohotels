@@ -83,6 +83,9 @@ export const createRoomType = asyncHandler(async (req, res) => {
       data: {
         name: 'Standard Rate Plan',
         mealPlan: normalized.mealPlan || 'NONE',
+        // A plan with meals needs a meal price: 0 means the meals are included in the room price
+        // (without it the plan was refused on every later edit: "Enter the meal price per adult")
+        ...(normalized.mealPlan && !['NONE', 'EP'].includes(normalized.mealPlan) ? { mealPriceAdult: 0, mealPriceChild: 0 } : {}),
         basePrice: normalized.basePrice || 0,
         extraAdultPrice: 0,
         extraChildPrice: 0,

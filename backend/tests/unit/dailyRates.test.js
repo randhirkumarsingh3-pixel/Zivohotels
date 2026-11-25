@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { pricingDomain } from '../../domains/pricingDomain.js';
-import { stayNightlyPrice } from '../../services/ariService.js';
+import { stayNightlyPrice, planNightlyPrice } from '../../services/ariService.js';
 import { getDatesInRange } from '../../utils/dateUtils.js';
 
 const taxRules = [
@@ -40,5 +40,15 @@ describe('daily rates in pricing', () => {
   it('stayNightlyPrice averages daily rates and base price over the stay', () => {
     expect(stayNightlyPrice(5000, nights, { [nights[2].toISOString()]: 8000 })).to.equal(6000);
     expect(stayNightlyPrice(5000, nights, {})).to.equal(5000);
+  });
+
+  it('planNightlyPrice adds meals for the base occupancy, matching checkout for 2 adults', () => {
+    const map = { ...ratePlan, mealPlan: 'MAP', mealPriceAdult: 500 };
+    const shown = planNightlyPrice(map, roomType, nights, {});
+    expect(shown).to.equal(6000);
+    const r = run({ ratePlan: map });
+    expect(r.totalMealCharges ?? (r.subtotal - r.roomPrice)).to.equal(3000);
+    expect(planNightlyPrice(ratePlan, roomType, nights, {}), 'room only: no meals').to.equal(5000);
+    expect(planNightlyPrice({ ...map, basePrice: 0 }, roomType, nights, {}), 'no price stays 0').to.equal(0);
   });
 });

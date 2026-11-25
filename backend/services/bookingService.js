@@ -49,7 +49,7 @@ const loadStayRooms = async (lines, { hotelId, checkInDate, checkOutDate }) => {
       closedChecked.add(roomType.id);
       const closed = await stopSellNights(roomType.id, stayNights);
       if (closed.length) {
-        throw new Error(`${roomType.name} isn't available on ${closed.map(d => d.toDateString()).join(', ')}. Please choose other dates or another room.`);
+        throw Object.assign(new Error(`${roomType.name} isn't available on ${closed.map(d => d.toDateString()).join(', ')} (closed for sale). Please choose other dates or another room.`), { statusCode: 409, status: 409 });
       }
     }
     if (!ratesByPlan.has(ratePlan.id)) ratesByPlan.set(ratePlan.id, await dailyRatesFor(ratePlan.id, stayNights));
