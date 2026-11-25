@@ -28,6 +28,7 @@ import { getBusinessSettings, termsFor } from './businessSettings.js';
 import { postEntry, accountSummary } from './orgLedger.js';
 import { membershipFor, can, PORTAL } from './organisationService.js';
 import { policyOf, evaluate, approversFor } from './travelPolicy.js';
+import { assertAgreementForBooking } from './orgAgreementService.js';
 import { notifyUser } from '../notifyService.js';
 import { emailLayout, siteUrl } from '../emailLayout.js';
 
@@ -43,6 +44,7 @@ const bookingContext = async (orgId, user, action = 'bookings.create') => {
   const { org, member } = await membershipFor(orgId, user, action);
   if (org.status !== 'ACTIVE') throw fail(org.status === 'SUSPENDED' ? 'Your account is suspended: booking is paused. Contact ZivoPlus support.' : 'You can book once ZivoPlus approves your organisation.', 409);
   const settings = await getBusinessSettings();
+  if (action === 'bookings.create') await assertAgreementForBooking(org, settings);
   return { org, member, settings, terms: termsFor(org, settings) };
 };
 

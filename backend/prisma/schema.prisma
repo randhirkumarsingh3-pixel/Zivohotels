@@ -1856,6 +1856,7 @@ model Organisation {
   members            OrgMember[]
   ledger             OrgLedgerEntry[]
   bookings           Booking[]
+  agreement          OrgAgreement?
 
   @@index([kind, status])
   @@index([pan])
@@ -1921,4 +1922,41 @@ model HotelBusinessRate {
   updatedById          String?
   updatedAt            DateTime @updatedAt
   hotel                Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+}
+
+/// The agreement between ZivoPlus and a business account (travel agent or company), prepared from
+/// Admin → Agreement template (agent / company wording) and the organisation's details, signed by
+/// one of its admins with an emailed code or Aadhaar eSign (Leegality). The exact text is kept
+/// with a SHA-256 fingerprint; files from Leegality are in AgreementFile (agreementId = this id).
+model OrgAgreement {
+  id                   String       @id @default(uuid())
+  organisationId       String       @unique
+  reference            String       @unique
+  /// PENDING_SIGNATURE | SIGNED | CANCELLED
+  status               String       @default("PENDING_SIGNATURE")
+  title                String
+  content              String
+  contentHash          String
+  templateVersion      Int          @default(1)
+  termMonths           Int          @default(12)
+  preparedAt           DateTime     @default(now())
+  preparedById         String?
+  signedAt             DateTime?
+  expiryAt             DateTime?
+  signerUserId         String?
+  signerName           String?
+  signerEmail          String?
+  ipAddress            String?
+  signerUserAgent      String?
+  /// EMAIL_OTP | AADHAAR_ESIGN | OFFLINE
+  signatureMethod      String?
+  leegalityDocumentId  String?      @unique
+  leegalitySignUrl     String?
+  leegalityStatus      String?
+  leegalityRequestedAt DateTime?
+  leegalityContentHash String?
+  signerCertificate    Json?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organisation         Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
 }

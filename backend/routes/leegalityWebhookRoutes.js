@@ -21,8 +21,21 @@ router.post('/', express.json({ limit: '1mb' }), async (req, res) => {
     return res.status(401).json({ success: false, message: 'Signature check failed.' });
   }
   const agreement = await prisma.agreement.findUnique({ where: { leegalityDocumentId: String(documentId) }, select: { id: true, hotelId: true } });
-  // Unknown or replaced document (e.g. the agreement was prepared again): acknowledge, do nothing
-  if (!agreement) return res.status(200).json({ success: true, ignored: true });
+  if (!agreement) {
+    // A business account's agreement (travel agent / company)
+    const orgAgreement = await prisma.orgAgreement.findUnique({ where: { leegalityDocumentId: String(documentId) }, select: { id: true, organisationId: true } });
+    // Unknown or replaced document (e.g. the agreement was prepared again): acknowledge, do nothing
+    if (!orgAgreement) return res.status(200).json({ success: true, ignored: true });
+    await prisma.auditLog.create({ data: { action: 'ORG_AGREEMENT_ESIGN_WEBHOOK', entityType: 'ORGANISATION', entityId: orgAgreement.organisationId, userId: 'LEEGALITY', details: { documentId, webhookType: webhookType || null, documentStatus: documentStatus || null } } }).catch(() => {});
+    try {
+      const { refreshOrgAgreement } = await import('../services/business/orgAgreementService.js');
+      const a = await refreshOrgAgreement({ id: orgAgreement.id });
+      return res.status(200).json({ success: true, status: a?.status, leegalityStatus: a?.leegalityStatus });
+    } catch (e) {
+      console.error('[Leegality webhook]', e.message);
+      return res.status(502).json({ success: false, message: 'Could not read the document from Leegality yet.' });
+    }
+  }
   await prisma.auditLog.create({ data: { action: 'AGREEMENT_ESIGN_WEBHOOK', entityType: 'HOTEL', entityId: agreement.hotelId, userId: 'LEEGALITY', details: { documentId, webhookType: webhookType || null, documentStatus: documentStatus || null, action: req.body?.request?.action || null } } }).catch(() => {});
   try {
     const a = await refreshFromLeegality({ id: agreement.id });

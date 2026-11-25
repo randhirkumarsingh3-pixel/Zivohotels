@@ -218,12 +218,48 @@ export const updateOrganisation = async (orgId, user, input = {}) => {
 /** How the agency appears on vouchers it gives its customers (defaults: its name, phone, billing email). */
 export const brandingFor = (org) => {
   const b = org.settings?.branding || {};
-  return { name: b.name || org.name, phone: b.phone || org.phone, email: b.email || org.billingEmail, website: b.website || org.website || null };
+  return { name: b.name || org.name, phone: b.phone || org.phone, email: b.email || org.billingEmail, website: b.website || org.website || null, logo: b.logo || null };
+};
+
+/**
+ * The agency's logo for its vouchers: a PNG or JPG up to 2 MB, decoded and re-encoded (nothing
+ * else in the file survives), resized to fit 360 × 120 and kept as a small PNG.
+ */
+export const setLogo = async (orgId, user, { file } = {}) => {
+  const { org } = await membershipFor(orgId, user, 'org.edit');
+  const m = typeof file === 'string' ? file.match(/^data:image\/(png|jpe?g);base64,(.+)$/s) : null;
+  if (!m) throw fail('Upload a PNG or JPG image.');
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length || buf.length > 2 * 1024 * 1024) throw fail('The logo must be smaller than 2 MB.');
+  let png;
+  try {
+    const sharp = (await import('sharp')).default;
+    png = await sharp(buf, { limitInputPixels: 25e6 }).rotate().resize({ width: 360, height: 120, fit: 'inside', withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer();
+  } catch {
+    throw fail('That image couldn\'t be read. Try another PNG or JPG.');
+  }
+  const fresh = await prisma.organisation.findUnique({ where: { id: org.id }, select: { settings: true } });
+  const st = fresh.settings || {};
+  const logo = `data:image/png;base64,${png.toString('base64')}`;
+  const updated = await prisma.organisation.update({ where: { id: org.id }, data: { settings: { ...st, branding: { ...(st.branding || {}), logo } } } });
+  await audit('ORG_LOGO_UPDATED', org.id, user.id, { bytes: png.length });
+  return brandingFor(updated);
+};
+
+export const removeLogo = async (orgId, user) => {
+  const { org } = await membershipFor(orgId, user, 'org.edit');
+  const fresh = await prisma.organisation.findUnique({ where: { id: org.id }, select: { settings: true } });
+  const st = fresh.settings || {};
+  const { logo: _l, ...rest } = st.branding || {};
+  const updated = await prisma.organisation.update({ where: { id: org.id }, data: { settings: { ...st, branding: rest } } });
+  return brandingFor(updated);
 };
 
 export const setBranding = async (orgId, user, input = {}) => {
   const { org } = await membershipFor(orgId, user, 'org.edit');
+  const prev = (await prisma.organisation.findUnique({ where: { id: org.id }, select: { settings: true } })).settings?.branding || {};
   const b = {
+    ...(prev.logo ? { logo: prev.logo } : {}),
     name: clean(input.name, 80) || null, phone: input.phone ? String(input.phone).replace(/[^\d+ -]/g, '').slice(0, 20) : null,
     email: input.email ? String(input.email).trim().toLowerCase() : null, website: input.website ? clean(input.website, 120) : null,
   };
@@ -451,7 +487,8 @@ export const adminDetail = async (id) => {
     accountFor(org, { pageSize: 100 }),
     prisma.auditLog.findMany({ where: { entityType: 'ORGANISATION', entityId: org.id }, orderBy: { createdAt: 'desc' }, take: 50, select: { action: true, details: true, userId: true, createdAt: true } }),
   ]);
-  return { ...orgView(org, s), overrides: { paymentMode: org.paymentMode, creditLimit: Number(org.creditLimit), creditDays: org.creditDays, invoiceMode: org.invoiceMode, pricingModel: org.pricingModel, defaultMarkupPct: org.defaultMarkupPct == null ? null : Number(org.defaultMarkupPct), extraCommissionPct: org.extraCommissionPct == null ? null : Number(org.extraCommissionPct), tier: org.tier }, members: members.map(memberView), account, history };
+  const { adminOrgAgreement } = await import('./orgAgreementService.js');
+  return { ...orgView(org, s), agreement: await adminOrgAgreement(org.id), overrides: { paymentMode: org.paymentMode, creditLimit: Number(org.creditLimit), creditDays: org.creditDays, invoiceMode: org.invoiceMode, pricingModel: org.pricingModel, defaultMarkupPct: org.defaultMarkupPct == null ? null : Number(org.defaultMarkupPct), extraCommissionPct: org.extraCommissionPct == null ? null : Number(org.extraCommissionPct), tier: org.tier }, members: members.map(memberView), account, history };
 };
 
 const DECISION_TEXT = {
@@ -471,6 +508,11 @@ export const decide = async (id, admin, { status, note } = {}) => {
   if (!allowed[status].includes(org.status)) throw fail(`An organisation that is ${org.status.replace('_', ' ').toLowerCase()} can't be ${DECISION_TEXT[status][0]}.`, 409);
   const updated = await prisma.organisation.update({ where: { id: org.id }, data: { status, statusNote: text || null, reviewedById: admin.id, reviewedAt: new Date() } });
   await audit(`ORG_${status}`, org.id, admin.id, { from: org.status, note: text || null });
+  // Approved for the first time: prepare its agreement (agent or company wording) to sign
+  if (status === 'ACTIVE' && !(await prisma.orgAgreement.findUnique({ where: { organisationId: org.id }, select: { id: true } }))) {
+    const { prepareOrgAgreement } = await import('./orgAgreementService.js');
+    await prepareOrgAgreement(org.id, admin).catch((e) => console.error('[OrgAgreement] not prepared on approval:', e.message));
+  }
   const [label, tone, line] = DECISION_TEXT[status];
   const admins = await prisma.orgMember.findMany({ where: { organisationId: org.id, role: 'ADMIN', status: 'ACTIVE' }, select: { userId: true } });
   const html = await emailLayout({

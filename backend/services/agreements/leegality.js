@@ -74,17 +74,18 @@ const tenDigits = (p) => { const d = String(p || '').replace(/\D/g, ''); return 
  * Sends the agreement PDF to Leegality for the owner's Aadhaar eSign; returns the signing link.
  * Reuses the request already made for the same agreement text.
  */
-export const startSigning = async ({ agreement, hotel, owner, pdf }) => {
+/**
+ * Sends a PDF to Leegality for one signer (the active workflow); returns { documentId, signUrl }.
+ * Used for property agreements and business-account agreements.
+ */
+export const createSignRequest = async ({ name, pdf, signer, irn }) => {
   const settings = await getSigningSettings();
   if (settings.active !== 'LEEGALITY_AADHAAR') throw bad('Aadhaar eSign isn\'t switched on.', 409);
-  if (agreement.leegalityDocumentId && agreement.leegalityContentHash === agreement.contentHash && agreement.leegalitySignUrl && agreement.leegalityStatus === 'SENT') {
-    return { signUrl: agreement.leegalitySignUrl, documentId: agreement.leegalityDocumentId, reused: true };
-  }
   const body = {
     profileId: settings.leegalityProfileId,
-    file: { name: cleanName(`${agreement.reference} ${hotel.name} Listing Agreement`), file: Buffer.from(pdf).toString('base64') },
-    invitees: [{ name: cleanName(owner.name || hotel.legalName || 'Property owner'), email: owner.email, ...(tenDigits(owner.phone) ? { phone: tenDigits(owner.phone) } : {}) }],
-    irn: cleanName(agreement.reference),
+    file: { name: cleanName(name), file: Buffer.from(pdf).toString('base64') },
+    invitees: [{ name: cleanName(signer.name || 'Signer'), email: signer.email, ...(tenDigits(signer.phone) ? { phone: tenDigits(signer.phone) } : {}) }],
+    irn: cleanName(irn),
   };
   const r = await client().post('/v3.0/sign/request', body);
   const ok = r.status === 200 && Number(r.data?.status) === 1 && r.data?.data?.documentId;
@@ -93,7 +94,17 @@ export const startSigning = async ({ agreement, hotel, owner, pdf }) => {
     throw bad(`Couldn't start Aadhaar eSign: ${why}`, 502);
   }
   const d = r.data.data;
-  const invitee = (d.invitees || []).find((i) => (i.email || '').toLowerCase() === String(owner.email).toLowerCase()) || d.invitees?.[0];
+  const invitee = (d.invitees || []).find((i) => (i.email || '').toLowerCase() === String(signer.email).toLowerCase()) || d.invitees?.[0];
+  return { documentId: d.documentId, signUrl: invitee?.signUrl || null };
+};
+
+export const startSigning = async ({ agreement, hotel, owner, pdf }) => {
+  await getSigningSettings();
+  if (agreement.leegalityDocumentId && agreement.leegalityContentHash === agreement.contentHash && agreement.leegalitySignUrl && agreement.leegalityStatus === 'SENT') {
+    return { signUrl: agreement.leegalitySignUrl, documentId: agreement.leegalityDocumentId, reused: true };
+  }
+  const d = await createSignRequest({ name: `${agreement.reference} ${hotel.name} Listing Agreement`, pdf, signer: { name: owner.name || hotel.legalName || 'Property owner', email: owner.email, phone: owner.phone }, irn: agreement.reference });
+  const invitee = { signUrl: d.signUrl };
   await prisma.agreement.update({ where: { id: agreement.id }, data: { leegalityDocumentId: d.documentId, leegalitySignUrl: invitee?.signUrl || null, leegalityStatus: 'SENT', leegalityRequestedAt: new Date(), leegalityContentHash: agreement.contentHash } });
   await prisma.auditLog.create({ data: { action: 'AGREEMENT_ESIGN_REQUESTED', entityType: 'HOTEL', entityId: hotel.id, userId: owner.id, details: { reference: agreement.reference, provider: 'LEEGALITY', documentId: d.documentId, sandbox: isSandbox() } } }).catch(() => {});
   return { signUrl: invitee?.signUrl || null, documentId: d.documentId, reused: false };
@@ -118,10 +129,35 @@ export const fetchDetails = async (documentId, { files = false } = {}) => {
   return r.data.data || {};
 };
 
-const saveFile = (agreementId, kind, fileName, content) => prisma.agreementFile.upsert({
+export const saveFile = (agreementId, kind, fileName, content) => prisma.agreementFile.upsert({
   where: { agreementId_kind: { agreementId, kind } },
   update: { fileName, content, sha256: crypto.createHash('sha256').update(content).digest('hex'), createdAt: new Date() },
   create: { agreementId, kind, fileName, content, sha256: crypto.createHash('sha256').update(content).digest('hex') },
+});
+
+/**
+ * What Leegality says about a document for this signer: { done, failed (REJECTED | EXPIRED |
+ * FAILED | null), signedPdf, auditTrail (Buffers once done), cert, signedAt, email, signType }.
+ */
+export const readResult = async (documentId, signerEmail) => {
+  const details = await fetchDetails(documentId, { files: true });
+  const status = String(details.document?.status || '').toUpperCase();
+  const inv = (details.invitations || []).find((i) => (i.email || '').toLowerCase() === String(signerEmail || '').toLowerCase()) || (details.invitations || [])[0] || {};
+  const st = inv.invitationStatus || {};
+  if (status === 'COMPLETED' || st.signed) {
+    return {
+      done: true, failed: null,
+      signedPdf: details.file ? await download(details.file) : null, auditTrail: details.auditTrail ? await download(details.auditTrail) : null,
+      cert: inv.certificateData || {}, signedAt: parseDate(st.signDate) || new Date(), email: inv.email || null, name: inv.name || null, signType: inv.usedSignatureType || 'Aadhaar eSign',
+    };
+  }
+  return { done: false, failed: st.rejected ? 'REJECTED' : st.expired ? 'EXPIRED' : st.failureReason ? 'FAILED' : null };
+};
+
+/** The signer certificate we keep (never the full Aadhaar number). */
+export const certificateOf = (res, documentId) => ({
+  name: res.cert.name || null, yob: res.cert.yob || null, gender: res.cert.gender || null, state: res.cert.state || null, pincode: res.cert.pincode || null,
+  aadhaarLast4: res.cert.title || null, serialNumber: res.cert.serialNumber || null, signType: res.signType, provider: 'Leegality', documentId, sandbox: isSandbox(),
 });
 
 /**
@@ -132,21 +168,16 @@ const saveFile = (agreementId, kind, fileName, content) => prisma.agreementFile.
 export const syncStatus = async (agreement, { onSigned } = {}) => {
   if (!agreement?.leegalityDocumentId || !leegalityConfigured()) return agreement;
   if (['SIGNED', 'ACTIVE'].includes(agreement.status)) return agreement;
-  const details = await fetchDetails(agreement.leegalityDocumentId, { files: true });
-  const status = String(details.document?.status || '').toUpperCase();
-  const inv = (details.invitations || []).find((i) => (i.email || '').toLowerCase() === String(agreement.signerEmail || '').toLowerCase()) || (details.invitations || [])[0] || {};
-  const st = inv.invitationStatus || {};
-  if (status === 'COMPLETED' || st.signed) {
-    if (details.file) await saveFile(agreement.id, 'SIGNED_PDF', `${agreement.reference}-signed.pdf`, await download(details.file));
-    if (details.auditTrail) await saveFile(agreement.id, 'AUDIT_TRAIL', `${agreement.reference}-audit-trail.pdf`, await download(details.auditTrail));
-    const cert = inv.certificateData || {};
-    const signedAt = parseDate(st.signDate) || new Date();
-    const expiryAt = new Date(signedAt); expiryAt.setMonth(expiryAt.getMonth() + (agreement.termMonths || 12));
+  const res = await readResult(agreement.leegalityDocumentId, agreement.signerEmail);
+  if (res.done) {
+    if (res.signedPdf) await saveFile(agreement.id, 'SIGNED_PDF', `${agreement.reference}-signed.pdf`, res.signedPdf);
+    if (res.auditTrail) await saveFile(agreement.id, 'AUDIT_TRAIL', `${agreement.reference}-audit-trail.pdf`, res.auditTrail);
+    const expiryAt = new Date(res.signedAt); expiryAt.setMonth(expiryAt.getMonth() + (agreement.termMonths || 12));
     const updated = await prisma.$transaction(async (tx) => {
       const a = await tx.agreement.update({ where: { id: agreement.id }, data: {
-        status: 'SIGNED', signedAt, expiryAt, leegalityStatus: 'COMPLETED', signatureMethod: 'AADHAAR_ESIGN',
-        signerName: (cert.name || inv.name || agreement.signerName || '').slice(0, 120), signerEmail: inv.email || agreement.signerEmail,
-        signerCertificate: { name: cert.name || null, yob: cert.yob || null, gender: cert.gender || null, state: cert.state || null, pincode: cert.pincode || null, aadhaarLast4: cert.title || null, serialNumber: cert.serialNumber || null, signType: inv.usedSignatureType || 'Aadhaar eSign', provider: 'Leegality', documentId: agreement.leegalityDocumentId, sandbox: isSandbox() },
+        status: 'SIGNED', signedAt: res.signedAt, expiryAt, leegalityStatus: 'COMPLETED', signatureMethod: 'AADHAAR_ESIGN',
+        signerName: (res.cert.name || res.name || agreement.signerName || '').slice(0, 120), signerEmail: res.email || agreement.signerEmail,
+        signerCertificate: certificateOf(res, agreement.leegalityDocumentId),
       } });
       const hotel = await tx.hotel.findUnique({ where: { id: a.hotelId }, select: { status: true } });
       if (hotel?.status === 'PENDING_AGREEMENT') await tx.hotel.update({ where: { id: a.hotelId }, data: { status: 'READY_FOR_GO_LIVE' } });
@@ -156,9 +187,8 @@ export const syncStatus = async (agreement, { onSigned } = {}) => {
     if (onSigned) await onSigned(updated).catch((e) => console.error('[Leegality] after-sign step failed:', e.message));
     return updated;
   }
-  const failed = st.rejected ? 'REJECTED' : st.expired ? 'EXPIRED' : st.failureReason ? 'FAILED' : null;
-  if (failed && agreement.leegalityStatus !== failed) {
-    return prisma.agreement.update({ where: { id: agreement.id }, data: { leegalityStatus: failed } });
+  if (res.failed && agreement.leegalityStatus !== res.failed) {
+    return prisma.agreement.update({ where: { id: agreement.id }, data: { leegalityStatus: res.failed } });
   }
   return agreement;
 };
@@ -166,4 +196,4 @@ export const syncStatus = async (agreement, { onSigned } = {}) => {
 /** Stored Leegality files for an agreement (signed PDF, audit trail). */
 export const storedFiles = (agreementId) => prisma.agreementFile.findMany({ where: { agreementId }, select: { kind: true, fileName: true, content: true, sha256: true } });
 
-export default { METHODS, leegalityConfigured, getSigningSettings, saveSigningSettings, macValid, expectedMac, startSigning, fetchDetails, syncStatus, storedFiles, isSandbox };
+export default { METHODS, leegalityConfigured, getSigningSettings, saveSigningSettings, macValid, expectedMac, startSigning, createSignRequest, readResult, certificateOf, saveFile, fetchDetails, syncStatus, storedFiles, isSandbox };

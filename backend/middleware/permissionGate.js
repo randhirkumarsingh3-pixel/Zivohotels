@@ -71,6 +71,7 @@ const RULES = [
   [/^\/admin\/insights/, ['dashboard.view', 'dashboard.view'], null],
   [/^\/admin\/organisations\/[^/]+\/ledger/, ['business.view', 'finance.manage'], null],
   [/^\/admin\/organisations/, ['business.view', 'business.manage'], null],
+  [/^\/admin\/business-settings\/incentives/, ['business.view', 'finance.manage'], null],
   [/^\/admin\/business-settings/, ['business.view', 'settings.manage'], null],
   [/^\/admin\/risk/, ['finance.view', 'users.manage'], null],
   [/^\/finance/, ['finance.view', 'finance.manage'], null],

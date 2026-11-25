@@ -13,7 +13,7 @@ import { getBusinessSettings, termsFor } from './businessSettings.js';
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const fail = (m, code = 400) => Object.assign(new Error(m), { statusCode: code });
-export const ENTRY_TYPES = ['TOPUP', 'BOOKING', 'REFUND', 'PAYMENT', 'ADJUSTMENT', 'COMMISSION', 'TDS'];
+export const ENTRY_TYPES = ['TOPUP', 'BOOKING', 'REFUND', 'PAYMENT', 'ADJUSTMENT', 'COMMISSION', 'TDS', 'INCENTIVE'];
 
 /** Settles credits against the oldest debits; what is still owed, with due dates. */
 export const outstanding = (entries, now = new Date()) => {

@@ -299,7 +299,16 @@ export const CommissionTab = ({ org }) => {
 
 // ─── Voucher branding (agents) ───────────────────────────────────────────────
 export const BrandingForm = ({ org, onSaved }) => {
-  const [f, setF] = useState(() => ({ ...org.branding }));
+  const [f, setF] = useState(() => { const { logo: _l, ...rest } = org.branding || {}; return rest; });
+  const [logo, setLogo] = useState(org.branding?.logo || null);
+  const uploadLogo = (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setMsg({ ok: false, text: 'The logo must be smaller than 2 MB.' }); return; }
+    const reader = new FileReader();
+    reader.onload = async () => { try { const b = await businessApi.uploadLogo(org.id, reader.result); setLogo(b.logo); setMsg({ ok: true, text: 'Logo saved: it appears on new vouchers.' }); } catch (err) { setMsg({ ok: false, text: err.message }); } };
+    reader.readAsDataURL(file);
+  };
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const save = async (e) => {
@@ -310,6 +319,11 @@ export const BrandingForm = ({ org, onSaved }) => {
     <form onSubmit={save} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
       <h3 className="font-bold text-gray-900 flex items-center gap-2"><Palette size={17} aria-hidden="true" /> Your vouchers</h3>
       <p className="text-xs text-gray-600">Vouchers you give customers show these details instead of ZivoPlus.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        {logo ? <img src={logo} alt="Your logo" className="h-12 max-w-[150px] object-contain border border-gray-200 rounded-lg p-1 bg-white" /> : <span className="text-xs text-gray-500">No logo yet.</span>}
+        <label className={`${btn} border border-gray-300 cursor-pointer`}>Upload logo (PNG or JPG)<input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={uploadLogo} /></label>
+        {logo && <button type="button" className="text-sm font-semibold text-gray-700 underline" onClick={async () => { try { const b = await businessApi.removeLogo(org.id); setLogo(b.logo); } catch (err) { setMsg({ ok: false, text: err.message }); } }}>Remove</button>}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {[['name', 'Agency name on vouchers'], ['phone', 'Phone'], ['email', 'Email'], ['website', 'Website']].map(([k, l]) => (
           <label key={k} className="text-sm font-semibold text-gray-800">{l}<input className={input} value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>
