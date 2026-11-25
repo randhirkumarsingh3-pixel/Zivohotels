@@ -50,38 +50,48 @@ export const usePropertyWizard = (options) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialRoomIds, setInitialRoomIds] = useState([]);
   const [apiError, setApiError] = useState('');
+  // Editing an existing property: the form shows only once it has loaded, so a failed load (e.g.
+  // the server restarting) can never show, and save, an empty form over the real property
+  const [propertyLoad, setPropertyLoad] = useState('idle'); // idle | loading | ready | failed
   
   const [formData, setFormData] = useState(getDefaultFormData());
 
   const fetchProperty = useCallback(async (draftLoaded = false) => {
     if (!effectiveId) return;
+    setPropertyLoad((st) => (st === 'ready' ? 'ready' : 'loading'));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
     try {
-      const res = await fetch(`${API_URL}/hotels/${effectiveId}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_URL}/hotels/${effectiveId}`, { headers: getAuthHeaders(), signal: ctrl.signal });
       if (res.status === 404) {
         if (onFetchError) onFetchError();
+        // The caller decides (e.g. forget a stale draft id and start fresh)
+        setPropertyLoad(onFetchError ? 'idle' : 'failed');
         return;
       }
-      const json = await res.json();
-      if (json.success) {
-        const mappedData = mapBackendToFormData(json.data);
-        setInitialRoomIds(mappedData.rooms.map(r => r.id));
-        if (draftLoaded) {
-          // The copy kept in this browser only wins while it is newer than what the server has.
-          // It used to win always, so Edit Property showed (and saved back) stale values after
-          // the property had been saved elsewhere, e.g. the location from another session.
-          setFormData(prev => {
-            const serverTime = new Date(mappedData.lastUpdatedAt || 0).getTime();
-            const localTime = new Date(prev.lastUpdatedAt || 0).getTime();
-            if (!prev.lastUpdatedAt || serverTime > localTime) return mappedData;
-            return { ...mappedData, ...prev, lastUpdatedAt: mappedData.lastUpdatedAt };
-          });
-        } else {
-          setFormData(mappedData);
-        }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success || !json.data) throw new Error(json.message || `Server answered ${res.status}`);
+      const mappedData = mapBackendToFormData(json.data);
+      setInitialRoomIds(mappedData.rooms.map(r => r.id));
+      if (draftLoaded) {
+        // The copy kept in this browser only wins while it is newer than what the server has.
+        // It used to win always, so Edit Property showed (and saved back) stale values after
+        // the property had been saved elsewhere, e.g. the location from another session.
+        setFormData(prev => {
+          const serverTime = new Date(mappedData.lastUpdatedAt || 0).getTime();
+          const localTime = new Date(prev.lastUpdatedAt || 0).getTime();
+          if (!prev.lastUpdatedAt || serverTime > localTime) return mappedData;
+          return { ...mappedData, ...prev, lastUpdatedAt: mappedData.lastUpdatedAt };
+        });
+      } else {
+        setFormData(mappedData);
       }
+      setPropertyLoad('ready');
     } catch (err) {
       console.error('Error fetching property:', err);
-      setApiError('Failed to load property data.');
+      setPropertyLoad((st) => (st === 'ready' ? 'ready' : 'failed'));
+    } finally {
+      clearTimeout(timer);
     }
   }, [effectiveId, onFetchError]);
 
@@ -263,6 +273,9 @@ export const usePropertyWizard = (options) => {
   return {
     /** Load the saved property again (after saving one section of a listed property) */
     reloadProperty: fetchProperty,
+    /** idle (new property) | loading | ready | failed: show the form only when idle or ready */
+    propertyLoad,
+    retryLoadProperty: () => fetchProperty(false),
     formData,
     setFormData,
     updateForm,

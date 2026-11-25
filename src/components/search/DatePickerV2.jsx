@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { lazyPage } from '../../utils/lazyPage';
 import { Calendar as CalendarIcon } from 'lucide-react';
 // Small date helpers (the date library is only loaded with the calendar)
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -10,7 +11,7 @@ const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 
 const differenceInCalendarDays = (a, b) => Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 86400000);
 import { track } from '../../utils/analytics';
 
-const RangeCalendar = lazy(() => import('./RangeCalendar'));
+const RangeCalendar = lazyPage(() => import('./RangeCalendar'));
 // Start loading the calendar as soon as the guest points at or focuses the dates
 const preloadCalendar = () => { import('./RangeCalendar'); };
 
