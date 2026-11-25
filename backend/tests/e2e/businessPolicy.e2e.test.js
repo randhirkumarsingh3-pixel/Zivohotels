@@ -145,7 +145,7 @@ describe('Business: travel policy, approvals, spend reports', function () {
     const csv = await api.get(`/business/${org.id}/reports/spend.csv`, { ...as.admin, params: q, responseType: 'text' });
     expect(csv.status).to.equal(200);
     expect(csv.headers['content-type']).to.match(/text\/csv/);
-    const lines = csv.data.replace(/^﻿/, '').trim().split('\n');
+    const lines = csv.data.replace(/^\uFEFF/, '').trim().split('\n');
     expect(lines[0]).to.include('Invoice number').and.include('Hotel GSTIN').and.include('Your GSTIN');
     expect(lines).to.have.length(5);
     expect(csv.data).to.include(org.gstin).and.include(pending.bookingRef);
