@@ -32,6 +32,7 @@ const ListProperty = lazyPage(() => import('./pages/ListProperty'));
 const HourlyCheckout = lazyPage(() => import('./pages/HourlyCheckout'));
 import AccountGuard from './components/auth/AccountGuard';
 import SignInNudge from './components/SignInNudge';
+import SiteNotice from './components/SiteNotice';
 
 // LAYOUTS (LAZY)
 const MasterLayout = lazyPage(() => import('./layouts/MasterLayout'));
@@ -113,6 +114,7 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AccountGuard />
         <SignInNudge />
+        <SiteNotice />
         <Suspense fallback={<LoaderFallback />}>
           <Routes>
             {/* PUBLIC & CUSTOMER ROUTES */}
@@ -219,7 +221,8 @@ function App() {
               <Route path="google-hotels" element={<AdminGoogleHotels />} />
               <Route path="control-center" element={<SystemControlCenter />} />
               <Route path="live-ops" element={<LiveOpsCommandCenter />} />
-              <Route path="settings" element={<SystemHealth />} />
+              <Route path="system-health" element={<SystemHealth />} />
+              <Route path="settings" element={<Navigate to="/admin/system-health" replace />} />
               {/* Tax slabs (GST), booking rules, gateway, emails... (was built but never routed) */}
               <Route path="platform-settings" element={<PlatformSettings />} />
             </Route>

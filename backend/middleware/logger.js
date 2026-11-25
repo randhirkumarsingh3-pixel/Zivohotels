@@ -3,6 +3,7 @@ import systemCache from '../utils/systemCache.js';
 import prisma from '../config/db.js';
 import winston from 'winston';
 import cluster from 'cluster';
+import { record as recordMetric } from '../services/ops/metrics.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -64,6 +65,7 @@ export const requestLogger = (req, res, next) => {
     const method = req.method;
     const url = req.originalUrl;
     const user = req.user?.id || 'PUBLIC';
+    recordMetric(method, url, status, duration); // Admin → System health
     
     // 1. Update Error Stats in Cache
     if (status >= 500) {
