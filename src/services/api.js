@@ -536,6 +536,12 @@ export const businessApi = {
   payBooking: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/pay`, jsonBody('POST', {}), 0).then((r) => r?.data),
   cancelBooking: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/cancel`, jsonBody('POST', {}), 0).then((r) => r?.data),
   voucher: (orgId, id, price = 'NONE') => apiFetch(`${API_URL}/business/${orgId}/bookings/${id}/voucher?price=${price}`, { responseType: 'blob' }, 0),
+  policy: (orgId) => apiFetch(`${API_URL}/business/${orgId}/policy`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  savePolicy: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/policy`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  approvals: (orgId) => apiFetch(`${API_URL}/business/${orgId}/approvals`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  decide: (orgId, id, body) => apiFetch(`${API_URL}/business/${orgId}/approvals/${id}`, jsonBody('POST', body), 0).then((r) => r?.data),
+  spend: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  spendCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
   commission: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/commission?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 export const adminBusinessApi = {
