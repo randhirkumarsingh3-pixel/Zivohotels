@@ -14,6 +14,22 @@ const MODES = [['PREPAID', 'Prepaid wallet only'], ['CREDIT', 'Credit line'], ['
 const INVOICE = [['ON_BEHALF', 'ZivoPlus, on behalf of the hotel (hotel is the supplier)'], ['ZIVO_SUPPLIER', 'ZivoPlus as supplier'], ['HOTEL_ISSUES', 'The hotel issues it']];
 const PRICING = [['NET', 'Net rates: the agent adds their own markup'], ['COMMISSION', 'Commission on the public price'], ['BOTH', 'Both: the agent chooses per booking']];
 
+/** Credits a month's incentives now (normally automatic early the next month; once per agency). */
+const RunIncentives = () => {
+  const d = new Date(); d.setMonth(d.getMonth() - 1);
+  const [month, setMonth] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  const [out, setOut] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => { setBusy(true); try { setOut(await adminBusinessApi.runIncentives(month)); } catch (e) { setOut({ error: e.message }); } finally { setBusy(false); } };
+  return (
+    <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-gray-200">
+      <label className="text-xs font-semibold text-gray-700">Credit incentives for<input type="month" className={input} value={month} onChange={(e) => setMonth(e.target.value)} /></label>
+      <button type="button" onClick={run} disabled={busy} className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold disabled:opacity-50">{busy ? 'Crediting…' : 'Credit now'}</button>
+      {out && <p className="text-xs text-gray-700 w-full">{out.error || out.skipped || (out.credited.length ? out.credited.map((c) => `${c.name}: ${c.slab}, ₹${c.bonus.toLocaleString('en-IN')} (${c.roomNights} room nights)`).join(' · ') : 'Nothing new to credit for that month.')}</p>}
+    </div>
+  );
+};
+
 const BusinessSettings = () => {
   usePageTitle('Business settings');
   const { can } = useAccess();
@@ -32,6 +48,8 @@ const BusinessSettings = () => {
     <>
       <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" disabled={!edit} checked={s[g].enabled} onChange={(e) => set(g, 'enabled', e.target.checked)} /> Take applications</label>
       <label className="flex items-center gap-2 text-sm text-gray-800"><input type="checkbox" disabled={!edit} checked={s[g].requireGstin} onChange={(e) => set(g, 'requireGstin', e.target.checked)} /> GSTIN required to apply</label>
+      <label className="flex items-center gap-2 text-sm text-gray-800"><input type="checkbox" disabled={!edit} checked={Boolean(s[g].requireAgreement)} onChange={(e) => set(g, 'requireAgreement', e.target.checked)} /> Agreement must be signed before booking (wording in Agreement template)</label>
+      <label className="text-xs font-semibold text-gray-700 block max-w-xs">Hold time for unpaid / approval bookings (hours)<input type="number" min="0" max="72" className={input} disabled={!edit} value={s[g].holdHours ?? 24} onChange={(e) => set(g, 'holdHours', e.target.value)} /></label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-semibold text-gray-700">Payment<select className={input} disabled={!edit} value={s[g].paymentMode} onChange={(e) => set(g, 'paymentMode', e.target.value)}>{MODES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="text-xs font-semibold text-gray-700">Credit days<input type="number" min="1" max="120" className={input} disabled={!edit} value={s[g].creditDays} onChange={(e) => set(g, 'creditDays', e.target.value)} /></label>
@@ -61,6 +79,20 @@ const BusinessSettings = () => {
           <label className="text-xs font-semibold text-gray-700">Maximum markup %<input type="number" min="0" step="0.5" className={input} disabled={!edit} value={s.agency.maxMarkupPct} onChange={(e) => set('agency', 'maxMarkupPct', e.target.value)} /></label>
           <label className="text-xs font-semibold text-gray-700">Extra commission ZivoPlus pays %<input type="number" min="0" max="30" step="0.5" className={input} disabled={!edit} value={s.agency.extraCommissionPct} onChange={(e) => set('agency', 'extraCommissionPct', e.target.value)} /></label>
           <label className="text-xs font-semibold text-gray-700">TDS on commission % (194H)<input type="number" min="0" max="20" step="0.1" className={input} disabled={!edit} value={s.agency.tdsPct} onChange={(e) => set('agency', 'tdsPct', e.target.value)} /></label>
+        </div>
+        <div className="rounded-xl bg-gray-50 p-4 space-y-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" disabled={!edit} checked={Boolean(s.agency.incentives?.enabled)} onChange={(e) => set('agency', 'incentives', { ...s.agency.incentives, enabled: e.target.checked })} /> Monthly incentive slabs</label>
+          <p className="text-xs text-gray-600">An agent reaching a slab gets its bonus % on the room charges (before GST) of all its stays that checked out that month, credited early next month less TDS; its tier becomes the slab name.</p>
+          {(s.agency.incentives?.slabs || []).map((sl, i) => (
+            <div key={i} className="grid gap-2 grid-cols-[1fr_1fr_1fr_auto] items-end">
+              <label className="text-xs font-semibold text-gray-700">Slab<input className={input} disabled={!edit} value={sl.name} onChange={(e) => set('agency', 'incentives', { ...s.agency.incentives, slabs: s.agency.incentives.slabs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} /></label>
+              <label className="text-xs font-semibold text-gray-700">From room nights<input type="number" min="1" className={input} disabled={!edit} value={sl.minRoomNights} onChange={(e) => set('agency', 'incentives', { ...s.agency.incentives, slabs: s.agency.incentives.slabs.map((x, j) => (j === i ? { ...x, minRoomNights: e.target.value } : x)) })} /></label>
+              <label className="text-xs font-semibold text-gray-700">Bonus %<input type="number" min="0.1" step="0.1" className={input} disabled={!edit} value={sl.bonusPct} onChange={(e) => set('agency', 'incentives', { ...s.agency.incentives, slabs: s.agency.incentives.slabs.map((x, j) => (j === i ? { ...x, bonusPct: e.target.value } : x)) })} /></label>
+              {edit && <button type="button" className="text-xs text-gray-600 underline pb-3" onClick={() => set('agency', 'incentives', { ...s.agency.incentives, slabs: s.agency.incentives.slabs.filter((_, j) => j !== i) })}>Remove</button>}
+            </div>
+          ))}
+          {edit && <button type="button" className="text-sm font-semibold text-navy-800 underline" onClick={() => set('agency', 'incentives', { ...s.agency.incentives, slabs: [...(s.agency.incentives?.slabs || []), { name: '', minRoomNights: 100, bonusPct: 1 }] })}>Add slab</button>}
+          <RunIncentives />
         </div>
         <p className="text-xs text-gray-500">Agents get each hotel&apos;s travel agent discount (Extranet → Business rates): as a lower net rate, or as commission. The extra commission is on top, paid by ZivoPlus.</p>
       </section>

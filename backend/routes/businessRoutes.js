@@ -24,14 +24,17 @@
  *  GET    /:orgId/approvals                   trips waiting for my approval
  *  POST   /:orgId/approvals/:id               { decision: APPROVE|REJECT, note }
  *  GET    /:orgId/reports/spend?from=&to=     spend, savings, policy compliance; /reports/spend.csv with GST details
+ *  GET    /:orgId/agreement                   the agreement with ZivoPlus; POST /code, /sign { name, code, consent, contentHash },
+ *                                             /aadhaar { consent, contentHash }; GET /pdf, /audit-trail
  */
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { protect } from '../middleware/authMiddleware.js';
-import svc, { setBranding, brandingFor, membershipFor } from '../services/business/organisationService.js';
+import svc, { setBranding, brandingFor, membershipFor, setLogo, removeLogo } from '../services/business/organisationService.js';
 import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
 import { policyOf, savePolicy } from '../services/business/travelPolicy.js';
+import orgAgreement from '../services/business/orgAgreementService.js';
 
 const router = express.Router();
 const wrap = (fn) => asyncHandler(async (req, res) => {
@@ -68,6 +71,8 @@ router.post('/:orgId/topup', wrap(async (req, res) => ok(res, await svc.startTop
 router.post('/:orgId/topup/confirm', wrap(async (req, res) => ok(res, await svc.confirmTopup(req.params.orgId, req.user, req.body || {}))));
 
 router.put('/:orgId/branding', wrap(async (req, res) => ok(res, await setBranding(req.params.orgId, req.user, req.body || {}))));
+router.post('/:orgId/branding/logo', wrap(async (req, res) => ok(res, await setLogo(req.params.orgId, req.user, req.body || {}))));
+router.delete('/:orgId/branding/logo', wrap(async (req, res) => ok(res, await removeLogo(req.params.orgId, req.user))));
 router.get('/:orgId/rates', wrap(async (req, res) => ok(res, await booking.ratesFor(req.params.orgId, req.user, req.query.hotelIds))));
 router.post('/:orgId/quote', wrap(async (req, res) => ok(res, await booking.quote(req.params.orgId, req.user, req.body || {}))));
 router.get('/:orgId/bookings', wrap(async (req, res) => ok(res, await booking.listBookings(req.params.orgId, req.user, req.query))));
@@ -94,5 +99,21 @@ router.get('/:orgId/reports/spend.csv', wrap(async (req, res) => {
   res.locals.skipFormat = true;
   res.type('text/csv').set({ 'Content-Disposition': 'attachment; filename="zivoplus-business-stays.csv"', 'Cache-Control': 'private, no-store' }).send(`\uFEFF${csv}`);
 }));
+
+const ctx = (req) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
+router.get('/:orgId/incentives', wrap(async (req, res) => { const { incentiveProgress } = await import('../services/business/agentIncentives.js'); ok(res, await incentiveProgress(req.params.orgId, req.user)); }));
+router.get('/:orgId/agreement', wrap(async (req, res) => ok(res, await orgAgreement.viewOrgAgreement(req.params.orgId, req.user))));
+router.post('/:orgId/agreement/code', wrap(async (req, res) => ok(res, await orgAgreement.requestOrgSigningCode(req.params.orgId, req.user, ctx(req)))));
+router.post('/:orgId/agreement/sign', wrap(async (req, res) => { const a = await orgAgreement.signOrgAgreement(req.params.orgId, req.user, req.body || {}, ctx(req)); ok(res, { status: a.status, signedAt: a.signedAt, reference: a.reference }); }));
+router.post('/:orgId/agreement/aadhaar', wrap(async (req, res) => ok(res, await orgAgreement.startOrgAadhaar(req.params.orgId, req.user, req.body || {}))));
+const sendAgreementPdf = (audit) => wrap(async (req, res) => {
+  const { org } = await membershipFor(req.params.orgId, req.user);
+  const pdf = await orgAgreement.orgAgreementPdf(org.id, { auditTrail: audit });
+  if (!pdf) return res.status(404).json({ success: false, message: audit ? 'No audit trail: it exists for agreements signed with Aadhaar eSign.' : 'No agreement yet.' });
+  res.locals.skipFormat = true;
+  return res.type('application/pdf').set({ 'Content-Disposition': `inline; filename="ZivoPlus-${org.code}-agreement${audit ? '-audit-trail' : ''}.pdf"`, 'Cache-Control': 'private, no-store' }).send(Buffer.from(pdf));
+});
+router.get('/:orgId/agreement/pdf', sendAgreementPdf(false));
+router.get('/:orgId/agreement/audit-trail', sendAgreementPdf(true));
 
 export default router;

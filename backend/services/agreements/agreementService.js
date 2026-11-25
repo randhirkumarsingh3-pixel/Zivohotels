@@ -75,7 +75,7 @@ const paragraphs = (text, values) => {
   }).join('');
 };
 
-const AGREEMENT_CSS = `.agr{font-size:11.5px;line-height:1.65;color:#0f172a}.agr h2{font-size:13px;margin:16px 0 4px;color:#0b1f3a}.agr p{margin:0 0 8px}.agr ul{margin:0 0 8px 18px;padding:0}.agr li{margin:2px 0}.miss{background:#fee2e2;color:#b91c1c;padding:0 3px;border-radius:3px}
+export const AGREEMENT_CSS = `.agr{font-size:11.5px;line-height:1.65;color:#0f172a}.agr h2{font-size:13px;margin:16px 0 4px;color:#0b1f3a}.agr p{margin:0 0 8px}.agr ul{margin:0 0 8px 18px;padding:0}.agr li{margin:2px 0}.miss{background:#fee2e2;color:#b91c1c;padding:0 3px;border-radius:3px}
 .cert{margin-top:18px;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;font-size:11px}.cert h2{margin:0 0 8px;font-size:13px}.cert td{padding:3px 10px 3px 0;vertical-align:top}.cert td:first-child{color:#64748b;white-space:nowrap}.mono{font-family:monospace;font-size:10px;word-break:break-all}
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px}.sigs div{border-top:1px solid #94a3b8;padding-top:6px;font-size:11px}`;
 

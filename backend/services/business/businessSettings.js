@@ -19,12 +19,14 @@ export const PRICING_MODELS = ['NET', 'COMMISSION', 'BOTH'];
 export const KINDS = ['CORPORATE', 'AGENCY'];
 
 export const DEFAULTS = {
-  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'ON_BEHALF', holdHours: 24 },
+  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'ON_BEHALF', holdHours: 24, requireAgreement: false },
   agency: {
-    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'ON_BEHALF', holdHours: 24,
+    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'ON_BEHALF', holdHours: 24, requireAgreement: false,
     pricingModel: 'BOTH', defaultMarkupPct: 10, maxMarkupPct: 50, extraCommissionPct: 0,
     // TDS on commission (Income Tax Act section 194H)
     tdsPct: 2,
+    // Monthly incentive slabs on completed room nights (services/business/agentIncentives.js)
+    incentives: { enabled: false, slabs: [{ name: 'Silver', minRoomNights: 50, bonusPct: 1 }, { name: 'Gold', minRoomNights: 150, bonusPct: 2 }, { name: 'Platinum', minRoomNights: 400, bonusPct: 3 }] },
   },
   credit: { maxLimit: 500000, holdWhenOverdue: true },
   topup: { minAmount: 1000, maxAmount: 500000 },
@@ -62,14 +64,17 @@ export const saveBusinessSettings = async (input = {}, user) => {
       enabled: Boolean(c.enabled), requireGstin: Boolean(c.requireGstin),
       paymentMode: pick(c.paymentMode, PAYMENT_MODES, 'payment mode'), creditDays: num(c.creditDays, 1, 120, 'Credit days'),
       invoiceMode: pick(c.invoiceMode, INVOICE_MODES, 'invoice issuer'), holdHours: num(c.holdHours ?? 24, 0, 72, 'Hold hours'),
+      requireAgreement: Boolean(c.requireAgreement),
     },
     agency: {
       enabled: Boolean(a.enabled), requireGstin: Boolean(a.requireGstin),
       paymentMode: pick(a.paymentMode, PAYMENT_MODES, 'payment mode'), creditDays: num(a.creditDays, 1, 120, 'Credit days'),
       invoiceMode: pick(a.invoiceMode, INVOICE_MODES, 'invoice issuer'), holdHours: num(a.holdHours ?? 24, 0, 72, 'Hold hours'),
+      requireAgreement: Boolean(a.requireAgreement),
       pricingModel: pick(a.pricingModel, PRICING_MODELS, 'pricing model'),
       defaultMarkupPct: num(a.defaultMarkupPct, 0, 100, 'Default markup %'), maxMarkupPct: num(a.maxMarkupPct, 0, 200, 'Maximum markup %'),
       extraCommissionPct: num(a.extraCommissionPct, 0, 30, 'Extra commission %'), tdsPct: num(a.tdsPct, 0, 20, 'TDS %'),
+      incentives: (await import('./agentIncentives.js')).cleanIncentives(input.agency?.incentives || {}, cur.agency.incentives),
     },
     credit: { maxLimit: num(cr.maxLimit, 0, 100000000, 'Maximum credit limit'), holdWhenOverdue: Boolean(cr.holdWhenOverdue) },
     topup: { minAmount: num(t.minAmount, 1, 1000000, 'Minimum top-up'), maxAmount: num(t.maxAmount, 1, 10000000, 'Maximum top-up') },

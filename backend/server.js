@@ -83,6 +83,7 @@ import { isAllowedOrigin } from './config/origins.js';
 import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
 import { startInvoiceCatchUpJob } from './services/invoiceService.js';
+import { startIncentiveJob } from './services/business/agentIncentives.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
 import verificationRoutes from './routes/verificationRoutes.js';
 import leegalityWebhookRoutes from './routes/leegalityWebhookRoutes.js';
@@ -212,7 +213,7 @@ app.use((req, res, next) => {
     /^\/api\/v1\/admin\/images\/?$/.test(req.path) ||
     /^\/api\/v1\/reviews(\/[^/]+)?\/?$/.test(req.path) ||
     /^\/api\/v1\/kyc\/[^/]+\/upload\/?$/.test(req.path) ||
-    /^\/api\/v1\/business\/[^/]+\/documents\/?$/.test(req.path)
+    /^\/api\/v1\/business\/[^/]+\/(documents|branding\/logo)\/?$/.test(req.path)
   );
   return (isFileUpload ? jsonImageUpload : jsonDefault)(req, res, next);
 });
@@ -441,6 +442,7 @@ server.listen(PORT, HOST, () => {
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
     startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
     startInvoiceCatchUpJob(); // every 10 min: draws invoice PDFs that failed, issues missing invoices
+    startIncentiveJob(); // early each month: Partner Hub incentive slabs for last month (once per agency)
     runEncryptionSweep(); // encrypts bank details / KYC files stored before encryption at rest
     console.log('✉️  Timed jobs and email worker started in this process');
   }

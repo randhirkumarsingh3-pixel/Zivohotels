@@ -85,8 +85,10 @@ const AgreementTemplate = () => {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [copied, setCopied] = useState('');
+  const [kind, setKind] = useState('HOTEL');
+  const [kinds, setKinds] = useState([]);
 
-  useEffect(() => { agreementApi.template().then((d) => { setT(d.template); setFields(d.fields); setDefaults(d.defaultTemplate); }).catch((e) => setMsg({ ok: false, text: e.message })); }, []);
+  useEffect(() => { setT(null); agreementApi.template(kind).then((d) => { setT(d.template); setFields(d.fields); setDefaults(d.defaultTemplate); setKinds(d.kinds || []); }).catch((e) => setMsg({ ok: false, text: e.message })); }, [kind]);
   if (!t) return <p className="text-sm text-gray-500 flex items-center gap-2">{msg ? msg.text : <><Loader2 size={16} className="animate-spin" /> Loading…</>}</p>;
 
   const set = (k, v) => setT((cur) => ({ ...cur, [k]: v }));
@@ -94,7 +96,7 @@ const AgreementTemplate = () => {
   const move = (i, d) => setT((cur) => { const s = [...cur.sections]; const [x] = s.splice(i, 1); s.splice(i + d, 0, x); return { ...cur, sections: s }; });
   const save = async () => {
     setBusy(true); setMsg(null);
-    try { const d = await agreementApi.saveTemplate(t); setT(d.template); setMsg({ ok: true, text: `Saved as version ${d.template.version}. New agreements use it; ones already sent keep their text.` }); } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
+    try { const d = await agreementApi.saveTemplate(t, kind); setT(d.template); setMsg({ ok: true, text: `Saved as version ${d.template.version}. New agreements use it; ones already sent keep their text.` }); } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
   };
   const copy = async (k) => { try { await navigator.clipboard.writeText(`{{${k}}}`); setCopied(k); setTimeout(() => setCopied(''), 1500); } catch { /* select manually */ } };
 
@@ -103,14 +105,20 @@ const AgreementTemplate = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Agreement template</h1>
-          <p className="text-sm text-gray-600 mt-1 max-w-3xl">The wording of the property listing agreement. Version {t.version}{t.updatedAt ? `, saved ${new Date(t.updatedAt).toLocaleDateString('en-IN')} by ${t.updatedBy}` : ' (the starting wording)'}. Have your lawyer review it before use.</p>
+          <p className="text-sm text-gray-600 mt-1 max-w-3xl">The wording of the {kind === 'HOTEL' ? 'property listing agreement' : kind === 'AGENCY' ? 'travel agent agreement (Partner Hub)' : 'company agreement (ZivoPlus for Business)'}. Version {t.version}{t.updatedAt ? `, saved ${new Date(t.updatedAt).toLocaleDateString('en-IN')} by ${t.updatedBy}` : ' (the starting wording)'}. Have your lawyer review it before use.</p>
         </div>
         <Link to="/admin/agreements" className="text-sm font-semibold text-navy-800 underline">Agreements</Link>
       </div>
+      {kinds.length > 1 && (
+        <div role="tablist" aria-label="Agreement" className="flex flex-wrap gap-2">
+          {kinds.map((k) => <button key={k.kind} type="button" role="tab" aria-selected={kind === k.kind} onClick={() => { setMsg(null); setKind(k.kind); }} className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${kind === k.kind ? 'bg-navy-800 text-white border-navy-800' : 'bg-white border-gray-200 text-gray-700'}`}>{k.label}</button>)}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4 min-w-0">
           <SigningSettings canEdit={canEdit} />
+          {kind !== 'HOTEL' && <p className="text-xs text-gray-600 -mt-2">The signing method above applies to agent and company agreements too. Agreements are prepared when ZivoPlus approves an organisation; require a signature before booking in Business settings.</p>}
           <section className="bg-white border border-gray-200 rounded-2xl p-5 grid gap-4 md:grid-cols-2">
             <label className="text-xs font-semibold text-gray-700 md:col-span-2">Title
               <input className={input} value={t.title} disabled={!canEdit} onChange={(e) => set('title', e.target.value)} />

@@ -65,6 +65,19 @@ const Detail = ({ id, onClose, onChanged }) => {
         )}
       </section>
 
+      <section className="space-y-2">
+        <h3 className="font-bold text-gray-900 text-sm">Agreement</h3>
+        {d.agreement ? (
+          <p className="text-sm text-gray-700">{d.agreement.reference} · {d.agreement.status === 'SIGNED' ? `signed by ${d.agreement.signerName} on ${day(d.agreement.signedAt)}${d.agreement.signatureMethod === 'AADHAAR_ESIGN' ? ' (Aadhaar eSign)' : ''}` : `waiting for their signature${d.agreement.leegalityStatus ? ` (Leegality: ${d.agreement.leegalityStatus.toLowerCase()})` : ''}`}</p>
+        ) : <p className="text-sm text-gray-500">Not prepared yet (prepared when the organisation is approved).</p>}
+        <div className="flex flex-wrap gap-2">
+          {d.agreement && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> PDF</button>}
+          {d.agreement?.signatureMethod === 'AADHAAR_ESIGN' && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id, true), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> Audit trail</button>}
+          {manage && d.agreement?.status !== 'SIGNED' && ['ACTIVE', 'SUSPENDED'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => run('agr', () => adminBusinessApi.prepareAgreement(id), 'Agreement prepared with the current terms and sent to their admins.')} className={`${btn} border border-gray-300 bg-white`}>{d.agreement ? 'Update and resend' : 'Prepare and send'}</button>}
+          {manage && d.agreement?.leegalityStatus === 'SENT' && <button type="button" disabled={!!busy} onClick={() => run('agr-r', () => adminBusinessApi.refreshAgreement(id), 'Checked with Leegality.')} className={`${btn} border border-gray-300 bg-white`}>Check Leegality</button>}
+        </div>
+      </section>
+
       {manage && (
         <section className="rounded-xl bg-gray-50 p-4 space-y-3">
           <h3 className="font-bold text-gray-900 text-sm">Decision</h3>

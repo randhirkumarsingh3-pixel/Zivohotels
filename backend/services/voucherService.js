@@ -226,7 +226,7 @@ export const agencyVoucherHtml = (d, { agency, price = 'NONE' }) => {
   const bp = b.businessPricing || {};
   const contact = [agency.phone && `Phone: <b>${esc(agency.phone)}</b>`, agency.email && esc(agency.email), agency.website && `<span class="muted">${esc(agency.website)}</span>`];
   const sell = Number(bp.sellAmount || b.totalAmount);
-  const body = `${header({ brandName: agency.name, brandSub: 'Hotel voucher', title: 'Booking Confirmation', sub: 'Show this at check-in, on your phone or printed', ref: bp.clientReference || b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
+  const body = `${header({ brandName: agency.name, brandLogo: agency.logo, brandSub: 'Hotel voucher', title: 'Booking Confirmation', sub: 'Show this at check-in, on your phone or printed', ref: bp.clientReference || b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
 ${stayMeta(d)}
 <div class="parties three">
   ${propertyBox(hotel)}

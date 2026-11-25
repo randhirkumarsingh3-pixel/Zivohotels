@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
 import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields } from './business/CompanyTools';
+import { AgreementTab, IncentiveCard } from './business/AgreementTab';
 
 /**
  * ZivoPlus for Business (/business, companies) and ZivoPlus Partner Hub (/partners, travel agents).
@@ -42,7 +43,7 @@ const ROLE_NAMES = { ADMIN: 'Admin', BOOKER: 'Booker', APPROVER: 'Approver', FIN
 const MODE = { PREPAID: 'Prepaid wallet', CREDIT: 'Credit line', BOTH: 'Wallet first, then credit' };
 const INVOICE = { ON_BEHALF: 'Hotel as supplier (issued by ZivoPlus on its behalf)', ZIVO_SUPPLIER: 'ZivoPlus as supplier', HOTEL_ISSUES: 'The hotel issues it' };
 const PRICING = { NET: 'Net rates + your markup', COMMISSION: 'Public price + commission', BOTH: 'Net rates or commission, your choice per booking' };
-const ENTRY = { TOPUP: 'Top-up', BOOKING: 'Booking', REFUND: 'Refund', PAYMENT: 'Payment received', ADJUSTMENT: 'Adjustment', COMMISSION: 'Commission', TDS: 'TDS' };
+const ENTRY = { TOPUP: 'Top-up', BOOKING: 'Booking', REFUND: 'Refund', PAYMENT: 'Payment received', ADJUSTMENT: 'Adjustment', COMMISSION: 'Commission', TDS: 'TDS', INCENTIVE: 'Incentive' };
 
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
@@ -152,6 +153,7 @@ const Overview = ({ org }) => {
         <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">{rows.map(([k, v]) => <div key={k} className="flex justify-between gap-3 border-b border-gray-100 py-1.5"><dt className="text-gray-600">{k}</dt><dd className="font-semibold text-gray-900 text-right">{v}</dd></div>)}</dl>
         <p className="text-xs text-gray-500 mt-3">Set by ZivoPlus for your account. Ask your ZivoPlus contact to change them.</p>
       </section>
+      {org.status === 'ACTIVE' && org.kind === 'AGENCY' && <IncentiveCard org={org} />}
       {org.status === 'ACTIVE' && <p className="text-sm text-gray-600 flex items-center gap-2"><ShieldCheck size={16} className="text-brand-700" aria-hidden="true" /> {org.kind === 'AGENCY' ? 'Book hotels at your agent rates in the Book tab; give customers vouchers with your agency\'s name.' : 'Book stays at your company rates in the Book tab.'}</p>}
     </div>
   );
@@ -351,7 +353,7 @@ const Dashboard = ({ orgId, info, user }) => {
   const c = COPY[org.kind]; const Icon = c.icon;
   const [SIcon, scls, slabel, stext] = STATUS[org.status] || STATUS.IN_REVIEW;
   const live = org.status === 'ACTIVE';
-  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
+  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], ['ACTIVE', 'SUSPENDED'].includes(org.status) && ['agreement', 'Agreement', FileText], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
@@ -378,6 +380,7 @@ const Dashboard = ({ orgId, info, user }) => {
         {tab === 'approvals' && <ApprovalsTab org={org} onChange={load} />}
         {tab === 'reports' && <ReportsTab org={org} />}
         {tab === 'policy' && <PolicyTab org={org} />}
+        {tab === 'agreement' && <AgreementTab org={org} onSigned={load} />}
         {tab === 'account' && <AccountTab org={org} user={user} onChange={load} />}
         {tab === 'team' && <TeamTab org={org} roles={info?.roles} />}
         {tab === 'details' && <div className="space-y-5"><DetailsTab org={org} onSaved={load} />{org.kind === 'AGENCY' && org.can['org.edit'] && <BrandingForm org={org} onSaved={load} />}</div>}

@@ -15,7 +15,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getAgreements, cancelAgreement } from '../controllers/agreementController.js';
 import { previewAgreement, prepareAgreement, markSignedOffline, agreementPdf, refreshFromLeegality } from '../services/agreements/agreementService.js';
 import { getSigningSettings, saveSigningSettings } from '../services/agreements/leegality.js';
-import { FIELDS, DEFAULT_TEMPLATE, getTemplate, saveTemplate } from '../services/agreements/agreementTemplate.js';
+import { getTemplate, saveTemplate, TEMPLATE_KINDS, fieldsFor, defaultFor } from '../services/agreements/agreementTemplate.js';
 
 const fail = (res, e) => {
   if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message, ...(e.missing ? { missing: e.missing } : {}) });
@@ -50,8 +50,11 @@ router.delete('/:id', cancelAgreement);
 
 export const templateRouter = express.Router();
 templateRouter.use(staffOnly);
-templateRouter.get('/', wrap(async (req, res) => res.json({ success: true, data: { template: await getTemplate(), fields: FIELDS, defaultTemplate: DEFAULT_TEMPLATE } })));
-templateRouter.put('/', wrap(async (req, res) => res.json({ success: true, data: { template: await saveTemplate(req.body || {}, req.user), fields: FIELDS } })));
+// ?kind=HOTEL (default) | AGENCY (travel agent agreement) | CORPORATE (company agreement)
+const kindOf = (req) => (TEMPLATE_KINDS[req.query.kind] ? req.query.kind : 'HOTEL');
+const kinds = Object.entries(TEMPLATE_KINDS).map(([k, v]) => ({ kind: k, label: v.label }));
+templateRouter.get('/', wrap(async (req, res) => res.json({ success: true, data: { kind: kindOf(req), kinds, template: await getTemplate(kindOf(req)), fields: fieldsFor(kindOf(req)), defaultTemplate: defaultFor(kindOf(req)) } })));
+templateRouter.put('/', wrap(async (req, res) => res.json({ success: true, data: { kind: kindOf(req), template: await saveTemplate(req.body || {}, req.user, kindOf(req)), fields: fieldsFor(kindOf(req)) } })));
 // How owners sign: emailed code, or Aadhaar eSign through Leegality (with its workflow ID)
 templateRouter.get('/signing', wrap(async (req, res) => res.json({ success: true, data: await getSigningSettings() })));
 templateRouter.put('/signing', wrap(async (req, res) => res.json({ success: true, data: await saveSigningSettings(req.body || {}, req.user) })));
