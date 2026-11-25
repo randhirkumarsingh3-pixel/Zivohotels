@@ -34,7 +34,7 @@ export const getAgreements = asyncHandler(async (req, res) => {
 
     // 3. Combine them in-memory
     // The full text is only needed for one agreement at a time (preview / PDF)
-    const agreements = rawAgreements.map(({ content: _content, ...a }) => ({
+    const agreements = rawAgreements.map(({ content: _content, leegalitySignUrl: _signUrl, ...a }) => ({
       ...a,
       hotel: hotels.find(h => h.id === a.hotelId) || null
     }));

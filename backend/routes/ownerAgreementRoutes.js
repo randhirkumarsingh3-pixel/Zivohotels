@@ -7,7 +7,7 @@ import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import prisma from '../config/db.js';
 import { managesHotel } from '../utils/hotelAccess.js';
-import { ownerView, requestSigningCode, signAgreement, agreementPdf } from '../services/agreements/agreementService.js';
+import { ownerView, requestSigningCode, signAgreement, agreementPdf, startAadhaarSigning } from '../services/agreements/agreementService.js';
 
 const router = express.Router();
 const fail = (res, e) => {
@@ -36,6 +36,17 @@ router.post('/:hotelId/sign', asyncHandler(async (req, res) => {
     const a = await signAgreement(hotel.id, req.user, req.body || {}, ctx(req));
     res.json({ success: true, data: { status: a.status, signedAt: a.signedAt, reference: a.reference } });
   } catch (e) { fail(res, e); }
+}));
+// Aadhaar eSign through Leegality: sends this agreement and returns Leegality's signing link
+router.post('/:hotelId/aadhaar', asyncHandler(async (req, res) => {
+  const hotel = await access(req, res); if (!hotel) return;
+  try { res.json({ success: true, data: await startAadhaarSigning(hotel.id, req.user, req.body || {}) }); } catch (e) { fail(res, e); }
+}));
+router.get('/:hotelId/audit-trail', asyncHandler(async (req, res) => {
+  const hotel = await access(req, res); if (!hotel) return;
+  const pdf = await agreementPdf(hotel.id, { auditTrail: true });
+  if (!pdf) return res.status(404).json({ success: false, message: 'No audit trail: it exists for agreements signed with Aadhaar eSign.' });
+  res.type('application/pdf').set('Content-Disposition', `inline; filename="ZivoPlus-Agreement-audit-trail.pdf"`).send(Buffer.from(pdf));
 }));
 router.get('/:hotelId/pdf', asyncHandler(async (req, res) => {
   const hotel = await access(req, res); if (!hotel) return;

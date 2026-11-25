@@ -426,6 +426,27 @@ model Agreement {
   signerEmail     String?
   signerUserAgent String?
   signatureMethod String?
+  /// Aadhaar eSign through Leegality: their document id, the owner's signing link, its status
+  leegalityDocumentId  String?   @unique
+  leegalitySignUrl     String?
+  leegalityStatus      String?
+  leegalityRequestedAt DateTime?
+  leegalityContentHash String?
+  /// Name and details from the Aadhaar signing certificate (no Aadhaar number)
+  signerCertificate    Json?
+}
+
+/// Files kept for an agreement: the PDF signed through Leegality and its audit trail
+model AgreementFile {
+  id          String   @id @default(uuid())
+  agreementId String
+  kind        String
+  fileName    String
+  sha256      String
+  content     Bytes
+  createdAt   DateTime @default(now())
+
+  @@unique([agreementId, kind])
 }
 
 model BankDetail {

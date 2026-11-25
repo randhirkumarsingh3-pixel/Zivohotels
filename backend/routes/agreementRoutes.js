@@ -13,7 +13,8 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getAgreements, cancelAgreement } from '../controllers/agreementController.js';
-import { previewAgreement, prepareAgreement, markSignedOffline, agreementPdf } from '../services/agreements/agreementService.js';
+import { previewAgreement, prepareAgreement, markSignedOffline, agreementPdf, refreshFromLeegality } from '../services/agreements/agreementService.js';
+import { getSigningSettings, saveSigningSettings } from '../services/agreements/leegality.js';
 import { FIELDS, DEFAULT_TEMPLATE, getTemplate, saveTemplate } from '../services/agreements/agreementTemplate.js';
 
 const fail = (res, e) => {
@@ -34,11 +35,25 @@ router.get('/:hotelId/pdf', wrap(async (req, res) => {
   if (!pdf) return res.status(404).json({ success: false, message: 'No agreement prepared yet.' });
   res.type('application/pdf').set('Content-Disposition', `inline; filename="ZivoPlus-Agreement-${req.params.hotelId.slice(0, 8)}.pdf"`).send(Buffer.from(pdf));
 }));
+router.get('/:hotelId/audit-trail', wrap(async (req, res) => {
+  const pdf = await agreementPdf(req.params.hotelId, { auditTrail: true });
+  if (!pdf) return res.status(404).json({ success: false, message: 'No audit trail: it exists for agreements signed with Aadhaar eSign.' });
+  res.type('application/pdf').set('Content-Disposition', `inline; filename="ZivoPlus-Agreement-audit-trail-${req.params.hotelId.slice(0, 8)}.pdf"`).send(Buffer.from(pdf));
+}));
+// Ask Leegality for the latest state of an Aadhaar eSign request (if a webhook was missed)
+router.post('/:hotelId/refresh', wrap(async (req, res) => {
+  const a = await refreshFromLeegality({ hotelId: req.params.hotelId });
+  if (!a?.leegalityDocumentId) return res.status(404).json({ success: false, message: 'This agreement wasn\'t sent for Aadhaar eSign.' });
+  res.json({ success: true, data: { status: a.status, leegalityStatus: a.leegalityStatus, signedAt: a.signedAt } });
+}));
 router.delete('/:id', cancelAgreement);
 
 export const templateRouter = express.Router();
 templateRouter.use(staffOnly);
 templateRouter.get('/', wrap(async (req, res) => res.json({ success: true, data: { template: await getTemplate(), fields: FIELDS, defaultTemplate: DEFAULT_TEMPLATE } })));
 templateRouter.put('/', wrap(async (req, res) => res.json({ success: true, data: { template: await saveTemplate(req.body || {}, req.user), fields: FIELDS } })));
+// How owners sign: emailed code, or Aadhaar eSign through Leegality (with its workflow ID)
+templateRouter.get('/signing', wrap(async (req, res) => res.json({ success: true, data: await getSigningSettings() })));
+templateRouter.put('/signing', wrap(async (req, res) => res.json({ success: true, data: await saveSigningSettings(req.body || {}, req.user) })));
 
 export default router;
