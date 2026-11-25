@@ -1,20 +1,10 @@
 import { useState, useEffect } from 'react';
 import { UploadCloud, Trash2, Tag, X, Check, Search, ChevronLeft, Sparkles, Plus, Info } from 'lucide-react';
 import { getImageUrl } from '../../../utils/image';
+import { PHOTO_TAGS, formatTag } from '../../../constants/photoTags';
 
-const TAG_OPTIONS = [
-  "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
-  "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
-  "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
-];
-
-const formatTag = (tag) => {
-  return tag
-    .toLowerCase()
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
+const TAG_OPTIONS = PHOTO_TAGS;
+const MIN_PHOTOS = 5; // backend/services/propertyReadiness.js
 
 const PhotosStep = ({ formData, updateForm }) => {
   const isAdmin = window.location.pathname.includes('/admin');
@@ -357,11 +347,7 @@ const PhotosStep = ({ formData, updateForm }) => {
 
   if (currentView === 'tagging' && selectedImageForTagging) {
     const currentImg = selectedImageForTagging;
-    const baseTags = [
-      ...TAG_OPTIONS,
-      "ROOMS",
-      "BATHROOM"
-    ];
+    const baseTags = TAG_OPTIONS;
     const roomTags = (rooms || []).map(r => r.name.toUpperCase().trim().replace(/[^A-Z0-9_]+/g, '_')).filter(Boolean);
     const dynamicTagOptions = Array.from(new Set([...baseTags, ...roomTags]));
     const filteredTags = dynamicTagOptions.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()));
@@ -574,21 +560,19 @@ const PhotosStep = ({ formData, updateForm }) => {
         )}
       </div>
 
-      {/* Review Alert Notice */}
-      <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-amber-900 shadow-sm gap-4 mb-10">
+      {/* Where the photos stand: count needed to go live, and untagged ones */}
+      <div className={`border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between text-sm shadow-sm gap-4 mb-10 ${library.length >= MIN_PHOTOS ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' : 'border-amber-200 bg-amber-50/50 text-amber-900'}`}>
         <div className="flex items-center gap-3">
-          <Sparkles className="text-amber-700 shrink-0 w-5 h-5" />
-          <span className="font-medium">{library.length} photos & videos are being reviewed. It will take up to 24 hrs.</span>
+          <Sparkles className="shrink-0 w-5 h-5" />
+          <span className="font-medium">
+            {library.length >= MIN_PHOTOS ? `${library.length} photos and videos.` : `${library.length} of the ${MIN_PHOTOS} photos needed to go live.`}
+            {untaggedCount > 0 ? ` ${untaggedCount} still need a tag: guests filter the gallery by tag.` : library.length ? ' All tagged.' : ' Add the outside, the lobby, every room type and the bathroom.'}
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (library.length > 0) openTaggingView(library[0]);
-          }}
-          className="font-bold underline text-amber-700 hover:text-amber-900 transition-colors shrink-0"
-        >
-          View Items
-        </button>
+        {untaggedCount > 0 && (
+          <button type="button" onClick={() => { const first = library.find((img) => !img.tags || img.tags.length === 0); if (first) openTaggingView(first); }}
+            className="font-bold underline shrink-0">Tag them</button>
+        )}
       </div>
 
       {/* Untagged Files Section Box */}
@@ -612,18 +596,18 @@ const PhotosStep = ({ formData, updateForm }) => {
             <span className="text-xs text-slate-500 mt-0.5">Use the section below to assign them to specific rooms.</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {library.filter(img => !img.tags || img.tags.length === 0).map(img => {
               const hasTags = img.tags && img.tags.length > 0;
               return (
                 <div
                   key={img.id}
                   onClick={() => openTaggingView(img)}
-                  className={`group relative aspect-square sm:aspect-video rounded-xl overflow-hidden border-2 cursor-pointer bg-slate-50 shadow-sm hover:shadow-md transition-all ${
+                  className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 cursor-pointer bg-slate-50 shadow-sm hover:shadow-md transition-all ${
                     !hasTags ? 'border-red-400 hover:border-red-500' : 'border-slate-200 hover:border-blue-300'
                   }`}
                 >
-                  <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="grid-asset" />
+                  <img src={getImageUrl(img.url, 400)} className="w-full h-full object-cover" alt="Untagged photo" />
                   
                   {/* Hover Tag overlay */}
                   <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-[1px]">
@@ -641,8 +625,8 @@ const PhotosStep = ({ formData, updateForm }) => {
 
                   {/* Warning Pill if tag missing */}
                   {!hasTags && (
-                    <span className="absolute bottom-2 left-2 bg-red-600 text-white text-xs font-black px-2 py-1 rounded uppercase tracking-widest shadow-sm">
-                      Missing Tag
+                    <span className="absolute top-2 left-2 bg-red-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                      No tag
                     </span>
                   )}
                 </div>

@@ -430,7 +430,7 @@ const PropertyOnboarding = () => {
       case 6:
         return <PoliciesStep formData={formData} updateForm={updateForm} />;
       case 7:
-        return <FinanceStep formData={formData} updateForm={updateForm} />;
+        return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={false} hotelId={effectiveId || formData.id || localStorage.getItem('currentHotelId_extranet')} />;
       case 8:
         return <DocumentsStep hotelId={effectiveId || formData.id || localStorage.getItem('currentHotelId_extranet')} />;
       default:

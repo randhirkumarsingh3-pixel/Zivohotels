@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { verificationApi } from '../../../services/api';
 import { 
   Landmark, CheckCircle2, AlertCircle,
   FileCheck, HelpCircle, ChevronDown, Check, Loader2
@@ -38,7 +39,15 @@ const payoutCycleNote = (cycle) => {
   return 'Every Wednesday';
 };
 
-const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
+const ACCOUNT_STATUS = {
+  VERIFIED: ['bg-emerald-50 text-emerald-800 border-emerald-200', 'Account verified'],
+  PENDING: ['bg-blue-50 text-blue-800 border-blue-200', 'Test deposit sent: checking'],
+  MANUAL: ['bg-amber-50 text-amber-900 border-amber-200', 'ZivoPlus will check it against your cancelled cheque'],
+  NAME_MISMATCH: ['bg-red-50 text-red-700 border-red-200', 'Name at the bank does not match'],
+  FAILED: ['bg-red-50 text-red-700 border-red-200', 'Account could not be verified'],
+};
+
+const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp, hotelId }) => {
   // Read from auth context directly so this works even in old cached bundles
   // that may not pass the isAdmin prop
   const { user } = useAuth();
@@ -49,20 +58,21 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
   // locked (changes go through support). The backend enforces the same rule.
   const isDraft = !formData.status || ['DRAFT', 'INFORMATION_REQUESTED'].includes(formData.status);
   const isProtected = !isAdmin && !isDraft;
-  // Commission is agreed with ZivoPlus and only an admin can change it
+  // Commission is agreed with ZivoPlus: only an admin enters it, and there is no automatic default
   const commissionLocked = !isAdmin;
+  const commissionSet = Number(formData.commission) > 0;
   const [activeStep, setActiveStep] = useState(1);
   const [reAccountNumber, setReAccountNumber] = useState(formData.accountNumber || '');
-  const [ifscVerifying, setIfscVerifying] = useState(false);
-  const [ifscVerified, setIfscVerified] = useState(!!formData.ifscCode);
-  const [detectedBranch, setDetectedBranch] = useState(formData.branchName || '');
-  
-  const [panVerifying, setPanVerifying] = useState(false);
-  const [panVerified, setPanVerified] = useState(!!formData.pan && !!formData.legalName);
-  const [panValid, setPanValid] = useState(true);
 
-  const [gstVerifying, setGstVerifying] = useState(false);
-  const [gstVerified, setGstVerified] = useState(!!formData.gstin);
+  const [ifscBusy, setIfscBusy] = useState(false);
+  const [ifscResult, setIfscResult] = useState(null); // { ok, bank, branch, city, message }
+  const [panBusy, setPanBusy] = useState(false);
+  const [panResult, setPanResult] = useState(null);
+  const [gstBusy, setGstBusy] = useState(false);
+  const [gstResult, setGstResult] = useState(null);
+  const [accBusy, setAccBusy] = useState(false);
+  const [account, setAccount] = useState(null); // server status of the payout account
+  const [accError, setAccError] = useState('');
 
   // Sync reAccountNumber if formData changes
   useEffect(() => {
@@ -71,117 +81,64 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
     }
   }, [formData.accountNumber]);
 
-  // Set default commission rate if not specified (e.g. 15%)
-  useEffect(() => {
-    if (!formData.commission) {
-      updateForm('commission', 15);
-    }
-  }, [formData.commission]);
-
-  // Sync account holder name with legal entity name automatically for backend compliance
+  // Payouts go to the business's own account: the holder is the legal entity
   useEffect(() => {
     if (formData.legalName && formData.accountName !== formData.legalName) {
       updateForm('accountName', formData.legalName);
     }
   }, [formData.legalName]);
 
-  // MOCK IFSC Code Verification
-  const handleVerifyIFSC = () => {
-    const ifsc = formData.ifscCode?.trim().toUpperCase();
-    if (!ifsc || ifsc.length < 11) {
-      alert("Please enter a valid 11-character IFSC code first.");
-      return;
-    }
+  // The payout account's check status (and the bank's answer once a test deposit completes)
+  useEffect(() => {
+    if (!hotelId) return undefined;
+    let alive = true;
+    const load = () => verificationApi.accountStatus(hotelId).then((d) => { if (alive) setAccount(d); }).catch(() => {});
+    load();
+    const t = setInterval(() => { if (account?.status === 'PENDING') load(); }, 8000);
+    return () => { alive = false; clearInterval(t); };
+  }, [hotelId, account?.status]);
 
-    setIfscVerifying(true);
-    setTimeout(() => {
-      setIfscVerifying(false);
-      setIfscVerified(true);
-      const bankCode = ifsc.substring(0, 4);
-      let bankNameGuess = "Other";
-      if (bankCode.startsWith("HDFC")) bankNameGuess = "HDFC Bank";
-      else if (bankCode.startsWith("ICIC")) bankNameGuess = "ICICI Bank";
-      else if (bankCode.startsWith("SBIN")) bankNameGuess = "State Bank of India (SBI)";
-      else if (bankCode.startsWith("UTIB")) bankNameGuess = "Axis Bank";
-      else if (bankCode.startsWith("KKBK")) bankNameGuess = "Kotak Mahindra Bank";
-      else if (bankCode.startsWith("INDB")) bankNameGuess = "IndusInd Bank";
-      else if (bankCode.startsWith("YESB")) bankNameGuess = "Yes Bank";
-      else if (bankCode.startsWith("PUNB")) bankNameGuess = "Punjab National Bank";
-      else if (bankCode.startsWith("BARB")) bankNameGuess = "Bank of Baroda";
-      else if (bankCode.startsWith("CNRB")) bankNameGuess = "Canara Bank";
-      else if (bankCode.startsWith("UBIN")) bankNameGuess = "Union Bank of India";
-      else if (bankCode.startsWith("IDFB")) bankNameGuess = "IDFC First Bank";
-      
-      const branchName = "CONNAUGHT PLACE MAIN BRANCH, NEW DELHI";
-      setDetectedBranch(branchName);
-      
-      updateForm({
-        ifscCode: ifsc,
-        bankName: bankNameGuess,
-        branchName: branchName
-      });
-    }, 1000);
+  // A changed account number or IFSC needs a new check
+  const accountChanged = account && account.status !== 'NONE' && (
+    (formData.accountNumber && account.accountEnding && !account.accountEnding.endsWith(String(formData.accountNumber).slice(-4)))
+    || (formData.ifscCode && account.ifscCode && account.ifscCode !== formData.ifscCode)
+  );
+
+  const handleVerifyIFSC = async () => {
+    setIfscBusy(true); setIfscResult(null);
+    try {
+      const r = await verificationApi.ifsc(formData.ifscCode?.trim().toUpperCase());
+      setIfscResult(r);
+      if (r?.ok) updateForm({ ifscCode: r.ifsc, ...(r.bank ? { bankName: r.bank } : {}), ...(r.branch ? { branchName: [r.branch, r.city].filter(Boolean).join(', ') } : {}) });
+    } catch (e) { setIfscResult({ ok: false, message: e.message || 'Could not look up the IFSC.' }); } finally { setIfscBusy(false); }
   };
 
-  // PAN Validation and Mock Verification
+  const handleVerifyAccount = async () => {
+    setAccError('');
+    if (!hotelId) { setAccError('Save the property first (Next step saves it), then check the account.'); return; }
+    if (reAccountNumber !== formData.accountNumber) { setAccError('The two account numbers don\'t match.'); return; }
+    setAccBusy(true);
+    try {
+      const d = await verificationApi.checkAccount({ hotelId, accountName: formData.legalName || formData.accountName, accountNumber: formData.accountNumber, ifscCode: formData.ifscCode, bankName: formData.bankName, branchName: formData.branchName });
+      setAccount(d);
+      if (d?.ifsc?.bank && !formData.bankName) updateForm('bankName', d.ifsc.bank);
+    } catch (e) { setAccError(e.message || 'Could not check the account.'); } finally { setAccBusy(false); }
+  };
+
   const handlePanChange = (val) => {
-    const cleaned = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    updateForm('pan', cleaned);
-    setPanVerified(false);
-    
-    // PAN Regex: 5 letters, 4 numbers, 1 letter
-    if (cleaned.length === 10) {
-      const isValid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleaned);
-      setPanValid(isValid);
-    } else {
-      setPanValid(cleaned.length === 0);
-    }
+    updateForm('pan', val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10));
+    setPanResult(null);
   };
-
-  const handleVerifyPAN = () => {
-    const pan = formData.pan?.trim().toUpperCase();
-    if (!pan || pan.length < 10) {
-      alert("Please enter a valid 10-character PAN number first.");
-      return;
-    }
-
-    setPanVerifying(true);
-    setTimeout(() => {
-      setPanVerifying(false);
-      setPanVerified(true);
-      
-      // Auto-populate Legal Entity Name (pushed from verification details)
-      const mockName = "ZIVO LODGING & SUITES PRIVATE LIMITED";
-      updateForm({
-        pan: pan,
-        legalName: mockName,
-        ...(formData.accountName ? {} : { accountName: mockName })
-      });
-    }, 1000);
+  const handleVerifyPAN = async () => {
+    setPanBusy(true);
+    try { setPanResult(await verificationApi.pan(formData.pan, formData.incorporationType || 'INDIVIDUAL')); } catch (e) { setPanResult({ ok: false, message: e.message }); } finally { setPanBusy(false); }
   };
-
-  // GST Mock Verification
-  const handleVerifyGST = () => {
-    const gstin = formData.gstin?.trim().toUpperCase();
-    if (!gstin || gstin.length < 15) {
-      alert("Please enter a valid 15-character GSTIN first.");
-      return;
-    }
-
-    setGstVerifying(true);
-    setTimeout(() => {
-      setGstVerifying(false);
-      setGstVerified(true);
-      
-      // Auto-populate Legal Entity Name (pushed from verification details)
-      const mockName = "SUNRISE HOTELS & RESORTS PRIVATE LIMITED";
-      updateForm({
-        gstin: gstin,
-        legalName: mockName,
-        accountName: mockName // Sync payout holder name
-      });
-    }, 1000);
+  const handleVerifyGST = async () => {
+    setGstBusy(true);
+    try { setGstResult(await verificationApi.gstin(formData.gstin, formData.pan, formData.state)); } catch (e) { setGstResult({ ok: false, message: e.message }); } finally { setGstBusy(false); }
   };
+  const panValid = !formData.pan || formData.pan.length < 10 || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.pan);
+  const statusCls = (ok) => `p-2.5 text-xs rounded-lg border flex items-start gap-1.5 font-semibold mt-1.5 ${ok ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`;
 
   const toggleSection = (stepNum) => {
     setActiveStep(activeStep === stepNum ? null : stepNum);
@@ -222,15 +179,15 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
           <div className="text-center bg-white/10 border border-white/10 rounded-2xl p-4 min-w-0">
             <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Platform Commission</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-black">{formData.commission !== undefined && formData.commission !== '' ? formData.commission : 15}</span>
-              <span className="text-xl font-bold text-blue-300">%</span>
+              {commissionSet ? (<><span className="text-4xl font-black">{formData.commission}</span>
+              <span className="text-xl font-bold text-blue-300">%</span></>) : <span className="text-lg font-bold">{isAdmin ? 'Not set yet' : 'Set by ZivoPlus'}</span>}
             </div>
-            <p className="text-xs text-blue-300 mt-1">per completed booking</p>
+            <p className="text-xs text-blue-300 mt-1">{commissionSet ? 'of the room price before GST, per completed booking' : isAdmin ? 'Enter it under Commission & payout below' : 'You will see it in your agreement before you sign'}</p>
           </div>
           <div className="text-center bg-white/10 border border-white/10 rounded-2xl p-4 min-w-0">
             <p className="text-xs text-blue-200 font-bold uppercase tracking-widest mb-1">Payout Cycle</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-black break-words">{formData.payoutCycle || 'Weekly'}</span>
+              <span className="text-4xl font-black break-words">{formData.payoutCycle || 'T+2'}</span>
             </div>
             <p className="text-xs text-blue-300 mt-1">{payoutCycleNote(formData.payoutCycle)}</p>
           </div>
@@ -273,7 +230,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     {/* Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        Bank Account Number <span className="text-red-550 text-red-500">*</span>
+                        Bank Account Number <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input disabled={isProtected}
@@ -289,7 +246,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     {/* Re-Enter Account Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        Re-Enter Bank Account Number <span className="text-red-550 text-red-500">*</span>
+                        Re-Enter Bank Account Number <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input disabled={isProtected}
@@ -315,7 +272,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                       <div className="md:col-span-1">
                         <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                          Bank IFSC Code <span className="text-red-550 text-red-500">*</span>
+                          Bank IFSC Code <span className="text-red-500">*</span>
                         </label>
                         <span className="text-xs text-slate-400 font-medium block mt-1 leading-relaxed">
                           You can find this on your cheque book or bank statement
@@ -327,8 +284,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                             type="text"
                             value={formData.ifscCode || ''}
                             onChange={e => {
-                              updateForm('ifscCode', e.target.value.toUpperCase());
-                              setIfscVerified(false);
+                              updateForm('ifscCode', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                              setIfscResult(null);
                             }}
                             placeholder="HDFC0001234"
                             maxLength={11}
@@ -336,17 +293,17 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected || ifscVerifying || !formData.ifscCode || formData.ifscCode.length < 11}
+                            disabled={isProtected || ifscBusy || !formData.ifscCode || formData.ifscCode.length < 11}
                             onClick={handleVerifyIFSC}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            {ifscVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify'}
+                            {ifscBusy ? <Loader2 size={12} className="animate-spin" /> : 'Look up'}
                           </button>
                         </div>
-                        {ifscVerified && (
-                          <div className="p-2.5 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1.5 font-bold">
-                            <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                            IFSC Verified: {formData.bankName} - {detectedBranch || 'Main Branch'}
+                        {ifscResult && (
+                          <div role="status" className={statusCls(ifscResult.ok)}>
+                            {ifscResult.ok ? <CheckCircle2 size={14} className="text-emerald-600 shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                            <span>{ifscResult.ok && ifscResult.source === 'directory' ? `${ifscResult.bank}, ${ifscResult.branch}${ifscResult.city ? `, ${ifscResult.city}` : ''}` : ifscResult.message}</span>
                           </div>
                         )}
                       </div>
@@ -355,27 +312,23 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     {/* Bank Name */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        Bank Name <span className="text-red-550 text-red-500">*</span>
+                        Bank Name <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
-                        <select disabled={isProtected}
+                        <input disabled={isProtected} list="bank-names"
                           value={formData.bankName || ''}
                           onChange={e => updateForm('bankName', e.target.value)}
+                          placeholder="Filled in from the IFSC, or type it"
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
-                        >
-                          <option value="">Select your bank from the list</option>
-                          {MAJOR_BANKS.map(bank => (
-                            <option key={bank} value={bank}>{bank}</option>
-                          ))}
-                          <option value="Other">Other Bank</option>
-                        </select>
+                        />
+                        <datalist id="bank-names">{MAJOR_BANKS.map((bank) => <option key={bank} value={bank} />)}</datalist>
                       </div>
                     </div>
 
                     {/* Branch Name */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        Branch Name <span className="text-red-550 text-red-500">*</span>
+                        Branch Name <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input disabled={isProtected}
@@ -388,8 +341,14 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                       </div>
                     </div>
 
-                    {/* Account Holder Verification Consent */}
-                    <div className="pt-3 border-t border-slate-100">
+                    {/* Account holder: payouts go to the business's own account */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">Account holder</span>
+                      <p className="md:col-span-2 text-sm text-slate-800">{formData.legalName || <span className="text-slate-400">The legal entity name from the next section</span>}</p>
+                    </div>
+
+                    {/* Check the account */}
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
                       <label className="flex items-start gap-3 cursor-pointer group">
                         <input disabled={isProtected}
                           type="checkbox"
@@ -397,10 +356,24 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           onChange={e => updateForm('verificationConsent', e.target.checked)}
                           className="w-4.5 h-4.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 mt-0.5"
                         />
-                        <span className="text-xs font-bold text-slate-800 group-hover:text-slate-950 transition-colors leading-relaxed">
-                          I consent to third-party bank account verification, ₹1 will be deposited in given bank account.
+                        <span className="text-xs font-bold text-slate-800 leading-relaxed">
+                          I agree that ZivoPlus may check this account, including by sending ₹1 to it.
                         </span>
                       </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button type="button" onClick={handleVerifyAccount}
+                          disabled={isProtected || accBusy || formData.verificationConsent !== true || !formData.accountNumber || !formData.ifscCode || !formData.legalName}
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 font-bold text-xs rounded-xl inline-flex items-center gap-1.5">
+                          {accBusy ? <Loader2 size={13} className="animate-spin" /> : <Landmark size={13} />} {account && account.status !== 'NONE' && !accountChanged ? 'Check again' : 'Verify account'}
+                        </button>
+                        {account && account.status !== 'NONE' && !accountChanged && ACCOUNT_STATUS[account.status] && (
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${ACCOUNT_STATUS[account.status][0]}`}>{account.accountEnding ? `Saved account ${account.accountEnding}: ` : ''}{ACCOUNT_STATUS[account.status][1]}</span>
+                        )}
+                        {accountChanged && <span className="text-xs font-bold text-amber-800">Details changed: verify again</span>}
+                      </div>
+                      {!formData.legalName && <p className="text-xs text-slate-500">Fill in the legal entity name (next section) first: the account must be in that name.</p>}
+                      {account?.note && !accountChanged && <p className="text-xs text-slate-600">{account.note}</p>}
+                      {accError && <p role="alert" className="text-xs text-red-700 font-semibold">{accError}</p>}
                     </div>
 
                   </div>
@@ -452,7 +425,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     {/* PAN Number */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        PAN Number <span className="text-red-550 text-red-500">*</span>
+                        PAN Number <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <div className="flex gap-2">
@@ -468,11 +441,11 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected || panVerifying || !formData.pan || formData.pan.length < 10}
+                            disabled={isProtected || panBusy || !formData.pan || formData.pan.length < 10}
                             onClick={handleVerifyPAN}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            {panVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify PAN'}
+                            {panBusy ? <Loader2 size={12} className="animate-spin" /> : 'Check PAN'}
                           </button>
                         </div>
                         {!panValid && (
@@ -480,9 +453,10 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                             <AlertCircle size={12} /> Please enter a valid 10-digit PAN format (e.g., ABCDE1234F)
                           </p>
                         )}
-                        {panVerified && (
-                          <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
-                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> PAN Verified & Legal Name Synchronized!
+                        {panResult && (
+                          <div role="status" className={statusCls(panResult.ok)}>
+                            {panResult.ok ? <CheckCircle2 size={14} className="text-emerald-600 shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                            <span>{panResult.message}</span>
                           </div>
                         )}
                       </div>
@@ -499,8 +473,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                             type="text"
                             value={formData.gstin || ''}
                             onChange={e => {
-                              updateForm('gstin', e.target.value.toUpperCase());
-                              setGstVerified(false);
+                              updateForm('gstin', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                              setGstResult(null);
                             }}
                             placeholder="15 Digit GST Number"
                             maxLength={15}
@@ -508,16 +482,17 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           />
                           <button
                             type="button"
-                            disabled={isProtected || gstVerifying || !formData.gstin || formData.gstin.length < 15}
+                            disabled={isProtected || gstBusy || !formData.gstin || formData.gstin.length < 15}
                             onClick={handleVerifyGST}
                             className="px-5 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-400 font-bold text-xs rounded-xl transition-all border border-blue-200/50 flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            {gstVerifying ? <Loader2 size={12} className="animate-spin" /> : 'Verify GST'}
+                            {gstBusy ? <Loader2 size={12} className="animate-spin" /> : 'Check GSTIN'}
                           </button>
                         </div>
-                        {gstVerified && (
-                          <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-100 flex items-center gap-1 mt-1.5 font-bold">
-                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" /> GST Verified & Legal Name Synchronized!
+                        {gstResult && (
+                          <div role="status" className={statusCls(gstResult.ok)}>
+                            {gstResult.ok ? <CheckCircle2 size={14} className="text-emerald-600 shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                            <span>{gstResult.message}</span>
                           </div>
                         )}
                       </div>
@@ -526,7 +501,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                     {/* Legal Entity Name (Either verified or manually edited) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <label className="text-xs font-black text-slate-700 uppercase tracking-wider md:col-span-1">
-                        Legal Entity Name <span className="text-red-550 text-red-500">*</span>
+                        Legal Entity Name <span className="text-red-500">*</span>
                       </label>
                       <div className="md:col-span-2">
                         <input disabled={isProtected}
@@ -536,7 +511,7 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                           placeholder="e.g. Sunrise Hotels Pvt Ltd"
                           className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                         />
-                        <p className="text-xs text-slate-400 mt-1">Automatically pushes from verified PAN/GST or you can manually enter/edit it.</p>
+                        <p className="text-xs text-slate-400 mt-1">Exactly as on the PAN card or GST certificate. The agreement and payouts use this name.</p>
                       </div>
                     </div>
 
@@ -661,19 +636,20 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
       </div>
 
       {/* ────── STEP 4: PLATFORM COMMISSION & PAYOUT ────── */}
-      <div className="relative flex gap-6 z-10 items-start mt-6">
+      <div className="relative pl-14 mt-6">
+      <div className="relative flex gap-6 z-10 items-start">
         <button
           type="button"
           onClick={() => toggleSection(4)}
           className={`absolute -left-14 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
             activeStep === 4
               ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-105'
-              : formData.commission !== undefined && formData.payoutCycle
+              : commissionSet && formData.payoutCycle
                 ? 'bg-emerald-500 border-emerald-500 text-white'
                 : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400'
           }`}
         >
-          {formData.commission !== undefined && formData.payoutCycle && activeStep !== 4 ? <Check size={16} /> : "4"}
+          {commissionSet && formData.payoutCycle && activeStep !== 4 ? <Check size={16} /> : "4"}
         </button>
 
         <div className="w-full">
@@ -691,21 +667,22 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                   {/* Platform Commission */}
                   <div>
                     <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2">
-                      Platform Commission (%) <span className="text-red-500">*</span>
+                      Platform Commission (%) {isAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <div className="relative">
                       <input disabled={commissionLocked}
                         type="number"
                         min="0"
                         max="100"
-                        value={formData.commission !== undefined ? formData.commission : 15}
-                        onChange={e => updateForm('commission', parseFloat(e.target.value) || 0)}
-                        placeholder="15"
+                        step="0.5"
+                        value={formData.commission ?? ''}
+                        onChange={e => updateForm('commission', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        placeholder={commissionLocked ? 'Set by ZivoPlus' : 'e.g. 12'}
                         className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 font-bold bg-white"
                       />
                       <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">Standard platform fee applied per booking</p>
+                    <p className="text-xs text-slate-400 mt-1">{commissionLocked ? 'Agreed with ZivoPlus. It appears in your agreement before you sign.' : 'Agreed with the owner. Required: there is no default rate. It goes into the agreement the owner signs.'}</p>
                   </div>
 
                   {/* Payout Cycle */}
@@ -714,10 +691,11 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
                       Payout Cycle <span className="text-red-500">*</span>
                     </label>
                     <select disabled={isProtected}
-                      value={formData.payoutCycle || 'Weekly'}
+                      value={formData.payoutCycle || 'T+2'}
                       onChange={e => updateForm('payoutCycle', e.target.value)}
                       className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-slate-900 bg-white"
                     >
+                      <option value="T+2">2 days after check-out (T+2)</option>
                       <option value="Weekly">Weekly (Every Wednesday)</option>
                       <option value="15 days">15 days (1st & 16th)</option>
                       <option value="Monthly">Monthly (First week)</option>
@@ -743,6 +721,8 @@ const FinanceStep = ({ formData, updateForm, isAdmin: isAdminProp }) => {
             </button>
           )}
         </div>
+      </div>
+
       </div>
 
       {/* Terms & Conditions Checkbox at the bottom of the page */}

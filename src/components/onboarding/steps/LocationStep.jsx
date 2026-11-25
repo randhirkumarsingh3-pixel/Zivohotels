@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Search, Info, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Search, Info, Loader2, Check } from 'lucide-react';
+import { parseCoordinates, isShortMapsLink } from '../utils/coordinates';
 import NearbyPlacesEditor from './NearbyPlacesEditor';
 
 const LocationStep = ({ formData, updateForm }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
+  // Paste coordinates or a Google Maps link; the address the map found for the pin
+  const [pasteText, setPasteText] = useState('');
+  const [pasteMsg, setPasteMsg] = useState(null);
+  const [mapAddress, setMapAddress] = useState(null); // { fields, formatted }
+  const formRef = useRef(formData);
+  formRef.current = formData;
+  const searchCoords = parseCoordinates(searchQuery);
   
   // Detect if Google Maps Key is defined and not a placeholder
   const hasGoogleKey = Boolean(
@@ -204,8 +212,8 @@ const LocationStep = ({ formData, updateForm }) => {
 
           if (place.address_components) {
             const parsed = parseGoogleAddressComponents(place.address_components);
-            bulkUpdate.houseNo = parsed.houseNo;
-            bulkUpdate.area = parsed.area;
+            if (parsed.houseNo) bulkUpdate.houseNo = parsed.houseNo;
+            if (parsed.area) bulkUpdate.area = parsed.area;
             bulkUpdate.pincode = parsed.pincode;
             bulkUpdate.country = parsed.country;
             bulkUpdate.state = parsed.state;
@@ -446,6 +454,48 @@ const LocationStep = ({ formData, updateForm }) => {
     setSuggestions([]);
   };
 
+  // The address the map found for a moved pin: fills only the empty fields, so nothing the owner
+  // typed is replaced or blanked; if it differs, it's offered with "Use this address"
+  const ADDRESS_KEYS = ['houseNo', 'area', 'city', 'state', 'pincode', 'country'];
+  const offerMapAddress = (fields, formatted) => {
+    const cur = formRef.current || {};
+    const fill = {};
+    ADDRESS_KEYS.forEach((k) => { if (fields[k] && !String(cur[k] || '').trim()) fill[k] = fields[k]; });
+    if (!String(cur.address || '').trim() && formatted) fill.address = formatted;
+    if (Object.keys(fill).length) updateForm(fill);
+    const differs = ADDRESS_KEYS.some((k) => fields[k] && String(cur[k] || '').trim() && String(cur[k]).trim().toLowerCase() !== String(fields[k]).trim().toLowerCase());
+    setMapAddress(differs ? { fields, formatted } : null);
+  };
+  const applyMapAddress = () => {
+    if (!mapAddress) return;
+    const next = {};
+    ADDRESS_KEYS.forEach((k) => { if (mapAddress.fields[k]) next[k] = mapAddress.fields[k]; });
+    updateForm({ ...next, address: mapAddress.formatted || formRef.current?.address || '' });
+    setMapAddress(null);
+  };
+
+  // Puts the pin at pasted coordinates (or a Google Maps link) and looks up the address there
+  const applyCoordinates = (lat, lng) => {
+    updateForm({ latitude: lat.toFixed(6), longitude: lng.toFixed(6) });
+    if (useGoogle && googleLoaded && googleMarkerRef.current && googleMapRef.current) {
+      googleMarkerRef.current.setPosition({ lat, lng });
+      googleMapRef.current.setCenter({ lat, lng });
+      googleMapRef.current.setZoom(17);
+      googleReverseGeocode(lat, lng);
+    } else if (!useGoogle && leafletLoaded && leafletMarkerRef.current && leafletMapRef.current) {
+      leafletMarkerRef.current.setLatLng([lat, lng]);
+      leafletMapRef.current.setView([lat, lng], 16);
+      osmReverseGeocode(lat, lng);
+    }
+    setPasteMsg({ ok: true, text: `Pin set at ${lat.toFixed(6)}, ${lng.toFixed(6)}. Check the address fields below.` });
+  };
+  const applyPasted = (text) => {
+    const p = parseCoordinates(text);
+    if (p) { applyCoordinates(p.lat, p.lng); setPasteText(''); return true; }
+    setPasteMsg({ ok: false, text: isShortMapsLink(text) ? 'Short links (maps.app.goo.gl) don\'t include the position. Open the link, then copy the full address from the browser bar, or copy the coordinates (press and hold the pin in Google Maps).' : 'Paste coordinates like 12.9716, 77.5946 or a Google Maps link.' });
+    return false;
+  };
+
   // Google Reverse Geocoding
   const googleReverseGeocode = (lat, lng) => {
     if (!window.google || !window.google.maps) return;
@@ -454,17 +504,7 @@ const LocationStep = ({ formData, updateForm }) => {
       if (status === 'OK' && results[0]) {
         const place = results[0];
         const parsed = parseGoogleAddressComponents(place.address_components);
-        
-        updateForm({
-          houseNo: parsed.houseNo,
-          area: parsed.area,
-          pincode: parsed.pincode,
-          country: parsed.country,
-          state: parsed.state,
-          city: parsed.city,
-          address: place.formatted_address || ''
-        });
-        setSearchQuery(place.formatted_address || '');
+        offerMapAddress(parsed, place.formatted_address || '');
       } else {
         console.warn('Google Geocoder failed due to status:', status, '- Attempting OSM Fallback.');
         osmReverseGeocode(lat, lng);
@@ -489,16 +529,7 @@ const LocationStep = ({ formData, updateForm }) => {
           const state = addr.state || addr.province || addr.region || '';
           const city = addr.city || addr.town || addr.municipality || addr.village || addr.state_district || addr.county || '';
           
-          updateForm({
-            houseNo,
-            area,
-            pincode,
-            country,
-            state,
-            city,
-            address: data.display_name || ''
-          });
-          setSearchQuery(data.display_name || '');
+          offerMapAddress({ houseNo, area, pincode, country, state, city }, data.display_name || '');
         }
       }
     } catch (error) {
@@ -530,11 +561,11 @@ const LocationStep = ({ formData, updateForm }) => {
         },
         (error) => {
           console.error('Error getting geolocation:', error);
-          alert('Could not access your location. Please type search term or pin manually.');
+          setPasteMsg({ ok: false, text: 'Could not get your location. Search for the address, paste coordinates, or drag the pin.' });
         }
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      setPasteMsg({ ok: false, text: 'This browser can\'t share your location. Search for the address, paste coordinates, or drag the pin.' });
     }
   };
 
@@ -542,7 +573,7 @@ const LocationStep = ({ formData, updateForm }) => {
     <div className="animate-fade-in flex flex-col h-full">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Where is your property located?</h1>
-        <p className="text-slate-500 mt-2 text-lg">Pin it on the map or search for the exact address below.</p>
+        <p className="text-slate-500 mt-2 text-lg">Search for the address, paste the coordinates or a Google Maps link, or drag the pin on the map.</p>
       </div>
 
       {/* Info Warning Alert */}
@@ -591,6 +622,12 @@ const LocationStep = ({ formData, updateForm }) => {
               </div>
             )}
 
+            {searchCoords && (
+              <button type="button" onClick={() => { applyCoordinates(searchCoords.lat, searchCoords.lng); setSearchQuery(''); }}
+                className="mt-2 w-full text-left px-4 py-3 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-900 flex items-center gap-2">
+                <MapPin className="w-4 h-4" /> Put the pin at {searchCoords.lat.toFixed(6)}, {searchCoords.lng.toFixed(6)}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleUseCurrentLocation}
@@ -693,6 +730,15 @@ const LocationStep = ({ formData, updateForm }) => {
               <MapPin className="w-4 h-4 text-blue-600" />
               <span>Map Coordinates</span>
             </div>
+            <form onSubmit={(e) => { e.preventDefault(); applyPasted(pasteText); }} className="flex gap-2">
+              <label htmlFor="paste-coords" className="sr-only">Paste coordinates or a Google Maps link</label>
+              <input id="paste-coords" value={pasteText} onChange={(e) => { setPasteText(e.target.value); setPasteMsg(null); }}
+                onPaste={(e) => { const t = e.clipboardData.getData('text'); if (parseCoordinates(t)) { e.preventDefault(); applyPasted(t); } }}
+                placeholder="Coordinates or Google Maps link"
+                className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg focus:border-blue-500 outline-none text-sm bg-white text-slate-900" />
+              <button type="submit" disabled={!pasteText.trim()} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold disabled:opacity-50">Set pin</button>
+            </form>
+            {pasteMsg && <p role="status" className={`text-xs font-semibold ${pasteMsg.ok ? 'text-emerald-700' : 'text-red-700'}`}>{pasteMsg.text}</p>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
@@ -703,6 +749,7 @@ const LocationStep = ({ formData, updateForm }) => {
                   step="any"
                   value={formData.latitude || ''}
                   onChange={(e) => updateForm('latitude', e.target.value)}
+                  onPaste={(e) => { const t = e.clipboardData.getData('text'); if (parseCoordinates(t)) { e.preventDefault(); applyPasted(t); } }}
                   placeholder="e.g. 28.6139"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-blue-500 outline-none text-sm font-mono bg-white text-slate-900 shadow-sm"
                 />
@@ -722,6 +769,16 @@ const LocationStep = ({ formData, updateForm }) => {
               </div>
             </div>
           </div>
+
+          {mapAddress && (
+            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950 flex flex-col gap-2">
+              <p><b>The map shows this address for the pin:</b> {mapAddress.formatted || [mapAddress.fields.area, mapAddress.fields.city, mapAddress.fields.state, mapAddress.fields.pincode].filter(Boolean).join(', ')}</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={applyMapAddress} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Use this address</button>
+                <button type="button" onClick={() => setMapAddress(null)} className="px-3 py-1.5 rounded-lg border border-amber-300 text-xs font-bold">Keep mine</button>
+              </div>
+            </div>
+          )}
 
           {/* Checkbox agreement */}
           <label className="flex items-start gap-3 text-base text-slate-700 mt-2 cursor-pointer select-none group w-fit">

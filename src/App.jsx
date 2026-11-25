@@ -46,6 +46,7 @@ const PropertyWizard = lazyPage(() => import('./admin/pages/PropertyWizard'));
 const Configuration = lazyPage(() => import('./admin/pages/Configuration'));
 const InventoryPricing = lazyPage(() => import('./admin/pages/InventoryPricing'));
 const Agreements = lazyPage(() => import('./admin/pages/Agreements'));
+const AdminAgreementTemplate = lazyPage(() => import('./admin/pages/AgreementTemplate'));
 const AdminBookings = lazyPage(() => import('./admin/pages/Bookings'));
 const ChannelManager = lazyPage(() => import('./admin/pages/ChannelManager'));
 const Users = lazyPage(() => import('./admin/pages/Users'));
@@ -93,6 +94,7 @@ const ExtranetSettings = lazyPage(() => import('./extranet/pages/ExtranetSetting
 const PropertyOnboarding = lazyPage(() => import('./extranet/pages/PropertyOnboarding'));
 const ExtranetHourly = lazyPage(() => import('./extranet/pages/ExtranetHourly'));
 const ExtranetTeam = lazyPage(() => import('./extranet/pages/ExtranetTeam'));
+const ExtranetAgreement = lazyPage(() => import('./extranet/pages/ExtranetAgreement'));
 const AdminStaff = lazyPage(() => import('./admin/pages/Staff'));
 const AdminSeo = lazyPage(() => import('./admin/pages/Seo'));
 const AdminGoogleHotels = lazyPage(() => import('./admin/pages/GoogleHotels'));
@@ -181,6 +183,7 @@ function App() {
               <Route path="documents" element={<DocumentSettings />} />
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
+              <Route path="agreement-template" element={<AdminAgreementTemplate />} />
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="hourly" element={<AdminHourly />} />
 
@@ -291,6 +294,8 @@ function App() {
               <Route path="performance" element={<ExtranetPerformance />} />
               <Route path="settings" element={<ExtranetSettings />} />
               <Route path="team" element={<ExtranetTeam />} />
+              <Route path="agreement" element={<ExtranetAgreement />} />
+              <Route path="agreement/:hotelId" element={<ExtranetAgreement />} />
             </Route>
 
           </Routes>

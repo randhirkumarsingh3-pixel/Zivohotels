@@ -23,6 +23,7 @@ const RULES = [
 
   // Extranet (hotel teams; admins acting on a property need properties.*)
   [/^\/extranet\/properties$/, ['properties.view', 'properties.view'], [ANY, ANY]],
+  [/^\/extranet\/agreement/, ['properties.view', 'properties.approve'], ['dashboard.view', 'property.edit']],
   [/^\/extranet\/onboarding/, ['properties.manage', 'properties.manage'], ['property.edit', 'property.edit']],
   [/^\/extranet\/property/, ['properties.view', 'properties.manage'], ['dashboard.view', 'property.edit']],
   [/^\/extranet\/rooms/, ['properties.view', 'properties.manage'], ['rates.view', 'rates.manage']],
@@ -63,6 +64,7 @@ const RULES = [
   [/^\/admin\/finance/, ['finance.view', 'finance.manage'], null],
   [/^\/admin\/(system|delivery)/, ['settings.view', 'settings.manage'], null],
   [/^\/admin\/(documents|setup)/, ['settings.view', 'settings.manage'], null],
+  [/^\/admin\/agreement-template/, ['settings.view', 'settings.manage'], null],
   [/^\/admin\/(control|experiments)/, ['settings.view', 'settings.manage'], null],
   [/^\/admin\/health/, ['settings.view', 'settings.view'], null],
   [/^\/admin\/insights/, ['dashboard.view', 'dashboard.view'], null],

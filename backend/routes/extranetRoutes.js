@@ -4,6 +4,7 @@ import staffRoutes from './staffRoutes.js';
 import { extranetGet as googleExtranetGet, extranetSet as googleExtranetSet } from '../controllers/googleHotelsController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { permissionGate } from '../middleware/permissionGate.js';
+import ownerAgreementRoutes from './ownerAgreementRoutes.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
@@ -34,6 +35,9 @@ const router = express.Router();
 router.use(protect);
 router.use(authorizeRoles('OWNER', 'ADMIN', 'MANAGER'));
 router.use(permissionGate); // each path's permission (staff roles)
+
+// The listing agreement: read, get a signing code, sign (routes/ownerAgreementRoutes.js)
+router.use('/agreement', ownerAgreementRoutes);
 
 // Property Onboarding (Bypasses scoping during creation)
 router.post('/onboarding/init', initOnboarding);

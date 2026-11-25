@@ -33,7 +33,8 @@ export const getAgreements = asyncHandler(async (req, res) => {
     });
 
     // 3. Combine them in-memory
-    const agreements = rawAgreements.map(a => ({
+    // The full text is only needed for one agreement at a time (preview / PDF)
+    const agreements = rawAgreements.map(({ content: _content, ...a }) => ({
       ...a,
       hotel: hotels.find(h => h.id === a.hotelId) || null
     }));
@@ -56,7 +57,16 @@ export const getAgreements = asyncHandler(async (req, res) => {
       expired:   filtered.filter(a => a.status === 'EXPIRED').length,
     };
 
-    res.status(200).json({ success: true, data: filtered, counts, requestId: req.id });
+    // Approved or live properties without a prepared agreement (approved before agreements were
+    // prepared from the template, or never had one)
+    const prepared = new Set(rawAgreements.filter((a) => a.content).map((a) => a.hotelId));
+    const needsAgreement = (await prisma.hotel.findMany({
+      where: { isDeleted: { not: true }, status: { in: ['PENDING_AGREEMENT', 'READY_FOR_GO_LIVE', 'LIVE', 'ACTIVE'] } },
+      select: { id: true, name: true, city: true, status: true, owner: { select: { name: true, email: true } } },
+      orderBy: { name: 'asc' }, take: 500,
+    })).filter((h) => !prepared.has(h.id)).map((h) => ({ ...h, agreement: rawAgreements.find((a) => a.hotelId === h.id) ? { commissionRate: rawAgreements.find((a) => a.hotelId === h.id).commissionRate, status: rawAgreements.find((a) => a.hotelId === h.id).status } : null }));
+
+    res.status(200).json({ success: true, data: filtered, counts, needsAgreement, requestId: req.id });
 });
 
 export const createAgreement = asyncHandler(async (req, res) => {

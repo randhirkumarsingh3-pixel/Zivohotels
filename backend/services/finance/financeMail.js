@@ -75,6 +75,12 @@ export const buildAttachments = async (list = []) => {
         const html = a.type === 'guestVoucher' ? v.guestVoucherHtml(data) : v.hotelierVoucherHtml(data, await v.hotelierFigures(data));
         out.push({ filename: `${a.type === 'guestVoucher' ? 'Booking' : 'Hotelier-Voucher'}-${data.booking.bookingRef}.pdf`, content: await v.renderPdf(html, data) });
       }
+    } else if (a.type === 'agreement') {
+      // The property listing agreement (signed copy after signing)
+      const { agreementPdf } = await import('../agreements/agreementService.js');
+      const ag = await prisma.agreement.findUnique({ where: { hotelId: a.hotelId }, select: { reference: true } });
+      const pdf = await agreementPdf(a.hotelId);
+      if (pdf) out.push({ filename: `ZivoPlus-Agreement-${ag?.reference || a.hotelId.slice(0, 8)}.pdf`, content: pdf });
     } else if (a.type === 'workbook') {
       out.push({ filename: `ZivoPlus-Statement-${a.period}.xlsx`, content: await docs.statementWorkbook(a.hotelId, a.period) });
     }

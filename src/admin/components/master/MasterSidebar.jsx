@@ -82,6 +82,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem perm="properties.approve" name="Property Review" path="/admin/properties/review" icon={<ClipboardCheck size={18} />} />
           <NavItem perm="properties.view" name="Content Scores" path="/admin/content-scores" icon={<Gauge size={18} />} />
           <NavItem perm="properties.view" name="Agreements" path="/admin/agreements" icon={<FileSignature size={18} />} />
+          <NavItem perm="settings.view" name="Agreement Template" path="/admin/agreement-template" icon={<FileText size={18} />} />
         </NavGroup>
 
         <NavGroup title="Bookings">
