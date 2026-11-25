@@ -27,7 +27,7 @@ import { adminChannelRoutes, channelManagerApi } from './routes/channelConnectiv
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import ratePlanRoutes from './routes/ratePlanRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
-import agreementRoutes from './routes/agreementRoutes.js';
+import agreementRoutes, { templateRouter as agreementTemplateRoutes } from './routes/agreementRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { acceptInvite } from './controllers/userController.js';
 import { robotsTxt, sitemapXml, sitemapPart, seoPage } from './controllers/seoController.js';
@@ -84,6 +84,7 @@ import { startRetentionJob } from './services/retentionService.js';
 import { runEncryptionSweep } from './services/encryptionSweep.js';
 import { startInvoiceCatchUpJob } from './services/invoiceService.js';
 import adminContentRoutes from './routes/adminContentRoutes.js';
+import verificationRoutes from './routes/verificationRoutes.js';
 import { controlRouter as adminControlRoutes, healthRouter as adminHealthRoutes, insightsRouter as adminInsightsRoutes, experimentsRouter as adminExperimentRoutes, riskRouter as adminRiskRoutes } from './routes/adminOpsRoutes.js';
 import { documentsRouter as adminDocumentsRoutes, setupRouter as adminSetupRoutes } from './routes/adminDocumentsRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
@@ -357,6 +358,7 @@ app.use('/api/v1/admin/reports',    reportRoutes);
 app.use('/api/v1/admin/content-scores', adminContentRoutes);
 // Documents & emails settings (guest invoice issuer, notes, attachments) and the setup checklist
 app.use('/api/v1/admin/documents', adminDocumentsRoutes);
+app.use('/api/v1/verification', verificationRoutes); // onboarding checks: PAN, GSTIN, IFSC, payout account
 app.use('/api/v1/admin/control', adminControlRoutes);
 app.use('/api/v1/admin/health', adminHealthRoutes);
 app.use('/api/v1/admin/insights', adminInsightsRoutes);
@@ -378,6 +380,7 @@ app.use('/api/v1/admin/payments',   paymentRoutes);
 app.use('/api/v1/admin/analytics',  analyticsRoutes);
 app.use('/api/v1/admin/users',      userRoutes);
 app.use('/api/v1/admin/agreements', agreementRoutes);
+app.use('/api/v1/admin/agreement-template', agreementTemplateRoutes);
 app.use('/api/v1/admin/properties', propertyReviewRoutes);
 app.use('/api/v1/admin/system',     systemRoutes);
 app.use('/api/v1/admin/images',     imageRoutes);

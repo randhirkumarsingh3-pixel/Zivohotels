@@ -1,18 +1,7 @@
 import { Tag, Check } from 'lucide-react';
+import { PHOTO_TAGS, formatTag } from '../../constants/photoTags';
 
-const IMAGE_TAGS = [
-  "EXTERIOR", "HOTEL_ENTRANCE", "LOBBY", "RECEPTION", "CORRIDOR",
-  "ELEVATOR", "PARKING", "GARDEN", "TERRACE", "ROOFTOP",
-  "LOUNGE_AREA", "BUSINESS_CENTER", "CONFERENCE_HALL", "BANQUET_HALL"
-];
-
-const formatTag = (tag) => {
-  return tag
-    .toLowerCase()
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
+const IMAGE_TAGS = PHOTO_TAGS;
 
 const ImageTagSelector = ({ selectedTags = [], onChange }) => {
   const toggleTag = (tag) => {

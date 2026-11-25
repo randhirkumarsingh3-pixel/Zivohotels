@@ -83,6 +83,7 @@ const PropertyWizard = () => {
     isEditing,
     effectiveId: id || localStorage.getItem('currentHotelId_admin'),
     storageKeyPrefix: 'zivo_onboarding_admin',
+    isAdmin: true,
     onFetchError: handleFetchError,
     clearCurrentHotelId: handleClearHotelId
   });
@@ -231,8 +232,8 @@ const PropertyWizard = () => {
 
     // Final Validation before submit (section mode: the section being saved)
     const { valid, firstError } = sectionSave
-      ? (currentStep <= 7 ? validateStep(currentStep, formData) : { valid: true })
-      : validateStep(8, formData);
+      ? (currentStep <= 7 ? validateStep(currentStep, formData, { isAdmin: true }) : { valid: true })
+      : validateStep(8, formData, { isAdmin: true });
     if (!valid) {
       alert(firstError);
       return;
@@ -431,7 +432,7 @@ const PropertyWizard = () => {
       case 6:
         return <PoliciesStep formData={formData} updateForm={updateForm} />;
       case 7:
-        return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} />;
+        return <FinanceStep formData={formData} updateForm={updateForm} isAdmin={isAdmin} hotelId={id || formData.id || localStorage.getItem('currentHotelId_admin')} />;
       case 8:
         return <DocumentsStep hotelId={id || formData.id || localStorage.getItem('currentHotelId_admin')} />;
       default:

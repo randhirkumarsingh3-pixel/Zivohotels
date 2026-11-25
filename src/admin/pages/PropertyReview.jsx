@@ -183,7 +183,7 @@ function PropertyDetailsPanel({ property }) {
                 : null
             } value={property.complianceScore == null ? 'N/A' : undefined} />
             <DetailRow label="Payout Cycle" value={property.payoutCycle} />
-            <DetailRow label="Commission" value={property.agreement?.commissionRate != null ? `${property.agreement.commissionRate}% of pre-GST amount` : '15% (default, set at approval)'} />
+            <DetailRow label="Commission" value={property.agreement?.commissionRate != null ? `${property.agreement.commissionRate}% of pre-GST amount` : 'Not set: enter it when approving'} />
             <DetailRow label="MSME" value={commercials.msme} />
             <DetailRow label="Built Year" value={commercials.builtYear} />
           </div>
@@ -226,6 +226,8 @@ export default function PropertyReview() {
   const [error, setError] = useState('');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [approveCommission, setApproveCommission] = useState('');
+  const [offlineNote, setOfflineNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
 
@@ -482,13 +484,21 @@ export default function PropertyReview() {
                           </button>
                         )}
                         {selectedProperty.status === 'IN_REVIEW' && (
-                          <button 
-                            disabled={actionLoading}
-                            onClick={() => handleAction(selectedProperty.id, 'approve')} 
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm disabled:opacity-50 transition-colors"
-                          >
-                            <CheckCircle size={16} /> Approve Property
-                          </button>
+                          <div className="flex flex-wrap items-end gap-2">
+                            <label className="text-xs font-semibold text-blue-900">Commission (%)
+                              <input type="number" min="0.5" max="50" step="0.5" value={approveCommission || selectedProperty.agreement?.commissionRate || ''}
+                                onChange={(e) => setApproveCommission(e.target.value)} placeholder="e.g. 12"
+                                className="block mt-1 w-28 border border-blue-200 rounded-lg px-3 py-2 text-sm" />
+                            </label>
+                            <button 
+                              disabled={actionLoading || !(Number(approveCommission || selectedProperty.agreement?.commissionRate) > 0)}
+                              onClick={() => handleAction(selectedProperty.id, 'approve', { commissionRate: Number(approveCommission || selectedProperty.agreement?.commissionRate) })} 
+                              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm disabled:opacity-50 transition-colors"
+                            >
+                              <CheckCircle size={16} /> Approve and send agreement
+                            </button>
+                            <p className="w-full text-xs text-blue-800">Approving prepares the agreement from the template with this commission and the owner&apos;s details, and emails the owner a link to sign it.</p>
+                          </div>
                         )}
                       </div>
                       {selectedProperty.status === 'IN_REVIEW' && (
@@ -517,15 +527,16 @@ export default function PropertyReview() {
                   {selectedProperty.status === 'PENDING_AGREEMENT' && (
                     <div className="bg-orange-50 p-5 rounded-xl border border-orange-100 flex items-center justify-between">
                       <div>
-                        <h3 className="font-semibold text-orange-900">📄 Agreement Pending</h3>
-                        <p className="text-sm text-orange-700 mt-1">Waiting for the property owner to digitally sign the listing agreement.</p>
+                        <h3 className="font-semibold text-orange-900">Agreement sent: waiting for the owner&apos;s signature</h3>
+                        <p className="text-sm text-orange-700 mt-1">The owner signs online in the Extranet. Track, resend or download it in <a href="/admin/agreements" className="underline font-semibold">Agreements</a>. Only if they signed a paper copy, record it here.</p>
+                        <input value={offlineNote} onChange={(e) => setOfflineNote(e.target.value)} placeholder="Paper copy: e.g. Signed copy received 12 Dec, filed" className="mt-2 w-full border border-orange-200 rounded-lg px-3 py-2 text-sm" />
                       </div>
                       <button 
-                        disabled={actionLoading}
-                        onClick={() => handleAction(selectedProperty.id, 'agreement-signed')} 
+                        disabled={actionLoading || offlineNote.trim().length < 5}
+                        onClick={() => handleAction(selectedProperty.id, 'agreement-signed', { note: offlineNote })} 
                         className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm disabled:opacity-50 transition-colors shrink-0"
                       >
-                        <FileSignature size={16} /> Mark as Signed
+                        <FileSignature size={16} /> Record paper signature
                       </button>
                     </div>
                   )}

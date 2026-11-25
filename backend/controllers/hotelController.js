@@ -82,7 +82,7 @@ const hotelSchema = z.object({
     branchName: z.string().optional(),
     upiId: z.string().optional(),
   }).optional(),
-  commissionRate: z.number().optional(),
+  commissionRate: z.number().gt(0, 'Commission must be more than 0%').max(50, 'Commission can be at most 50%').optional(),
   cancellationPolicy: z.enum(CANCELLATION_POLICY_CODES).optional(),
   channelProvider: z.string().optional(),
   legalName: z.string().optional(),
@@ -522,6 +522,13 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
   // Read after the RBAC step so the restrictions above actually apply
   const { _bankDetail, _commissionRate } = normalized;
+  // A signed agreement is never changed: a new commission needs a new agreement (Admin → Agreements)
+  if (_commissionRate !== undefined) {
+    const current = await prisma.agreement.findUnique({ where: { hotelId: id }, select: { status: true, commissionRate: true } });
+    if (current && ['SIGNED', 'ACTIVE'].includes(current.status) && Number(current.commissionRate) !== Number(_commissionRate)) {
+      return res.status(409).json({ success: false, message: `The owner signed an agreement at ${current.commissionRate}%. To change the commission, cancel that agreement and prepare a new one in Admin → Agreements.`, requestId: req.id });
+    }
+  }
 
   if (prismaData.status === 'ACTIVE' && existingHotel.status !== 'ACTIVE') {
     const agreement = await prisma.agreement.findUnique({ where: { hotelId: id } });
@@ -635,13 +642,14 @@ export const updateHotel = asyncHandler(async (req, res) => {
   }
 
   if (_bankDetail) {
+    // A changed account number or IFSC has to be checked again
+    const before = await prisma.bankDetail.findUnique({ where: { hotelId: id }, select: { accountNumber: true, ifscCode: true } });
+    const changed = !before || before.accountNumber !== _bankDetail.accountNumber || before.ifscCode !== _bankDetail.ifscCode;
+    const reset = changed ? { verificationStatus: 'UNVERIFIED', verificationMethod: null, verificationRef: null, verificationNote: null, bankHolderName: null, verifiedAt: null, verifiedBy: null } : {};
     await prisma.bankDetail.upsert({
       where: { hotelId: id },
-      create: { 
-        ..._bankDetail,
-        hotelId: id 
-      },
-      update: _bankDetail
+      create: { ..._bankDetail, hotelId: id },
+      update: { ..._bankDetail, ...reset },
     });
   }
 
@@ -1197,51 +1205,10 @@ export const searchHotels = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Old one-click signing (a confirm box, no agreement text). Owners now read and sign the prepared
+ * agreement at Extranet → Agreement (routes/ownerAgreementRoutes.js).
+ */
 export const signAgreement = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const hotel = await prisma.hotel.findUnique({ where: { id } });
-
-  if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
-  
-  if (req.user.role === 'OWNER' && !managesHotel(req.user, hotel)) {
-    return res.status(403).json({ success: false, message: 'Not authorized to sign for this property' });
-  }
-
-  if (hotel.status !== 'PENDING_AGREEMENT') {
-    return res.status(400).json({ success: false, message: 'Property is not pending an agreement' });
-  }
-
-  // Agreement, status and audit trail are saved together. (The audit write used fields that don't
-  // exist on AdminActionLog, so every signature returned a 500 after the first two writes had
-  // already been saved: the owner saw an error although the agreement was signed.)
-  const updated = await prisma.$transaction(async (tx) => {
-    const agreement = await tx.agreement.update({
-      where: { hotelId: id },
-      data: {
-        status: 'SIGNED',
-        signedAt: new Date(),
-        ipAddress: req.ip || req.connection.remoteAddress
-      }
-    });
-
-    const hotelNow = await tx.hotel.update({
-      where: { id },
-      data: { status: 'READY_FOR_GO_LIVE' }
-    });
-
-    await tx.auditLog.create({
-      data: {
-        action: 'STATUS_AGREEMENT_SIGNED',
-        entityType: 'HOTEL',
-        entityId: id,
-        userId: req.user.id,
-        requestId: req.id,
-        details: { commissionRate: agreement.commissionRate, signedBy: req.user.role, ipAddress: agreement.ipAddress }
-      }
-    });
-
-    return hotelNow;
-  });
-
-  res.json({ success: true, data: updated });
+  res.status(410).json({ success: false, code: 'USE_AGREEMENT_PAGE', message: 'Open the agreement page to read and sign your agreement.', link: `/extranet/agreement/${req.params.id}` });
 });

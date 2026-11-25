@@ -45,7 +45,8 @@ export const validatePolicies = (formData) => {
   return errors;
 };
 
-export const validateFinance = (formData) => {
+/** isAdmin: ZivoPlus staff set the commission; owners never see it as an input. */
+export const validateFinance = (formData, { isAdmin = false } = {}) => {
   const errors = [];
   if (!formData.legalName?.trim()) errors.push("Legal Entity Name is required.");
   if (!formData.pan?.trim()) errors.push("PAN Number is required.");
@@ -53,12 +54,15 @@ export const validateFinance = (formData) => {
   if (!formData.bankName?.trim()) errors.push("Bank Name is required.");
   if (!formData.accountNumber?.trim()) errors.push("Account Number is required.");
   if (!formData.ifscCode?.trim()) errors.push("IFSC Code is required.");
-  if (!formData.commission) errors.push("Platform Commission is required.");
+  if (isAdmin && !(Number(formData.commission) > 0)) errors.push("Enter the commission agreed with this property (Finance & Legal → Commission & payout).");
+  if (formData.accountNumber && !/^\d{9,18}$/.test(String(formData.accountNumber))) errors.push("An Indian bank account number has 9 to 18 digits.");
+  if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(String(formData.ifscCode))) errors.push("Check the IFSC: 4 letters, a zero, then 6 letters or digits.");
+  if (formData.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(String(formData.pan))) errors.push("Check the PAN: 5 letters, 4 digits and a letter.");
   if (formData.acceptTerms !== true) errors.push("You must accept the terms and conditions to proceed.");
   return errors;
 };
 
-export const validateStep = (stepIndex, formData) => {
+export const validateStep = (stepIndex, formData, opts = {}) => {
   let errors = [];
   switch (stepIndex) {
     case 1: errors = validateBasicInfo(formData); break;
@@ -66,7 +70,7 @@ export const validateStep = (stepIndex, formData) => {
     case 4: errors = validateRooms(formData); break;
     case 5: errors = validatePhotos(formData); break;
     case 6: errors = validatePolicies(formData); break;
-    case 7: errors = validateFinance(formData); break;
+    case 7: errors = validateFinance(formData, opts); break;
     case 8: /* Documents are validated via backend complianceScore */ break;
     default: break;
   }

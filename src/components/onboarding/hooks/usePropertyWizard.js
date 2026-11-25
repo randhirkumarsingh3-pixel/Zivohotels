@@ -23,7 +23,7 @@ const withoutPrivateFields = (data) => {
 };
 
 export const usePropertyWizard = (options) => {
-  const { isEditing, effectiveId, storageKeyPrefix, onFetchError } = options;
+  const { isEditing, effectiveId, storageKeyPrefix, onFetchError, isAdmin = false } = options;
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -248,7 +248,7 @@ export const usePropertyWizard = (options) => {
     }
 
     for (let step = currentStep; step < targetStep; step++) {
-      const { valid, firstError } = validateStep(step, formData);
+      const { valid, firstError } = validateStep(step, formData, { isAdmin });
       if (!valid) {
         if (onValidateError) onValidateError(firstError);
         setCurrentStep(step);

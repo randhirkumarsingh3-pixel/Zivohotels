@@ -18,7 +18,7 @@ import {
   Users,
   Gauge,
   X
-} from 'lucide-react';
+, FileSignature } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useExtranet } from '../context/ExtranetContext';
 import useAccess from '../../hooks/useAccess';
@@ -70,6 +70,7 @@ const MENU = [
       { name: 'Bookings', path: '/extranet/bookings', icon: <ClipboardList size={18} />, perm: 'bookings.view' },
       { name: 'Finance Hub', path: '/extranet/finance', icon: <IndianRupee size={18} />, perm: 'finance.view' },
       { name: 'Wallet', path: '/extranet/wallet', icon: <Wallet size={18} />, perm: 'finance.view' },
+      { name: 'Agreement', path: '/extranet/agreement', icon: <FileSignature size={18} />, perm: 'dashboard.view' },
       { name: 'Member Prices', path: '/extranet/member-prices', icon: <Crown size={18} />, perm: 'membership.manage' },
       { name: 'Guest Reviews', path: '/extranet/reviews', icon: <Star size={18} />, perm: 'reviews.reply' },
       { name: 'Promotions', path: '/extranet/promotions', icon: <Tag size={18} />, perm: 'promotions.manage' },

@@ -92,19 +92,6 @@ const ExtranetDashboard = () => {
   }, [load]);
   useSocketEvent('*', onLiveEvent);
 
-  const handleSignAgreement = async () => {
-    if (!window.confirm('By clicking OK, you are digitally signing the ZivoPlus property agreement.')) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/hotels/${property.id}/sign-agreement`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwt_token')}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to sign agreement');
-      addToast('Agreement signed. ZivoPlus will take your property live shortly.', 'success');
-      load();
-    } catch (e) { addToast(e.message, 'error'); }
-  };
-
   if (loading && !dash) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-navy-700" size={36} /></div>;
   if (!dash || !property) return <p className="text-gray-600">Couldn&apos;t load the dashboard. Refresh to try again.</p>;
 
@@ -121,9 +108,9 @@ const ExtranetDashboard = () => {
           <FileSignature className="text-amber-800 shrink-0" size={32} aria-hidden="true" />
           <div className="flex-1">
             <h2 className="font-bold text-gray-900">Your property is approved. Sign the agreement to go live.</h2>
-            <p className="text-sm text-gray-700 mt-1">Commission: <strong>{property.agreement?.commissionRate ?? 15}%</strong> of the room price before GST, plus GST on the commission.</p>
+            <p className="text-sm text-gray-700 mt-1">{property.agreement?.commissionRate != null ? <>Commission: <strong>{property.agreement.commissionRate}%</strong> of the room price before GST, plus GST on the commission. </> : null}Read the agreement and sign it online with a code we email you.</p>
           </div>
-          <button type="button" onClick={handleSignAgreement} className="px-5 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">Sign agreement</button>
+          <Link to={`/extranet/agreement/${property.id}`} className="px-5 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-center">Read and sign</Link>
         </div>
       )}
 

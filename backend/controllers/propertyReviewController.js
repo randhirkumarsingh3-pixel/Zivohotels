@@ -7,6 +7,7 @@ import { mediaService } from '../services/MediaService.js';
 import { checkPropertyReadiness } from '../services/propertyReadiness.js';
 import { managesHotel } from '../utils/hotelAccess.js';
 import { seoChanged } from '../services/seoService.js';
+import { previewAgreement, prepareAgreement, markSignedOffline } from '../services/agreements/agreementService.js';
 
 // Helper to log timeline
 const logTimeline = async (hotelId, userId, action, reason = null) => {
@@ -193,81 +194,26 @@ export const approveProperty = asyncHandler(async (req, res) => {
     });
   }
 
+  // The agreement: commission is entered by ZivoPlus (Finance step or this approval), never a
+  // default; everything it needs must be there before the property is approved
+  const commissionRate = req.body?.commissionRate ?? undefined;
+  const payoutCycle = req.body?.payoutCycle || undefined;
+  const check = await previewAgreement(id, { commissionRate, payoutCycle });
+  if (check.missing.length) {
+    return res.status(400).json({ success: false, message: `Cannot approve yet. The agreement needs: ${check.missing.join('; ')}.`, errors: check.missing });
+  }
+
   const updated = await prisma.hotel.update({
     where: { id },
-    data: { 
-      status: 'PENDING_AGREEMENT', 
-      approvedBy: req.user.id,
-      reviewNote: 'Approved by admin'
-    }
+    data: { status: 'PENDING_AGREEMENT', approvedBy: req.user.id, reviewNote: 'Approved by admin' }
   });
-  
+
   await logTimeline(id, req.user.id, 'STATUS_APPROVED');
   await logTimeline(id, req.user.id, 'STATUS_PENDING_AGREEMENT');
 
-  // Create Agreement Record
-  await prisma.agreement.upsert({
-    where: { hotelId: id },
-    update: { status: 'DRAFT', sentAt: new Date() },
-    create: {
-      hotelId: id,
-      ownerId: hotel.ownerId,
-      status: 'DRAFT',
-      commissionRate: 15.0,
-      sentAt: new Date()
-    }
-  });
-
-  // Trigger Approval Email
-  if (hotel.owner?.email) {
-    await queueService.enqueue('email', 'SEND_PROPERTY_APPROVED', {
-      to: hotel.owner.email,
-      subject: `🎉 Congratulations! Your Property "${hotel.name}" Has Been Approved`,
-      html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 0; background: #ffffff;">
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ZivoPlus</h1>
-            <p style="color: #a0aec0; margin: 8px 0 0; font-size: 14px;">Property Lifecycle Management</p>
-          </div>
-          
-          <!-- Body -->
-          <div style="padding: 40px 30px;">
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-              <span style="font-size: 40px;">🎉</span>
-              <h2 style="color: #166534; margin: 12px 0 4px; font-size: 22px;">Congratulations! Property Approved!</h2>
-              <p style="color: #15803d; margin: 0; font-size: 14px;">Your property validation is complete</p>
-            </div>
-            
-            <p style="color: #374151; font-size: 15px; line-height: 1.6;">Dear <strong>${hotel.owner.name || 'Property Owner'}</strong>,</p>
-            <p style="color: #374151; font-size: 15px; line-height: 1.6;">We are pleased to inform you that your property <strong>${hotel.name}</strong> has been <strong>successfully validated and approved</strong> for listing on ZivoPlus.</p>
-            
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
-              <h3 style="color: #1e293b; margin: 0 0 16px; font-size: 16px;">📋 Property Details</h3>
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px;">Property Name</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 13px; text-align: right;">${hotel.name}</td></tr>
-                <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; border-top: 1px solid #f1f5f9;">Location</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 13px; text-align: right; border-top: 1px solid #f1f5f9;">${hotel.city || 'N/A'}</td></tr>
-                <tr><td style="padding: 8px 0; color: #64748b; font-size: 13px; border-top: 1px solid #f1f5f9;">Status</td><td style="padding: 8px 0; font-weight: 600; font-size: 13px; text-align: right; border-top: 1px solid #f1f5f9;"><span style="background: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 20px; font-size: 12px;">APPROVED</span></td></tr>
-              </table>
-            </div>
-
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px; margin: 24px 0;">
-              <h4 style="color: #1e40af; margin: 0 0 8px; font-size: 14px;">📝 Next Step: Sign the Listing Agreement</h4>
-              <p style="color: #1e3a5f; font-size: 13px; line-height: 1.6; margin: 0;">To complete your listing, please log in to your <a href="${siteUrl()}/extranet" style="color: #2563eb; font-weight: 600;">Extranet Dashboard</a> and digitally sign the Listing Agreement. Once signed, your property will be ready to go live on ZivoPlus!</p>
-            </div>
-
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">Thank you for choosing ZivoPlus as your distribution partner. We look forward to a successful collaboration!</p>
-          </div>
-          
-          <!-- Footer -->
-          <div style="background: #f8fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ZivoPlus. All rights reserved.</p>
-            <p style="color: #9ca3af; font-size: 11px; margin: 8px 0 0;">This is an automated notification. Please do not reply to this email.</p>
-          </div>
-        </div>
-      `
-    }, { priority: 2 });
-  }
+  // Prepare the agreement from the template and the property's details, and email the owner a
+  // link to read and sign it (services/agreements/agreementService.js)
+  await prepareAgreement(id, req.user, { commissionRate, payoutCycle, send: true });
 
   res.json({ success: true, data: updated });
 });
@@ -346,27 +292,21 @@ export const requestInformation = asyncHandler(async (req, res) => {
   res.json({ success: true, data: updated });
 });
 
+/** A paper agreement signed outside ZivoPlus: staff record it with a note. */
 export const markAgreementSigned = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const hotel = await prisma.hotel.findUnique({ where: { id } });
-  
   if (!hotel) return res.status(404).json({ success: false, message: 'Hotel not found' });
   if (hotel.status !== 'PENDING_AGREEMENT') return res.status(400).json({ success: false, message: 'Hotel not pending agreement' });
-
-  const updated = await prisma.hotel.update({
-    where: { id },
-    data: { status: 'READY_FOR_GO_LIVE' }
-  });
-  
-  await prisma.agreement.update({
-    where: { hotelId: id },
-    data: { status: 'SIGNED', signedAt: new Date() }
-  });
-  
+  try {
+    await markSignedOffline(id, req.user, { note: req.body?.note });
+  } catch (e) {
+    if (e.statusCode) return res.status(e.statusCode).json({ success: false, message: e.message });
+    throw e;
+  }
   await logTimeline(id, req.user.id, 'STATUS_AGREEMENT_SIGNED');
   await logTimeline(id, req.user.id, 'STATUS_READY_FOR_GO_LIVE');
-  
-  res.json({ success: true, data: updated });
+  res.json({ success: true, data: await prisma.hotel.findUnique({ where: { id } }) });
 });
 
 export const goLive = asyncHandler(async (req, res) => {

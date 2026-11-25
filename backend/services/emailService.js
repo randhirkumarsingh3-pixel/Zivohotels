@@ -115,6 +115,7 @@ export const sendOTPEmail = async (to, otp, expiryMinutes = 10, { purpose = 'VER
     LOGIN: { subject: `${otp} is your ZivoPlus sign-in code`, title: 'Your sign-in code', line: 'Enter this code to sign in to ZivoPlus:' },
     PHONE: { subject: `${otp} is your ZivoPlus code`, title: 'Your ZivoPlus code', line: 'Enter this code to continue:' },
     VERIFY: { subject: `${otp} is your ZivoPlus verification code`, title: 'Verify your email', line: 'Your ZivoPlus verification code is:' },
+    AGREEMENT: { subject: `${otp} is your code to sign the ZivoPlus agreement`, title: 'Sign your agreement', line: 'Enter this code to sign your ZivoPlus listing agreement. If you didn\'t ask to sign, ignore this email:' },
   }[purpose] || { subject: `${otp} is your ZivoPlus code`, title: 'Your ZivoPlus code', line: 'Your code is:' };
   const html = await emailLayout({
     title: what.title,

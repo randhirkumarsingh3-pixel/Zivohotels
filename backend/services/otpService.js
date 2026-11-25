@@ -5,6 +5,7 @@
  *  - LOGIN:  "sign in with a code" (no password)
  *  - PHONE:  adds or changes the phone on an account (e.g. after "Continue with Google")
  *  - VERIFY: checks a hotel's email during property onboarding
+ *  - AGREEMENT: the owner's electronic signature on the listing agreement
  *
  * A code is valid for OTP_EXPIRY_MINUTES (10), allows 5 tries, and works once. At most 5 codes
  * per address per 15 minutes. Only a hash of the code is stored.
@@ -22,7 +23,7 @@ import { sendSms, smsTestMode } from './smsService.js';
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
 export const MAX_CODES_PER_15_MIN = 5;
 const MAX_TRIES = 5;
-export const PURPOSES = ['SIGNUP', 'LOGIN', 'PHONE', 'VERIFY'];
+export const PURPOSES = ['SIGNUP', 'LOGIN', 'PHONE', 'VERIFY', 'AGREEMENT'];
 
 export class CodeError extends Error {
   constructor(message, statusCode = 400, field = null) { super(message); this.statusCode = statusCode; this.field = field; }

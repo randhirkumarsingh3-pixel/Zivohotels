@@ -476,6 +476,32 @@ export const adminDocumentsApi = {
   setup: () => apiFetch(`${ADMIN_BASE}/setup`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 
+// Onboarding checks (Finance step): PAN, GSTIN, IFSC, payout account (backend/routes/verificationRoutes.js)
+export const verificationApi = {
+  pan: (pan, incorporationType) => apiFetch(`${API_URL}/verification/pan`, jsonBody('POST', { pan, incorporationType }), 0).then((r) => r?.data),
+  gstin: (gstin, pan, state) => apiFetch(`${API_URL}/verification/gstin`, jsonBody('POST', { gstin, pan, state }), 0).then((r) => r?.data),
+  ifsc: (code) => apiFetch(`${API_URL}/verification/ifsc/${encodeURIComponent(code)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  checkAccount: (body) => apiFetch(`${API_URL}/verification/bank-account`, jsonBody('POST', body), 0).then((r) => r?.data),
+  accountStatus: (hotelId) => apiFetch(`${API_URL}/verification/bank-account/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  decideAccount: (hotelId, body) => apiFetch(`${API_URL}/verification/bank-account/${hotelId}/decision`, jsonBody('POST', body), 0).then((r) => r?.data),
+};
+
+// Listing agreements: owner reads and signs (Extranet); staff prepare, send, record (Admin)
+export const agreementApi = {
+  view: (hotelId) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  sendCode: (hotelId) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}/code`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  sign: (hotelId, body) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}/sign`, jsonBody('POST', body), 0).then((r) => r?.data),
+  pdf: (hotelId) => apiFetch(`${API_URL}/extranet/agreement/${hotelId}/pdf`, { responseType: 'blob' }, 0),
+  list: (q = {}) => apiFetch(`${ADMIN_BASE}/agreements?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r),
+  preview: (hotelId, body) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/preview`, jsonBody('POST', body), 0).then((r) => r?.data),
+  prepare: (hotelId, body) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/prepare`, jsonBody('POST', body), 0).then((r) => r?.data),
+  markSigned: (hotelId, note) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/mark-signed`, jsonBody('POST', { note }), 0).then((r) => r?.data),
+  cancel: (id) => apiFetch(`${ADMIN_BASE}/agreements/${id}`, { method: 'DELETE' }, 0),
+  adminPdf: (hotelId) => apiFetch(`${ADMIN_BASE}/agreements/${hotelId}/pdf`, { responseType: 'blob' }, 0),
+  template: () => apiFetch(`${ADMIN_BASE}/agreement-template`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveTemplate: (body) => apiFetch(`${ADMIN_BASE}/agreement-template`, jsonBody('PUT', body), 0).then((r) => r?.data),
+};
+
 // Admin operations: System control, System health, Demand forecasting, Revenue per search,
 // Experiments, Fraud & risk (backend/routes/adminOpsRoutes.js)
 const noStore = { cache: 'no-store' };

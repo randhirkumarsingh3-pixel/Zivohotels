@@ -132,6 +132,10 @@ model Hotel {
   channelMappings    ChannelMapping[]
   lead               PropertyLead?
   policyRecords      HotelPolicy[]
+  stayRequests       StayRequest[]
+  /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
+  /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
+  hourlySettings     Json?
 
   @@index([ownerId])
   @@index([city])
@@ -139,42 +143,38 @@ model Hotel {
   @@index([state])
   @@index([country])
   @@index([pincode])
-  stayRequests          StayRequest[]
-  /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
-  /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
-  hourlySettings        Json?
 }
 
 model RoomType {
-  id              String          @id @default(uuid())
-  name            String
-  description     String
-  totalInventory  Int
-  amenities       Json            @default("[]")
-  hotelId         String
-  code            String?         @default("")
-  maxOccupancy    Int?            @default(2)
-  baseOccupancy   Int?            @default(2)
-  bedType         String?
-  roomSize        String?
-  viewType        String?
-  isActive        Boolean?        @default(true)
-  extraBedAllowed Boolean         @default(false)
-  maxExtraBeds    Int?
-  bookings        Booking[]
-  bookingRooms    BookingRoom[]
-  inventories     Inventory[]
-  ratePlans       RatePlan[]
-  hotel           Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
-  images          RoomTypeImage[]
-
-  @@unique([hotelId, code])
+  id                String             @id @default(uuid())
+  name              String
+  description       String
+  totalInventory    Int
+  amenities         Json               @default("[]")
+  hotelId           String
+  code              String?            @default("")
+  maxOccupancy      Int?               @default(2)
+  baseOccupancy     Int?               @default(2)
+  bedType           String?
+  roomSize          String?
+  viewType          String?
+  isActive          Boolean?           @default(true)
+  extraBedAllowed   Boolean            @default(false)
+  maxExtraBeds      Int?
+  bookings          Booking[]
+  bookingRooms      BookingRoom[]
+  inventories       Inventory[]
+  ratePlans         RatePlan[]
+  hotel             Hotel              @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  images            RoomTypeImage[]
   /// Hourly stays for this room type: on/off, rooms set aside for hourly use each day, and the
   /// price of each duration in hours ({ "3": 1299, "6": 1999 })
-  hourlyEnabled         Boolean            @default(false)
-  hourlyRooms           Int                @default(0)
-  hourlyPrices          Json?
-  hourlyAllocations     HourlyAllocation[]
+  hourlyEnabled     Boolean            @default(false)
+  hourlyRooms       Int                @default(0)
+  hourlyPrices      Json?
+  hourlyAllocations HourlyAllocation[]
+
+  @@unique([hotelId, code])
 }
 
 model HotelImage {
@@ -314,18 +314,19 @@ model Booking {
   bookingRooms        BookingRoom[]
   stayRequests        StayRequest[]
   intelligence        BookingIntelligence?
-
-  @@index([hotelId])
-  @@index([userId])
   /// NIGHTLY (dates) or HOURLY (a time slot on one day: slotStart to slotEnd, hours long)
   stayType            String                 @default("NIGHTLY")
   slotStart           DateTime?
   slotEnd             DateTime?
   hours               Int?
+
+  @@index([hotelId])
+  @@index([userId])
   @@index([checkIn, checkOut])
   @@index([stayType, roomTypeId, slotStart])
   @@index([status])
 }
+
 /// One room of a booking: its room type and plan (rooms of one booking can differ), who stays in it
 /// and its share of the price. Booking keeps the totals (rooms, adults, children, amounts) and the
 /// first room's type and plan. Bookings made before this table have no rows here.
@@ -355,6 +356,7 @@ model BookingRoom {
   @@unique([bookingId, roomNumber])
   @@index([roomTypeId])
 }
+
 /// A guest's request to the hotel about a booking (late arrival, early check-in, airport pickup…).
 /// The hotel confirms or declines it with a reply; both sides are told by email and notification.
 model StayRequest {
@@ -381,8 +383,6 @@ model StayRequest {
   @@index([bookingId])
 }
 
-
-
 model TaxRule {
   id            String    @id @default(uuid())
   name          String
@@ -396,31 +396,58 @@ model TaxRule {
 }
 
 model Agreement {
-  id             String           @id @default(uuid())
-  hotelId        String           @unique
-  ownerId        String
-  status         AgreementStatus? @default(DRAFT)
-  commissionRate Float?           @default(15.0)
-  documentUrl    String?
-  ipAddress      String?
-  sentAt         DateTime?
-  signedAt       DateTime?
-  expiryAt       DateTime?
-  createdAt      DateTime?        @default(now())
-  updatedAt      DateTime?        @updatedAt
+  id              String           @id @default(uuid())
+  hotelId         String           @unique
+  ownerId         String
+  status          AgreementStatus? @default(DRAFT)
+  /// Set by ZivoPlus for each property (no automatic default)
+  commissionRate  Float?
+  documentUrl     String?
+  ipAddress       String?
+  sentAt          DateTime?
+  signedAt        DateTime?
+  expiryAt        DateTime?
+  createdAt       DateTime?        @default(now())
+  updatedAt       DateTime?        @updatedAt
+  /// Agreement number shown on the document, e.g. ZIV-AGR-2026-000012
+  reference       String?          @unique
+  /// Template version it was prepared from (Admin → Agreement template)
+  templateVersion Int?
+  /// The exact agreement text sent to the owner (HTML), and its SHA-256: what the owner signs
+  content         String?          @db.Text
+  contentHash     String?
+  payoutCycle     String?
+  termMonths      Int?
+  preparedAt      DateTime?
+  preparedBy      String?
+  viewedAt        DateTime?
+  /// Electronic signature: typed name, email the one-time code went to, device
+  signerName      String?
+  signerEmail     String?
+  signerUserAgent String?
+  signatureMethod String?
 }
 
 model BankDetail {
-  id            String    @id @default(uuid())
-  hotelId       String    @unique
-  accountName   String
-  bankName      String
-  accountNumber String
-  ifscCode      String
-  branchName    String?
-  upiId         String?
-  createdAt     DateTime? @default(now())
-  updatedAt     DateTime? @updatedAt
+  id                 String    @id @default(uuid())
+  hotelId            String    @unique
+  accountName        String
+  bankName           String
+  accountNumber      String
+  ifscCode           String
+  branchName         String?
+  upiId              String?
+  createdAt          DateTime? @default(now())
+  updatedAt          DateTime? @updatedAt
+  /// UNVERIFIED | PENDING (test deposit sent) | VERIFIED | NAME_MISMATCH | FAILED | MANUAL (to be checked against the cancelled cheque)
+  verificationStatus String    @default("UNVERIFIED")
+  verificationMethod String?
+  verificationRef    String?
+  verificationNote   String?
+  /// Name the bank holds for the account (from the test deposit)
+  bankHolderName     String?
+  verifiedAt         DateTime?
+  verifiedBy         String?
 }
 
 model Inventory {
@@ -1664,7 +1691,6 @@ model StaffMember {
   @@index([hotelId])
   @@index([roleId])
 }
-
 
 /// Commission tax invoices and credit notes ZivoPlus issues to hotels (one invoice per hotel per
 /// month; credit notes against an invoice). Everything printed is kept as it was when issued
