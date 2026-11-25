@@ -97,6 +97,12 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?Set RAZORPAY_KEY_ID in deploy/vps/.env}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?Set RAZORPAY_KEY_SECRET in deploy/vps/.env}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # Payout account check (Rs 1 test deposit) through RazorpayX: its account number
+      RAZORPAYX_ACCOUNT_NUMBER: ${RAZORPAYX_ACCOUNT_NUMBER:-}
+      # Aadhaar eSign for listing agreements (Leegality); sandbox: https://sandbox.leegality.com
+      LEEGALITY_BASE_URL: ${LEEGALITY_BASE_URL:-}
+      LEEGALITY_AUTH_TOKEN: ${LEEGALITY_AUTH_TOKEN:-}
+      LEEGALITY_PRIVATE_SALT: ${LEEGALITY_PRIVATE_SALT:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-ZivoPlus <noreply@zivoplus.com>}
       # Sign-in codes shown on screen instead of emailed ("true" only until the Resend domain works)
