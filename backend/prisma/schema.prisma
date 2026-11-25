@@ -40,6 +40,7 @@ model User {
   loyaltyWallet       LoyaltyWallet?
   reviews             Review[]
   staffMemberships    StaffMember[]  @relation("StaffUser")
+  orgMemberships      OrgMember[]
 }
 
 model Hotel {
@@ -133,6 +134,7 @@ model Hotel {
   lead               PropertyLead?
   policyRecords      HotelPolicy[]
   stayRequests       StayRequest[]
+  businessRate       HotelBusinessRate?
   /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
   /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
   hourlySettings     Json?
@@ -319,9 +321,17 @@ model Booking {
   slotStart           DateTime?
   slotEnd             DateTime?
   hours               Int?
+  /// Business bookings: B2C (website guests), CORPORATE (ZivoPlus for Business) or AGENCY
+  /// (ZivoPlus Partner Hub); the organisation it was booked for, and how it was priced
+  /// ({ model, publicAmount, netAmount, markupAmount, commissionAmount, discountPct, ... })
+  channel             String                 @default("B2C")
+  organisationId      String?
+  businessPricing     Json?
+  organisation        Organisation?          @relation(fields: [organisationId], references: [id])
 
   @@index([hotelId])
   @@index([userId])
+  @@index([organisationId])
   @@index([checkIn, checkOut])
   @@index([stayType, roomTypeId, slotStart])
   @@index([status])
@@ -396,38 +406,38 @@ model TaxRule {
 }
 
 model Agreement {
-  id              String           @id @default(uuid())
-  hotelId         String           @unique
-  ownerId         String
-  status          AgreementStatus? @default(DRAFT)
+  id                   String           @id @default(uuid())
+  hotelId              String           @unique
+  ownerId              String
+  status               AgreementStatus? @default(DRAFT)
   /// Set by ZivoPlus for each property (no automatic default)
-  commissionRate  Float?
-  documentUrl     String?
-  ipAddress       String?
-  sentAt          DateTime?
-  signedAt        DateTime?
-  expiryAt        DateTime?
-  createdAt       DateTime?        @default(now())
-  updatedAt       DateTime?        @updatedAt
+  commissionRate       Float?
+  documentUrl          String?
+  ipAddress            String?
+  sentAt               DateTime?
+  signedAt             DateTime?
+  expiryAt             DateTime?
+  createdAt            DateTime?        @default(now())
+  updatedAt            DateTime?        @updatedAt
   /// Agreement number shown on the document, e.g. ZIV-AGR-2026-000012
-  reference       String?          @unique
+  reference            String?          @unique
   /// Template version it was prepared from (Admin → Agreement template)
-  templateVersion Int?
+  templateVersion      Int?
   /// The exact agreement text sent to the owner (HTML), and its SHA-256: what the owner signs
-  content         String?          @db.Text
-  contentHash     String?
-  payoutCycle     String?
-  termMonths      Int?
-  preparedAt      DateTime?
-  preparedBy      String?
-  viewedAt        DateTime?
+  content              String?          @db.Text
+  contentHash          String?
+  payoutCycle          String?
+  termMonths           Int?
+  preparedAt           DateTime?
+  preparedBy           String?
+  viewedAt             DateTime?
   /// Electronic signature: typed name, email the one-time code went to, device
-  signerName      String?
-  signerEmail     String?
-  signerUserAgent String?
-  signatureMethod String?
+  signerName           String?
+  signerEmail          String?
+  signerUserAgent      String?
+  signatureMethod      String?
   /// Aadhaar eSign through Leegality: their document id, the owner's signing link, its status
-  leegalityDocumentId  String?   @unique
+  leegalityDocumentId  String?          @unique
   leegalitySignUrl     String?
   leegalityStatus      String?
   leegalityRequestedAt DateTime?
@@ -1794,4 +1804,113 @@ model SearchLog {
   @@index([createdAt])
   @@index([checkIn])
   @@index([place, createdAt])
+}
+
+/// A business account: a company (kind CORPORATE, ZivoPlus for Business) or a travel agency (kind
+/// AGENCY, ZivoPlus Partner Hub). It applies with its KYC details, ZivoPlus reviews it, and then
+/// its members book for it. Terms left null use the defaults in Admin → Business settings.
+model Organisation {
+  id                 String           @id @default(uuid())
+  kind               String // CORPORATE | AGENCY
+  /// Account number shown to the organisation, e.g. ZB-000012 (business) or ZP-000012 (partner)
+  code               String           @unique
+  name               String
+  legalName          String
+  incorporationType  String?
+  pan                String
+  gstin              String?
+  address            String
+  city               String
+  state              String
+  pincode            String
+  billingEmail       String
+  phone              String
+  website            String?
+  /// IN_REVIEW | ACTIVE | ON_HOLD (more details needed) | SUSPENDED | REJECTED
+  status             String           @default("IN_REVIEW")
+  statusNote         String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  /// PREPAID (wallet only) | CREDIT (credit line) | BOTH (wallet first, then credit); null: default
+  paymentMode        String?
+  creditLimit        Decimal          @default(0) @db.Decimal(12, 2)
+  /// Days to pay a credit booking; null: default
+  creditDays         Int?
+  /// Who issues the GST invoice for its stays: ON_BEHALF | ZIVO_SUPPLIER | HOTEL_ISSUES; null: default
+  invoiceMode        String?
+  /// Agencies: NET (net rate + own markup) | COMMISSION (public price + commission) | BOTH; null: default
+  pricingModel       String?
+  defaultMarkupPct   Decimal?         @db.Decimal(5, 2)
+  /// Extra commission ZivoPlus pays this agency on top of the hotel's agent discount
+  extraCommissionPct Decimal?         @db.Decimal(5, 2)
+  tier               String           @default("STANDARD")
+  /// KYC files: [{ id, type, name, key (private storage), mimeType, size, uploadedAt, uploadedBy }]
+  documents          Json             @default("[]")
+  settings           Json             @default("{}")
+  createdById        String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  members            OrgMember[]
+  ledger             OrgLedgerEntry[]
+  bookings           Booking[]
+
+  @@index([kind, status])
+  @@index([pan])
+}
+
+/// A person in an organisation. Roles: ADMIN (everything), BOOKER (books for others), APPROVER,
+/// FINANCE (account, payments, invoices), TRAVELLER (books for themselves).
+model OrgMember {
+  id             String       @id @default(uuid())
+  organisationId String
+  userId         String
+  role           String
+  /// ACTIVE | PAUSED
+  status         String       @default("ACTIVE")
+  invitedById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, userId])
+  @@index([userId])
+}
+
+/// The organisation's account with ZivoPlus. amount > 0 is in the organisation's favour (top-up,
+/// refund, payment received, commission); amount < 0 is owed (a booking). balanceAfter < 0 means
+/// credit in use. (organisationId, type, reference) is unique so nothing is recorded twice.
+model OrgLedgerEntry {
+  id             String       @id @default(uuid())
+  organisationId String
+  /// TOPUP | BOOKING | REFUND | PAYMENT | ADJUSTMENT | COMMISSION | TDS
+  type           String
+  amount         Decimal      @db.Decimal(12, 2)
+  balanceAfter   Decimal      @db.Decimal(12, 2)
+  bookingId      String?
+  reference      String
+  note           String?
+  /// Credit bookings: when the amount is due
+  dueAt          DateTime?
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+
+  @@unique([organisationId, type, reference])
+  @@index([organisationId, createdAt])
+  @@index([bookingId])
+}
+
+/// A hotel's business rates (set in the extranet): a discount for companies, and a trade discount
+/// for travel agents (their net rate, or their commission). Shown only to signed-in business
+/// accounts, never on the public website or Google.
+model HotelBusinessRate {
+  hotelId              String   @id
+  corporateEnabled     Boolean  @default(false)
+  corporateDiscountPct Decimal  @default(0) @db.Decimal(5, 2)
+  agentEnabled         Boolean  @default(false)
+  agentDiscountPct     Decimal  @default(0) @db.Decimal(5, 2)
+  updatedById          String?
+  updatedAt            DateTime @updatedAt
+  hotel                Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 }

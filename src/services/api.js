@@ -509,6 +509,40 @@ export const agreementApi = {
   saveSigning: (body) => apiFetch(`${ADMIN_BASE}/agreement-template/signing`, jsonBody('PUT', body), 0).then((r) => r?.data),
 };
 
+// ZivoPlus for Business and ZivoPlus Partner Hub (backend/routes/businessRoutes.js,
+// adminOrganisationRoutes.js, hotelBusinessRateRoutes.js)
+export const businessApi = {
+  info: () => apiFetch(`${API_URL}/business/info`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  mine: () => apiFetch(`${API_URL}/business/mine`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  apply: (body) => apiFetch(`${API_URL}/business/apply`, jsonBody('POST', body), 0).then((r) => r?.data),
+  get: (orgId) => apiFetch(`${API_URL}/business/${orgId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  update: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  addDocument: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/documents`, jsonBody('POST', body), 0).then((r) => r?.data),
+  removeDocument: (orgId, docId) => apiFetch(`${API_URL}/business/${orgId}/documents/${docId}`, { method: 'DELETE' }, 0),
+  documentFile: (orgId, docId) => apiFetch(`${API_URL}/business/${orgId}/documents/${docId}/file`, { responseType: 'blob' }, 0),
+  members: (orgId) => apiFetch(`${API_URL}/business/${orgId}/members`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  invite: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/members`, jsonBody('POST', body), 0).then((r) => r?.data),
+  updateMember: (orgId, id, body) => apiFetch(`${API_URL}/business/${orgId}/members/${id}`, jsonBody('PATCH', body), 0).then((r) => r?.data),
+  removeMember: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/members/${id}`, { method: 'DELETE' }, 0),
+  account: (orgId, page = 1) => apiFetch(`${API_URL}/business/${orgId}/account?page=${page}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  startTopup: (orgId, amount) => apiFetch(`${API_URL}/business/${orgId}/topup`, jsonBody('POST', { amount }), 0).then((r) => r?.data),
+  confirmTopup: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/topup/confirm`, jsonBody('POST', body), 0).then((r) => r?.data),
+};
+export const adminBusinessApi = {
+  list: (q = {}) => apiFetch(`${ADMIN_BASE}/organisations?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  get: (id) => apiFetch(`${ADMIN_BASE}/organisations/${id}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  decide: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/decision`, jsonBody('POST', body), 0).then((r) => r?.data),
+  terms: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/terms`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  entry: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/ledger`, jsonBody('POST', body), 0).then((r) => r?.data),
+  documentFile: (id, docId) => apiFetch(`${ADMIN_BASE}/organisations/${id}/documents/${docId}/file`, { responseType: 'blob' }, 0),
+  settings: () => apiFetch(`${ADMIN_BASE}/business-settings`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveSettings: (body) => apiFetch(`${ADMIN_BASE}/business-settings`, jsonBody('PUT', body), 0).then((r) => r?.data),
+};
+export const hotelBusinessRatesApi = {
+  get: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  save: (hotelId, body) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, jsonBody('PUT', body), 0).then((r) => r?.data),
+};
+
 // Admin operations: System control, System health, Demand forecasting, Revenue per search,
 // Experiments, Fraud & risk (backend/routes/adminOpsRoutes.js)
 const noStore = { cache: 'no-store' };

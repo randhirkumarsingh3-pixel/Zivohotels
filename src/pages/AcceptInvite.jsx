@@ -10,7 +10,7 @@ const AcceptInvite = () => {
   const _navigate = useNavigate();
   const token = searchParams.get('token');
   // Where to sign in afterwards: staff invites name the admin console or the Extranet
-  const next = ['/admin/login', '/extranet/login'].includes(searchParams.get('next')) ? searchParams.get('next') : '/login';
+  const next = ['/admin/login', '/extranet/login', '/business', '/partners'].includes(searchParams.get('next')) ? searchParams.get('next') : '/login';
 
   const [form, setForm] = useState({ password: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
