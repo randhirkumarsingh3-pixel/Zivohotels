@@ -838,6 +838,19 @@ const PUBLIC_HOUSE_RULES = [
   'petsOnProperty', 'petsAllowed', 'has24HrCheckin', 'infantIncluded', 'infantFood',
   'extraBedInRates', 'extraBedAdults', 'extraBedKids', 'customPolicy'
 ];
+/** The tag the photo editor gives a room's photos: its name in capitals, other characters as _ */
+const roomPhotoTag = (name) => String(name || '').toUpperCase().trim().replace(/[^A-Z0-9_]+/g, '_');
+/**
+ * A room's photos as { id, url, tags, isPrimary }: the ones linked to it, or else the photos
+ * tagged with its name in the photo library (tagged but never linked, e.g. before the room was
+ * saved). Takes links ({ image, isPrimary }) or photos already in that shape.
+ */
+const roomPhotos = (rt, media) => {
+  const linked = (rt.images || []).map((li) => (li.image ? { id: li.image.id, url: li.image.url, tags: li.image.tags || [], isPrimary: li.isPrimary } : li)).filter((p) => p?.url);
+  if (linked.length || !Array.isArray(media)) return linked;
+  const tag = roomPhotoTag(rt.name);
+  return media.filter((m) => m.url && tag && (m.tags || []).includes(tag)).map((m, i) => ({ id: m.id, url: m.url, tags: m.tags || [], isPrimary: i === 0 }));
+};
 const publicHotelView = (hotel) => {
   const view = Object.fromEntries(PUBLIC_HOTEL_FIELDS.filter((k) => hotel[k] !== undefined && hotel[k] !== null).map((k) => [k, hotel[k]]));
   const rules = hotel.policyRules || {};
@@ -848,10 +861,7 @@ const publicHotelView = (hotel) => {
     view.media = hotel.media.map((m) => ({ id: m.id, url: m.url, tags: m.tags || [], category: m.category, isPrimary: m.isPrimary }));
   }
   if (Array.isArray(hotel.roomTypes)) {
-    view.roomTypes = hotel.roomTypes.map(({ images, inventories: _inv, bookings: _b, hotelId: _h, ...rt }) => ({
-      ...rt,
-      images: (images || []).filter((li) => li.image?.url).map((li) => ({ id: li.image.id, url: li.image.url, tags: li.image.tags || [], isPrimary: li.isPrimary })),
-    }));
+    view.roomTypes = hotel.roomTypes.map(({ images, inventories: _inv, bookings: _b, hotelId: _h, ...rt }) => ({ ...rt, images: roomPhotos({ ...rt, images }, hotel.media) }));
   }
   return view;
 };
@@ -950,6 +960,8 @@ export const getHotelById = asyncHandler(async (req, res) => {
       .map(rt => ({ ...rt, ratePlans: (rt.ratePlans || []).filter(rp => Number(rp.basePrice) > 0) }))
       .filter(rt => rt.ratePlans.length > 0);
   }
+  // Staff see the full record; room photos in the same shape the website reads
+  if (isPrivileged) full.roomTypes = (full.roomTypes || []).map((rt) => ({ ...rt, images: roomPhotos(rt, full.media) }));
   const data = { ...(isPrivileged ? full : publicHotelView(full)), slug: hotelSlug(hotel) };
   res.status(200).json({ success: true, data, requestId: req.id });
 });
