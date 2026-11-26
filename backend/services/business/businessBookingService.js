@@ -401,6 +401,9 @@ const bookingView = (b) => ({
   total: Number(b.totalAmount), tax: Number(b.taxAmount || 0), paid: Number(b.paidAmount || 0), refund: Number(b.refundAmount || 0),
   heldUntil: b.status === 'PENDING' ? b.expiresAt : null, createdAt: b.createdAt, cancelledAt: b.cancelledAt, userId: b.userId,
   business: b.businessPricing || null,
+  // The property's GST invoice (B2B: the property issues it; ZivoPlus is the facilitator)
+  hotelInvoice: b.hotelGstInvoice ? { invoiceNumber: b.hotelGstInvoice.invoiceNumber, invoiceDate: b.hotelGstInvoice.invoiceDate, uploadedAt: b.hotelGstInvoice.uploadedAt } : null,
+  gstin: b.guestCompanyGstin || null,
 });
 
 /** Bookings of the organisation (all of them for admins, bookers, approvers and finance; travellers their own). */
@@ -413,7 +416,7 @@ export const listBookings = async (orgId, user, { status, search, page = 1, page
   if (q) where.OR = [{ bookingRef: { contains: q, mode: 'insensitive' } }, { guestName: { contains: q, mode: 'insensitive' } }];
   const take = Math.min(Math.max(Number(pageSize) || 30, 1), 100);
   const [rows, total] = await Promise.all([
-    prisma.booking.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (Math.max(Number(page) || 1, 1) - 1) * take, take, include: { hotel: { select: { id: true, name: true, city: true } } } }),
+    prisma.booking.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (Math.max(Number(page) || 1, 1) - 1) * take, take, include: { hotel: { select: { id: true, name: true, city: true } }, hotelGstInvoice: { select: { invoiceNumber: true, invoiceDate: true, uploadedAt: true } } } }),
     prisma.booking.count({ where }),
   ]);
   return { bookings: rows.map(bookingView), total, page: Math.max(Number(page) || 1, 1), pageSize: take };
@@ -421,7 +424,7 @@ export const listBookings = async (orgId, user, { status, search, page = 1, page
 
 const loadOwnBooking = async (orgId, user, bookingId) => {
   const { org, member } = await membershipFor(orgId, user);
-  const b = await prisma.booking.findFirst({ where: { id: String(bookingId), organisationId: org.id }, include: { hotel: { select: { id: true, name: true, city: true } } } });
+  const b = await prisma.booking.findFirst({ where: { id: String(bookingId), organisationId: org.id }, include: { hotel: { select: { id: true, name: true, city: true } }, hotelGstInvoice: { select: { invoiceNumber: true, invoiceDate: true, uploadedAt: true } } } });
   if (!b || (!can(member, 'bookings.viewAll') && b.userId !== user.id)) throw fail('Booking not found', 404);
   return { org, member, booking: b };
 };

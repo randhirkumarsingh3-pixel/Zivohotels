@@ -11,6 +11,7 @@
  * Each notice is sent once per booking (marked in booking.metadata.notices).
  */
 import prisma from '../config/db.js';
+import { invoiceModeFor } from './documents/documentSettings.js';
 import { notifyUser, notifyHotel } from './notifyService.js';
 import { emailLayout, emailDay, inr, moneyTable } from './emailLayout.js';
 import { BOOKING_ROOMS_INCLUDE, roomsSummary, guestsLabel } from './bookingRoomsView.js';
@@ -100,7 +101,7 @@ export const hotelBookingEmail = async (b) => {
       ]) },
     ],
     cta: { label: 'Open in the extranet', href: '/extranet/bookings' },
-    note: `${settings?.guestInvoice?.mode === 'HOTEL_ISSUES' ? 'Issue the GST invoice to the guest at check-out.' : 'ZivoPlus issues the guest\'s GST invoice for the stay; invoice the guest only for extras.'} You get this email at your reception email, the owner email, the booking emails in Extranet → Settings, and team members who handle bookings.`,
+    note: `${invoiceModeFor(b, settings) === 'HOTEL_ISSUES' ? (b.guestCompanyGstin ? `Issue the GST invoice in the name of ${b.guestCompanyName} (GSTIN ${b.guestCompanyGstin}) and upload it in Extranet → GST invoices after check-out.` : 'Issue the GST invoice to the guest at check-out.') : 'ZivoPlus issues the guest\'s GST invoice for the stay; invoice the guest only for extras.'} You get this email at your reception email, the owner email, the booking emails in Extranet → Settings, and team members who handle bookings.`,
   }),
     ...(settings?.email?.attachHotelVoucher !== false ? { financeAttachments: [{ type: 'hotelVoucher', bookingId: b.id }] } : {}),
   };

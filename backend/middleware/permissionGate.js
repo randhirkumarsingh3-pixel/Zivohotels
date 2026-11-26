@@ -27,7 +27,7 @@ const RULES = [
   [/^\/extranet\/onboarding/, ['properties.manage', 'properties.manage'], ['property.edit', 'property.edit']],
   [/^\/extranet\/property/, ['properties.view', 'properties.manage'], ['dashboard.view', 'property.edit']],
   [/^\/extranet\/rooms/, ['properties.view', 'properties.manage'], ['rates.view', 'rates.manage']],
-  [/^\/extranet\/(bookings|requests)/, ['bookings.view', 'bookings.manage'], ['bookings.view', 'bookings.manage']],
+  [/^\/extranet\/(bookings|requests|gst-invoices)/, ['bookings.view', 'bookings.manage'], ['bookings.view', 'bookings.manage']],
   [/^\/extranet\/reviews/, ['properties.view', 'reviews.moderate'], ['dashboard.view', 'reviews.reply']],
   [/^\/extranet\/hourly/, ['properties.view', 'hourly.manage'], ['rates.view', 'hourly.manage']],
   [/^\/extranet\/(notifications|activity|dashboard|performance)/, ['properties.view', 'properties.view'], ['dashboard.view', ANY]],

@@ -7,6 +7,10 @@
  *      ON_BEHALF      tax invoice with the hotel as supplier, issued by ZivoPlus on its behalf
  *      ZIVO_SUPPLIER  tax invoice with ZivoPlus as supplier (ZivoPlus's GSTIN)
  *      HOTEL_ISSUES   the hotel issues the tax invoice; ZivoPlus gives the guest a payment receipt
+ *  - guestInvoice.b2bMode: who invoices a stay booked with a business GSTIN (B2B). Default
+ *      HOTEL_ISSUES: the property issues the GST invoice in the business's name and uploads it in
+ *      the extranet (Extranet → GST invoices); ZivoPlus gives a payment receipt as the facilitator,
+ *      so input tax credit is claimed only against the property's invoice
  *  - guestInvoice.prefix / note: the number series and a note printed on it. Numbers run per
  *    financial year (April to March) and stay within GST's 16 characters: ZIV/26-27/000001; credit
  *    and debit notes have their own series (creditPrefix ZCN, debitPrefix ZDN)
@@ -23,11 +27,17 @@ export const INVOICE_MODES = ['ON_BEHALF', 'ZIVO_SUPPLIER', 'HOTEL_ISSUES'];
 
 export const DEFAULTS = () => ({
   guestInvoice: {
-    mode: 'ON_BEHALF', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
+    mode: 'ON_BEHALF', b2bMode: 'HOTEL_ISSUES', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
     terms: [
       'Input tax credit is available only to the business whose GSTIN is shown as the recipient.',
       'Report any error in this document to ZivoPlus support within 7 days of receiving it.',
       'Changes to the booking after this invoice (cancellations, refunds, extra hours) are issued as credit or debit notes against it.',
+    ],
+    // Printed on ZivoPlus' payment receipts (when the property issues the GST invoice)
+    receiptTerms: [
+      'This receipt is not a tax invoice; the GST invoice is issued by the property.',
+      'Report any error in this receipt to ZivoPlus support within 7 days of receiving it.',
+      'Refunds for cancellations are made by ZivoPlus; the property adjusts its GST invoice for them.',
     ],
   },
   voucher: {
@@ -69,6 +79,10 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
       if (!INVOICE_MODES.includes(g.mode)) throw new DocumentSettingsError('Choose who issues the guest invoice');
       next.guestInvoice.mode = g.mode;
     }
+    if (g.b2bMode !== undefined) {
+      if (!INVOICE_MODES.includes(g.b2bMode)) throw new DocumentSettingsError('Choose who issues the invoice for business (GSTIN) bookings');
+      next.guestInvoice.b2bMode = g.b2bMode;
+    }
     // Three letters at most: with the year (26-27) and a 6-digit number that is GST's 16 characters
     for (const [k, label] of [['prefix', 'invoice'], ['creditPrefix', 'credit note'], ['debitPrefix', 'debit note']]) {
       if (g[k] === undefined) continue;
@@ -79,6 +93,7 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
     const prefixes = [next.guestInvoice.prefix, next.guestInvoice.creditPrefix, next.guestInvoice.debitPrefix];
     if (new Set(prefixes).size !== prefixes.length) throw new DocumentSettingsError('Invoices, credit notes and debit notes need different prefixes');
     if (g.terms !== undefined) next.guestInvoice.terms = lines(g.terms, 8);
+    if (g.receiptTerms !== undefined) next.guestInvoice.receiptTerms = lines(g.receiptTerms, 8);
     if (g.note !== undefined) next.guestInvoice.note = clean(g.note, 400);
   }
   if (input.voucher) {
@@ -92,6 +107,17 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
   await prisma.systemConfig.upsert({ where: { key: KEY }, create: { key: KEY, value: next }, update: { value: next } });
   await prisma.auditLog.create({ data: { action: 'DOCUMENT_SETTINGS_UPDATED', entityType: 'SYSTEM', entityId: KEY, userId: userId || 'SYSTEM', details: { before: cur, after: next } } }).catch(() => {});
   return next;
+};
+
+/**
+ * Who issues the GST invoice for this booking: a business booking with a GSTIN (B2B) follows
+ * guestInvoice.b2bMode (by default the hotel issues it and uploads it); otherwise a business
+ * account's own terms, else guestInvoice.mode.
+ */
+export const invoiceModeFor = (booking, settings) => {
+  const gi = settings?.guestInvoice || {};
+  if (booking?.guestCompanyGstin) return gi.b2bMode || 'HOTEL_ISSUES';
+  return booking?.businessPricing?.invoiceMode || gi.mode || 'ON_BEHALF';
 };
 
 /** Everything a document needs about ZivoPlus: legal details, support contacts, settings. */
@@ -108,4 +134,4 @@ export const brandContext = async () => {
   return { company, support, settings: docs, signatory: fin.invoice?.signatory || 'Authorised signatory' };
 };
 
-export default { getDocumentSettings, saveDocumentSettings, brandContext, INVOICE_MODES, DEFAULTS };
+export default { getDocumentSettings, saveDocumentSettings, brandContext, invoiceModeFor, INVOICE_MODES, DEFAULTS };

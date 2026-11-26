@@ -176,7 +176,9 @@ export const startInvoiceCatchUpJob = () => {
     const r = await invoiceService.catchUp().catch((e) => ({ error: e.message }));
     // Credit / debit notes whose PDF wasn't drawn
     r.notes = await import('./guestNoteService.js').then((m) => m.catchUpNotes()).catch(() => 0);
-    if (r.error || r.redrawn || r.issued || r.failed || r.notes) console.log('🧾 Invoice catch-up:', JSON.stringify(r));
+    // Business bookings checked out without the property's GST invoice: remind it (once a day)
+    r.gstReminders = await import('./hotelGstInvoices.js').then((m) => m.remindMissing()).catch(() => 0);
+    if (r.error || r.redrawn || r.issued || r.failed || r.notes || r.gstReminders) console.log('🧾 Invoice catch-up:', JSON.stringify(r));
   };
   setTimeout(run, 60 * 1000).unref?.();
   setInterval(run, 10 * 60 * 1000).unref?.();

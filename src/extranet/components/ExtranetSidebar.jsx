@@ -18,7 +18,7 @@ import {
   Users,
   Gauge,
   X
-, FileSignature, Briefcase } from 'lucide-react';
+, FileSignature, Briefcase, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useExtranet } from '../context/ExtranetContext';
 import useAccess from '../../hooks/useAccess';
@@ -68,6 +68,7 @@ const MENU = [
     label: 'Operations',
     items: [
       { name: 'Bookings', path: '/extranet/bookings', icon: <ClipboardList size={18} />, perm: 'bookings.view' },
+      { name: 'GST Invoices', path: '/extranet/gst-invoices', icon: <FileText size={18} />, perm: 'bookings.view' },
       { name: 'Finance Hub', path: '/extranet/finance', icon: <IndianRupee size={18} />, perm: 'finance.view' },
       { name: 'Wallet', path: '/extranet/wallet', icon: <Wallet size={18} />, perm: 'finance.view' },
       { name: 'Agreement', path: '/extranet/agreement', icon: <FileSignature size={18} />, perm: 'dashboard.view' },

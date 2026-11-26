@@ -4,7 +4,7 @@ import { queueService } from './queueService.js';
 import { emailLayout, emailDay, moneyTable, bullets } from './emailLayout.js';
 import { bookingFigures, MEAL } from './documents/bookingFigures.js';
 import { houseRules } from './documents/houseRules.js';
-import { getDocumentSettings } from './documents/documentSettings.js';
+import { getDocumentSettings, invoiceModeFor } from './documents/documentSettings.js';
 import { cancellationText } from './voucherService.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,8 +29,8 @@ const confirmationEmailHtml = async ({ booking: b, hotel, rooms, policy, setting
   const roomsList = (rooms.filter((r) => !r.cancelledAt).length ? rooms.filter((r) => !r.cancelledAt) : [{ roomNumber: 1, roomType: b.roomType, ratePlan: b.ratePlan, adults: b.adults, children: b.children, guestName: b.guestName }])
     .map((r) => `${rooms.length > 1 ? `Room ${r.roomNumber}: ` : ''}${r.roomType?.name || 'Room'} · ${MEAL[r.ratePlan?.mealPlan] || 'Room only'} · ${guestsLabel(r.adults, r.children)} · lead guest ${r.guestName}`);
   const rules = houseRules(hotel);
-  const invoiceNote = settings.guestInvoice.mode === 'HOTEL_ISSUES'
-    ? 'The property issues the GST invoice for your stay at check-out.'
+  const invoiceNote = invoiceModeFor(b, settings) === 'HOTEL_ISSUES'
+    ? (b.guestCompanyGstin ? `The property issues the GST invoice in the name of ${b.guestCompanyName}; it appears in My Bookings once uploaded after check-out.` : 'The property issues the GST invoice for your stay at check-out.')
     : 'Your GST invoice is in My Bookings → Financials.';
 
   return emailLayout({

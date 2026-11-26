@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Search, BedDouble, Download, CheckCircle2, XCircle, IndianRupee, Clock, ArrowLeft, Palette } from 'lucide-react';
-import { businessApi, getHotelById } from '../../services/api';
+import { businessApi, getHotelById, downloadHotelInvoice } from '../../services/api';
 
 /**
  * ZivoPlus for Business / Partner Hub: booking at business rates (Book), the organisation's
@@ -245,6 +245,8 @@ export const BookingsTab = ({ org, onChange }) => {
             {open.status === 'PENDING' && <button type="button" disabled={!!busy} onClick={() => act('pay', () => businessApi.payBooking(org.id, open.id), 'Paid and confirmed.')} className={`${btn} bg-brand-600 text-white`}>{busy === 'pay' && <Loader2 size={14} className="animate-spin" />} Pay {inr(open.total)} from account</button>}
             {open.status !== 'CANCELLED' && <button type="button" onClick={() => openBlob(() => businessApi.voucher(org.id, open.id, 'NONE'), setMsg)} className={`${btn} border border-gray-300`}><Download size={14} /> Voucher</button>}
             {agency && open.status !== 'CANCELLED' && open.business?.sellAmount && <button type="button" onClick={() => openBlob(() => businessApi.voucher(org.id, open.id, 'SELL'), setMsg)} className={`${btn} border border-gray-300`}><Download size={14} /> Voucher with your price</button>}
+            {open.hotelInvoice && <button type="button" onClick={() => openBlob(() => downloadHotelInvoice(open.id), setMsg)} className={`${btn} border border-gray-300`}><Download size={14} /> GST invoice from the hotel ({open.hotelInvoice.invoiceNumber})</button>}
+            {!open.hotelInvoice && open.gstin && open.status !== 'CANCELLED' && <span className="text-xs text-gray-600 self-center">The hotel issues the GST invoice in your company&apos;s name and uploads it here after check-out.</span>}
             {open.cancellation && <button type="button" disabled={!!busy} onClick={() => { if (window.confirm(open.status === 'PENDING' ? 'Release this hold?' : `Cancel? Refund to your account: ${inr(open.cancellation.refundAmount)} (${open.cancellation.policyLabel}).`)) act('cancel', () => businessApi.cancelBooking(org.id, open.id), 'Cancelled.'); }} className={`${btn} border border-gray-300 text-red-700`}><XCircle size={14} /> {open.status === 'PENDING' ? 'Release hold' : `Cancel (refund ${inr(open.cancellation.refundAmount)})`}</button>}
           </div>
           {open.cancellation && open.status !== 'PENDING' && <p className="text-xs text-gray-500">{open.cancellation.policyLabel}. Refunds go back to your account.</p>}

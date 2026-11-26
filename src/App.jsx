@@ -51,6 +51,7 @@ const AdminOrganisations = lazyPage(() => import('./admin/pages/Organisations'))
 const AdminBusinessSettings = lazyPage(() => import('./admin/pages/BusinessSettings'));
 const BusinessPortal = lazyPage(() => import('./pages/BusinessPortal'));
 const ExtranetBusinessRates = lazyPage(() => import('./extranet/pages/ExtranetBusinessRates'));
+const ExtranetGstInvoices = lazyPage(() => import('./extranet/pages/ExtranetGstInvoices'));
 const AdminBookings = lazyPage(() => import('./admin/pages/Bookings'));
 const ChannelManager = lazyPage(() => import('./admin/pages/ChannelManager'));
 const Users = lazyPage(() => import('./admin/pages/Users'));
@@ -298,6 +299,7 @@ function App() {
               <Route path="wallet" element={<ExtranetWallet />} />
               <Route path="member-prices" element={<ExtranetMembership />} />
               <Route path="business-rates" element={<ExtranetBusinessRates />} />
+              <Route path="gst-invoices" element={<ExtranetGstInvoices />} />
               <Route path="reviews" element={<ExtranetReviews />} />
               <Route path="promotions" element={<ExtranetPromotions />} />
               <Route path="performance" element={<ExtranetPerformance />} />

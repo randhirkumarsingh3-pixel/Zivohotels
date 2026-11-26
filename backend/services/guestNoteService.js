@@ -17,7 +17,7 @@ import path from 'path';
 import prisma from '../config/db.js';
 import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
 import { guestNoteHtml } from './documents/guestInvoiceHtml.js';
-import { brandContext, getDocumentSettings } from './documents/documentSettings.js';
+import { brandContext, getDocumentSettings, invoiceModeFor } from './documents/documentSettings.js';
 import { renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
 import { fyStart, fyLabel } from '../utils/financialYear.js';
 
@@ -30,7 +30,7 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
 
 /** Was the guest given a tax invoice (not a payment receipt)? */
 const isTaxInvoice = async (booking) => {
-  const mode = booking.businessPricing?.invoiceMode || (await getDocumentSettings()).guestInvoice.mode;
+  const mode = invoiceModeFor(booking, await getDocumentSettings());
   return mode !== 'HOTEL_ISSUES';
 };
 

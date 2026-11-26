@@ -27,7 +27,7 @@ describe('Guest invoices: GST numbering, fields, credit and debit notes', functi
   this.timeout(120000);
   const tag = Date.now().toString().slice(-6);
   const password = `Inv!${crypto.randomUUID().slice(0, 10)}x9`;
-  let admin; let booker; let other; let org; let hotel; let room; let booking; let invoice; let saved;
+  let admin; let booker; let other; let org; let hotel; let room; let booking; let invoice; let saved; let savedDocs;
 
   const waitFor = async (fn, ms = 30000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v || Date.now() > end) return v; await sleep(500); } };
 
@@ -35,7 +35,9 @@ describe('Guest invoices: GST numbering, fields, credit and debit notes', functi
     admin = await login('admin@zivoplus.com', 'admin123');
     saved = await prisma.systemConfig.findUnique({ where: { key: 'business_settings' } });
     await api.put('/admin/business-settings', { corporate: { enabled: true, holdHours: 24, requireAgreement: false } }, admin);
-    await api.put('/admin/documents', { guestInvoice: { mode: 'ON_BEHALF' } }, admin);
+    // ZivoPlus issues the invoice on the property's behalf, for business (GSTIN) bookings too
+    savedDocs = (await api.get('/admin/documents', admin)).data.data.settings;
+    await api.put('/admin/documents', { guestInvoice: { mode: 'ON_BEHALF', b2bMode: 'ON_BEHALF' } }, admin);
     const u = await prisma.user.create({ data: { name: 'Neha Kapoor', email: `neha.i${tag}@example.com`, password: await bcrypt.hash(password, 10), role: 'CUSTOMER', status: 'ACTIVE', emailVerifiedAt: new Date() } });
     const o = await prisma.user.create({ data: { name: 'Someone Else', email: `else.i${tag}@example.com`, password: await bcrypt.hash(password, 10), role: 'CUSTOMER', status: 'ACTIVE', emailVerifiedAt: new Date() } });
     org = await prisma.organisation.create({ data: { kind: 'CORPORATE', code: `ZB-I${tag}`, name: `Lumen Works ${tag}`, legalName: `Lumen Works Private Limited ${tag}`, incorporationType: 'PVT_LTD', pan: `AABCL${tag.slice(2)}K`, gstin: `29AABCL${tag.slice(2)}K1Z5`, address: '9 Brigade Road', city: 'Bengaluru', state: 'Karnataka', pincode: '560001', billingEmail: `ap.i${tag}@example.com`, phone: '9845011155', status: 'ACTIVE', createdById: u.id } });
@@ -50,6 +52,7 @@ describe('Guest invoices: GST numbering, fields, credit and debit notes', functi
   });
 
   after(async () => {
+    if (savedDocs) await api.put('/admin/documents', { guestInvoice: { mode: savedDocs.guestInvoice.mode, b2bMode: savedDocs.guestInvoice.b2bMode || 'HOTEL_ISSUES' } }, admin);
     if (saved) await prisma.systemConfig.update({ where: { key: 'business_settings' }, data: { value: saved.value } }).catch(() => {});
   });
 
