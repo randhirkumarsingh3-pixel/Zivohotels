@@ -331,6 +331,7 @@ model Booking {
   businessPricing     Json?
   organisation        Organisation?          @relation(fields: [organisationId], references: [id])
   guestNotes          GuestNote[]
+  hotelGstInvoice     HotelGstInvoice?
 
   @@index([hotelId])
   @@index([userId])
@@ -2095,4 +2096,28 @@ model GroupRequest {
 
   @@index([organisationId, status])
   @@index([hotelId, status])
+}
+
+/// The GST tax invoice the property issued for a business (B2B, GSTIN) booking, uploaded in the
+/// extranet (Extranet → GST invoices). ZivoPlus is the facilitator; the business claims input tax
+/// credit against this invoice. The file is stored encrypted like KYC files (fileKey); the hotel
+/// can replace it with a corrected one.
+model HotelGstInvoice {
+  id            String   @id @default(uuid())
+  bookingId     String   @unique
+  hotelId       String
+  invoiceNumber String
+  invoiceDate   DateTime @db.Date
+  amount        Decimal  @db.Decimal(12, 2)
+  taxAmount     Decimal? @db.Decimal(12, 2)
+  fileKey       String
+  fileName      String
+  mimeType      String
+  size          Int
+  uploadedById  String
+  uploadedAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId])
 }

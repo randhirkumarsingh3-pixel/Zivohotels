@@ -89,3 +89,15 @@ export const downloadNote = async (req, res, next) => {
     next(error);
   }
 };
+
+/** The GST invoice the property uploaded for a business booking (booker, the business, staff). */
+export const downloadHotelInvoice = async (req, res, next) => {
+  try {
+    const { readFile } = await import('../services/hotelGstInvoices.js');
+    const f = await readFile(req.params.bookingId, req.user);
+    res.type(f.mimeType).set({ 'Content-Disposition': `attachment; filename="${f.fileName.replace(/"/g, '')}"`, 'Cache-Control': 'private, no-store' }).send(f.buffer);
+  } catch (e) {
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    next(e);
+  }
+};

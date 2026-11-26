@@ -17,7 +17,7 @@ import SupportContacts from '../components/SupportContacts';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, downloadGuestNote, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
+import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, downloadGuestNote, downloadHotelInvoice, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
 import { saveVoucher } from '../utils/voucher';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -321,6 +321,17 @@ const MyBookings = () => {
     } finally {
       setCancelling(false);
     }
+  };
+
+  const handleHotelInvoice = async (b) => {
+    try {
+      const blob = await downloadHotelInvoice(b.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `GST-invoice-${String(b.hotelGstInvoice.invoiceNumber).replace(/\//g, '_')}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 30000);
+    } catch (err) { setError(err.message); }
   };
 
   const handleDownloadInvoice = async (invoiceId, refName, note = false) => {
@@ -729,7 +740,7 @@ const MyBookings = () => {
                     <p className="text-xs text-gray-500">Your GST invoice, and any credit or debit notes against it when the booking changed (cancellations, refunds, hours added).</p>
                     {activeBooking.invoice?.status === 'GENERATED' ? (
                       <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
-                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF · {activeBooking.invoice.invoiceRef}</span>
+                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />{activeBooking.invoiceIssuer === 'HOTEL' ? 'ZivoPlus payment receipt' : 'Official GST Invoice PDF'} · {activeBooking.invoice.invoiceRef}</span>
                         <Download size={14} className="text-gray-400" />
                       </button>
                     ) : (
@@ -738,6 +749,18 @@ const MyBookings = () => {
                         <span>{invoiceNote(activeBooking)}</span>
                       </div>
                     )}
+                    {activeBooking.invoiceIssuer === 'HOTEL' && activeBooking.guestCompanyGstin && (activeBooking.hotelGstInvoice ? (
+                      <button onClick={() => handleHotelInvoice(activeBooking)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
+                        <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>GST invoice from the hotel · {activeBooking.hotelGstInvoice.invoiceNumber}<span className="block font-normal text-gray-500">In the name of {activeBooking.guestCompanyName} (GSTIN {activeBooking.guestCompanyGstin})</span></span></span>
+                        <Download size={14} className="text-gray-400 shrink-0" />
+                      </button>
+                    ) : !['CANCELLED', 'NO_SHOW'].includes(activeBooking.status) && (
+                      <div className="p-3 rounded-xl bg-gray-50 text-gray-700 text-xs border border-gray-100 flex items-start gap-2">
+                        <Clock size={16} className="shrink-0 mt-0.5" />
+                        <span>The hotel issues the GST invoice in the name of {activeBooking.guestCompanyName} (GSTIN {activeBooking.guestCompanyGstin}) and uploads it here after check-out.</span>
+                      </div>
+                    ))}
+                    {activeBooking.invoiceIssuer === 'HOTEL' && activeBooking.guestCompanyGstin && <p className="text-[11px] text-gray-500">Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ZivoPlus acts only as a facilitator for these services.</p>}
                     {(activeBooking.guestNotes || []).filter((n) => n.status === 'GENERATED').map((n) => (
                       <button key={n.id} onClick={() => handleDownloadInvoice(n.id, n.noteRef, true)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
                         <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>{n.kind === 'CREDIT' ? 'Credit note' : 'Debit note'} · {n.noteRef} · ₹{Math.round(Number(n.amount)).toLocaleString('en-IN')}<span className="block font-normal text-gray-500">{n.reason}</span></span></span>

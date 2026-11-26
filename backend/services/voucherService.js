@@ -1,6 +1,6 @@
 import { esc, inr as tInr, money, shell, header, meta, box, totals, renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
 import { bookingFigures, MEAL as TMEAL } from './documents/bookingFigures.js';
-import { brandContext } from './documents/documentSettings.js';
+import { invoiceModeFor, brandContext } from './documents/documentSettings.js';
 import { houseRules } from './documents/houseRules.js';
 import { getSupportContacts } from '../config/supportContacts.js';
 import prisma from '../config/db.js';
@@ -166,12 +166,16 @@ const invoiceLine = (mode, b, who) => {
   const company = b.guestCompanyGstin ? ` in the name of ${b.guestCompanyName} (GSTIN ${b.guestCompanyGstin})` : '';
   if (who === 'guest') {
     return mode === 'HOTEL_ISSUES'
-      ? `The property issues the GST invoice for your stay${company}; ask for it at check-out.`
+      ? b.guestCompanyGstin
+        ? `The property issues the GST invoice for your stay${company}; it appears in My Bookings once the property uploads it after check-out. Claim input tax credit only against that invoice: ZivoPlus acts only as a facilitator.`
+        : `The property issues the GST invoice for your stay${company}; ask for it at check-out.`
       : `Your GST invoice for the stay comes from ZivoPlus${company}: download it from My Bookings → Financials (with any credit or debit note if the booking changes). The property bills you separately only for extras you use.`;
   }
   if (mode === 'ON_BEHALF') return `ZivoPlus issues the guest's GST invoice for this stay on your behalf (your GSTIN as supplier)${company}; include it in your GST returns. Do not issue another invoice for the room: invoice the guest only for extras.`;
   if (mode === 'ZIVO_SUPPLIER') return `ZivoPlus issues the guest's GST invoice for this stay as the supplier${company}. Do not invoice the guest for the room: invoice only extras.`;
-  return `Issue the tax invoice to the guest for the property gross charges${company}.`;
+  return b.guestCompanyGstin
+    ? `Issue the GST invoice for the stay${company} and upload it in Extranet → GST invoices after check-out: the business claims input tax credit only against your invoice (ZivoPlus is the facilitator).`
+    : `Issue the tax invoice to the guest for the property gross charges${company}.`;
 };
 
 const footerFor = (d) => footerLine(d.brand?.company || {}, d.support || {});
@@ -197,7 +201,7 @@ ${roomsSection(d)}
     <div class="notes"><ul>${cancellationText(b, d.policy).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
     ${houseRules(hotel).length ? `<h2>House rules</h2><div class="notes"><ul>${houseRules(hotel).map((r) => `<li>${r.allowed === true ? '✓ ' : r.allowed === false ? '✕ ' : ''}${esc(r.text)}</li>`).join('')}</ul></div>` : ''}
     <h2>Good to know</h2>
-    <div class="notes"><ul>${[...(settings.voucher.guestNotes || []), invoiceLine(settings.guestInvoice.mode, b, 'guest')].map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    <div class="notes"><ul>${[...(settings.voucher.guestNotes || []), invoiceLine(invoiceModeFor(b, settings), b, 'guest')].map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
   </div>
   <div>
     <h2>Price</h2>
@@ -341,7 +345,7 @@ ${f.zivoFunded > 0 || collectedAtHotel ? '<div class="notes">The payable amount 
     <div class="notes"><ul>${cancellationText(b, d.policy).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
     <h2>Notes for the property</h2>
     <div class="notes"><ul>${[
-      invoiceLine(settings.guestInvoice.mode, b, 'hotel'),
+      invoiceLine(invoiceModeFor(b, settings), b, 'hotel'),
       `Do not charge the guest again for anything paid online. Collect only ${collectedAtHotel ? `${tInr(collectedAtHotel)} for the stay plus ` : ''}extra services they use.`,
       ...(settings.voucher.hotelNotes || []),
     ].map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>

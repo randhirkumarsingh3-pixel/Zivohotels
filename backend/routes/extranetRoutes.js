@@ -6,6 +6,7 @@ import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { permissionGate } from '../middleware/permissionGate.js';
 import ownerAgreementRoutes from './ownerAgreementRoutes.js';
 import hotelBusinessRateRoutes from './hotelBusinessRateRoutes.js';
+import hotelGstInvoiceRoutes from './hotelGstInvoiceRoutes.js';
 import { hotelScopeGuard } from '../middleware/hotelScopeGuard.js';
 
 // Modular Controllers
@@ -41,6 +42,8 @@ router.use(permissionGate); // each path's permission (staff roles)
 router.use('/agreement', ownerAgreementRoutes);
 // Business rates: discounts for companies and travel agents (routes/hotelBusinessRateRoutes.js)
 router.use('/business-rates', hotelBusinessRateRoutes);
+// GST invoices the property issues for business (GSTIN) bookings (routes/hotelGstInvoiceRoutes.js)
+router.use('/gst-invoices', hotelGstInvoiceRoutes);
 
 // Property Onboarding (Bypasses scoping during creation)
 router.post('/onboarding/init', initOnboarding);

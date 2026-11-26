@@ -409,6 +409,8 @@ export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookin
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);
 export const downloadInvoice = (invoiceId) => apiFetch(`${PUBLIC_BASE}/invoices/${invoiceId}/download`, { responseType: 'blob' });
 // A credit or debit note against the invoice (cancellations, refunds, hours added)
+// The GST invoice the property uploaded for a business (GSTIN) booking
+export const downloadHotelInvoice = (bookingId) => apiFetch(`${PUBLIC_BASE}/invoices/hotel/${bookingId}/download`, { responseType: 'blob' });
 export const downloadGuestNote = (noteId) => apiFetch(`${PUBLIC_BASE}/invoices/notes/${noteId}/download`, { responseType: 'blob' });
 // Booking voucher PDF: type 'guest' (booking confirmation) or 'hotelier' (owner/admin only)
 export const downloadVoucher = (bookingId, type = 'guest') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/voucher?type=${type}`, { responseType: 'blob' }, 0);
@@ -598,6 +600,12 @@ export const adminBusinessApi = {
   rateHotels: (id, q) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/hotels?q=${encodeURIComponent(q || '')}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
   proposeRate: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates`, jsonBody('POST', body), 0).then((r) => r?.data),
   endRate: (id, rateId, note) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/${rateId}/end`, jsonBody('POST', { note }), 0).then((r) => r?.data),
+};
+// Extranet → GST invoices: the property's invoices for business (GSTIN) bookings
+export const hotelGstInvoicesApi = {
+  list: (hotelId, status = '') => apiFetch(`${API_URL}/extranet/gst-invoices/${hotelId}${status ? `?status=${status}` : ''}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  upload: (hotelId, bookingId, body) => apiFetch(`${API_URL}/extranet/gst-invoices/${hotelId}/${bookingId}`, jsonBody('POST', body), 0).then((r) => r?.data),
+  file: (hotelId, bookingId) => apiFetch(`${API_URL}/extranet/gst-invoices/${hotelId}/${bookingId}/file`, { responseType: 'blob' }, 0),
 };
 export const hotelBusinessRatesApi = {
   get: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),

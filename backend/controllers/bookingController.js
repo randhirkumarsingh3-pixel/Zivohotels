@@ -589,6 +589,7 @@ export const getMyBookings = async (req, res, next) => {
         ...BOOKING_ROOMS_INCLUDE,
         ratePlan: { select: { id: true, name: true, mealPlan: true } },
         invoice: { select: { id: true, invoiceRef: true, status: true } },
+        hotelGstInvoice: { select: { invoiceNumber: true, invoiceDate: true, amount: true, uploadedAt: true } },
         guestNotes: { orderBy: { createdAt: 'asc' }, select: { id: true, kind: true, noteRef: true, amount: true, reason: true, status: true, createdAt: true } },
         timelineEvents: { orderBy: { createdAt: 'asc' } },
         review: { select: { id: true, rating: true, comment: true } }
@@ -653,6 +654,12 @@ export const getMyBookings = async (req, res, next) => {
     for (const booking of bookings) {
       booking.requestsOpenAt = requestsOpenAt(booking, booking.stayType === 'HOURLY' ? null : policies.get(booking.hotelId) || getDefaultPolicy());
     }
+
+    // Who issues each booking's GST invoice: the hotel (business GSTIN bookings, uploaded by it)
+    // or ZivoPlus (the invoice above is then a payment receipt for business bookings)
+    const { getDocumentSettings, invoiceModeFor } = await import('../services/documents/documentSettings.js');
+    const docSettings = await getDocumentSettings();
+    for (const booking of bookings) booking.invoiceIssuer = invoiceModeFor(booking, docSettings) === 'HOTEL_ISSUES' ? 'HOTEL' : 'ZIVOPLUS';
 
     res.status(200).json({
       success: true,

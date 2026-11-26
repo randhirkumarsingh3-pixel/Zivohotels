@@ -81,6 +81,14 @@ const DocumentSettings = () => {
             );
           })}
         </div>
+        <label className="mt-4 block text-xs font-semibold text-gray-700 max-w-xl">Business bookings with a GSTIN (B2B)
+          <select className={input} value={s.guestInvoice.b2bMode || 'HOTEL_ISSUES'} disabled={!canEdit} onChange={(e) => set('guestInvoice.b2bMode', e.target.value)}>
+            <option value="HOTEL_ISSUES">The hotel issues the GST invoice and uploads it in the extranet (ZivoPlus is the facilitator)</option>
+            <option value="ON_BEHALF">ZivoPlus issues it on the hotel&apos;s behalf</option>
+            <option value="ZIVO_SUPPLIER">ZivoPlus issues it as the supplier</option>
+          </select>
+          <span className="block mt-1 font-normal text-gray-500">With the hotel issuing it, the business gets a ZivoPlus payment receipt that says input tax credit is available only against the hotel&apos;s invoice, and downloads the hotel&apos;s invoice from ZivoPlus once uploaded.</span>
+        </label>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {[['prefix', 'Invoice prefix', 'ZIV'], ['creditPrefix', 'Credit note prefix', 'ZCN'], ['debitPrefix', 'Debit note prefix', 'ZDN']].map(([k, label, def]) => (
             <label key={k} className="text-xs font-semibold text-gray-700">{label}
@@ -96,6 +104,9 @@ const DocumentSettings = () => {
           </label>
           <label className="text-xs font-semibold text-gray-700">Terms printed at the foot of invoices and notes (one per line)
             <textarea rows={4} className={input} disabled={!canEdit} value={notes(s.guestInvoice.terms || [])} onChange={(e) => set('guestInvoice.terms', e.target.value.split('\n'))} />
+          </label>
+          <label className="text-xs font-semibold text-gray-700">Terms printed on ZivoPlus payment receipts, when the hotel issues the GST invoice (one per line)
+            <textarea rows={3} className={input} disabled={!canEdit} value={notes(s.guestInvoice.receiptTerms || [])} onChange={(e) => set('guestInvoice.receiptTerms', e.target.value.split('\n'))} />
           </label>
         </div>
       </section>
