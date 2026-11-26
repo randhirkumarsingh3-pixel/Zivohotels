@@ -26,6 +26,8 @@
  *  GET    /:orgId/reports/spend?from=&to=     spend, savings, policy compliance; /reports/spend.csv with GST details
  *  POST   /:orgId/members/import              { csv, commit } preview or import people (companies' HR lists)
  *  PUT    /:orgId/members/:memberId/delegate  { delegateMemberId, delegateUntil } a stand-in approver while away
+ *  GET    /:orgId/travellers?days=&city=      where travellers are: staying now, arriving, checked out (also .csv)
+ *  GET    /:orgId/agreed-rates                rates agreed with hotels for the company, in place or coming up
  *  GET    /:orgId/trips?status=               POST { city, checkIn, checkOut, rooms, adults, purpose, notes, travellerMemberId? }
  *  POST   /:orgId/trips/:id/decline { note }  POST /:orgId/trips/:id/cancel
  *  GET    /:orgId/agreement                   the agreement with ZivoPlus; POST /code, /sign { name, code, consent, contentHash },
@@ -36,6 +38,8 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { protect } from '../middleware/authMiddleware.js';
 import svc, { setBranding, brandingFor, membershipFor, setLogo, removeLogo, setDelegate, importMembers } from '../services/business/organisationService.js';
 import trips from '../services/business/tripRequests.js';
+import dutyOfCare from '../services/business/dutyOfCare.js';
+import corporateRates from '../services/business/corporateRates.js';
 import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
 import { policyOf, savePolicy } from '../services/business/travelPolicy.js';
@@ -106,6 +110,16 @@ router.put('/:orgId/policy', wrap(async (req, res) => ok(res, await savePolicy(r
 router.get('/:orgId/approvals', wrap(async (req, res) => ok(res, await booking.listApprovals(req.params.orgId, req.user))));
 router.post('/:orgId/approvals/:id', wrap(async (req, res) => ok(res, await booking.decideApproval(req.params.orgId, req.user, req.params.id, req.body || {}, { requestId: req.id }))));
 router.get('/:orgId/reports/spend', wrap(async (req, res) => ok(res, await booking.spendReport(req.params.orgId, req.user, req.query))));
+router.get('/:orgId/travellers', wrap(async (req, res) => ok(res, await dutyOfCare.travellers(req.params.orgId, req.user, req.query))));
+router.get('/:orgId/travellers.csv', wrap(async (req, res) => {
+  const csv = await dutyOfCare.travellersCsv(req.params.orgId, req.user, req.query);
+  res.locals.skipFormat = true;
+  res.type('text/csv').set({ 'Content-Disposition': 'attachment; filename="zivoplus-travellers.csv"', 'Cache-Control': 'private, no-store' }).send(csv);
+}));
+router.get('/:orgId/agreed-rates', wrap(async (req, res) => {
+  const { org } = await svc.membershipFor(req.params.orgId, req.user);
+  ok(res, org.kind === 'CORPORATE' ? await corporateRates.forOrganisation(org.id) : []);
+}));
 router.get('/:orgId/reports/spend.csv', wrap(async (req, res) => {
   const csv = await booking.spendCsv(req.params.orgId, req.user, req.query);
   res.locals.skipFormat = true;

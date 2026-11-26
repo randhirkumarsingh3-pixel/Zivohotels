@@ -30,6 +30,7 @@ import { membershipFor, can, PORTAL } from './organisationService.js';
 import { policyOf, evaluate, approvalSteps, activeDelegations } from './travelPolicy.js';
 import { assertAgreementForBooking } from './orgAgreementService.js';
 import { tripForBooking, markTripBooked } from './tripRequests.js';
+import { ratesForStay, stayDiscount, describeRate, forOrganisation as agreedRatesOf } from './corporateRates.js';
 import { notifyUser } from '../notifyService.js';
 import { emailLayout, siteUrl } from '../emailLayout.js';
 
@@ -56,10 +57,24 @@ export const ratesFor = async (orgId, user, hotelIds = []) => {
   const where = ids.length ? { hotelId: { in: ids } } : {};
   where[org.kind === 'AGENCY' ? 'agentEnabled' : 'corporateEnabled'] = true;
   const rows = await prisma.hotelBusinessRate.findMany({ where, include: { hotel: { select: { id: true, name: true, city: true, status: true, isDeleted: true } } }, take: 500 });
-  return rows
+  const out = rows
     .filter((r) => r.hotel && !r.hotel.isDeleted && ['LIVE', 'ACTIVE'].includes(r.hotel.status))
     .map((r) => ({ hotelId: r.hotelId, hotelName: r.hotel.name, city: r.hotel.city, offer: businessOffer(r, org, terms) }))
     .filter((x) => x.offer);
+  if (org.kind !== 'CORPORATE') return out;
+  // Companies: also the hotels with a rate agreed for them, even without a general company discount
+  const agreed = (await agreedRatesOf(org.id)).filter((r) => !ids.length || ids.includes(r.hotelId));
+  for (const r of agreed) {
+    let row = out.find((x) => x.hotelId === r.hotelId);
+    if (!row) {
+      const h = await prisma.hotel.findFirst({ where: { id: r.hotelId, isDeleted: false, status: { in: ['LIVE', 'ACTIVE'] } }, select: { id: true, name: true, city: true } });
+      if (!h) continue;
+      row = { hotelId: h.id, hotelName: h.name, city: h.city, offer: { kind: 'CORPORATE', discountPct: 0 } };
+      out.push(row);
+    }
+    row.agreedRates = [...(row.agreedRates || []), { id: r.id, label: r.label, validFrom: r.validFrom, validTo: r.validTo, state: r.state }];
+  }
+  return out;
 };
 
 /**
@@ -72,8 +87,13 @@ const priceFor = ({ org, terms, offer, model, markupPct }) => (stayInput) => {
   const common = { kind: org.kind, organisationId: org.id, organisationCode: org.code, organisationName: org.name, invoiceMode: terms.invoiceMode, publicAmount: base.finalAmount, publicPreTax: base.baseAmount };
   if (offer.kind === 'CORPORATE' || model === 'NET') {
     const pct = offer.kind === 'CORPORATE' ? offer.discountPct : offer.tradeDiscountPct;
-    const pricing = pricingDomain.calculateStay({ ...stayInput, businessDiscountAmount: round(subtotal * pct / 100) });
+    // Companies with a rate agreed at this hotel: room by room, the agreed rate or the general discount
+    const agreed = offer.kind === 'CORPORATE' && offer.agreedRates?.length
+      ? stayDiscount(base, offer.agreedRates, { generalPct: pct, checkIn: stayInput.checkInDate })
+      : null;
+    const pricing = pricingDomain.calculateStay({ ...stayInput, businessDiscountAmount: agreed ? agreed.amount : round(subtotal * pct / 100) });
     const out = { ...common, model: offer.kind === 'CORPORATE' ? 'CORPORATE' : 'NET', discountPct: pct, discountAmount: pricing.businessDiscountAmount, payAmount: pricing.finalAmount };
+    if (agreed?.rateIds.length) out.agreedRate = { rateIds: agreed.rateIds, rooms: agreed.rooms.filter((r) => r.rateId), amount: agreed.amount };
     if (out.model === 'NET') {
       const mk = markupPct == null || markupPct === '' ? offer.defaultMarkupPct : Number(markupPct);
       if (!Number.isFinite(mk) || mk < 0 || mk > offer.maxMarkupPct) throw fail(`Markup must be between 0 and ${offer.maxMarkupPct}%.`);
@@ -115,9 +135,15 @@ const holdDeadline = (settings, kind, checkIn) => {
   return until.getTime() - Date.now() >= 3600000 ? until : null;
 };
 
-const offerAt = async (org, terms, hotelId) => {
+const offerView = ({ agreedRates, ...o }) => (agreedRates ? { ...o, agreedRates: agreedRates.map((r) => ({ id: r.id, label: describeRate(r) })) } : o);
+/** What the organisation gets at the hotel; for companies with the rates agreed for the stay's nights. */
+const offerAt = async (org, terms, hotelId, input = {}) => {
   const rate = await prisma.hotelBusinessRate.findUnique({ where: { hotelId: String(hotelId) } });
-  const offer = businessOffer(rate, org, terms);
+  let offer = businessOffer(rate, org, terms);
+  if (org.kind === 'CORPORATE' && input.checkIn && input.checkOut && !Number.isNaN(+new Date(input.checkIn)) && !Number.isNaN(+new Date(input.checkOut))) {
+    const agreedRates = await ratesForStay(org.id, hotelId, input.checkIn, input.checkOut);
+    if (agreedRates.length) offer = { ...(offer || { kind: 'CORPORATE', discountPct: 0 }), agreedRates };
+  }
   if (!offer) throw fail('This hotel doesn\'t offer business rates to your account.', 404);
   return offer;
 };
@@ -158,7 +184,7 @@ const travellerView = (t) => (t ? { memberId: t.id, userId: t.userId, name: t.us
 
 export const quote = async (orgId, user, input = {}) => {
   const { org, member, settings, terms } = await bookingContext(orgId, user);
-  const offer = await offerAt(org, terms, input.hotelId);
+  const offer = await offerAt(org, terms, input.hotelId, input);
   const traveller = await travellerFor(org, member, input.travellerMemberId);
   const { checkIn, checkOut, lines, rooms, hotel, pricing, businessPricing } = await priceStay({ org, terms, offer }, input);
   const summary = await accountSummary(org, { settings });
@@ -168,7 +194,7 @@ export const quote = async (orgId, user, input = {}) => {
     hotel: { id: hotel.id, name: hotel.name, city: hotel.city },
     checkIn, checkOut, nights: pricing.nights, rooms: describeRooms(pricing, rooms, lines),
     price: { roomCharges: pricing.subtotal, discount: pricing.businessDiscountAmount || 0, beforeTax: pricing.baseAmount, tax: pricing.taxAmount, taxBreakdown: pricing.taxBreakdown, total: pricing.finalAmount },
-    business: businessPricing, offer, traveller: travellerView(traveller),
+    business: businessPricing, offer: offerView(offer), traveller: travellerView(traveller),
     policy, needsApproval: steps.length > 0, approvalSteps: steps.map((x) => x.label),
     canPayNow: summary.available >= pricing.finalAmount, available: can(member, 'account.view') ? summary.available : null,
     holdUntil: holdDeadline(settings, org.kind, checkIn),
@@ -185,7 +211,7 @@ const confirmFromAccount = async (tx, { org, terms, booking, user }) => {
 
 export const book = async (orgId, user, input = {}, ctx = {}) => {
   const { org, member, settings, terms } = await bookingContext(orgId, user);
-  const offer = await offerAt(org, terms, input.hotelId);
+  const offer = await offerAt(org, terms, input.hotelId, input);
   const traveller = await travellerFor(org, member, input.travellerMemberId);
   const trip = org.kind === 'CORPORATE' ? await tripForBooking(org, member, input.tripRequestId, traveller?.id) : null;
   const guestName = String(input.guestName || traveller?.user?.name || '').trim().replace(/\s+/g, ' ').slice(0, 120);

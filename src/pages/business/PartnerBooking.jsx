@@ -42,7 +42,8 @@ export const BookTab = ({ org, onBooked, prefill = null }) => {
   const [done, setDone] = useState(null);
 
   useEffect(() => { businessApi.rates(org.id).then(setHotels).catch((e) => setMsg({ ok: false, text: e.message })); }, [org.id]);
-  const shown = useMemo(() => (hotels || []).filter((h) => !q || `${h.hotelName} ${h.city}`.toLowerCase().includes(q.toLowerCase())), [hotels, q]);
+  // Hotels with a rate agreed for the company first
+  const shown = useMemo(() => (hotels || []).filter((h) => !q || `${h.hotelName} ${h.city}`.toLowerCase().includes(q.toLowerCase())).sort((a, b) => Number(Boolean(b.agreedRates?.length)) - Number(Boolean(a.agreedRates?.length))), [hotels, q]);
 
   const openHotel = async (h) => {
     setBusy('hotel'); setMsg(null); setQuote(null); setPick(null); setDone(null);
@@ -114,7 +115,12 @@ export const BookTab = ({ org, onBooked, prefill = null }) => {
                       <button type="button" onClick={() => openHotel(h)} disabled={busy === 'hotel'} className="w-full text-left bg-white border border-gray-200 rounded-2xl p-4 hover:border-brand-300">
                         <p className="font-bold text-gray-900">{h.hotelName}</p>
                         <p className="text-sm text-gray-600">{h.city}</p>
-                        <p className="text-sm font-semibold text-brand-700 mt-2">{h.offer.kind === 'CORPORATE' ? `${h.offer.discountPct}% company discount` : h.offer.models.includes('NET') ? `${h.offer.tradeDiscountPct}% off on net rates` : `${(h.offer.tradeDiscountPct + h.offer.extraCommissionPct).toFixed(1).replace(/\.0$/, '')}% commission`}</p>
+                        {(h.offer.kind !== 'CORPORATE' || h.offer.discountPct > 0) && <p className="text-sm font-semibold text-brand-700 mt-2">{h.offer.kind === 'CORPORATE' ? `${h.offer.discountPct}% company discount` : h.offer.models.includes('NET') ? `${h.offer.tradeDiscountPct}% off on net rates` : `${(h.offer.tradeDiscountPct + h.offer.extraCommissionPct).toFixed(1).replace(/\.0$/, '')}% commission`}</p>}
+                        {(h.agreedRates || []).map((r) => (
+                          <p key={r.id} className="mt-2 inline-flex flex-wrap items-center gap-1.5 text-xs font-semibold text-green-800 bg-green-50 rounded px-2 py-1 mr-1">
+                            Agreed rate: {r.label} · {r.state === 'UPCOMING' ? 'from' : 'until'} {new Date(`${r.state === 'UPCOMING' ? r.validFrom : r.validTo}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        ))}
                       </button>
                     </li>
                   ))}
@@ -187,7 +193,8 @@ export const BookTab = ({ org, onBooked, prefill = null }) => {
               <aside className="bg-white border border-gray-200 rounded-2xl p-5 text-sm space-y-2 self-start">
                 <h3 className="font-bold text-gray-900">{quote.nights} night{quote.nights > 1 ? 's' : ''} · {quote.rooms.length} room{quote.rooms.length > 1 ? 's' : ''}</h3>
                 <div className="flex justify-between"><span className="text-gray-600">Room charges</span><span>{inr(quote.price.roomCharges)}</span></div>
-                {quote.price.discount > 0 && <div className="flex justify-between text-green-700"><span>{quote.business.model === 'CORPORATE' ? 'Company discount' : 'Agent discount'} ({quote.business.discountPct}%)</span><span>− {inr(quote.price.discount)}</span></div>}
+                {quote.price.discount > 0 && <div className="flex justify-between text-green-700"><span>{quote.business.agreedRate ? 'Agreed company rate' : `${quote.business.model === 'CORPORATE' ? 'Company discount' : 'Agent discount'} (${quote.business.discountPct}%)`}</span><span>− {inr(quote.price.discount)}</span></div>}
+                {quote.business.agreedRate && <p className="text-xs text-green-800">{[...new Set(quote.business.agreedRate.rooms.map((r) => r.label))].join(' · ')}{quote.business.agreedRate.rooms.length < quote.rooms.length && quote.business.discountPct > 0 ? ` (other rooms: ${quote.business.discountPct}% company discount)` : ''}</p>}
                 <div className="flex justify-between"><span className="text-gray-600">GST</span><span>{inr(quote.price.tax)}</span></div>
                 <div className="flex justify-between font-bold text-base border-t border-gray-100 pt-2"><span>You pay</span><span>{inr(quote.price.total)}</span></div>
                 {quote.business.model === 'NET' && <div className="flex justify-between text-brand-700 font-semibold"><span>Your price to the customer (+{quote.business.markupPct}%)</span><span>{inr(quote.business.sellAmount)}</span></div>}

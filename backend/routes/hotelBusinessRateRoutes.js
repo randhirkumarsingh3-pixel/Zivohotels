@@ -8,6 +8,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { managesHotel } from '../utils/hotelAccess.js';
 import { getHotelBusinessRates, saveHotelBusinessRates } from '../services/business/hotelBusinessRates.js';
 import { getBusinessSettings } from '../services/business/businessSettings.js';
+import corporateRates from '../services/business/corporateRates.js';
 
 const router = express.Router();
 const hotelFor = async (req, res) => {
@@ -25,6 +26,21 @@ router.put('/:hotelId', asyncHandler(async (req, res) => {
   const hotel = await hotelFor(req, res); if (!hotel) return;
   try {
     res.json({ success: true, data: { ...(await saveHotelBusinessRates(hotel.id, req.user, req.body || {})), ...(await portals()) } });
+  } catch (e) {
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    throw e;
+  }
+}));
+
+// Company rates ZivoPlus proposed for this hotel: accept or decline
+router.get('/:hotelId/contracts', asyncHandler(async (req, res) => {
+  const hotel = await hotelFor(req, res); if (!hotel) return;
+  res.json({ success: true, data: await corporateRates.hotelList(hotel.id) });
+}));
+router.post('/:hotelId/contracts/:rateId/decision', asyncHandler(async (req, res) => {
+  const hotel = await hotelFor(req, res); if (!hotel) return;
+  try {
+    res.json({ success: true, data: await corporateRates.hotelDecide(hotel.id, req.user, req.params.rateId, req.body || {}) });
   } catch (e) {
     if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
     throw e;
