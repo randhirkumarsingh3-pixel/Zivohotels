@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Briefcase, Handshake, Loader2, CheckCircle2, AlertTriangle, Clock, Ban, Wallet, Users, FileText, Building2,
-  Upload, Download, Trash2, Plus, IndianRupee, Percent, ReceiptText, ShieldCheck, BedDouble, CalendarCheck,
+  Upload, Download, Trash2, Plus, IndianRupee, Percent, ReceiptText, ShieldCheck, BedDouble, CalendarCheck, KeyRound,
 } from 'lucide-react';
 import { businessApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
 import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields, TripsTab, ImportMembers, DelegateFields } from './business/CompanyTools';
 import { AgreementTab, IncentiveCard } from './business/AgreementTab';
+import { SsoTab } from './business/SsoTab';
 
 /**
  * ZivoPlus for Business (/business, companies) and ZivoPlus Partner Hub (/partners, travel agents).
@@ -355,7 +356,7 @@ const Dashboard = ({ orgId, info, user }) => {
   const c = COPY[org.kind]; const Icon = c.icon;
   const [SIcon, scls, slabel, stext] = STATUS[org.status] || STATUS.IN_REVIEW;
   const live = org.status === 'ACTIVE';
-  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && ['trips', 'Trips', Briefcase], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], ['ACTIVE', 'SUSPENDED'].includes(org.status) && ['agreement', 'Agreement', FileText], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
+  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && ['trips', 'Trips', Briefcase], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], ['ACTIVE', 'SUSPENDED'].includes(org.status) && ['agreement', 'Agreement', FileText], org.can['members.view'] && ['team', 'Team', Users], live && org.kind === 'CORPORATE' && org.myRole === 'ADMIN' && info?.sso?.available && ['signin', 'Sign-in', KeyRound], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
@@ -386,6 +387,7 @@ const Dashboard = ({ orgId, info, user }) => {
         {tab === 'agreement' && <AgreementTab org={org} onSigned={load} />}
         {tab === 'account' && <AccountTab org={org} user={user} onChange={load} />}
         {tab === 'team' && <TeamTab org={org} roles={info?.roles} />}
+        {tab === 'signin' && <SsoTab org={org} />}
         {tab === 'details' && <div className="space-y-5"><DetailsTab org={org} onSaved={load} />{org.kind === 'AGENCY' && org.can['org.edit'] && <BrandingForm org={org} onSaved={load} />}</div>}
         {tab === 'documents' && <DocumentsTab org={org} types={info?.documentTypes} onChange={load} />}
       </div>
@@ -426,6 +428,9 @@ const BusinessPortal = ({ kind = 'CORPORATE' }) => {
             {open && <Link to="/signup" state={{ from: location }} className={`${btn} border border-gray-300 bg-white`}>Create account</Link>}
           </div>
         </div>
+        {kind === 'CORPORATE' && info?.sso?.available && (
+          <p className="text-sm text-gray-600 text-center md:text-left">Your company uses Google Workspace or Microsoft sign-in with ZivoPlus? <Link to="/login?company=1" state={{ from: location }} className="font-semibold text-navy-800 underline">Sign in with your work account</Link></p>
+        )}
       </Hero>
     );
   } else if (user.role !== 'CUSTOMER') {

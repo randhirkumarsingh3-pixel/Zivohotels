@@ -269,6 +269,8 @@ export const signupStartApi = (details) => post('/auth/signup/start', details);
 export const loginCodeSendApi = (identifier) => post('/auth/login/code', { identifier });
 export const loginCodeVerifyApi = (identifier, code) => post('/auth/login/code/verify', { identifier, code });
 export const googleSignInApi = (credential) => post('/auth/google', { credential });
+/** Company sign-in: the work email decides the company and provider; returns { url } to go to. */
+export const companySsoStartApi = (email, returnTo) => post('/auth/sso/start', { email, returnTo });
 export const phoneCodeSendApi = (phone) => post('/auth/phone/code', { phone });
 export const phoneVerifyApi = (phone, code) => post('/auth/phone/verify', { phone, code });
 export const logoutAllApi = () => post('/auth/logout-all');
@@ -556,6 +558,13 @@ export const businessApi = {
   decide: (orgId, id, body) => apiFetch(`${API_URL}/business/${orgId}/approvals/${id}`, jsonBody('POST', body), 0).then((r) => r?.data),
   spend: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   spendCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
+  // Company sign-in (single sign-on); shown only once the server reports it (info().sso.available)
+  sso: (orgId) => apiFetch(`${API_URL}/business/${orgId}/sso`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveSso: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/sso`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  addSsoDomain: (orgId, domain) => apiFetch(`${API_URL}/business/${orgId}/sso/domains`, jsonBody('POST', { domain }), 0).then((r) => r?.data),
+  verifySsoDomain: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/sso/domains/${id}/verify`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  removeSsoDomain: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/sso/domains/${id}`, { method: 'DELETE' }, 0),
+  testSso: (orgId) => apiFetch(`${API_URL}/business/${orgId}/sso/test`, jsonBody('POST', {}), 0).then((r) => r?.data),
   commission: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/commission?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
 };
 export const adminBusinessApi = {

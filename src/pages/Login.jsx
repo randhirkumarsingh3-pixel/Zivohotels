@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { loginCodeSendApi, loginCodeVerifyApi, googleSignInApi } from '../services/api';
+import { loginCodeSendApi, loginCodeVerifyApi, googleSignInApi, companySsoStartApi } from '../services/api';
 import usePageTitle from '../hooks/usePageTitle';
 import { AuthShell, ErrorNote, Field, CodeInput, TestCodeNote, ResendButton, GoogleButton } from '../components/auth/AuthParts';
-import { inputClass, primaryButton, returnTo } from '../components/auth/authUtils';
+import { inputClass, primaryButton, returnTo, useAuthConfig } from '../components/auth/authUtils';
 
 /**
  * Guest sign-in, two ways:
  *  - Password: email or mobile number + password
  *  - Code: a 6-digit code to the email or mobile number (no password needed)
- * plus "Continue with Google" once it is set up.
+ * plus "Continue with Google" once it is set up, and company sign-in (Google Workspace or Microsoft,
+ * set up by the company's admin in ZivoPlus for Business) once the server offers it.
  */
 const Login = () => {
   usePageTitle('Log in');
@@ -30,13 +31,16 @@ const Login = () => {
     return () => clearTimeout(t);
   }, []);
 
-  const [mode, setMode] = useState('password');
+  const config = useAuthConfig();
+  const query = new URLSearchParams(location.search);
+  const [mode, setMode] = useState(() => (query.get('company') || query.get('sso_error') ? 'company' : 'password'));
+  const [workEmail, setWorkEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(null); // { to, testCode, channel }
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => query.get('sso_error') || '');
   const [loading, setLoading] = useState(false);
 
   const done = (result) => {
@@ -85,6 +89,18 @@ const Login = () => {
     }
   };
 
+  // Company sign-in: the server finds the company from the email's domain and sends us to its provider
+  const startCompanySignIn = async (e) => {
+    e.preventDefault();
+    setError(''); setLoading(true);
+    try {
+      const r = await companySsoStartApi(workEmail.trim(), back.path);
+      window.location.assign(r?.data?.url);
+    } catch (err) {
+      setError(err.message || 'Company sign-in isn\'t set up for this email.'); setLoading(false);
+    }
+  };
+
   const switchMode = (m) => { setMode(m); setError(''); setCodeSent(null); setCode(''); };
 
   return (
@@ -98,6 +114,19 @@ const Login = () => {
           <strong>Sign in to finish your booking.</strong> Not registered yet? <Link to="/signup" state={location.state} className="font-semibold underline">Create a free account</Link>. Your room and dates are kept.
         </p>
       )}
+      {mode === 'company' ? (
+        <form className="space-y-5" onSubmit={startCompanySignIn}>
+          <div className="flex items-center gap-2 text-sm font-semibold text-navy-900"><Building2 size={18} aria-hidden="true" /> Sign in with your company account</div>
+          <ErrorNote>{error}</ErrorNote>
+          <Field label="Work email" id="lco-email" hint="If your company set up sign-in with Google Workspace or Microsoft, we'll take you to it.">
+            <input id="lco-email" type="email" autoComplete="email" required value={workEmail} onChange={(e) => setWorkEmail(e.target.value)} className={inputClass} placeholder="you@yourcompany.com" autoFocus />
+          </Field>
+          <button type="submit" disabled={loading} className={primaryButton}>
+            {loading ? 'Taking you there…' : <>Continue <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" /></>}
+          </button>
+          <button type="button" onClick={() => switchMode('password')} className="w-full text-sm font-semibold text-navy-700 hover:text-navy-900">Sign in another way</button>
+        </form>
+      ) : (<>
       <div role="tablist" aria-label="How to sign in" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-6">
         {[['password', 'Password'], ['code', 'Sign-in code']].map(([m, label]) => (
           <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)}
@@ -154,6 +183,13 @@ const Login = () => {
       )}
 
       <GoogleButton onCredential={onGoogle} />
+      {config?.companySso && !config?.googleClientId && <div className="flex items-center gap-3 my-5 text-xs text-gray-400"><span className="h-px flex-1 bg-gray-200" />or<span className="h-px flex-1 bg-gray-200" /></div>}
+      {config?.companySso && (
+        <button type="button" onClick={() => switchMode('company')} className="mt-3 w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 rounded-full text-sm font-semibold border border-gray-300 text-gray-800 hover:bg-gray-50">
+          <Building2 size={17} aria-hidden="true" /> Sign in with your company account
+        </button>
+      )}
+      </>)}
       <div className="mt-6 pt-5 border-t border-gray-100 text-center">
         <p className="text-sm text-gray-600">Not registered yet?</p>
         <Link to="/signup" state={location.state}
