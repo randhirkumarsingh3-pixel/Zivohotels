@@ -15,6 +15,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import svc from '../services/business/organisationService.js';
 import { getBusinessSettings, saveBusinessSettings } from '../services/business/businessSettings.js';
 import orgAgreement from '../services/business/orgAgreementService.js';
+import corporateRates from '../services/business/corporateRates.js';
 
 const wrap = (fn) => asyncHandler(async (req, res) => {
   try { await fn(req, res); } catch (e) {
@@ -29,6 +30,11 @@ const router = express.Router();
 router.use(staffOnly);
 router.get('/', wrap(async (req, res) => ok(res, await svc.adminList(req.query))));
 router.get('/:id', wrap(async (req, res) => ok(res, await svc.adminDetail(req.params.id))));
+// Rates agreed between a company and hotels (the hotel accepts them in the extranet)
+router.get('/:id/rates', wrap(async (req, res) => ok(res, await corporateRates.adminList({ organisationId: req.params.id }))));
+router.get('/:id/rates/hotels', wrap(async (req, res) => ok(res, await corporateRates.hotelChoices(req.query.q))));
+router.post('/:id/rates', wrap(async (req, res) => ok(res, await corporateRates.propose(req.params.id, req.user, req.body || {}))));
+router.post('/:id/rates/:rateId/end', wrap(async (req, res) => ok(res, await corporateRates.endRate(req.params.id, req.user, req.params.rateId, req.body || {}))));
 router.post('/:id/decision', wrap(async (req, res) => ok(res, await svc.decide(req.params.id, req.user, req.body || {}))));
 router.put('/:id/terms', wrap(async (req, res) => ok(res, await svc.setTerms(req.params.id, req.user, req.body || {}))));
 router.post('/:id/ledger', wrap(async (req, res) => ok(res, await svc.adminEntry(req.params.id, req.user, req.body || {}))));

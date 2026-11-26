@@ -20,6 +20,84 @@ const btn = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-
 const Pill = ({ s }) => { const [c, l] = STATUS[s] || STATUS.IN_REVIEW; return <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${c}`}>{l}</span>; };
 const openBlob = async (fn, setErr) => { try { const b = await fn(); const u = URL.createObjectURL(b); window.open(u, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(u), 60000); } catch (e) { setErr(e.message); } };
 
+const RATE_STATE = { PROPOSED: ['bg-blue-50 text-blue-800', 'Waiting for the hotel'], ACTIVE: ['bg-green-50 text-green-800', 'In place'], UPCOMING: ['bg-green-50 text-green-800', 'Starts later'], EXPIRED: ['bg-gray-100 text-gray-600', 'Ended (dates passed)'], DECLINED: ['bg-red-50 text-red-800', 'Declined by the hotel'], ENDED: ['bg-gray-100 text-gray-600', 'Ended'] };
+const blankRate = () => ({ hotelId: '', roomTypeId: '', kind: 'PERCENT', value: '', validFrom: new Date().toISOString().slice(0, 10), validTo: '', notes: '' });
+
+/** Rates agreed between this company and hotels: ZivoPlus enters them, the hotel accepts. */
+const AgreedRates = ({ orgId, manage, active }) => {
+  const [rates, setRates] = useState(null);
+  const [q, setQ] = useState('');
+  const [hotels, setHotels] = useState([]);
+  const [f, setF] = useState(blankRate);
+  const [endNote, setEndNote] = useState({});
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState(null);
+  const load = useCallback(() => adminBusinessApi.rates(orgId).then(setRates).catch((e) => setMsg({ ok: false, text: e.message })), [orgId]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!manage || !active) return undefined;
+    const t = setTimeout(() => { adminBusinessApi.rateHotels(orgId, q).then(setHotels).catch(() => {}); }, 250);
+    return () => clearTimeout(t);
+  }, [orgId, q, manage, active]);
+  const hotel = hotels.find((h) => h.id === f.hotelId);
+  const act = async (key, fn, ok) => { setBusy(key); setMsg(null); try { await fn(); await load(); setMsg({ ok: true, text: ok }); return true; } catch (e) { setMsg({ ok: false, text: e.message }); return false; } finally { setBusy(''); } };
+  const propose = async () => {
+    if (await act('propose', () => adminBusinessApi.proposeRate(orgId, { ...f, roomTypeId: f.roomTypeId || null, value: Number(f.value) }), 'Proposed. The hotel was told; it applies once they accept it in their extranet.')) setF(blankRate());
+  };
+  return (
+    <section className="space-y-3">
+      <h3 className="font-bold text-gray-900 text-sm">Agreed hotel rates</h3>
+      <p className="text-xs text-gray-600">A rate agreed with a hotel for this company only. It applies after the hotel accepts it in its extranet; the company gets it or the hotel&apos;s general company discount, whichever is better.</p>
+      {msg && <p role={msg.ok ? 'status' : 'alert'} className={`text-sm px-3 py-2 rounded-lg ${msg.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>{msg.text}</p>}
+      {!rates ? <p className="text-sm text-gray-500">Loading…</p> : rates.length === 0 ? <p className="text-sm text-gray-500">None yet.</p> : (
+        <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+          {rates.map((r) => {
+            const [c, l] = RATE_STATE[r.state] || RATE_STATE.ENDED;
+            return (
+              <li key={r.id} className="p-3 space-y-1.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div><p className="font-semibold text-gray-900">{r.hotel.name}, {r.hotel.city}</p><p className="text-gray-700">{r.label} · {day(r.validFrom)} to {day(r.validTo)}</p></div>
+                  <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${c}`}>{l}</span>
+                </div>
+                {r.notes && <p className="text-xs text-gray-500">Note: {r.notes}</p>}
+                {r.decisionNote && <p className="text-xs text-gray-500">{r.status === 'DECLINED' ? 'Hotel' : 'Reason'}: {r.decisionNote}</p>}
+                {manage && ['PROPOSED', 'ACTIVE'].includes(r.status) && r.state !== 'EXPIRED' && endNote[r.id] === undefined && (
+                  <button type="button" onClick={() => setEndNote({ ...endNote, [r.id]: '' })} className="text-xs font-semibold text-red-700 underline">{r.status === 'PROPOSED' ? 'Withdraw…' : 'End early…'}</button>
+                )}
+                {manage && ['PROPOSED', 'ACTIVE'].includes(r.status) && r.state !== 'EXPIRED' && endNote[r.id] !== undefined && (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="text-xs font-semibold text-gray-700 flex-1 min-w-[10rem]">Why it ends (told to the hotel)<input className={input} value={endNote[r.id] || ''} onChange={(e) => setEndNote({ ...endNote, [r.id]: e.target.value })} /></label>
+                    <button type="button" disabled={!!busy} onClick={() => act(`end-${r.id}`, () => adminBusinessApi.endRate(orgId, r.id, endNote[r.id]), r.status === 'PROPOSED' ? 'Proposal withdrawn.' : 'Rate ended.')} className={`${btn} border border-gray-300 bg-white text-red-700`}>{r.status === 'PROPOSED' ? 'Withdraw' : 'End now'}</button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {manage && active && (
+        <div className="rounded-xl bg-gray-50 p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-900">Propose a rate</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-gray-700">Find the hotel<input className={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hotel name or city" /></label>
+            <label className="text-xs font-semibold text-gray-700">Hotel<select className={input} value={f.hotelId} onChange={(e) => setF({ ...f, hotelId: e.target.value, roomTypeId: '' })}><option value="">Choose…</option>{hotels.map((h) => <option key={h.id} value={h.id}>{h.name}, {h.city}</option>)}</select></label>
+            <label className="text-xs font-semibold text-gray-700">Rooms<select className={input} value={f.roomTypeId} onChange={(e) => setF({ ...f, roomTypeId: e.target.value, kind: e.target.value ? f.kind : 'PERCENT' })} disabled={!hotel}><option value="">All room types</option>{(hotel?.roomTypes || []).map((rt) => <option key={rt.id} value={rt.id}>{rt.name}</option>)}</select></label>
+            <label className="text-xs font-semibold text-gray-700">Rate<select className={input} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="PERCENT">% off the room charges</option><option value="FIXED" disabled={!f.roomTypeId}>Fixed tariff per night (one room type)</option></select></label>
+            <label className="text-xs font-semibold text-gray-700">{f.kind === 'FIXED' ? 'Tariff per night before GST (₹)' : 'Discount %'}<input type="number" min={f.kind === 'FIXED' ? 300 : 1} max={f.kind === 'FIXED' ? 500000 : 60} step={f.kind === 'FIXED' ? 50 : 0.5} className={input} value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} /></label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs font-semibold text-gray-700">From<input type="date" className={input} value={f.validFrom} onChange={(e) => setF({ ...f, validFrom: e.target.value })} /></label>
+              <label className="text-xs font-semibold text-gray-700">To<input type="date" className={input} value={f.validTo} min={f.validFrom} onChange={(e) => setF({ ...f, validTo: e.target.value })} /></label>
+            </div>
+            <label className="text-xs font-semibold text-gray-700 sm:col-span-2">Note for the hotel (optional)<input className={input} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="e.g. 400 room nights a year expected" /></label>
+          </div>
+          {f.kind === 'FIXED' && <p className="text-xs text-gray-500">The room&apos;s tariff per night; extra guests and meals are charged as the rate plan says.</p>}
+          <button type="button" disabled={!!busy || !f.hotelId || !f.value || !f.validTo} onClick={propose} className={`${btn} bg-navy-800 text-white`}>{busy === 'propose' && <Loader2 size={14} className="animate-spin" />} Send to the hotel</button>
+        </div>
+      )}
+    </section>
+  );
+};
+
 const Detail = ({ id, onClose, onChanged }) => {
   const { can } = useAccess();
   const [d, setD] = useState(null);
@@ -108,6 +186,8 @@ const Detail = ({ id, onClose, onChanged }) => {
         </div>
         {manage && <button type="button" disabled={!!busy} onClick={() => run('terms', () => adminBusinessApi.terms(id, { ...terms, creditLimit: terms.creditLimit ?? 0 }), 'Terms saved.')} className={`${btn} bg-navy-800 text-white`}>{busy === 'terms' && <Loader2 size={14} className="animate-spin" />} Save terms</button>}
       </section>
+
+      {d.kind === 'CORPORATE' && <AgreedRates orgId={id} manage={manage} active={d.status === 'ACTIVE'} />}
 
       <section className="space-y-3">
         <h3 className="font-bold text-gray-900 text-sm">Account</h3>

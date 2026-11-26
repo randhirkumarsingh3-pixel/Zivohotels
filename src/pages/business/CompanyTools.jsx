@@ -303,3 +303,66 @@ export const DelegateFields = ({ org, member, members, meId, onChange }) => {
     </div>
   );
 };
+
+// ─── Travellers (duty of care) ───────────────────────────────────────────────
+const WHEN = { staying: ['Staying now', 'Checked in, or due in today, and not yet checked out.'], arriving: ['Arriving', 'Checking in in the coming days.'], recent: ['Checked out', 'Stays that ended in the last days.'] };
+const shortDay = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+
+const TravellerCard = ({ r }) => (
+  <li className="bg-white border border-gray-200 rounded-2xl p-4 space-y-2">
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="font-bold text-gray-900">{r.traveller.name}</p>
+        <p className="text-xs text-gray-600">{[r.traveller.costCenter, r.bookingRef].filter(Boolean).join(' · ')}</p>
+      </div>
+      {r.traveller.phone && <a href={`tel:${r.traveller.phone}`} className="text-sm font-semibold text-navy-800 underline">Call {r.traveller.name.split(' ')[0]}</a>}
+    </div>
+    <div className="text-sm text-gray-800">
+      <p className="font-semibold">{r.hotel.name}</p>
+      <p className="text-gray-600">{r.hotel.address}</p>
+      <p className="text-gray-600">{shortDay(r.checkIn)} to {shortDay(r.checkOut)} · {r.nights} night{r.nights > 1 ? 's' : ''}{r.status === 'CHECKED_IN' ? ' · checked in' : ''}</p>
+    </div>
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {r.hotel.phone && <a href={`tel:${r.hotel.phone}`} className="font-semibold text-navy-800 underline">Hotel front desk</a>}
+      {r.hotel.latitude != null && r.hotel.longitude != null && <a href={`https://www.google.com/maps/search/?api=1&query=${r.hotel.latitude},${r.hotel.longitude}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-navy-800 underline">Map</a>}
+    </div>
+  </li>
+);
+
+export const TravellersTab = ({ org }) => {
+  const [q, setQ] = useState({ days: '7', city: '' });
+  const [data, setData] = useState(null);
+  const [msg, setMsg] = useState(null);
+  useEffect(() => { setData(null); businessApi.travellers(org.id, q).then(setData).catch((e) => setMsg({ ok: false, text: e.message })); }, [org.id, q]);
+  const csv = async () => {
+    try { const b = await businessApi.travellersCsv(org.id, q); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `${org.code}-travellers.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 30000); } catch (e) { setMsg({ ok: false, text: e.message }); }
+  };
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm font-semibold text-gray-800">Days ahead and back<select className={input} value={q.days} onChange={(e) => setQ({ ...q, days: e.target.value })}>{['3', '7', '14', '30'].map((d) => <option key={d} value={d}>{d} days</option>)}</select></label>
+        <label className="text-sm font-semibold text-gray-800">City<select className={input} value={q.city} onChange={(e) => setQ({ ...q, city: e.target.value })}><option value="">All cities</option>{(data?.cities || []).map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+        <button type="button" onClick={csv} className={`${btn} border border-gray-300 bg-white`}><Download size={15} /> Download CSV</button>
+      </div>
+      <Note msg={msg} />
+      {!data ? <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Loading…</p> : (
+        <>
+          <section className="bg-white border border-gray-200 rounded-2xl p-5">
+            <h3 className="font-bold text-gray-900">{data.staying.length ? `${data.staying.length} traveller${data.staying.length > 1 ? 's' : ''} away tonight` : 'No one is away tonight'}</h3>
+            {data.byCity.length > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {data.byCity.map((c) => <li key={c.city}><button type="button" onClick={() => setQ({ ...q, city: q.city === c.city ? '' : c.city })} className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${q.city === c.city ? 'border-navy-800 bg-navy-50 text-navy-900' : 'border-gray-200 text-gray-700'}`}>{c.city} · {c.count}</button></li>)}
+              </ul>
+            )}
+          </section>
+          {Object.entries(WHEN).map(([k, [title, hint]]) => (
+            <section key={k} className="space-y-2">
+              <div><h3 className="font-bold text-gray-900">{title} <span className="text-gray-500 font-normal">({data[k].length})</span></h3><p className="text-xs text-gray-500">{hint}</p></div>
+              {data[k].length === 0 ? <p className="text-sm text-gray-500">No one.</p> : <ul className="grid gap-3 md:grid-cols-2">{data[k].map((r) => <TravellerCard key={r.bookingId} r={r} />)}</ul>}
+            </section>
+          ))}
+        </>
+      )}
+    </div>
+  );
+};

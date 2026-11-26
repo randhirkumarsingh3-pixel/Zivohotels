@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Briefcase, Handshake, Loader2, Save } from 'lucide-react';
+import { Briefcase, Handshake, Loader2, Save, FileSignature, CheckCircle2, XCircle } from 'lucide-react';
 import { hotelBusinessRatesApi } from '../../services/api';
 import { useExtranet } from '../context/ExtranetContext';
 import useAccess from '../../hooks/useAccess';
@@ -12,6 +12,52 @@ import useAccess from '../../hooks/useAccess';
  */
 const inr = (n) => `₹${Math.round(Number(n || 0)).toLocaleString('en-IN')}`;
 const input = 'mt-1 w-28 px-3 py-2 border border-gray-300 rounded-lg text-base sm:text-sm disabled:bg-gray-50';
+
+const day = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const STATE = { PROPOSED: ['bg-blue-50 text-blue-800', 'Waiting for you'], ACTIVE: ['bg-green-50 text-green-800', 'In place'], UPCOMING: ['bg-green-50 text-green-800', 'Starts later'], EXPIRED: ['bg-gray-100 text-gray-600', 'Ended'], DECLINED: ['bg-red-50 text-red-800', 'You declined'], ENDED: ['bg-gray-100 text-gray-600', 'Ended by ZivoPlus'] };
+
+/** Rates ZivoPlus agreed with a company for this property: they apply once accepted here. */
+const CompanyContracts = ({ hotelId, edit, addToast }) => {
+  const [list, setList] = useState(null);
+  const [note, setNote] = useState({});
+  const [busy, setBusy] = useState('');
+  const load = useCallback(() => hotelBusinessRatesApi.contracts(hotelId).then(setList).catch((e) => addToast(e.message, 'error')), [hotelId, addToast]);
+  useEffect(() => { load(); }, [load]);
+  if (!list || list.length === 0) return null;
+  const decide = async (r, decision) => {
+    setBusy(`${decision}-${r.id}`);
+    try { await hotelBusinessRatesApi.decideContract(hotelId, r.id, decision, note[r.id]); addToast(decision === 'ACCEPT' ? `Accepted: ${r.organisation.name} gets this rate from ${day(r.validFrom)}` : 'Declined. ZivoPlus was told.', 'success'); await load(); } catch (e) { addToast(e.message, 'error'); } finally { setBusy(''); }
+  };
+  const waiting = list.filter((r) => r.status === 'PROPOSED').length;
+  return (
+    <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+      <h2 className="font-bold text-gray-900 flex items-center gap-2"><FileSignature size={18} className="text-brand-700" aria-hidden="true" /> Company rates{waiting ? <span className="text-xs font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded">{waiting} to answer</span> : null}</h2>
+      <p className="text-sm text-gray-600">Rates ZivoPlus agreed with a company for your property. They apply to that company&apos;s bookings only after you accept them; the company gets them or your company discount above, whichever is lower for them.</p>
+      <ul className="divide-y divide-gray-100">
+        {list.map((r) => {
+          const [c, l] = STATE[r.state] || STATE.ENDED;
+          return (
+            <li key={r.id} className="py-3 space-y-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div><p className="font-semibold text-gray-900">{r.organisation.name}</p><p className="text-sm text-gray-700">{r.label} · {day(r.validFrom)} to {day(r.validTo)}</p></div>
+                <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${c}`}>{l}</span>
+              </div>
+              {r.notes && <p className="text-xs text-gray-600">From ZivoPlus: {r.notes}</p>}
+              {r.decisionNote && r.status !== 'PROPOSED' && <p className="text-xs text-gray-500">Note: {r.decisionNote}</p>}
+              {edit && r.status === 'PROPOSED' && (
+                <div className="flex flex-wrap items-end gap-2">
+                  <button type="button" disabled={!!busy} onClick={() => decide(r, 'ACCEPT')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-bold disabled:opacity-50">{busy === `ACCEPT-${r.id}` ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} Accept</button>
+                  <label className="text-xs font-semibold text-gray-700 flex-1 min-w-[10rem]">Reason, to decline<input className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-base sm:text-sm" value={note[r.id] || ''} onChange={(e) => setNote({ ...note, [r.id]: e.target.value })} /></label>
+                  <button type="button" disabled={!!busy} onClick={() => decide(r, 'DECLINE')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-red-700 text-sm font-bold disabled:opacity-50"><XCircle size={14} /> Decline</button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
 
 const ExtranetBusinessRates = () => {
   const { hotelId, addToast } = useExtranet();
@@ -59,6 +105,8 @@ const ExtranetBusinessRates = () => {
 
       {edit && <button type="button" onClick={save} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold disabled:opacity-50">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save</button>}
       <p className="text-xs text-gray-500">You fund these discounts: ZivoPlus&apos; commission is charged on the discounted price.</p>
+
+      <CompanyContracts hotelId={hotelId} edit={edit} addToast={addToast} />
     </div>
   );
 };

@@ -558,6 +558,9 @@ export const businessApi = {
   decide: (orgId, id, body) => apiFetch(`${API_URL}/business/${orgId}/approvals/${id}`, jsonBody('POST', body), 0).then((r) => r?.data),
   spend: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   spendCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
+  travellers: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/travellers?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  travellersCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/travellers.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
+  agreedRates: (orgId) => apiFetch(`${API_URL}/business/${orgId}/agreed-rates`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
   // Company sign-in (single sign-on); shown only once the server reports it (info().sso.available)
   sso: (orgId) => apiFetch(`${API_URL}/business/${orgId}/sso`, { cache: 'no-store' }, 0).then((r) => r?.data),
   saveSso: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/sso`, jsonBody('PUT', body), 0).then((r) => r?.data),
@@ -580,10 +583,17 @@ export const adminBusinessApi = {
   refreshAgreement: (id) => apiFetch(`${ADMIN_BASE}/organisations/${id}/agreement/refresh`, jsonBody('POST', {}), 0).then((r) => r?.data),
   agreementPdf: (id, audit = false) => apiFetch(`${ADMIN_BASE}/organisations/${id}/agreement/pdf${audit ? '?audit=1' : ''}`, { responseType: 'blob' }, 0),
   saveSettings: (body) => apiFetch(`${ADMIN_BASE}/business-settings`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  // Rates agreed between a company and hotels (the hotel accepts them in the extranet)
+  rates: (id) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  rateHotels: (id, q) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/hotels?q=${encodeURIComponent(q || '')}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  proposeRate: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates`, jsonBody('POST', body), 0).then((r) => r?.data),
+  endRate: (id, rateId, note) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/${rateId}/end`, jsonBody('POST', { note }), 0).then((r) => r?.data),
 };
 export const hotelBusinessRatesApi = {
   get: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   save: (hotelId, body) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  contracts: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/contracts`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  decideContract: (hotelId, rateId, decision, note) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/contracts/${rateId}/decision`, jsonBody('POST', { decision, note }), 0).then((r) => r?.data),
 };
 
 // Admin operations: System control, System health, Demand forecasting, Revenue per search,

@@ -135,6 +135,7 @@ model Hotel {
   policyRecords      HotelPolicy[]
   stayRequests       StayRequest[]
   businessRate       HotelBusinessRate?
+  corporateRates     CorporateRate[]
   /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
   /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
   hourlySettings     Json?
@@ -1858,6 +1859,7 @@ model Organisation {
   bookings           Booking[]
   agreement          OrgAgreement?
   tripRequests       TripRequest[]
+  corporateRates     CorporateRate[]
 
   @@index([kind, status])
   @@index([pan])
@@ -1993,4 +1995,34 @@ model TripRequest {
 
   @@index([organisationId, status])
   @@index([travellerMemberId])
+}
+
+/// ZivoPlus for Business: a rate agreed between a company and a hotel. ZivoPlus proposes it (after
+/// talking to both); it applies once the hotel accepts. PERCENT: off the room charges before GST
+/// (all rooms, or one room type); FIXED: the room tariff per night before GST for one room type
+/// (extra guests and meals as the rate plan). The company gets this or the hotel's general company
+/// discount, whichever is better for it. roomTypeName keeps the name the rate was agreed for.
+model CorporateRate {
+  id             String       @id @default(uuid())
+  organisationId String
+  hotelId        String
+  roomTypeId     String?
+  roomTypeName   String?
+  kind           String       @default("PERCENT")
+  value          Decimal      @db.Decimal(10, 2)
+  validFrom      DateTime     @db.Date
+  validTo        DateTime     @db.Date
+  status         String       @default("PROPOSED")
+  notes          String?
+  proposedById   String
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  hotel          Hotel        @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, hotelId, status])
+  @@index([hotelId, status])
 }
