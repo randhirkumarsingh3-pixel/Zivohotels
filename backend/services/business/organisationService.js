@@ -180,7 +180,7 @@ export const viewOrganisation = async (orgId, user) => {
   const { org, member } = await membershipFor(orgId, user);
   const s = await getBusinessSettings();
   return {
-    ...orgView(org, s), myRole: member.role,
+    ...orgView(org, s), myRole: member.role, myMemberId: member.id,
     can: Object.fromEntries(Object.keys(CAN).map((k) => [k, can(member, k)])),
     account: can(member, 'account.view') ? await accountSummary(org, { settings: s }) : null,
   };
@@ -312,7 +312,7 @@ export const readDocument = async (orgId, docId, { user, staff = false }) => {
 };
 
 // ─── Members ─────────────────────────────────────────────────────────────────
-const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, grade: m.grade || null, approverMemberId: m.approverMemberId || null, costCenter: m.costCenter || null, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
+const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, grade: m.grade || null, approverMemberId: m.approverMemberId || null, costCenter: m.costCenter || null, delegateMemberId: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateMemberId : null, delegateUntil: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateUntil : null, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
 
 export const listMembers = async (orgId, user) => {
   const { org } = await membershipFor(orgId, user, 'members.view');
@@ -383,6 +383,106 @@ export const updateMember = async (orgId, actor, memberId, { role, status, grade
   const u = await prisma.orgMember.update({ where: { id: m.id }, data, include: { user: { select: { id: true, name: true, email: true, status: true } } } });
   await audit('ORG_MEMBER_UPDATED', org.id, actor.id, { memberId, ...data });
   return memberView(u);
+};
+
+/**
+ * Away: someone else approves this member's trips until a date. The member sets it for
+ * themselves, or an admin for anyone. delegateMemberId null ends it.
+ */
+export const setDelegate = async (orgId, actor, memberId, { delegateMemberId, delegateUntil } = {}) => {
+  const { org, member: me } = await membershipFor(orgId, actor);
+  const m = await prisma.orgMember.findFirst({ where: { id: String(memberId), organisationId: org.id } });
+  if (!m) throw fail('Member not found', 404);
+  if (m.id !== me.id && !can(me, 'members.manage')) throw fail('Only an admin can set a stand-in for someone else.', 403);
+  let data = { delegateMemberId: null, delegateUntil: null };
+  if (delegateMemberId) {
+    if (delegateMemberId === m.id) throw fail('Choose someone else as the stand-in.');
+    const d = await prisma.orgMember.findFirst({ where: { id: String(delegateMemberId), organisationId: org.id, status: 'ACTIVE' } });
+    if (!d) throw fail('Choose a stand-in from your company.');
+    const until = new Date(delegateUntil);
+    if (Number.isNaN(+until) || until <= new Date()) throw fail('Choose until when the stand-in approves (a future date).');
+    if (until > new Date(Date.now() + 90 * 86400000)) throw fail('A stand-in can be set for up to 90 days.');
+    data = { delegateMemberId: d.id, delegateUntil: until };
+  }
+  const u = await prisma.orgMember.update({ where: { id: m.id }, data, include: { user: { select: { id: true, name: true, email: true, status: true } } } });
+  await audit('ORG_DELEGATE_SET', org.id, actor.id, { memberId: m.id, ...data });
+  return memberView(u);
+};
+
+// ─── Import from CSV (companies' HR lists) ───────────────────────────────────
+const parseCsv = (text) => {
+  const rows = []; let row = []; let cell = ''; let q = false;
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  for (let i = 0; i < src.length; i += 1) {
+    const c = src[i];
+    if (q) {
+      if (c === '"' && src[i + 1] === '"') { cell += '"'; i += 1; } else if (c === '"') q = false; else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && src[i + 1] === '\n') i += 1;
+      row.push(cell); cell = ''; if (row.some((x) => x.trim())) rows.push(row); row = [];
+    } else cell += c;
+  }
+  row.push(cell); if (row.some((x) => x.trim())) rows.push(row);
+  return rows;
+};
+const HEADERS = { name: 'name', email: 'email', role: 'role', grade: 'grade', approver_email: 'approverEmail', approver: 'approverEmail', cost_centre: 'costCenter', cost_center: 'costCenter', costcentre: 'costCenter' };
+
+/**
+ * Imports people from CSV: name, email, role (default TRAVELLER), grade, approver_email,
+ * cost_centre. commit=false only checks and shows what would happen. New people are invited;
+ * existing members get their grade, approver and cost centre updated (their role isn't changed).
+ */
+export const importMembers = async (orgId, actor, { csv, commit = false } = {}) => {
+  const { org } = await membershipFor(orgId, actor, 'members.manage');
+  if (org.status !== 'ACTIVE') throw fail('You can add people once ZivoPlus approves your organisation.', 409);
+  const rows = parseCsv(csv);
+  if (rows.length < 2) throw fail('Paste a CSV with a header row (name, email, role, grade, approver_email, cost_centre) and at least one person.');
+  if (rows.length > 501) throw fail('Up to 500 people at a time.');
+  const head = rows[0].map((h) => HEADERS[String(h).trim().toLowerCase().replace(/\s+/g, '_')] || null);
+  if (!head.includes('email')) throw fail('The header row needs an "email" column.');
+  const grades = new Set((org.settings?.policy?.grades || [{ key: 'STANDARD' }, { key: 'SENIOR' }]).map((g) => g.key));
+  const existing = await prisma.orgMember.findMany({ where: { organisationId: org.id }, include: { user: { select: { email: true, role: true } } } });
+  const byEmail = new Map(existing.map((m) => [m.user.email.toLowerCase(), m]));
+  const seen = new Set();
+  const out = rows.slice(1).map((cells, i) => {
+    const r = {}; head.forEach((k, j) => { if (k) r[k] = String(cells[j] ?? '').trim(); });
+    const line = { row: i + 2, name: r.name || '', email: (r.email || '').toLowerCase(), role: (r.role || 'TRAVELLER').toUpperCase(), grade: r.grade ? r.grade.toUpperCase().replace(/\s+/g, '_') : null, approverEmail: (r.approverEmail || '').toLowerCase() || null, costCenter: r.costCenter || null, errors: [] };
+    if (!isEmail(line.email)) line.errors.push('email is missing or not valid');
+    if (seen.has(line.email)) line.errors.push('this email is listed twice');
+    seen.add(line.email);
+    if (!ROLES[line.role]) line.errors.push(`role must be one of ${Object.keys(ROLES).join(', ')}`);
+    if (line.grade && !grades.has(line.grade)) line.errors.push(`grade "${r.grade}" isn't in your travel policy`);
+    const ex = byEmail.get(line.email);
+    if (!ex && line.name.length < 2) line.errors.push('name is needed for new people');
+    line.action = line.errors.length ? 'ERROR' : ex ? 'UPDATE' : 'INVITE';
+    return line;
+  });
+  const fileEmails = new Set(out.filter((l) => l.action !== 'ERROR').map((l) => l.email));
+  for (const l of out) {
+    if (l.approverEmail && l.approverEmail === l.email) l.errors.push('someone can\'t approve their own trips');
+    else if (l.approverEmail && !byEmail.has(l.approverEmail) && !fileEmails.has(l.approverEmail)) l.errors.push('approver_email isn\'t in your company or this file');
+    if (l.errors.length) l.action = 'ERROR';
+  }
+  const summary = { invite: out.filter((l) => l.action === 'INVITE').length, update: out.filter((l) => l.action === 'UPDATE').length, errors: out.filter((l) => l.action === 'ERROR').length };
+  if (!commit) return { preview: true, summary, rows: out };
+  if (summary.errors) throw Object.assign(fail(`Fix the ${summary.errors} row${summary.errors === 1 ? '' : 's'} with errors first (or remove them).`), { rows: out });
+  // 1. invite the new people
+  for (const l of out.filter((x) => x.action === 'INVITE')) {
+    await inviteMember(org.id, actor, { email: l.email, name: l.name, role: l.role });
+  }
+  // 2. grades, cost centres and approvers for everyone in the file
+  const members = await prisma.orgMember.findMany({ where: { organisationId: org.id }, include: { user: { select: { email: true } } } });
+  const idByEmail = new Map(members.map((m) => [m.user.email.toLowerCase(), m.id]));
+  for (const l of out) {
+    const data = {};
+    if (l.grade) data.grade = l.grade;
+    if (l.costCenter) data.costCenter = l.costCenter.slice(0, 60);
+    if (l.approverEmail) data.approverMemberId = idByEmail.get(l.approverEmail);
+    if (Object.keys(data).length) await prisma.orgMember.update({ where: { id: idByEmail.get(l.email) }, data });
+  }
+  await audit('ORG_MEMBERS_IMPORTED', org.id, actor.id, summary);
+  return { preview: false, summary, rows: out };
 };
 
 export const removeMember = async (orgId, actor, memberId) => {
@@ -573,5 +673,5 @@ export const adminEntry = async (id, admin, { type, amount, note, reference } = 
 export default {
   PORTAL, ROLES, DOC_TYPES, STATUSES, can, publicInfo, apply, myOrganisations, membershipFor, viewOrganisation, updateOrganisation,
   addDocument, removeDocument, readDocument, listMembers, inviteMember, updateMember, removeMember, viewAccount, accountFor,
-  startTopup, confirmTopup, rememberTopup, adminList, adminDetail, decide, setTerms, adminEntry,
+  startTopup, confirmTopup, rememberTopup, setDelegate, importMembers, adminList, adminDetail, decide, setTerms, adminEntry,
 };

@@ -22,16 +22,18 @@ const openBlob = async (fn, setMsg) => {
 };
 
 // ─── Book ────────────────────────────────────────────────────────────────────
-export const BookTab = ({ org, onBooked }) => {
+export const BookTab = ({ org, onBooked, prefill = null }) => {
   const agency = org.kind === 'AGENCY';
   const [hotels, setHotels] = useState(null);
-  const [q, setQ] = useState('');
-  const [stay, setStay] = useState({ checkIn: plusDays(7), checkOut: plusDays(8), rooms: 1, adults: 2, children: 0 });
+  const [q, setQ] = useState(prefill?.city || '');
+  const [stay, setStay] = useState(() => (prefill
+    ? { checkIn: String(prefill.checkIn).slice(0, 10), checkOut: String(prefill.checkOut).slice(0, 10), rooms: prefill.rooms || 1, adults: prefill.adults || 1, children: 0 }
+    : { checkIn: plusDays(7), checkOut: plusDays(8), rooms: 1, adults: 2, children: 0 }));
   const [hotel, setHotel] = useState(null);
   const [pick, setPick] = useState(null); // { roomTypeId, ratePlanId }
   const [pricing, setPricing] = useState({ model: '', markupPct: '' });
   const [quote, setQuote] = useState(null);
-  const [traveller, setTraveller] = useState({ guestName: '', guestPhone: '', customerEmail: '', clientReference: '', travellerMemberId: '', policyReason: '' });
+  const [traveller, setTraveller] = useState({ guestName: prefill?.traveller || '', guestPhone: '', customerEmail: '', clientReference: '', travellerMemberId: prefill?.travellerMemberId || '', policyReason: '' });
   const [colleagues, setColleagues] = useState([]);
   const forOthers = !agency && org.myRole !== 'TRAVELLER';
   useEffect(() => { if (forOthers) businessApi.members(org.id).then((ms) => setColleagues(ms.filter((x) => x.status === 'ACTIVE'))).catch(() => {}); }, [org.id, forOthers]);
@@ -55,7 +57,8 @@ export const BookTab = ({ org, onBooked }) => {
     roomLines: Array.from({ length: Number(stay.rooms) || 1 }, () => ({ roomTypeId: pick.roomTypeId, ratePlanId: pick.ratePlanId, adults: Number(stay.adults) || 1, children: Number(stay.children) || 0 })),
     ...(agency ? { model: pricing.model, markupPct: pricing.model === 'NET' && pricing.markupPct !== '' ? Number(pricing.markupPct) : undefined } : {}),
     ...(!agency && traveller.travellerMemberId ? { travellerMemberId: traveller.travellerMemberId } : {}),
-  }), [hotel, stay, pick, pricing, agency, traveller.travellerMemberId]);
+    ...(prefill?.id ? { tripRequestId: prefill.id } : {}),
+  }), [hotel, stay, pick, pricing, agency, traveller.travellerMemberId, prefill?.id]);
 
   const getQuote = async () => {
     setBusy('quote'); setMsg(null); setQuote(null);
@@ -90,6 +93,7 @@ export const BookTab = ({ org, onBooked }) => {
 
   return (
     <div className="space-y-5">
+      {prefill && <p className="text-sm px-4 py-3 rounded-xl bg-blue-50 text-blue-900">Booking a trip request: <b>{prefill.traveller}</b>, {prefill.city}, {String(prefill.checkIn).slice(0, 10)} to {String(prefill.checkOut).slice(0, 10)} · {prefill.purpose}{prefill.notes ? ` · ${prefill.notes}` : ''}</p>}
       <section className="bg-white border border-gray-200 rounded-2xl p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="text-sm font-semibold text-gray-800">Check-in<input type="date" className={input} min={plusDays(0)} value={stay.checkIn} onChange={(e) => { setStay({ ...stay, checkIn: e.target.value }); setQuote(null); }} /></label>
         <label className="text-sm font-semibold text-gray-800">Check-out<input type="date" className={input} min={stay.checkIn} value={stay.checkOut} onChange={(e) => { setStay({ ...stay, checkOut: e.target.value }); setQuote(null); }} /></label>

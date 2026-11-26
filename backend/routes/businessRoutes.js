@@ -24,13 +24,18 @@
  *  GET    /:orgId/approvals                   trips waiting for my approval
  *  POST   /:orgId/approvals/:id               { decision: APPROVE|REJECT, note }
  *  GET    /:orgId/reports/spend?from=&to=     spend, savings, policy compliance; /reports/spend.csv with GST details
+ *  POST   /:orgId/members/import              { csv, commit } preview or import people (companies' HR lists)
+ *  PUT    /:orgId/members/:memberId/delegate  { delegateMemberId, delegateUntil } a stand-in approver while away
+ *  GET    /:orgId/trips?status=               POST { city, checkIn, checkOut, rooms, adults, purpose, notes, travellerMemberId? }
+ *  POST   /:orgId/trips/:id/decline { note }  POST /:orgId/trips/:id/cancel
  *  GET    /:orgId/agreement                   the agreement with ZivoPlus; POST /code, /sign { name, code, consent, contentHash },
  *                                             /aadhaar { consent, contentHash }; GET /pdf, /audit-trail
  */
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { protect } from '../middleware/authMiddleware.js';
-import svc, { setBranding, brandingFor, membershipFor, setLogo, removeLogo } from '../services/business/organisationService.js';
+import svc, { setBranding, brandingFor, membershipFor, setLogo, removeLogo, setDelegate, importMembers } from '../services/business/organisationService.js';
+import trips from '../services/business/tripRequests.js';
 import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
 import { policyOf, savePolicy } from '../services/business/travelPolicy.js';
@@ -63,6 +68,13 @@ router.get('/:orgId/documents/:docId/file', wrap(async (req, res) => {
 
 router.get('/:orgId/members', wrap(async (req, res) => ok(res, await svc.listMembers(req.params.orgId, req.user))));
 router.post('/:orgId/members', wrap(async (req, res) => ok(res, await svc.inviteMember(req.params.orgId, req.user, req.body || {}), 201)));
+router.post('/:orgId/members/import', wrap(async (req, res) => {
+  try { ok(res, await importMembers(req.params.orgId, req.user, req.body || {})); } catch (e) {
+    if (e.rows) return res.status(e.statusCode || 400).json({ success: false, message: e.message, rows: e.rows });
+    throw e;
+  }
+}));
+router.put('/:orgId/members/:memberId/delegate', wrap(async (req, res) => ok(res, await setDelegate(req.params.orgId, req.user, req.params.memberId, req.body || {}))));
 router.patch('/:orgId/members/:memberId', wrap(async (req, res) => ok(res, await svc.updateMember(req.params.orgId, req.user, req.params.memberId, req.body || {}))));
 router.delete('/:orgId/members/:memberId', wrap(async (req, res) => { await svc.removeMember(req.params.orgId, req.user, req.params.memberId); ok(res, { removed: true }); }));
 
@@ -101,6 +113,10 @@ router.get('/:orgId/reports/spend.csv', wrap(async (req, res) => {
 }));
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
+router.get('/:orgId/trips', wrap(async (req, res) => ok(res, await trips.listTrips(req.params.orgId, req.user, req.query))));
+router.post('/:orgId/trips', wrap(async (req, res) => ok(res, await trips.submitTrip(req.params.orgId, req.user, req.body || {}), 201)));
+router.post('/:orgId/trips/:id/decline', wrap(async (req, res) => ok(res, await trips.declineTrip(req.params.orgId, req.user, req.params.id, req.body || {}))));
+router.post('/:orgId/trips/:id/cancel', wrap(async (req, res) => ok(res, await trips.cancelTrip(req.params.orgId, req.user, req.params.id))));
 router.get('/:orgId/incentives', wrap(async (req, res) => { const { incentiveProgress } = await import('../services/business/agentIncentives.js'); ok(res, await incentiveProgress(req.params.orgId, req.user)); }));
 router.get('/:orgId/agreement', wrap(async (req, res) => ok(res, await orgAgreement.viewOrgAgreement(req.params.orgId, req.user))));
 router.post('/:orgId/agreement/code', wrap(async (req, res) => ok(res, await orgAgreement.requestOrgSigningCode(req.params.orgId, req.user, ctx(req)))));

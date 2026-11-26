@@ -40,6 +40,7 @@ export const PolicyTab = ({ org }) => {
             </label>
           ))}
         </fieldset>
+        <label className="block text-sm font-semibold text-gray-800 max-w-sm">Finance also approves trips above (₹, total; empty: never)<input type="number" min="1000" className={input} disabled={!edit} value={p.financeApprovalAbove ?? ''} onChange={(e) => setP({ ...p, financeApprovalAbove: e.target.value === '' ? null : e.target.value })} /></label>
         <label className="flex items-center gap-2 text-sm text-gray-800"><input type="checkbox" disabled={!edit} checked={p.requireReason} onChange={(e) => setP({ ...p, requireReason: e.target.checked })} /> Ask for a reason when a stay is over the limit</label>
         <label className="block text-sm font-semibold text-gray-800">Metro cities (the metro limit applies here)<textarea rows={2} className={input} disabled={!edit} value={p.metroText} onChange={(e) => setP({ ...p, metroText: e.target.value })} /></label>
       </section>
@@ -114,6 +115,7 @@ export const ApprovalsTab = ({ org, onChange }) => {
               </div>
               <p className="text-lg font-black text-gray-900">{inr(b.total)}</p>
             </div>
+            {(b.business?.approval?.steps || []).length > 1 && <p className="text-xs text-gray-700">Step {(b.business.approval.current || 0) + 1} of {b.business.approval.steps.length}: <b>{b.business.approval.steps[b.business.approval.current || 0].label} approval</b>{(b.business.approval.history || []).map((h) => ` · ${h.label} approved by ${h.by}`).join('')}</p>}
             {pol && <p className={`text-sm px-3 py-2 rounded-lg ${pol.within ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>{pol.within ? `Within policy (${inr(pol.perNight)} a night, limit ${inr(pol.cap)})` : `Over policy: ${inr(pol.perNight)} a night, limit ${inr(pol.cap)} for ${pol.gradeName}.`}{pol.reason ? ` Reason: ${pol.reason}` : ''}</p>}
             <p className="text-xs text-gray-500">Held until {new Date(b.heldUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}; released if not approved by then.</p>
             <label className="block text-sm font-semibold text-gray-800">Note (needed to reject)<input className={input} value={notes[b.id] || ''} onChange={(e) => setNotes({ ...notes, [b.id]: e.target.value })} /></label>
@@ -178,6 +180,126 @@ export const ReportsTab = ({ org }) => {
           )}
         </>
       )}
+    </div>
+  );
+};
+
+// ─── Trip requests ───────────────────────────────────────────────────────────
+const TRIP = { SUBMITTED: ['bg-amber-50 text-amber-900', 'Waiting for the travel desk'], BOOKED: ['bg-green-50 text-green-800', 'Booked'], DECLINED: ['bg-red-50 text-red-700', 'Declined'], CANCELLED: ['bg-gray-100 text-gray-600', 'Cancelled'] };
+const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+
+/** Employees ask for trips; the travel desk (bookers, admins) books them or declines. */
+export const TripsTab = ({ org, onBook }) => {
+  const [data, setData] = useState(null);
+  const [f, setF] = useState({ city: '', checkIn: plus(7), checkOut: plus(8), rooms: 1, adults: 1, purpose: '', notes: '' });
+  const [colleagues, setColleagues] = useState([]);
+  const [notes, setNotes] = useState({});
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState(null);
+  const load = useCallback(() => businessApi.trips(org.id).then(setData).catch((e) => setMsg({ ok: false, text: e.message })), [org.id]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (data?.desk) businessApi.members(org.id).then((ms) => setColleagues(ms.filter((x) => x.status === 'ACTIVE'))).catch(() => {}); }, [org.id, data?.desk]);
+  const act = async (key, fn, ok) => { setBusy(key); setMsg(null); try { await fn(); await load(); setMsg({ ok: true, text: ok }); } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(''); } };
+  const submit = (e) => { e.preventDefault(); act('new', async () => { await businessApi.requestTrip(org.id, f); setF({ ...f, city: '', purpose: '', notes: '' }); }, 'Request sent to the travel desk. You\'ll be told when it\'s booked.'); };
+  if (!data) return <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Loading…</p>;
+  const waiting = data.trips.filter((t) => t.status === 'SUBMITTED');
+  const others = data.trips.filter((t) => t.status !== 'SUBMITTED');
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  return (
+    <div className="space-y-5">
+      <form onSubmit={submit} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+        <h3 className="font-bold text-gray-900">Request a trip</h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <label className="text-sm font-semibold text-gray-800 lg:col-span-2">City<input className={input} required value={f.city} onChange={set('city')} /></label>
+          <label className="text-sm font-semibold text-gray-800">Check-in<input type="date" className={input} min={plus(0)} required value={f.checkIn} onChange={set('checkIn')} /></label>
+          <label className="text-sm font-semibold text-gray-800">Check-out<input type="date" className={input} min={f.checkIn} required value={f.checkOut} onChange={set('checkOut')} /></label>
+          <label className="text-sm font-semibold text-gray-800">Rooms<input type="number" min="1" max="8" className={input} value={f.rooms} onChange={set('rooms')} /></label>
+          <label className="text-sm font-semibold text-gray-800">Guests per room<input type="number" min="1" max="6" className={input} value={f.adults} onChange={set('adults')} /></label>
+          <label className="text-sm font-semibold text-gray-800 lg:col-span-3">Purpose<input className={input} required value={f.purpose} onChange={set('purpose')} placeholder="e.g. Client meeting at Acme" /></label>
+          <label className="text-sm font-semibold text-gray-800 lg:col-span-3">Notes (optional)<input className={input} value={f.notes} onChange={set('notes')} placeholder="Area, hotel you prefer…" /></label>
+          {data.desk && colleagues.length > 0 && <label className="text-sm font-semibold text-gray-800 lg:col-span-2">For<select className={input} value={f.travellerMemberId || ''} onChange={set('travellerMemberId')}><option value="">Me</option>{colleagues.map((m) => <option key={m.id} value={m.id}>{m.user.name}</option>)}</select></label>}
+        </div>
+        <button type="submit" disabled={busy === 'new'} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{busy === 'new' && <Loader2 size={15} className="animate-spin" />} Send request</button>
+      </form>
+      <Note msg={msg} />
+      <section className="space-y-3">
+        <h3 className="font-bold text-gray-900">{data.desk ? `Waiting for the travel desk (${waiting.length})` : 'Your requests'}</h3>
+        {waiting.length === 0 && <p className="text-sm text-gray-600">Nothing waiting.</p>}
+        {waiting.map((t) => (
+          <div key={t.id} className="bg-white border border-gray-200 rounded-2xl p-4 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-1"><p className="font-semibold text-gray-900">{t.traveller} · {t.city}</p><p className="text-sm text-gray-600">{day(t.checkIn)} to {day(t.checkOut)} · {t.rooms} room{t.rooms > 1 ? 's' : ''}, {t.adults} guest{t.adults > 1 ? 's' : ''} per room</p></div>
+            <p className="text-sm text-gray-700">{t.purpose}{t.notes ? ` · ${t.notes}` : ''}{t.requester !== t.traveller ? ` · asked by ${t.requester}` : ''}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              {data.desk && <button type="button" onClick={() => onBook(t)} className={`${btn} bg-navy-800 text-white`}>Book this trip</button>}
+              {data.desk && <><input aria-label="Reason to decline" placeholder="Reason to decline" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" value={notes[t.id] || ''} onChange={(e) => setNotes({ ...notes, [t.id]: e.target.value })} /><button type="button" disabled={!!busy} onClick={() => act(t.id, () => businessApi.declineTrip(org.id, t.id, notes[t.id] || ''), 'Declined; the traveller was told.')} className={`${btn} border border-gray-300 text-red-700`}>Decline</button></>}
+              {!data.desk && <button type="button" disabled={!!busy} onClick={() => act(t.id, () => businessApi.cancelTrip(org.id, t.id), 'Request cancelled.')} className={`${btn} border border-gray-300`}>Cancel request</button>}
+            </div>
+          </div>
+        ))}
+      </section>
+      {others.length > 0 && (
+        <section className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+          {others.map((t) => { const [c, l] = TRIP[t.status]; return (
+            <div key={t.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+              <div><p className="font-semibold text-gray-900 text-sm">{t.traveller} · {t.city} · {day(t.checkIn)}</p><p className="text-xs text-gray-600">{t.purpose}{t.handlerNote ? ` · ${t.handlerNote}` : ''}{t.handledBy ? ` · ${t.handledBy}` : ''}</p></div>
+              <span className={`px-2 py-0.5 rounded-md text-xs font-semibold self-start ${c}`}>{l}</span>
+            </div>
+          ); })}
+        </section>
+      )}
+    </div>
+  );
+};
+
+// ─── Import people (CSV) ─────────────────────────────────────────────────────
+export const ImportMembers = ({ org, onDone }) => {
+  const [open, setOpen] = useState(false);
+  const [csv, setCsv] = useState('');
+  const [pv, setPv] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const run = async (commit) => {
+    setBusy(true); setMsg(null);
+    try { const r = await businessApi.importMembers(org.id, csv, commit); setPv(r); if (commit) { setMsg({ ok: true, text: `Done: ${r.summary.invite} invited, ${r.summary.update} updated.` }); onDone?.(); } } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(false); }
+  };
+  const file = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (!f) return; const rd = new FileReader(); rd.onload = () => { setCsv(String(rd.result || '')); setPv(null); }; rd.readAsText(f); };
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="text-sm font-semibold text-navy-800 underline">Import people from a CSV file</button>;
+  return (
+    <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+      <h3 className="font-bold text-gray-900">Import people</h3>
+      <p className="text-xs text-gray-600">Columns: <code>name, email, role, grade, approver_email, cost_centre</code>. Role: ADMIN, BOOKER, APPROVER, FINANCE or TRAVELLER (default). New people get an invitation; people already here get their grade, approver and cost centre updated.</p>
+      <div className="flex flex-wrap gap-2 items-center"><label className={`${btn} border border-gray-300 cursor-pointer`}>Choose CSV file<input type="file" accept=".csv,text/csv" className="sr-only" onChange={file} /></label><span className="text-xs text-gray-500">or paste below</span></div>
+      <textarea rows={5} className={`${input} font-mono text-xs`} value={csv} onChange={(e) => { setCsv(e.target.value); setPv(null); }} placeholder={'name,email,role,grade,approver_email,cost_centre\nAsha Rao,asha@yourco.com,TRAVELLER,STANDARD,manager@yourco.com,Sales'} />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={busy || !csv.trim()} onClick={() => run(false)} className={`${btn} border border-gray-300`}>Check</button>
+        {pv?.preview && pv.summary.errors === 0 && <button type="button" disabled={busy} onClick={() => run(true)} className={`${btn} bg-navy-800 text-white`}>Import {pv.summary.invite + pv.summary.update} people</button>}
+        <button type="button" onClick={() => setOpen(false)} className="text-sm text-gray-600 underline">Close</button>
+      </div>
+      <Note msg={msg} />
+      {pv && (
+        <div className="text-sm space-y-1">
+          <p className="font-semibold">{pv.summary.invite} to invite · {pv.summary.update} to update · {pv.summary.errors} with errors</p>
+          <ul className="max-h-48 overflow-y-auto text-xs space-y-0.5">{pv.rows.map((r) => <li key={r.row} className={r.action === 'ERROR' ? 'text-red-700' : 'text-gray-700'}>Row {r.row}: {r.email || '(no email)'}: {r.action === 'ERROR' ? r.errors.join('; ') : r.action === 'INVITE' ? `invite as ${r.role.toLowerCase()}` : 'update details'}</li>)}</ul>
+        </div>
+      )}
+    </section>
+  );
+};
+
+/** Away: a stand-in approves this member's trips until a date (the member, or an admin). */
+export const DelegateFields = ({ org, member, members, meId, onChange }) => {
+  const canSet = member.id === meId || org.can['members.manage'];
+  const [d, setD] = useState({ delegateMemberId: member.delegateMemberId || '', delegateUntil: member.delegateUntil ? String(member.delegateUntil).slice(0, 10) : '' });
+  if (org.kind !== 'CORPORATE' || !['ADMIN', 'APPROVER', 'FINANCE'].includes(member.role)) return null;
+  const active = member.delegateMemberId && members.find((x) => x.id === member.delegateMemberId);
+  if (!canSet) return active ? <p className="text-xs text-gray-600">Away: {active.user.name} approves until {day(member.delegateUntil)}</p> : null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="font-semibold text-gray-700">Stand-in while away:</span>
+      <select aria-label={`Stand-in for ${member.user.name}`} className="px-2 py-1 border border-gray-300 rounded-lg" value={d.delegateMemberId} onChange={(e) => setD({ ...d, delegateMemberId: e.target.value })}><option value="">None</option>{members.filter((x) => x.id !== member.id && x.status === 'ACTIVE').map((x) => <option key={x.id} value={x.id}>{x.user.name}</option>)}</select>
+      {d.delegateMemberId && <input type="date" aria-label="Until" className="px-2 py-1 border border-gray-300 rounded-lg" min={plus(1)} value={d.delegateUntil} onChange={(e) => setD({ ...d, delegateUntil: e.target.value })} />}
+      <button type="button" className="font-semibold underline" onClick={() => onChange(d.delegateMemberId ? { delegateMemberId: d.delegateMemberId, delegateUntil: `${d.delegateUntil}T23:59:00+05:30` } : { delegateMemberId: null })}>Save</button>
+      {active && <span className="text-gray-500">({active.user.name} until {day(member.delegateUntil)})</span>}
     </div>
   );
 };
