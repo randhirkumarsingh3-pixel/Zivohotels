@@ -7,6 +7,8 @@
  * -> 2 + 1).
  */
 export const MAX_ROOMS_PER_BOOKING = 8;
+/** Group bookings (ZivoPlus for Business / Partner Hub, quoted by the hotel) */
+export const MAX_GROUP_ROOMS = 60;
 
 /** total split into n whole parts, the bigger parts first: (5, 2) -> [3, 2] */
 export const splitEvenly = (total, n) =>
@@ -14,7 +16,7 @@ export const splitEvenly = (total, n) =>
 
 const bad = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
-export const roomLinesFrom = ({ roomLines, roomTypeId, ratePlanId, rooms = 1, adults = 2, children = 0, extraBeds = 0, guestName = '' } = {}) => {
+export const roomLinesFrom = ({ roomLines, roomTypeId, ratePlanId, rooms = 1, adults = 2, children = 0, extraBeds = 0, guestName = '' } = {}, { maxRooms = MAX_ROOMS_PER_BOOKING } = {}) => {
   let lines;
   if (Array.isArray(roomLines) && roomLines.length) {
     lines = roomLines.map((r) => ({
@@ -32,7 +34,7 @@ export const roomLinesFrom = ({ roomLines, roomTypeId, ratePlanId, rooms = 1, ad
     const e = splitEvenly(Number(extraBeds) || 0, n);
     lines = a.map((ad, i) => ({ roomTypeId, ratePlanId, adults: ad, children: c[i], extraBeds: e[i], guestName: '' }));
   }
-  if (lines.length > MAX_ROOMS_PER_BOOKING) throw bad(`At most ${MAX_ROOMS_PER_BOOKING} rooms can be booked together`);
+  if (lines.length > Math.min(maxRooms, MAX_GROUP_ROOMS)) throw bad(`At most ${Math.min(maxRooms, MAX_GROUP_ROOMS)} rooms can be booked together`);
   lines.forEach((l, i) => {
     if (!l.roomTypeId || !l.ratePlanId) throw bad(`Choose a room and plan for room ${i + 1}`);
     if (!Number.isInteger(l.adults) || l.adults < 1) throw bad(`Room ${i + 1} needs at least one adult`);

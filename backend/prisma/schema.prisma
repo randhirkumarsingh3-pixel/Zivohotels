@@ -136,6 +136,7 @@ model Hotel {
   stayRequests       StayRequest[]
   businessRate       HotelBusinessRate?
   corporateRates     CorporateRate[]
+  groupRequests      GroupRequest[]
   /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
   /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
   hourlySettings     Json?
@@ -1860,6 +1861,7 @@ model Organisation {
   agreement          OrgAgreement?
   tripRequests       TripRequest[]
   corporateRates     CorporateRate[]
+  groupRequests      GroupRequest[]
 
   @@index([kind, status])
   @@index([pan])
@@ -2024,5 +2026,34 @@ model CorporateRate {
   hotel          Hotel        @relation(fields: [hotelId], references: [id], onDelete: Restrict)
 
   @@index([organisationId, hotelId, status])
+  @@index([hotelId, status])
+}
+
+/// ZivoPlus for Business / Partner Hub: a group stay (9 to 60 rooms at one hotel). The requester
+/// asks; the hotel quotes a rate per room per night for each room type (with its rate plan), valid
+/// until a date, or declines; the requester accepts and it is booked from the account, then fills
+/// in the rooming list. lines: [{ roomTypeId, roomTypeName, rooms, adults }]; quote: { lines:
+/// [{ roomTypeId, ratePlanId, ratePlanName, nightlyRate }], validUntil, note, quotedAt, quotedById }.
+model GroupRequest {
+  id                String       @id @default(uuid())
+  organisationId    String
+  requesterMemberId String
+  hotelId           String
+  checkIn           DateTime     @db.Date
+  checkOut          DateTime     @db.Date
+  lines             Json
+  purpose           String
+  notes             String?
+  status            String       @default("SUBMITTED")
+  quote             Json?
+  quoteValidUntil   DateTime?    @db.Date
+  declineNote       String?
+  bookingId         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organisation      Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  hotel             Hotel        @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, status])
   @@index([hotelId, status])
 }

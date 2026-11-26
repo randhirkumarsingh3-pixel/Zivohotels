@@ -174,7 +174,7 @@ export const bookingService = {
 
     // 1. The rooms: each with its room type, plan, guests and lead guest (older clients: one type
     // and plan for all rooms)
-    const lines = roomLinesFrom({ ...pricingParams, roomTypeId, ratePlanId, guestName });
+    const lines = roomLinesFrom({ ...pricingParams, roomTypeId, ratePlanId, guestName }, { maxRooms: business?.maxRooms });
     const checkInDate = new Date(dates[0]);
     const checkOutDate = new Date(dates[dates.length - 1]);
     checkOutDate.setDate(checkOutDate.getDate() + 1);
