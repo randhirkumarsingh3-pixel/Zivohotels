@@ -27,8 +27,9 @@ import { businessOffer, commissionPayout } from './businessPricing.js';
 import { getBusinessSettings, termsFor } from './businessSettings.js';
 import { postEntry, accountSummary } from './orgLedger.js';
 import { membershipFor, can, PORTAL } from './organisationService.js';
-import { policyOf, evaluate, approversFor } from './travelPolicy.js';
+import { policyOf, evaluate, approvalSteps, activeDelegations } from './travelPolicy.js';
 import { assertAgreementForBooking } from './orgAgreementService.js';
+import { tripForBooking, markTripBooked } from './tripRequests.js';
 import { notifyUser } from '../notifyService.js';
 import { emailLayout, siteUrl } from '../emailLayout.js';
 
@@ -162,12 +163,13 @@ export const quote = async (orgId, user, input = {}) => {
   const { checkIn, checkOut, lines, rooms, hotel, pricing, businessPricing } = await priceStay({ org, terms, offer }, input);
   const summary = await accountSummary(org, { settings });
   const policy = policyCheck(org, traveller, hotel, pricing);
+  const steps = org.kind === 'CORPORATE' && member.role !== 'ADMIN' ? await approvalSteps(org, policyOf(org), policy, traveller, user.id, pricing.finalAmount) : [];
   return {
     hotel: { id: hotel.id, name: hotel.name, city: hotel.city },
     checkIn, checkOut, nights: pricing.nights, rooms: describeRooms(pricing, rooms, lines),
     price: { roomCharges: pricing.subtotal, discount: pricing.businessDiscountAmount || 0, beforeTax: pricing.baseAmount, tax: pricing.taxAmount, taxBreakdown: pricing.taxBreakdown, total: pricing.finalAmount },
     business: businessPricing, offer, traveller: travellerView(traveller),
-    policy, needsApproval: Boolean(policy?.needsApproval) && member.role !== 'ADMIN',
+    policy, needsApproval: steps.length > 0, approvalSteps: steps.map((x) => x.label),
     canPayNow: summary.available >= pricing.finalAmount, available: can(member, 'account.view') ? summary.available : null,
     holdUntil: holdDeadline(settings, org.kind, checkIn),
   };
@@ -185,6 +187,7 @@ export const book = async (orgId, user, input = {}, ctx = {}) => {
   const { org, member, settings, terms } = await bookingContext(orgId, user);
   const offer = await offerAt(org, terms, input.hotelId);
   const traveller = await travellerFor(org, member, input.travellerMemberId);
+  const trip = org.kind === 'CORPORATE' ? await tripForBooking(org, member, input.tripRequestId, traveller?.id) : null;
   const guestName = String(input.guestName || traveller?.user?.name || '').trim().replace(/\s+/g, ' ').slice(0, 120);
   const guestPhone = String(input.guestPhone || traveller?.user?.phone || '').replace(/[^\d+]/g, '').slice(0, 15);
   if (guestName.length < 2) throw fail('Enter the lead traveller\'s name (as on their ID).');
@@ -199,13 +202,14 @@ export const book = async (orgId, user, input = {}, ctx = {}) => {
   if (policy?.enabled && !policy.within && policy.requireReason && policyReason.length < 5) {
     throw fail(`This stay is ${inr(policy.perNight)} a night, over the ${inr(policy.cap)} limit for ${policy.gradeName} in ${policy.metro ? 'metro' : 'other'} cities. Give a reason for the exception.`);
   }
-  const needsApproval = Boolean(policy?.needsApproval) && member.role !== 'ADMIN';
+  const steps = org.kind === 'CORPORATE' && member.role !== 'ADMIN' ? await approvalSteps(org, policyOf(org), policy, traveller, user.id, priced.pricing.finalAmount) : [];
+  const needsApproval = steps.length > 0;
   const hold = input.hold === true || needsApproval;
   const holdUntil = hold ? holdDeadline(settings, org.kind, priced.checkIn) : null;
   if (needsApproval && !holdUntil) throw fail('This stay is too close to check-in to wait for approval. Ask a company admin to book it.', 409);
   if (hold && !holdUntil) throw fail('This stay is too close to check-in to hold. Book and pay now instead.');
-  const approvers = needsApproval ? await approversFor(org.id, traveller, user.id) : [];
-  if (needsApproval && !approvers.length) throw fail('No one can approve this trip yet. Ask your company admin to add an approver.', 409);
+  const missing = steps.find((x) => !x.approverMemberIds.length);
+  if (missing) throw fail(`No one can give the ${missing.label.toLowerCase()} approval for this trip yet. Ask your company admin to add ${missing.key === 'FINANCE' ? 'a finance member' : 'an approver'}.`, 409);
   const model = priced.model;
   const price = priceFor({ org, terms, offer, model, markupPct: input.markupPct });
   const reference = input.clientReference ? String(input.clientReference).trim().slice(0, 60) : null;
@@ -225,8 +229,9 @@ export const book = async (orgId, user, input = {}, ctx = {}) => {
         r.businessPricing = {
           ...r.businessPricing, bookedBy: { id: user.id, name: user.name, email: user.email }, customerEmail, clientReference: reference, held: hold,
           ...(traveller ? { traveller: travellerView(traveller) } : {}),
+          ...(trip ? { tripRequestId: trip.id, tripPurpose: trip.purpose } : {}),
           ...(policy?.enabled ? { policy: { ...policy, reason: policyReason || null } } : {}),
-          ...(needsApproval ? { approval: { status: 'PENDING', approverMemberIds: approvers.map((a) => a.id), requestedBy: user.id, requestedByName: user.name, requestedAt: new Date().toISOString() } } : {}),
+          ...(needsApproval ? { approval: { status: 'PENDING', steps, current: 0, approverMemberIds: steps[0].approverMemberIds, history: [], requestedBy: user.id, requestedByName: user.name, requestedAt: new Date().toISOString() } } : {}),
         };
         return r;
       },
@@ -234,26 +239,14 @@ export const book = async (orgId, user, input = {}, ctx = {}) => {
       timeline: (b) => (b.status === 'CONFIRMED'
         ? { status: 'CONFIRMED', title: 'Booking Confirmed', message: `Paid from ${org.name}'s ZivoPlus account (${org.code}).` }
         : needsApproval
-          ? { status: 'PENDING_PAYMENT', title: 'Waiting for approval', message: `Held until ${fmt(holdUntil)} IST while ${approvers.length === 1 ? 'the approver' : 'an approver'} reviews it${policy && !policy.within ? ` (over policy: ${policyReason})` : ''}.` }
+          ? { status: 'PENDING_PAYMENT', title: 'Waiting for approval', message: `Held until ${fmt(holdUntil)} IST for approval (${steps.map((x) => x.label.toLowerCase()).join(', then ')})${policy && !policy.within ? `; over policy: ${policyReason}` : ''}.` }
           : { status: 'PENDING_PAYMENT', title: 'Held', message: `Held for ${org.name} until ${fmt(holdUntil)} IST. Pay from the account by then, or it is released.` }),
     },
   });
   await prisma.auditLog.create({ data: { action: needsApproval ? 'ORG_BOOKING_APPROVAL_REQUESTED' : hold ? 'ORG_BOOKING_HELD' : 'ORG_BOOKING_CREATED', entityType: 'ORGANISATION', entityId: org.id, userId: user.id, details: { bookingId: result.booking.id, ref: result.booking.bookingRef, total: Number(result.booking.totalAmount), model, ...(policy?.enabled ? { withinPolicy: policy.within } : {}) } } }).catch(() => {});
+  if (trip) await markTripBooked(org, member, user, trip, await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { name: true } } } }));
   if (needsApproval) {
-    const b = result.booking;
-    for (const a of approvers) {
-      await notifyUser(a.userId, {
-        type: 'ORG_APPROVAL_REQUESTED', title: 'A trip needs your approval', link: `${PORTAL[org.kind].path}?tab=approvals`,
-        message: `${user.name} booked ${priced.hotel.name}, ${priced.hotel.city} for ${guestName} (${inr(b.totalAmount)}). Approve by ${fmt(holdUntil)} IST or the rooms are released.`,
-        email: { subject: `Approve a trip: ${guestName} at ${priced.hotel.name}`, html: await emailLayout({
-          title: 'A trip needs your approval', eyebrow: PORTAL[org.kind].name, ref: b.bookingRef, status: { label: 'Waiting for you', tone: 'warn' },
-          rows: [['Traveller', guestName], ['Hotel', `${priced.hotel.name}, ${priced.hotel.city}`], ['Dates', `${fmt(priced.checkIn).split(',')[0]} to ${fmt(priced.checkOut).split(',')[0]}`], ['Amount', inr(b.totalAmount)], ['Booked by', user.name],
-            ...(policy?.enabled ? [['Policy', policy.within ? `Within the ${inr(policy.cap)}/night limit` : `${inr(policy.perNight)}/night, over the ${inr(policy.cap)} limit`]] : []), ...(policyReason ? [['Reason', policyReason]] : [])],
-          body: `<p>The rooms are held until <b>${fmt(holdUntil)} IST</b>. If nobody approves by then, they are released.</p>`,
-          cta: { label: 'Review the trip', href: `${siteUrl()}${PORTAL[org.kind].path}?tab=approvals` },
-        }) },
-      });
-    }
+    await notifyApprovers(org, await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { name: true, city: true } } } }), steps[0]);
   }
   return bookingView(await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { id: true, name: true, city: true } } } }));
 };
@@ -366,8 +359,37 @@ export const commissionStatement = async (orgId, user, { from, to } = {}) => {
 };
 
 // ─── Approvals (companies) ───────────────────────────────────────────────────
-const canApprove = (member, booking) => member.status === 'ACTIVE'
-  && (member.role === 'ADMIN' || (booking.businessPricing?.approval?.approverMemberIds || []).includes(member.id));
+/** Admins; the current step's approvers; and anyone an approver delegated to while away. */
+const canApprove = (member, booking, delegations = {}) => {
+  if (member.status !== 'ACTIVE') return false;
+  if (member.role === 'ADMIN') return true;
+  const ids = booking.businessPricing?.approval?.approverMemberIds || [];
+  return ids.includes(member.id) || ids.some((id) => delegations[id] === member.id);
+};
+
+/** Emails and notifies a step's approvers (and their delegates) that a trip waits for them. */
+const notifyApprovers = async (org, b, step) => {
+  const bp = b.businessPricing || {};
+  const delegations = await activeDelegations(org.id);
+  const ids = [...new Set([...step.approverMemberIds, ...step.approverMemberIds.map((id) => delegations[id]).filter(Boolean)])];
+  const members = await prisma.orgMember.findMany({ where: { id: { in: ids } }, select: { userId: true } });
+  const pol = bp.policy;
+  const html = await emailLayout({
+    title: `A trip needs your approval${step.key === 'FINANCE' ? ' (finance)' : ''}`, eyebrow: PORTAL[org.kind].name, ref: b.bookingRef, status: { label: 'Waiting for you', tone: 'warn' },
+    rows: [['Traveller', b.guestName], ['Hotel', `${b.hotel?.name || ''}, ${b.hotel?.city || ''}`], ['Dates', `${fmt(b.checkIn).split(',')[0]} to ${fmt(b.checkOut).split(',')[0]}`], ['Amount', inr(b.totalAmount)], ['Booked by', bp.approval?.requestedByName || bp.bookedBy?.name || ''],
+      ...(pol ? [['Policy', pol.within ? `Within the ${inr(pol.cap)}/night limit` : `${inr(pol.perNight)}/night, over the ${inr(pol.cap)} limit`]] : []), ...(pol?.reason ? [['Reason', pol.reason]] : []),
+      ...((bp.approval?.history || []).map((h) => [`${h.label} approval`, `${h.by}${h.note ? `: ${h.note}` : ''}`]))],
+    body: `<p>The rooms are held until <b>${fmt(b.expiresAt)} IST</b>. If it isn't approved by then, they are released.</p>`,
+    cta: { label: 'Review the trip', href: `${siteUrl()}${PORTAL[org.kind].path}?tab=approvals` },
+  });
+  for (const m of members) {
+    await notifyUser(m.userId, {
+      type: 'ORG_APPROVAL_REQUESTED', title: `A trip needs your ${step.key === 'FINANCE' ? 'finance ' : ''}approval`, link: `${PORTAL[org.kind].path}?tab=approvals`,
+      message: `${b.guestName} at ${b.hotel?.name}, ${inr(b.totalAmount)}. Approve by ${fmt(b.expiresAt)} IST or the rooms are released.`,
+      email: { subject: `Approve a trip: ${b.guestName} at ${b.hotel?.name}`, html },
+    });
+  }
+};
 
 /** Trips waiting for approval that this person can approve (admins: all of them). */
 export const listApprovals = async (orgId, user) => {
@@ -376,7 +398,8 @@ export const listApprovals = async (orgId, user) => {
     where: { organisationId: org.id, status: 'PENDING', businessPricing: { path: ['approval', 'status'], equals: 'PENDING' } },
     orderBy: { expiresAt: 'asc' }, include: { hotel: { select: { id: true, name: true, city: true } } },
   });
-  return rows.filter((b) => canApprove(member, b) && b.businessPricing.approval.requestedBy !== user.id).map(bookingView);
+  const delegations = await activeDelegations(org.id);
+  return rows.filter((b) => canApprove(member, b, delegations) && b.businessPricing.approval.requestedBy !== user.id).map(bookingView);
 };
 
 export const decideApproval = async (orgId, user, bookingId, { decision, note } = {}, ctx = {}) => {
@@ -384,12 +407,24 @@ export const decideApproval = async (orgId, user, bookingId, { decision, note } 
   const b = await prisma.booking.findFirst({ where: { id: String(bookingId), organisationId: org.id } });
   const ap = b?.businessPricing?.approval;
   if (!b || !ap) throw fail('Trip not found', 404);
-  if (!canApprove(member, b)) throw fail('You aren\'t an approver for this trip.', 403);
+  if (!canApprove(member, b, await activeDelegations(org.id))) throw fail('You aren\'t an approver for this trip.', 403);
   if (ap.requestedBy === user.id) throw fail('You can\'t approve your own trip.', 403);
   if (ap.status !== 'PENDING' || b.status !== 'PENDING') throw fail('This trip was already decided, or its hold has ended.', 409);
   if (b.expiresAt && b.expiresAt < new Date()) throw fail('The hold has expired and the rooms were released.', 409);
   const text = String(note || '').trim().slice(0, 300);
   const decided = { ...ap, decidedBy: { id: user.id, name: user.name }, decidedAt: new Date().toISOString(), note: text || null };
+  const steps = Array.isArray(ap.steps) && ap.steps.length ? ap.steps : [{ key: 'MANAGER', label: 'Manager', approverMemberIds: ap.approverMemberIds || [] }];
+  const current = Number(ap.current) || 0;
+  const history = [...(ap.history || []), ...(decision === 'APPROVE' ? [{ key: steps[current].key, label: steps[current].label, by: user.name, byId: user.id, at: new Date().toISOString(), note: text || null }] : [])];
+  if (decision === 'APPROVE' && current < steps.length - 1) {
+    // More approval to come (e.g. finance after the manager): move to the next step
+    const next = { ...ap, history, current: current + 1, approverMemberIds: steps[current + 1].approverMemberIds };
+    const updated = await prisma.booking.update({ where: { id: b.id }, data: { businessPricing: { ...b.businessPricing, approval: next } }, include: { hotel: { select: { name: true, city: true } } } });
+    await prisma.bookingTimelineEvent.create({ data: { bookingId: b.id, status: 'PENDING_PAYMENT', title: `${steps[current].label} approved`, message: `Approved by ${user.name}${text ? `: ${text}` : ''}. Now waiting for ${steps[current + 1].label.toLowerCase()} approval.` } });
+    await prisma.auditLog.create({ data: { action: 'ORG_TRIP_STEP_APPROVED', entityType: 'ORGANISATION', entityId: org.id, userId: user.id, details: { bookingId: b.id, step: steps[current].key } } }).catch(() => {});
+    await notifyApprovers(org, updated, steps[current + 1]);
+    return getBooking(orgId, user, b.id);
+  }
   if (decision === 'APPROVE') {
     const settings = await getBusinessSettings();
     const terms = termsFor(org, settings);
@@ -402,7 +437,7 @@ export const decideApproval = async (orgId, user, bookingId, { decision, note } 
         if (e.statusCode === 402) throw fail(`${e.message} The trip stays held until ${fmt(b.expiresAt)} IST.`, 402);
         throw e;
       }
-      await tx.booking.update({ where: { id: b.id }, data: { businessPricing: { ...fresh.businessPricing, approval: { ...decided, status: 'APPROVED' } } } });
+      await tx.booking.update({ where: { id: b.id }, data: { businessPricing: { ...fresh.businessPricing, approval: { ...decided, history, status: 'APPROVED' } } } });
       await tx.bookingTimelineEvent.create({ data: { bookingId: b.id, status: 'CONFIRMED', title: 'Approved and confirmed', message: `Approved by ${user.name}${text ? `: ${text}` : ''}. Paid from ${org.name}'s ZivoPlus account.` } });
     });
     sendBookingConfirmationEmail(b.id).catch((e) => console.error('[Business] confirmation email failed:', e.message));

@@ -1857,6 +1857,7 @@ model Organisation {
   ledger             OrgLedgerEntry[]
   bookings           Booking[]
   agreement          OrgAgreement?
+  tripRequests       TripRequest[]
 
   @@index([kind, status])
   @@index([pan])
@@ -1876,6 +1877,9 @@ model OrgMember {
   grade            String?
   approverMemberId String?
   costCenter       String?
+  /// Away: someone else approves their trips until delegateUntil
+  delegateMemberId String?
+  delegateUntil    DateTime?
   invitedById      String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -1959,4 +1963,34 @@ model OrgAgreement {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   organisation         Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+}
+
+/// ZivoPlus for Business: an employee asks for a stay (city, dates, purpose); the company's travel
+/// desk (bookers and admins) books it from the request, or declines it.
+model TripRequest {
+  id                String       @id @default(uuid())
+  organisationId    String
+  /// Who asked, and who travels (both OrgMember ids)
+  requesterMemberId String
+  travellerMemberId String
+  city              String
+  checkIn           DateTime
+  checkOut          DateTime
+  rooms             Int          @default(1)
+  adults            Int          @default(1)
+  purpose           String
+  preferredHotelId  String?
+  notes             String?
+  /// SUBMITTED | BOOKED | DECLINED | CANCELLED
+  status            String       @default("SUBMITTED")
+  bookingId         String?
+  handledByMemberId String?
+  handledAt         DateTime?
+  handlerNote       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organisation      Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, status])
+  @@index([travellerMemberId])
 }

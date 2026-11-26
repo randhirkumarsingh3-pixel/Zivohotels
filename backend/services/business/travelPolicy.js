@@ -7,6 +7,8 @@
  *  approval   NEVER (out-of-policy stays only need a reason) | OUT_OF_POLICY (they need an
  *             approver's OK) | ALWAYS (every stay needs approval)
  *  metroCities the cities the metro cap applies to
+ *  financeApprovalAbove  a trip costing more than this (₹, total) also needs a finance member's
+ *             approval, after the manager's (none: no finance level)
  * A stay waiting for approval is held (rooms kept until the hold deadline) and paid from the
  * company account when approved; rejected or not approved in time, the hold is released.
  */
@@ -17,7 +19,7 @@ const fail = (m, code = 400) => Object.assign(new Error(m), { statusCode: code }
 export const APPROVAL_MODES = ['NEVER', 'OUT_OF_POLICY', 'ALWAYS'];
 export const DEFAULT_METROS = ['Mumbai', 'Delhi', 'New Delhi', 'Bengaluru', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Pune', 'Ahmedabad', 'Gurugram', 'Gurgaon', 'Noida'];
 export const DEFAULT_POLICY = {
-  enabled: false, approval: 'OUT_OF_POLICY', requireReason: true, metroCities: DEFAULT_METROS, defaultGrade: 'STANDARD',
+  enabled: false, approval: 'OUT_OF_POLICY', requireReason: true, metroCities: DEFAULT_METROS, defaultGrade: 'STANDARD', financeApprovalAbove: null,
   grades: [
     { key: 'STANDARD', name: 'Standard', capMetro: 6000, capOther: 4000 },
     { key: 'SENIOR', name: 'Senior', capMetro: 9000, capOther: 6000 },
@@ -48,8 +50,10 @@ export const savePolicy = async (orgId, user, input = {}) => {
   if (new Set(grades.map((g) => g.key)).size !== grades.length) throw fail('Two grades have the same name.');
   if (!APPROVAL_MODES.includes(input.approval)) throw fail('Choose when trips need approval.');
   const metroCities = [...new Set((Array.isArray(input.metroCities) ? input.metroCities : String(input.metroCities || '').split(/[,\n]/)).map((c) => String(c).trim()).filter(Boolean))].slice(0, 60);
+  const fin = input.financeApprovalAbove === '' || input.financeApprovalAbove == null ? null : Math.round(Number(input.financeApprovalAbove));
+  if (fin !== null && !(fin >= 1000 && fin <= 10000000)) throw fail('Finance approval: enter an amount of at least ₹1,000, or leave it empty.');
   const policy = {
-    enabled: Boolean(input.enabled), approval: input.approval, requireReason: input.requireReason !== false,
+    enabled: Boolean(input.enabled), approval: input.approval, requireReason: input.requireReason !== false, financeApprovalAbove: fin,
     metroCities: metroCities.length ? metroCities : DEFAULT_METROS,
     grades, defaultGrade: grades.some((g) => g.key === input.defaultGrade) ? input.defaultGrade : grades[0].key,
     updatedAt: new Date().toISOString(), updatedBy: user.email,
@@ -80,6 +84,29 @@ export const evaluate = (policy, traveller, city, perNight) => {
   return { enabled: true, grade: grade.key, gradeName: grade.name, metro, cap, perNight: Math.round(perNight), within, needsApproval, approval: policy.approval, requireReason: policy.requireReason };
 };
 
+/**
+ * The approval steps a trip needs: the manager step (when the policy asks for approval) and the
+ * finance step (when the total is above financeApprovalAbove). Each step lists who can approve.
+ */
+export const approvalSteps = async (org, policy, evaluation, traveller, requesterUserId, total) => {
+  const steps = [];
+  if (!policy.enabled) return steps;
+  if (evaluation?.needsApproval) steps.push({ key: 'MANAGER', label: 'Manager', approverMemberIds: (await approversFor(org.id, traveller, requesterUserId)).map((a) => a.id) });
+  if (policy.financeApprovalAbove && Number(total) > policy.financeApprovalAbove) {
+    const members = await prisma.orgMember.findMany({ where: { organisationId: org.id, status: 'ACTIVE', role: { in: ['FINANCE', 'ADMIN'] } }, select: { id: true, userId: true, role: true } });
+    const fin = members.filter((m) => m.role === 'FINANCE' && m.userId !== requesterUserId);
+    const ids = (fin.length ? fin : members.filter((m) => m.role === 'ADMIN' && m.userId !== requesterUserId)).map((m) => m.id);
+    steps.push({ key: 'FINANCE', label: 'Finance', approverMemberIds: ids });
+  }
+  return steps;
+};
+
+/** Members whose approvals are delegated to someone else right now: { approverId: delegateId }. */
+export const activeDelegations = async (orgId) => {
+  const rows = await prisma.orgMember.findMany({ where: { organisationId: orgId, status: 'ACTIVE', delegateMemberId: { not: null }, delegateUntil: { gt: new Date() } }, select: { id: true, delegateMemberId: true } });
+  return Object.fromEntries(rows.map((r) => [r.id, r.delegateMemberId]));
+};
+
 /** Who can approve a traveller's trip: their approver, else the company's admins and approvers (never themselves). */
 export const approversFor = async (orgId, traveller, requesterUserId) => {
   const members = await prisma.orgMember.findMany({ where: { organisationId: orgId, status: 'ACTIVE' }, select: { id: true, userId: true, role: true } });
@@ -88,4 +115,4 @@ export const approversFor = async (orgId, traveller, requesterUserId) => {
   return members.filter((m) => ['ADMIN', 'APPROVER'].includes(m.role) && m.userId !== requesterUserId);
 };
 
-export default { DEFAULT_POLICY, APPROVAL_MODES, policyOf, savePolicy, evaluate, approversFor };
+export default { DEFAULT_POLICY, APPROVAL_MODES, policyOf, savePolicy, evaluate, approversFor, approvalSteps, activeDelegations };

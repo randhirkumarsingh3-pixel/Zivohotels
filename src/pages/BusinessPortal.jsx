@@ -8,7 +8,7 @@ import { businessApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
-import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields } from './business/CompanyTools';
+import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields, TripsTab, ImportMembers, DelegateFields } from './business/CompanyTools';
 import { AgreementTab, IncentiveCard } from './business/AgreementTab';
 
 /**
@@ -253,11 +253,12 @@ const TeamTab = ({ org, roles }) => {
         </form>
       )}
       {manage && org.status !== 'ACTIVE' && <p className="text-sm text-gray-600">You can invite your colleagues once ZivoPlus approves your organisation.</p>}
+      {manage && org.status === 'ACTIVE' && org.kind === 'CORPORATE' && <ImportMembers org={org} onDone={load} />}
       <Note msg={msg} />
       <ul className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
         {!rows ? <li className="p-5 text-sm text-gray-500">Loading…</li> : rows.map((m) => (
           <li key={m.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1 min-w-0 space-y-1"><p className="font-semibold text-gray-900">{m.user.name}{m.user.invited && <span className="ml-2 text-xs font-semibold text-amber-700">invited</span>}{m.status === 'PAUSED' && <span className="ml-2 text-xs font-semibold text-gray-500">paused</span>}</p><p className="text-sm text-gray-600 break-all">{m.user.email}</p><MemberPolicyFields org={org} member={m} members={rows} grades={grades} onChange={(body) => act(() => businessApi.updateMember(org.id, m.id, body))} /></div>
+            <div className="flex-1 min-w-0 space-y-1"><p className="font-semibold text-gray-900">{m.user.name}{m.user.invited && <span className="ml-2 text-xs font-semibold text-amber-700">invited</span>}{m.status === 'PAUSED' && <span className="ml-2 text-xs font-semibold text-gray-500">paused</span>}</p><p className="text-sm text-gray-600 break-all">{m.user.email}</p><MemberPolicyFields org={org} member={m} members={rows} grades={grades} onChange={(body) => act(() => businessApi.updateMember(org.id, m.id, body))} /><DelegateFields org={org} member={m} members={rows} meId={org.myMemberId} onChange={(body) => act(() => businessApi.setDelegate(org.id, m.id, body), 'Stand-in saved.')} /></div>
             {manage ? (
               <div className="flex flex-wrap items-center gap-2">
                 <select aria-label={`Role of ${m.user.name}`} className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" value={m.role} onChange={(e) => act(() => businessApi.updateMember(org.id, m.id, { role: e.target.value }))}>{Object.keys(ROLE_NAMES).map((r) => <option key={r} value={r}>{ROLE_NAMES[r]}</option>)}</select>
@@ -347,13 +348,14 @@ const Dashboard = ({ orgId, info, user }) => {
   const [err, setErr] = useState('');
   const [params] = useSearchParams();
   const [tab, setTab] = useState(() => params.get('tab') || 'overview');
+  const [prefill, setPrefill] = useState(null);
   const load = useCallback(() => businessApi.get(orgId).then(setOrg).catch((e) => setErr(e.message)), [orgId]);
   useEffect(() => { load(); }, [load]);
   if (!org) return <p className="text-sm text-gray-500 flex items-center gap-2">{err || <><Loader2 size={16} className="animate-spin" /> Loading…</>}</p>;
   const c = COPY[org.kind]; const Icon = c.icon;
   const [SIcon, scls, slabel, stext] = STATUS[org.status] || STATUS.IN_REVIEW;
   const live = org.status === 'ACTIVE';
-  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], ['ACTIVE', 'SUSPENDED'].includes(org.status) && ['agreement', 'Agreement', FileText], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
+  const tabs = [['overview', 'Overview', Building2], live && org.can['bookings.create'] && ['book', 'Book', BedDouble], live && ['bookings', 'Bookings', CalendarCheck], org.can['account.view'] && ['account', 'Account', Wallet], live && org.kind === 'AGENCY' && org.can['account.view'] && ['commission', 'Commission', Percent], live && org.kind === 'CORPORATE' && ['trips', 'Trips', Briefcase], live && org.kind === 'CORPORATE' && org.myRole !== 'TRAVELLER' && ['approvals', 'Approvals', CheckCircle2], live && org.kind === 'CORPORATE' && org.can['account.view'] && ['reports', 'Reports', ReceiptText], org.kind === 'CORPORATE' && ['policy', 'Policy', ShieldCheck], ['ACTIVE', 'SUSPENDED'].includes(org.status) && ['agreement', 'Agreement', FileText], org.can['members.view'] && ['team', 'Team', Users], ['details', 'Details', Briefcase], org.can['documents.manage'] && ['documents', 'Documents', FileText]].filter(Boolean);
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
@@ -374,7 +376,8 @@ const Dashboard = ({ orgId, info, user }) => {
       </div>
       <div role="tabpanel">
         {tab === 'overview' && <Overview org={org} />}
-        {tab === 'book' && <BookTab org={org} onBooked={load} />}
+        {tab === 'book' && <BookTab key={prefill?.id || 'book'} org={org} prefill={prefill} onBooked={() => { setPrefill(null); load(); }} />}
+        {tab === 'trips' && <TripsTab org={org} onBook={(t) => { setPrefill(t); setTab('book'); window.scrollTo({ top: 0 }); }} />}
         {tab === 'bookings' && <BookingsTab org={org} onChange={load} />}
         {tab === 'commission' && <CommissionTab org={org} />}
         {tab === 'approvals' && <ApprovalsTab org={org} onChange={load} />}
