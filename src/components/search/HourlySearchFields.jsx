@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Hourglass, Users } from 'lucide-react';
+import { CalendarDays, Clock, Hourglass, Users, ChevronDown } from 'lucide-react';
 import { HOURLY_DURATIONS, HOURLY_STARTS, todayIst, timeLabel as label } from '../../utils/hourly';
 
 /**
@@ -16,6 +16,13 @@ const Box = ({ icon: Icon, title, children, w = 'md:w-[140px]' }) => (
 );
 
 const selectCls = 'w-full bg-transparent font-semibold text-gray-900 outline-none cursor-pointer -ml-1';
+/** A select with its own arrow, kept clear of the text (the browser's arrow sat on top of it) */
+const Select = ({ children, ...props }) => (
+  <span className="relative block">
+    <select {...props} className={`${selectCls} appearance-none pr-6`}>{children}</select>
+    <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" aria-hidden="true" />
+  </span>
+);
 
 const HourlySearchFields = ({ value, onChange }) => {
   const set = (k) => (e) => onChange({ ...value, [k]: k === 'hours' || k === 'guests' ? Number(e.target.value) : e.target.value });
@@ -25,22 +32,22 @@ const HourlySearchFields = ({ value, onChange }) => {
         <input type="date" min={todayIst()} value={value.date} onChange={set('date')} className={selectCls} aria-label="Date" />
       </Box>
       <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
-      <Box icon={Clock} title="Check-in time">
-        <select value={value.start} onChange={set('start')} className={selectCls} aria-label="Check-in time">
+      <Box icon={Clock} title="Check-in time" w="md:w-[150px]">
+        <Select value={value.start} onChange={set('start')} aria-label="Check-in time">
           {HOURLY_STARTS.map((t) => <option key={t} value={t}>{label(t)}</option>)}
-        </select>
+        </Select>
       </Box>
       <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
-      <Box icon={Hourglass} title="Stay for" w="md:w-[130px]">
-        <select value={value.hours} onChange={set('hours')} className={selectCls} aria-label="Duration">
+      <Box icon={Hourglass} title="Stay for" w="md:w-[150px]">
+        <Select value={value.hours} onChange={set('hours')} aria-label="Duration">
           {HOURLY_DURATIONS.map((h) => <option key={h} value={h}>{h} hours</option>)}
-        </select>
+        </Select>
       </Box>
       <div className="h-px md:h-auto md:w-px bg-gray-200 mx-3 md:mx-1 md:my-3" aria-hidden="true" />
-      <Box icon={Users} title="Guests" w="md:w-[130px]">
-        <select value={value.guests} onChange={set('guests')} className={selectCls} aria-label="Guests">
+      <Box icon={Users} title="Guests" w="md:w-[150px]">
+        <Select value={value.guests} onChange={set('guests')} aria-label="Guests">
           {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g} guest{g > 1 ? 's' : ''}</option>)}
-        </select>
+        </Select>
       </Box>
     </>
   );
