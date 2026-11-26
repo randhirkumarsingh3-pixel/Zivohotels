@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Save, Briefcase, Handshake } from 'lucide-react';
+import { Loader2, Save, Briefcase, Handshake, KeyRound } from 'lucide-react';
 import { adminBusinessApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 import useAccess from '../../hooks/useAccess';
@@ -13,6 +13,50 @@ const input = 'mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm d
 const MODES = [['PREPAID', 'Prepaid wallet only'], ['CREDIT', 'Credit line'], ['BOTH', 'Wallet first, then credit']];
 const INVOICE = [['ON_BEHALF', 'ZivoPlus, on behalf of the hotel (hotel is the supplier)'], ['ZIVO_SUPPLIER', 'ZivoPlus as supplier'], ['HOTEL_ISSUES', 'The hotel issues it']];
 const PRICING = [['NET', 'Net rates: the agent adds their own markup'], ['COMMISSION', 'Commission on the public price'], ['BOTH', 'Both: the agent chooses per booking']];
+
+/**
+ * Company sign-in (single sign-on) for ZivoPlus for Business. Shown once the server sends `sso`
+ * with the settings: { enabled, providers: { GOOGLE, MICROSOFT } } (saved with the rest), and
+ * `ssoStatus`: { GOOGLE: { configured }, MICROSOFT: { configured }, redirectUri } (read-only:
+ * the app keys live in the server's environment, never here).
+ */
+const SSO_PROVIDERS = [
+  ['GOOGLE', 'Google Workspace', 'Google Cloud console → APIs & Services → Credentials → OAuth client (Web application)'],
+  ['MICROSOFT', 'Microsoft Entra ID', 'Microsoft Entra admin centre → App registrations → New registration (multitenant)'],
+];
+const SsoSettings = ({ s, setS, edit }) => {
+  const st = s.ssoStatus || {};
+  const setSso = (k, v) => setS((x) => ({ ...x, sso: { ...x.sso, [k]: v } }));
+  return (
+    <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+      <h2 className="font-bold text-gray-900 flex items-center gap-2"><KeyRound size={18} aria-hidden="true" /> Company sign-in (single sign-on)</h2>
+      <p className="text-sm text-gray-600">Companies can let their employees sign in with Google Workspace or Microsoft work accounts. Each company admin verifies their email domains and tests it in their portal (Sign-in tab).</p>
+      <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" disabled={!edit} checked={Boolean(s.sso.enabled)} onChange={(e) => setSso('enabled', e.target.checked)} /> Offer company sign-in to companies</label>
+      <ul className="space-y-3">
+        {SSO_PROVIDERS.map(([k, label, where]) => {
+          const configured = Boolean(st[k]?.configured);
+          return (
+            <li key={k} className="rounded-xl border border-gray-200 p-3 space-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <input type="checkbox" disabled={!edit || !configured} checked={configured && Boolean(s.sso.providers?.[k])} onChange={(e) => setSso('providers', { ...s.sso.providers, [k]: e.target.checked })} /> {label}
+                </label>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${configured ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>{configured ? 'App keys set on the server' : 'App keys not set on the server'}</span>
+              </div>
+              {!configured && <p className="text-xs text-gray-600">Create the app in {where}, then put its client ID and secret in the server&apos;s .env file and redeploy.</p>}
+            </li>
+          );
+        })}
+      </ul>
+      {st.redirectUri && (
+        <div className="text-xs text-gray-700">
+          <p className="font-semibold">Redirect URI to register with both providers</p>
+          <code className="mt-1 block break-all rounded-lg bg-gray-50 border border-gray-200 px-2.5 py-1.5 text-gray-900">{st.redirectUri}</code>
+        </div>
+      )}
+    </section>
+  );
+};
 
 /** Credits a month's incentives now (normally automatic early the next month; once per agency). */
 const RunIncentives = () => {
@@ -96,6 +140,7 @@ const BusinessSettings = () => {
         </div>
         <p className="text-xs text-gray-500">Agents get each hotel&apos;s travel agent discount (Extranet → Business rates): as a lower net rate, or as commission. The extra commission is on top, paid by ZivoPlus.</p>
       </section>
+      {s.sso && <SsoSettings s={s} setS={setS} edit={edit} />}
       <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
         <h2 className="font-bold text-gray-900">Credit and top-ups</h2>
         <div className="grid gap-3 sm:grid-cols-3">
