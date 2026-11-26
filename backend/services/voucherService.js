@@ -152,6 +152,7 @@ const propertyBox = (hotel) => {
   return box({ label: 'Property', name: hotel?.name, lines: [
     `<span class="muted">${esc(address(hotel))}</span>`,
     contact.receptionPhone ? `Front desk: <b>${esc(contact.receptionPhone)}</b>` : '',
+    contact.receptionEmail ? `<span class="muted">${esc(contact.receptionEmail)}</span>` : '',
     map ? `<span class="muted">Map: ${esc(map)}</span>` : '',
   ] });
 };
@@ -166,7 +167,7 @@ const invoiceLine = (mode, b, who) => {
   if (who === 'guest') {
     return mode === 'HOTEL_ISSUES'
       ? `The property issues the GST invoice for your stay${company}; ask for it at check-out.`
-      : `Your GST invoice for the stay comes from ZivoPlus${company}: download it from My Bookings → Financials. The property bills you separately only for extras you use.`;
+      : `Your GST invoice for the stay comes from ZivoPlus${company}: download it from My Bookings → Financials (with any credit or debit note if the booking changes). The property bills you separately only for extras you use.`;
   }
   if (mode === 'ON_BEHALF') return `ZivoPlus issues the guest's GST invoice for this stay on your behalf (your GSTIN as supplier)${company}; include it in your GST returns. Do not issue another invoice for the room: invoice the guest only for extras.`;
   if (mode === 'ZIVO_SUPPLIER') return `ZivoPlus issues the guest's GST invoice for this stay as the supplier${company}. Do not invoice the guest for the room: invoice only extras.`;

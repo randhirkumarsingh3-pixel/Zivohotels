@@ -264,6 +264,10 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     return updated;
   });
 
+  // A booking that was invoiced: a credit note for what is no longer charged (the invoice stays)
+  import('./guestNoteService.js').then((m) => m.creditForCancellation(bookingId, { retainedAmount, before: { total: toMoney(booking.totalAmount), tax: toMoney(booking.taxAmount) } }))
+    .catch((e) => console.error('[GuestNote] cancellation:', e.message));
+
   // Tell the hotel (in-app; plus email when the hotel side cancelled, so the owner has a record)
   const message = initiatedBy === 'GUEST'
     ? `The guest cancelled booking ${booking.bookingRef}. Refund under your cancellation policy: ${inr(refundAmount - memberWaiver)}.` +
@@ -425,10 +429,12 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
 
   scheduleRecompute(booking.hotelId);
   await syncLoyalty(bookingId).catch((e) => console.error('[ZivoRewards] sync failed:', e.message));
-  // A paid booking's invoice shows the new amount
-  if (booking.status === 'CONFIRMED') {
-    import('./invoiceService.js').then((m) => m.invoiceService.regenerateInvoice(bookingId)).catch(() => {});
-  }
+  // The issued invoice stays as it is: a credit note for what is no longer charged
+  // (a payment receipt is redrawn instead)
+  import('./guestNoteService.js').then((m) => m.issueNote(bookingId, {
+    kind: 'CREDIT', amount: roundMoney(q.shareTotal - q.retainedAmount), tax: roundMoney(q.shareTax),
+    reason: `Room ${room.roomNumber} (${room.roomType?.name || 'room'}) cancelled${q.retainedAmount > 0 ? '; the cancellation charge stays invoiced' : ''}`, key: `room-${room.roomNumber}`,
+  })).catch((e) => console.error('[GuestNote] room cancellation:', e.message));
   await createNotification({
     hotelId: booking.hotelId, type: 'CANCELLED', title: `Room ${room.roomNumber} of ${booking.bookingRef} cancelled`,
     message: `${initiatedBy === 'GUEST' ? 'The guest' : `Cancelled by ${byLabel}:`} room ${room.roomNumber} (${room.roomType?.name || 'room'}, ${room.guestName}) of booking ${booking.bookingRef}. The rest of the booking stays.` +

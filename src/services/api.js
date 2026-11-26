@@ -408,6 +408,8 @@ export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/booki
 export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);
 export const downloadInvoice = (invoiceId) => apiFetch(`${PUBLIC_BASE}/invoices/${invoiceId}/download`, { responseType: 'blob' });
+// A credit or debit note against the invoice (cancellations, refunds, hours added)
+export const downloadGuestNote = (noteId) => apiFetch(`${PUBLIC_BASE}/invoices/notes/${noteId}/download`, { responseType: 'blob' });
 // Booking voucher PDF: type 'guest' (booking confirmation) or 'hotelier' (owner/admin only)
 export const downloadVoucher = (bookingId, type = 'guest') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/voucher?type=${type}`, { responseType: 'blob' }, 0);
 // The signed-in user's profile (name, email, phone)
@@ -560,6 +562,14 @@ export const businessApi = {
   spendCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/reports/spend.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
   travellers: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/travellers?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   travellersCsv: (orgId, q = {}) => apiFetch(`${API_URL}/business/${orgId}/travellers.csv?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`, { responseType: 'blob' }, 0),
+  groups: (orgId) => apiFetch(`${API_URL}/business/${orgId}/groups`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  groupHotels: (orgId, q) => apiFetch(`${API_URL}/business/${orgId}/groups/hotels?q=${encodeURIComponent(q || '')}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  requestGroup: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/groups`, jsonBody('POST', body), 0).then((r) => r?.data),
+  groupPrice: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/groups/${id}/price`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  acceptGroup: (orgId, id, body) => apiFetch(`${API_URL}/business/${orgId}/groups/${id}/accept`, jsonBody('POST', body), 0).then((r) => r?.data),
+  cancelGroup: (orgId, id) => apiFetch(`${API_URL}/business/${orgId}/groups/${id}/cancel`, jsonBody('POST', {}), 0).then((r) => r?.data),
+  roomingList: (orgId, bookingId) => apiFetch(`${API_URL}/business/${orgId}/bookings/${bookingId}/rooming-list`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveRoomingList: (orgId, bookingId, rooms) => apiFetch(`${API_URL}/business/${orgId}/bookings/${bookingId}/rooming-list`, jsonBody('PUT', { rooms }), 0).then((r) => r?.data),
   agreedRates: (orgId) => apiFetch(`${API_URL}/business/${orgId}/agreed-rates`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
   // Company sign-in (single sign-on); shown only once the server reports it (info().sso.available)
   sso: (orgId) => apiFetch(`${API_URL}/business/${orgId}/sso`, { cache: 'no-store' }, 0).then((r) => r?.data),
@@ -593,6 +603,9 @@ export const hotelBusinessRatesApi = {
   get: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   save: (hotelId, body) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}`, jsonBody('PUT', body), 0).then((r) => r?.data),
   contracts: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/contracts`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  groups: (hotelId) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/groups`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  quoteGroup: (hotelId, id, body) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/groups/${id}/quote`, jsonBody('POST', body), 0).then((r) => r?.data),
+  declineGroup: (hotelId, id, note) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/groups/${id}/decline`, jsonBody('POST', { note }), 0).then((r) => r?.data),
   decideContract: (hotelId, rateId, decision, note) => apiFetch(`${API_URL}/extranet/business-rates/${hotelId}/contracts/${rateId}/decision`, jsonBody('POST', { decision, note }), 0).then((r) => r?.data),
 };
 

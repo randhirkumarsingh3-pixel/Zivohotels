@@ -152,7 +152,7 @@ export const applyExtension = async (bookingId, { orderId, paymentId, paidPaise 
     });
     await tx.bookingRoom.updateMany({ where: { bookingId: b.id }, data: { roomPrice: Math.round(Number(b.roomPrice || 0)) + price.extraBase, subtotal: Math.round(Number(b.roomPrice || 0)) + price.extraBase } });
     await tx.auditLog.create({ data: { action: 'HOURLY_EXTENDED', entityType: 'BOOKING', entityId: b.id, details: { orderId, paymentId, hours: pending.hours, amount: paid }, userId: b.userId || 'SYSTEM' } });
-    return { applied: true, booking: { ...booking, hotel: b.hotel, roomType: b.roomType }, hours: pending.hours, label };
+    return { applied: true, booking: { ...booking, hotel: b.hotel, roomType: b.roomType }, hours: pending.hours, label, orderId, added: { amount: paid, tax: Math.max(0, Math.round((Number(price.newTax) - Number(b.taxAmount || 0)) * 100) / 100) } };
   });
 
   if (!result.applied) {
@@ -166,7 +166,13 @@ export const applyExtension = async (bookingId, { orderId, paymentId, paidPaise 
       message: `${b.guestName} added ${result.hours} hour${result.hours === 1 ? '' : 's'} (${b.roomType?.name}): now ${result.label}.`,
       metadata: { bookingId: b.id },
     }).catch(() => {});
-    import('./invoiceService.js').then((m) => m.invoiceService.regenerateInvoice(b.id).catch(() => m.invoiceService.generateInvoice(b.id))).catch((err) => console.error('[HourlyExtension] Invoice not updated:', err.message));
+    // The issued invoice stays; the added hours are a debit note against it (or the invoice, if
+    // there wasn't one yet)
+    (async () => {
+      const inv = await prisma.invoice.findUnique({ where: { bookingId: b.id } });
+      if (!inv) return (await import('./invoiceService.js')).invoiceService.generateInvoice(b.id);
+      return (await import('./guestNoteService.js')).issueNote(b.id, { kind: 'DEBIT', amount: result.added.amount, tax: result.added.tax, reason: `${result.hours} extra hour${result.hours === 1 ? '' : 's'} added (now ${result.label})`, key: `hours-${result.orderId}` });
+    })().catch((err) => console.error('[HourlyExtension] Invoice / debit note not issued:', err.message));
   }
   return { applied: true, booking: result.booking };
 };

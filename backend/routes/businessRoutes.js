@@ -27,6 +27,9 @@
  *  POST   /:orgId/members/import              { csv, commit } preview or import people (companies' HR lists)
  *  PUT    /:orgId/members/:memberId/delegate  { delegateMemberId, delegateUntil } a stand-in approver while away
  *  GET    /:orgId/travellers?days=&city=      where travellers are: staying now, arriving, checked out (also .csv)
+ *  GET    /:orgId/groups                      group requests (9 to 60 rooms): POST to ask, /hotels?q= to choose,
+ *         /:id/price, /:id/accept { leadName, leadPhone, hold }, /:id/cancel
+ *  GET    /:orgId/bookings/:id/rooming-list   who is in each room; PUT { rooms: [{ roomNumber, guestName }] }
  *  GET    /:orgId/agreed-rates                rates agreed with hotels for the company, in place or coming up
  *  GET    /:orgId/trips?status=               POST { city, checkIn, checkOut, rooms, adults, purpose, notes, travellerMemberId? }
  *  POST   /:orgId/trips/:id/decline { note }  POST /:orgId/trips/:id/cancel
@@ -39,6 +42,7 @@ import { protect } from '../middleware/authMiddleware.js';
 import svc, { setBranding, brandingFor, membershipFor, setLogo, removeLogo, setDelegate, importMembers } from '../services/business/organisationService.js';
 import trips from '../services/business/tripRequests.js';
 import dutyOfCare from '../services/business/dutyOfCare.js';
+import groups from '../services/business/groupBookings.js';
 import corporateRates from '../services/business/corporateRates.js';
 import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
@@ -110,6 +114,14 @@ router.put('/:orgId/policy', wrap(async (req, res) => ok(res, await savePolicy(r
 router.get('/:orgId/approvals', wrap(async (req, res) => ok(res, await booking.listApprovals(req.params.orgId, req.user))));
 router.post('/:orgId/approvals/:id', wrap(async (req, res) => ok(res, await booking.decideApproval(req.params.orgId, req.user, req.params.id, req.body || {}, { requestId: req.id }))));
 router.get('/:orgId/reports/spend', wrap(async (req, res) => ok(res, await booking.spendReport(req.params.orgId, req.user, req.query))));
+router.get('/:orgId/groups', wrap(async (req, res) => ok(res, await groups.listForOrg(req.params.orgId, req.user))));
+router.get('/:orgId/groups/hotels', wrap(async (req, res) => ok(res, await groups.hotelChoices(req.params.orgId, req.user, req.query.q))));
+router.post('/:orgId/groups', wrap(async (req, res) => ok(res, await groups.submit(req.params.orgId, req.user, req.body || {}), 201)));
+router.get('/:orgId/groups/:id/price', wrap(async (req, res) => ok(res, await groups.price(req.params.orgId, req.user, req.params.id))));
+router.post('/:orgId/groups/:id/accept', wrap(async (req, res) => ok(res, await groups.accept(req.params.orgId, req.user, req.params.id, req.body || {}, { requestId: req.id }), 201)));
+router.post('/:orgId/groups/:id/cancel', wrap(async (req, res) => ok(res, await groups.cancel(req.params.orgId, req.user, req.params.id))));
+router.get('/:orgId/bookings/:id/rooming-list', wrap(async (req, res) => ok(res, await booking.roomingList(req.params.orgId, req.user, req.params.id))));
+router.put('/:orgId/bookings/:id/rooming-list', wrap(async (req, res) => ok(res, await booking.saveRoomingList(req.params.orgId, req.user, req.params.id, req.body || {}))));
 router.get('/:orgId/travellers', wrap(async (req, res) => ok(res, await dutyOfCare.travellers(req.params.orgId, req.user, req.query))));
 router.get('/:orgId/travellers.csv', wrap(async (req, res) => {
   const csv = await dutyOfCare.travellersCsv(req.params.orgId, req.user, req.query);

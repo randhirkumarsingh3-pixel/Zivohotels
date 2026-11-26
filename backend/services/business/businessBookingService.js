@@ -31,7 +31,7 @@ import { policyOf, evaluate, approvalSteps, activeDelegations } from './travelPo
 import { assertAgreementForBooking } from './orgAgreementService.js';
 import { tripForBooking, markTripBooked } from './tripRequests.js';
 import { ratesForStay, stayDiscount, describeRate, forOrganisation as agreedRatesOf } from './corporateRates.js';
-import { notifyUser } from '../notifyService.js';
+import { notifyUser, notifyHotel } from '../notifyService.js';
 import { emailLayout, siteUrl } from '../emailLayout.js';
 
 const fail = (m, code = 400) => Object.assign(new Error(m), { statusCode: code });
@@ -275,6 +275,124 @@ export const book = async (orgId, user, input = {}, ctx = {}) => {
     await notifyApprovers(org, await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { name: true, city: true } } } }), steps[0]);
   }
   return bookingView(await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { id: true, name: true, city: true } } } }));
+};
+
+// ─── Group stays (quoted by the hotel; services/business/groupBookings.js) ────
+/** The rooms of an accepted group quote: each requested room with the quoted rate plan. */
+const groupLines = (request, guestName) => {
+  const plans = Object.fromEntries((request.quote?.lines || []).map((l) => [l.roomTypeId, l]));
+  return request.lines.flatMap((l) => Array.from({ length: l.rooms }, () => ({ roomTypeId: l.roomTypeId, ratePlanId: plans[l.roomTypeId]?.ratePlanId, adults: l.adults, children: 0, extraBeds: 0, guestName })));
+};
+
+/**
+ * The group's price: each room at the hotel's quoted rate per night (before GST), never above the
+ * website's price for those dates (if it is, the website price).
+ */
+const groupPriceFor = ({ org, terms, request }) => (stayInput) => {
+  const base = pricingDomain.calculateStay(stayInput);
+  const rateOf = Object.fromEntries((request.quote?.lines || []).map((l) => [l.roomTypeId, Number(l.nightlyRate)]));
+  let discount = 0; let quoted = 0;
+  for (const room of base.roomsBreakdown) {
+    const q = round((rateOf[room.roomTypeId] || 0) * base.nights);
+    quoted += q;
+    discount += Math.max(0, round(room.subtotal - q));
+  }
+  const pricing = pricingDomain.calculateStay({ ...stayInput, businessDiscountAmount: discount });
+  return {
+    pricing,
+    businessPricing: {
+      kind: org.kind, organisationId: org.id, organisationCode: org.code, organisationName: org.name, invoiceMode: terms.invoiceMode,
+      model: 'GROUP', groupRequestId: request.id, quotedAmount: quoted, publicAmount: base.finalAmount, publicPreTax: base.baseAmount,
+      discountPct: 0, discountAmount: pricing.businessDiscountAmount, payAmount: pricing.finalAmount,
+    },
+  };
+};
+
+const priceGroup = async ({ org, terms }, request) => {
+  const lines = groupLines(request, 'Guest');
+  const checkIn = new Date(request.checkIn); const checkOut = new Date(request.checkOut);
+  const { rooms, hotel } = await loadStayRooms(lines, { hotelId: request.hotelId, checkInDate: checkIn, checkOutDate: checkOut });
+  const { taxRules } = await pricingSettings();
+  const stayInput = { rooms, hotel, taxRules, prepaidDiscountPercent: 0, checkInDate: checkIn, checkOutDate: checkOut, paymentType: 'PREPAID', dynamicContext: { safeMode: true, userSegment: 'STANDARD', device: 'WEB' } };
+  return { lines, rooms, hotel, ...groupPriceFor({ org, terms, request })(stayInput) };
+};
+
+/** The exact price of an accepted quote now (GST included), and whether the account covers it. */
+export const groupQuotePrice = async (orgId, user, request) => {
+  const { org, member, settings, terms } = await bookingContext(orgId, user);
+  const { pricing, businessPricing } = await priceGroup({ org, terms }, request);
+  const summary = await accountSummary(org, { settings });
+  return {
+    nights: pricing.nights, rooms: pricing.rooms,
+    price: { roomCharges: pricing.subtotal, discount: pricing.businessDiscountAmount || 0, beforeTax: pricing.baseAmount, tax: pricing.taxAmount, total: pricing.finalAmount },
+    quotedAmount: businessPricing.quotedAmount, cappedAtPublic: businessPricing.quotedAmount > pricing.baseAmount,
+    canPayNow: summary.available >= pricing.finalAmount, available: can(member, 'account.view') ? summary.available : null,
+    holdUntil: holdDeadline(settings, org.kind, request.checkIn),
+  };
+};
+
+/** Books an accepted group quote: paid from the account now, or held until the deadline. */
+export const bookGroup = async (orgId, user, request, input = {}, ctx = {}) => {
+  const { org, settings, terms } = await bookingContext(orgId, user);
+  const leadName = String(input.leadName || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+  const leadPhone = String(input.leadPhone || '').replace(/[^\d+]/g, '').slice(0, 15);
+  if (leadName.length < 2) throw fail('Enter the group leader\'s name (the hotel\'s contact for the group).');
+  if (leadPhone.replace(/\D/g, '').length < 10) throw fail('Enter the group leader\'s phone number.');
+  const hold = input.hold === true;
+  const holdUntil = hold ? holdDeadline(settings, org.kind, request.checkIn) : null;
+  if (hold && !holdUntil) throw fail('This stay is too close to check-in to hold. Book and pay now instead.');
+  const lines = groupLines(request, leadName);
+  const dates = getDatesInRange(new Date(request.checkIn), new Date(request.checkOut));
+  const price = groupPriceFor({ org, terms, request });
+  const result = await bookingService.createBooking(user.id, request.hotelId, lines[0].roomTypeId, dates, { roomLines: lines }, {
+    guestName: leadName, guestEmail: user.email, guestPhone: leadPhone, ratePlanId: lines[0].ratePlanId, paymentType: 'PREPAID', requestId: ctx.requestId,
+    company: { name: org.legalName, gstin: org.gstin || null, address: `${org.address}, ${org.city}, ${org.state} ${org.pincode}` },
+    business: {
+      organisationId: org.id, channel: org.kind, holdUntil, maxRooms: 60,
+      price: async (stayInput) => {
+        const r = price(stayInput);
+        r.businessPricing = { ...r.businessPricing, bookedBy: { id: user.id, name: user.name, email: user.email }, held: hold, group: { purpose: request.purpose, leadName, leadPhone } };
+        return r;
+      },
+      afterCreate: async (tx, booking) => (hold ? booking : confirmFromAccount(tx, { org, terms, booking, user })),
+      timeline: (b) => (b.status === 'CONFIRMED'
+        ? { status: 'CONFIRMED', title: 'Group booking confirmed', message: `${lines.length} rooms at the hotel's group rate, paid from ${org.name}'s ZivoPlus account (${org.code}).` }
+        : { status: 'PENDING_PAYMENT', title: 'Group held', message: `${lines.length} rooms held for ${org.name} until ${fmt(holdUntil)} IST. Pay from the account by then, or they are released.` }),
+    },
+  });
+  await prisma.auditLog.create({ data: { action: hold ? 'ORG_GROUP_HELD' : 'ORG_GROUP_BOOKED', entityType: 'ORGANISATION', entityId: org.id, userId: user.id, details: { bookingId: result.booking.id, ref: result.booking.bookingRef, groupRequestId: request.id, rooms: lines.length, total: Number(result.booking.totalAmount) } } }).catch(() => {});
+  return bookingView(await prisma.booking.findUnique({ where: { id: result.booking.id }, include: { hotel: { select: { id: true, name: true, city: true } } } }));
+};
+
+/** The rooms of a booking and who is in each (the rooming list). Changes until the day before check-in. */
+const roomingOpen = (b) => ['PENDING', 'CONFIRMED'].includes(b.status) && new Date(b.checkIn).getTime() - Date.now() > -5.5 * 3600000;
+export const roomingList = async (orgId, user, bookingId) => {
+  const { booking } = await loadOwnBooking(orgId, user, bookingId);
+  const rooms = await prisma.bookingRoom.findMany({ where: { bookingId: booking.id }, orderBy: { roomNumber: 'asc' }, include: { roomType: { select: { name: true } } } });
+  return { bookingId: booking.id, bookingRef: booking.bookingRef, editable: roomingOpen(booking), rooms: rooms.map((r) => ({ roomNumber: r.roomNumber, roomType: r.roomType?.name, adults: r.adults, children: r.children, guestName: r.guestName, cancelled: Boolean(r.cancelledAt) })) };
+};
+
+export const saveRoomingList = async (orgId, user, bookingId, { rooms = [] } = {}) => {
+  const { org, member, booking } = await loadOwnBooking(orgId, user, bookingId);
+  if (!can(member, 'bookings.create')) throw fail('You can\'t change this booking.', 403);
+  if (!roomingOpen(booking)) throw fail('The rooming list can\'t be changed any more (the stay has started, or the booking is cancelled).', 409);
+  const existing = await prisma.bookingRoom.findMany({ where: { bookingId: booking.id }, select: { id: true, roomNumber: true, guestName: true } });
+  const byNumber = new Map(existing.map((r) => [r.roomNumber, r]));
+  const changes = [];
+  for (const r of Array.isArray(rooms) ? rooms.slice(0, 60) : []) {
+    const row = byNumber.get(Number(r.roomNumber));
+    const name = String(r.guestName || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+    if (!row) throw fail(`There is no room ${r.roomNumber} in this booking.`);
+    if (name.length < 2) throw fail(`Enter a name for room ${row.roomNumber}.`);
+    if (name !== row.guestName) changes.push({ id: row.id, roomNumber: row.roomNumber, from: row.guestName, to: name });
+  }
+  if (changes.length) {
+    await prisma.$transaction(changes.map((c) => prisma.bookingRoom.update({ where: { id: c.id }, data: { guestName: c.to } })));
+    await prisma.bookingTimelineEvent.create({ data: { bookingId: booking.id, status: booking.status, title: 'Rooming list updated', message: `${changes.length} room${changes.length > 1 ? 's' : ''} updated by ${user.name} (${org.name}).` } }).catch(() => {});
+    await prisma.auditLog.create({ data: { action: 'ORG_ROOMING_LIST_UPDATED', entityType: 'BOOKING', entityId: booking.id, userId: user.id, details: { organisationId: org.id, changes: changes.map(({ roomNumber, from, to }) => ({ roomNumber, from, to })) } } }).catch(() => {});
+    await notifyHotel(booking.hotelId, { type: 'ROOMING_LIST_UPDATED', title: 'Rooming list updated', message: `${booking.bookingRef} (${org.name}): ${changes.length} guest name${changes.length > 1 ? 's' : ''} changed.`, metadata: { bookingId: booking.id } }).catch(() => {});
+  }
+  return { ...(await roomingList(orgId, user, bookingId)), changed: changes.length };
 };
 
 const bookingView = (b) => ({
@@ -560,4 +678,4 @@ export const spendCsv = async (orgId, user, q = {}) => {
 };
 
 export { inr };
-export default { ratesFor, quote, book, listBookings, getBooking, payHeld, cancelBooking, creditCommission, commissionStatement, listApprovals, decideApproval, spendReport, spendCsv };
+export default { ratesFor, quote, book, listBookings, getBooking, payHeld, cancelBooking, creditCommission, commissionStatement, listApprovals, decideApproval, spendReport, spendCsv, groupQuotePrice, bookGroup, roomingList, saveRoomingList };
