@@ -408,6 +408,8 @@ export const modifyBooking = (bookingId, data) => apiFetch(`${PUBLIC_BASE}/booki
 export const getUserBookings = () => apiFetch(`${PUBLIC_BASE}/bookings/my-bookings`).then(res => res?.data);
 export const getBooking = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}`).then(res => res?.data);
 export const downloadInvoice = (invoiceId) => apiFetch(`${PUBLIC_BASE}/invoices/${invoiceId}/download`, { responseType: 'blob' });
+// A credit or debit note against the invoice (cancellations, refunds, hours added)
+export const downloadGuestNote = (noteId) => apiFetch(`${PUBLIC_BASE}/invoices/notes/${noteId}/download`, { responseType: 'blob' });
 // Booking voucher PDF: type 'guest' (booking confirmation) or 'hotelier' (owner/admin only)
 export const downloadVoucher = (bookingId, type = 'guest') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/voucher?type=${type}`, { responseType: 'blob' }, 0);
 // The signed-in user's profile (name, email, phone)

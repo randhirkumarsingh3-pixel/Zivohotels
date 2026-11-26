@@ -7,7 +7,10 @@
  *      ON_BEHALF      tax invoice with the hotel as supplier, issued by ZivoPlus on its behalf
  *      ZIVO_SUPPLIER  tax invoice with ZivoPlus as supplier (ZivoPlus's GSTIN)
  *      HOTEL_ISSUES   the hotel issues the tax invoice; ZivoPlus gives the guest a payment receipt
- *  - guestInvoice.prefix / note: the number series (ZIV/2026/000001) and a note printed on it
+ *  - guestInvoice.prefix / note: the number series and a note printed on it. Numbers run per
+ *    financial year (April to March) and stay within GST's 16 characters: ZIV/26-27/000001; credit
+ *    and debit notes have their own series (creditPrefix ZCN, debitPrefix ZDN)
+ *  - guestInvoice.terms: the terms printed at the foot of the invoice and notes
  *  - voucher.guestNotes / hotelNotes: the "Good to know" and "Notes for the property" lines
  *  - email: attach the voucher PDFs to the booking emails, and an optional footer line
  */
@@ -19,7 +22,14 @@ const KEY = 'document_settings';
 export const INVOICE_MODES = ['ON_BEHALF', 'ZIVO_SUPPLIER', 'HOTEL_ISSUES'];
 
 export const DEFAULTS = () => ({
-  guestInvoice: { mode: 'ON_BEHALF', prefix: 'ZIV', note: '' },
+  guestInvoice: {
+    mode: 'ON_BEHALF', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
+    terms: [
+      'Input tax credit is available only to the business whose GSTIN is shown as the recipient.',
+      'Report any error in this document to ZivoPlus support within 7 days of receiving it.',
+      'Changes to the booking after this invoice (cancellations, refunds, extra hours) are issued as credit or debit notes against it.',
+    ],
+  },
   voucher: {
     guestNotes: [
       'Carry a government photo ID (Aadhaar, passport, driving licence or voter ID) for every adult guest.',
@@ -59,11 +69,16 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
       if (!INVOICE_MODES.includes(g.mode)) throw new DocumentSettingsError('Choose who issues the guest invoice');
       next.guestInvoice.mode = g.mode;
     }
-    if (g.prefix !== undefined) {
-      const p = clean(g.prefix, 8).toUpperCase();
-      if (!/^[A-Z]{2,8}$/.test(p)) throw new DocumentSettingsError('The invoice prefix is 2 to 8 letters (for example ZIV)');
-      next.guestInvoice.prefix = p;
+    // Three letters at most: with the year (26-27) and a 6-digit number that is GST's 16 characters
+    for (const [k, label] of [['prefix', 'invoice'], ['creditPrefix', 'credit note'], ['debitPrefix', 'debit note']]) {
+      if (g[k] === undefined) continue;
+      const p = clean(g[k], 8).toUpperCase();
+      if (!/^[A-Z]{2,3}$/.test(p)) throw new DocumentSettingsError(`The ${label} prefix is 2 or 3 letters (GST allows 16 characters for the whole number)`);
+      next.guestInvoice[k] = p;
     }
+    const prefixes = [next.guestInvoice.prefix, next.guestInvoice.creditPrefix, next.guestInvoice.debitPrefix];
+    if (new Set(prefixes).size !== prefixes.length) throw new DocumentSettingsError('Invoices, credit notes and debit notes need different prefixes');
+    if (g.terms !== undefined) next.guestInvoice.terms = lines(g.terms, 8);
     if (g.note !== undefined) next.guestInvoice.note = clean(g.note, 400);
   }
   if (input.voucher) {

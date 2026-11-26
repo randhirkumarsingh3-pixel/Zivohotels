@@ -21,6 +21,9 @@ const PREVIEWS = [
   ['guest-email', 'Guest confirmation email', Mail], ['hotel-email', 'Hotel new-booking email', Mail],
 ];
 
+/** This financial year as 26-27 (April to March, India time) */
+const fyLabel = () => { const d = new Date(Date.now() + 5.5 * 3600000); const y = d.getUTCMonth() >= 3 ? d.getUTCFullYear() : d.getUTCFullYear() - 1; return `${String(y % 100).padStart(2, '0')}-${String((y + 1) % 100).padStart(2, '0')}`; };
+
 const DocumentSettings = () => {
   usePageTitle('Documents & emails');
   const { can } = useAccess();
@@ -78,13 +81,21 @@ const DocumentSettings = () => {
             );
           })}
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-[180px_1fr]">
-          <label className="text-xs font-semibold text-gray-700">Number prefix
-            <input className={input} value={s.guestInvoice.prefix} maxLength={8} disabled={!canEdit} onChange={(e) => set('guestInvoice.prefix', e.target.value.toUpperCase())} />
-            <span className="block mt-1 font-normal text-gray-500">{s.guestInvoice.prefix || 'ZIV'}/{new Date().getFullYear()}/000001</span>
-          </label>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {[['prefix', 'Invoice prefix', 'ZIV'], ['creditPrefix', 'Credit note prefix', 'ZCN'], ['debitPrefix', 'Debit note prefix', 'ZDN']].map(([k, label, def]) => (
+            <label key={k} className="text-xs font-semibold text-gray-700">{label}
+              <input className={input} value={s.guestInvoice[k] || ''} maxLength={3} disabled={!canEdit} onChange={(e) => set(`guestInvoice.${k}`, e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+              <span className="block mt-1 font-normal text-gray-500">{s.guestInvoice[k] || def}/{fyLabel()}/000001</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-gray-500">Numbers run per financial year (April to March) and stay within GST&apos;s 16 characters, so prefixes are 2 or 3 letters. A booking that changes after its invoice (cancellation, refund, a room cancelled, hours added) gets a credit or debit note against the invoice; the invoice itself never changes.</p>
+        <div className="mt-4 grid gap-4">
           <label className="text-xs font-semibold text-gray-700">Note printed on the invoice (optional)
             <input className={input} value={s.guestInvoice.note} maxLength={400} disabled={!canEdit} onChange={(e) => set('guestInvoice.note', e.target.value)} placeholder="e.g. Subject to Bengaluru jurisdiction." />
+          </label>
+          <label className="text-xs font-semibold text-gray-700">Terms printed at the foot of invoices and notes (one per line)
+            <textarea rows={4} className={input} disabled={!canEdit} value={notes(s.guestInvoice.terms || [])} onChange={(e) => set('guestInvoice.terms', e.target.value.split('\n'))} />
           </label>
         </div>
       </section>

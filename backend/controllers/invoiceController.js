@@ -73,3 +73,19 @@ export const downloadInvoice = async (req, res, next) => {
     next(error);
   }
 };
+
+/** A credit or debit note's PDF: the guest's own, the hotel's team, or admins. */
+export const downloadNote = async (req, res, next) => {
+  try {
+    const note = await prisma.guestNote.findUnique({ where: { id: req.params.id }, include: { booking: { include: { hotel: true } } } });
+    if (!note || !note.pdfUrl) return res.status(404).json({ success: false, message: 'Note not found or PDF not drawn yet' });
+    const { booking } = note;
+    if (req.user.role === 'CUSTOMER' && booking.userId !== req.user.id) return res.status(403).json({ success: false, message: 'Access denied to this document' });
+    if (req.user.role === 'OWNER' && !managesHotel(req.user, { ...booking.hotel, id: booking.hotelId }, 'bookings.view')) return res.status(403).json({ success: false, message: 'Access denied to this document' });
+    const absolutePath = path.join(process.cwd(), 'public', note.pdfUrl);
+    if (!fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: 'PDF file missing on server' });
+    res.download(absolutePath, `${note.kind === 'CREDIT' ? 'Credit-note' : 'Debit-note'}-${note.noteRef.replace(/\//g, '_')}.pdf`);
+  } catch (error) {
+    next(error);
+  }
+};

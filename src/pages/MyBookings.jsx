@@ -17,7 +17,7 @@ import SupportContacts from '../components/SupportContacts';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/image';
-import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
+import { getUserBookings, cancelBooking, getCancelPreview, downloadInvoice, downloadGuestNote, submitReview, updateReview, getMyReviews, getMyRewards } from '../services/api';
 import { saveVoucher } from '../utils/voucher';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -323,13 +323,13 @@ const MyBookings = () => {
     }
   };
 
-  const handleDownloadInvoice = async (invoiceId, refName) => {
+  const handleDownloadInvoice = async (invoiceId, refName, note = false) => {
     try {
-      const blob = await downloadInvoice(invoiceId);
+      const blob = await (note ? downloadGuestNote(invoiceId) : downloadInvoice(invoiceId));
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice-${refName}.pdf`;
+      a.download = `${note ? 'Note' : 'Invoice'}-${String(refName).replace(/\//g, '_')}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -726,7 +726,7 @@ const MyBookings = () => {
 
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
                     <h4 className="font-bold text-gray-900 text-sm">Invoice & Billing Center</h4>
-                    <p className="text-xs text-gray-500">Download official billing receipts for tax declarations.</p>
+                    <p className="text-xs text-gray-500">Your GST invoice, and any credit or debit notes against it when the booking changed (cancellations, refunds, hours added).</p>
                     {activeBooking.invoice?.status === 'GENERATED' ? (
                       <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
                         <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />Official GST Invoice PDF · {activeBooking.invoice.invoiceRef}</span>
@@ -738,6 +738,12 @@ const MyBookings = () => {
                         <span>{invoiceNote(activeBooking)}</span>
                       </div>
                     )}
+                    {(activeBooking.guestNotes || []).filter((n) => n.status === 'GENERATED').map((n) => (
+                      <button key={n.id} onClick={() => handleDownloadInvoice(n.id, n.noteRef, true)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
+                        <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>{n.kind === 'CREDIT' ? 'Credit note' : 'Debit note'} · {n.noteRef} · ₹{Math.round(Number(n.amount)).toLocaleString('en-IN')}<span className="block font-normal text-gray-500">{n.reason}</span></span></span>
+                        <Download size={14} className="text-gray-400 shrink-0" />
+                      </button>
+                    ))}
                   </div>
 
                   {activeBooking.status === 'CONFIRMED' && (

@@ -7,6 +7,7 @@ import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
 import { guestInvoiceHtml } from './documents/guestInvoiceHtml.js';
 import { brandContext, getDocumentSettings } from './documents/documentSettings.js';
 import { renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
+import { fyStart, fyLabel } from '../utils/financialYear.js';
 
 // Shared browser (falls back to an installed Chrome where the bundled one can't run)
 process.on('SIGINT', async () => {
@@ -36,9 +37,9 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
  * Draws the invoice PDF and saves it under public/invoices. Runs outside any database
  * transaction: nothing is locked while the browser works. Returns the file's address.
  */
-const renderPdf = async (booking, invoiceRef) => {
+const renderPdf = async (booking, invoiceRef, issueDate = new Date()) => {
   const brand = await brandContext();
-  const htmlContent = guestInvoiceHtml({ booking, hotel: booking.hotel, rooms: booking.bookingRooms || [], invoiceRef, issueDate: new Date(), brand });
+  const htmlContent = guestInvoiceHtml({ booking, hotel: booking.hotel, rooms: booking.bookingRooms || [], invoiceRef, issueDate, brand });
   return withRenderSlot(async () => {
     const pdf = await renderThemedPdf(htmlContent, { footer: footerLine(brand.company, brand.support) });
     const safeInvoiceRef = invoiceRef.replace(/\//g, '_');
@@ -68,19 +69,25 @@ export const invoiceService = {
    * moved. Returns the new invoice, or the existing one.
    */
   createRecord: async (bookingId) => {
-    const year = new Date().getFullYear();
+    // GST: one series per financial year (April to March), at most 16 characters:
+    // ZIV/26-27/000001. The counter row is keyed by the year the financial year starts.
+    const fy = fyStart();
     const id = crypto.randomUUID();
-    // Series prefix from Admin → Settings → Documents & emails (default ZIV); one counter per year
-    const prefix = (await getDocumentSettings()).guestInvoice.prefix || 'ZIV';
+    // Series prefix from Admin → Settings → Documents & emails (default ZIV, 2 or 3 letters)
+    const prefix = String((await getDocumentSettings()).guestInvoice.prefix || 'ZIV').slice(0, 3);
+    // What it is for when issued; later changes are credit / debit notes against it
+    const b = await prisma.booking.findUnique({ where: { id: bookingId }, select: { totalAmount: true, taxAmount: true } });
+    const total = b ? Number(b.totalAmount || 0) : null;
+    const tax = b ? Number(b.taxAmount || 0) : null;
     try {
       const rows = await prisma.$queryRaw`
         WITH seq AS (
-          INSERT INTO "InvoiceSequence" ("year", "counter") VALUES (${year}, 1)
+          INSERT INTO "InvoiceSequence" ("year", "counter") VALUES (${fy}, 1)
           ON CONFLICT ("year") DO UPDATE SET "counter" = "InvoiceSequence"."counter" + 1
           RETURNING "counter"
         )
-        INSERT INTO "Invoice" ("id", "invoiceRef", "bookingId", "status", "createdAt")
-        SELECT ${id}, ${prefix} || '/' || ${year}::text || '/' || lpad("counter"::text, 6, '0'), ${bookingId}, ${INVOICE_STATUS.PENDING}, now()
+        INSERT INTO "Invoice" ("id", "invoiceRef", "bookingId", "status", "totalAmount", "taxAmount", "createdAt")
+        SELECT ${id}, ${prefix} || '/' || ${fyLabel(fy)} || '/' || lpad("counter"::text, 6, '0'), ${bookingId}, ${INVOICE_STATUS.PENDING}, ${total}, ${tax}, now()
         FROM seq
         RETURNING *;
       `;
@@ -116,7 +123,7 @@ export const invoiceService = {
   /** Draws (or redraws) the PDF for an existing invoice record and saves its address. */
   drawPdf: async (invoice, booking) => {
     try {
-      const pdfUrl = await renderPdf(booking || await loadBooking(invoice.bookingId), invoice.invoiceRef);
+      const pdfUrl = await renderPdf(booking || await loadBooking(invoice.bookingId), invoice.invoiceRef, invoice.createdAt || new Date());
       return await prisma.invoice.update({ where: { id: invoice.id }, data: { pdfUrl, status: INVOICE_STATUS.GENERATED } });
     } catch (err) {
       await prisma.invoice.update({ where: { id: invoice.id }, data: { status: INVOICE_STATUS.PDF_FAILED } }).catch(() => {});
@@ -167,7 +174,9 @@ export const invoiceService = {
 export const startInvoiceCatchUpJob = () => {
   const run = async () => {
     const r = await invoiceService.catchUp().catch((e) => ({ error: e.message }));
-    if (r.error || r.redrawn || r.issued || r.failed) console.log('🧾 Invoice catch-up:', JSON.stringify(r));
+    // Credit / debit notes whose PDF wasn't drawn
+    r.notes = await import('./guestNoteService.js').then((m) => m.catchUpNotes()).catch(() => 0);
+    if (r.error || r.redrawn || r.issued || r.failed || r.notes) console.log('🧾 Invoice catch-up:', JSON.stringify(r));
   };
   setTimeout(run, 60 * 1000).unref?.();
   setInterval(run, 10 * 60 * 1000).unref?.();

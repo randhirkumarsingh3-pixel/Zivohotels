@@ -330,6 +330,7 @@ model Booking {
   organisationId      String?
   businessPricing     Json?
   organisation        Organisation?          @relation(fields: [organisationId], references: [id])
+  guestNotes          GuestNote[]
 
   @@index([hotelId])
   @@index([userId])
@@ -606,13 +607,51 @@ model InvoiceSequence {
 }
 
 model Invoice {
-  id         String   @id @default(uuid())
-  invoiceRef String   @unique
-  bookingId  String   @unique
-  pdfUrl     String?
-  status     String   @default("GENERATED")
-  createdAt  DateTime @default(now())
-  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id          String      @id @default(uuid())
+  invoiceRef  String      @unique
+  bookingId   String      @unique
+  pdfUrl      String?
+  status      String      @default("GENERATED")
+  /// What the invoice was for when issued (GST included, and the GST in it). Later changes to the
+  /// booking (a room cancelled, hours added, a refund) are credit or debit notes, never a new
+  /// version of this invoice.
+  totalAmount Decimal?    @db.Decimal(12, 2)
+  taxAmount   Decimal?    @db.Decimal(12, 2)
+  createdAt   DateTime    @default(now())
+  booking     Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  notes       GuestNote[]
+}
+
+/// A credit note (the amount went down: cancellation, a room cancelled) or debit note (it went up:
+/// hours added) against a guest's tax invoice, numbered in its own series per financial year
+/// (ZCN/26-27/000001, ZDN/26-27/000001). amount includes GST; taxAmount is the GST in it.
+model GuestNote {
+  id        String   @id @default(uuid())
+  kind      String
+  noteRef   String   @unique
+  bookingId String
+  invoiceId String
+  amount    Decimal  @db.Decimal(12, 2)
+  taxAmount Decimal  @db.Decimal(12, 2)
+  reason    String
+  /// What it is for, once per booking: cancel, room-2, hours-<order>
+  key       String
+  status    String   @default("PENDING")
+  pdfUrl    String?
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, key])
+}
+
+/// Numbers for credit and debit notes: one counter per kind per financial year (fy = its start year).
+model GuestNoteSequence {
+  kind    String
+  fy      Int
+  counter Int    @default(0)
+
+  @@id([kind, fy])
 }
 
 /// A verified guest review of a stay (one per booking). Published reviews (APPROVED) count towards
