@@ -20,6 +20,8 @@ import bcrypt from '../../utils/bcrypt.js';
 import { getBusinessSettings } from './businessSettings.js';
 import { accountSummary } from './orgLedger.js';
 import { PORTAL, ROLES, DOC_TYPES, legalDetails, orgView, addMember, adminDetail, nextCode } from './organisationService.js';
+import { profileDetails } from './orgChecklist.js';
+import { setBank } from './orgApplication.js';
 import { spendReportFor, spendCsvFor, commissionStatementFor } from './businessBookingService.js';
 import { notifyUser } from '../notifyService.js';
 import { emailLayout } from '../emailLayout.js';
@@ -101,6 +103,8 @@ export const createOnBehalf = async (admin, input = {}) => {
   if (user && ['BLOCKED', 'DELETED'].includes(user.status)) throw fail('This account is blocked.');
   if (!user && adminName.length < 2) throw fail('Enter the name of the person who will run the account.');
   const approve = Boolean(input.approve);
+  const extra = profileDetails({ contactName: adminName || user?.name || null, ...input }, { kind, gstin: d.gstin });
+  const bankInput = input.bank && input.bank.accountNumber ? input.bank : null;
 
   let raw = null;
   const org = await prisma.$transaction(async (tx) => {
@@ -112,10 +116,11 @@ export const createOnBehalf = async (admin, input = {}) => {
       } });
     }
     const code = await nextCode(kind, tx);
-    const o = await tx.organisation.create({ data: { ...d, kind, code, createdById: admin.id, ...(approve ? { status: 'ACTIVE', reviewedById: admin.id, reviewedAt: new Date(), statusNote: 'Added by ZivoPlus' } : {}) } });
+    const o = await tx.organisation.create({ data: { ...d, ...extra, kind, code, createdById: admin.id, submittedAt: new Date(), ...(approve ? { status: 'ACTIVE', reviewedById: admin.id, reviewedAt: new Date(), statusNote: 'Added by ZivoPlus' } : {}) } });
     await tx.orgMember.create({ data: { organisationId: o.id, userId: user.id, role: 'ADMIN', invitedById: admin.id } });
     return o;
   });
+  if (bankInput) await setBank(org, admin, bankInput, { staff: true });
   await audit('ORG_CREATED_BY_STAFF', org.id, admin.id, { kind, code: org.code, adminEmail: email, approved: approve, newAccount: Boolean(raw) });
   if (approve) {
     const { prepareOrgAgreement } = await import('./orgAgreementService.js');
@@ -143,9 +148,10 @@ export const updateProfile = async (id, admin, input = {}) => {
     const taken = await prisma.organisation.findFirst({ where: { kind: org.kind, pan: d.pan, status: { not: 'REJECTED' }, id: { not: org.id } }, select: { name: true } });
     if (taken) throw fail(`Another account has this PAN (${taken.name}).`, 409);
   }
+  const extra = profileDetails(input, { kind: org.kind, gstin: d.gstin, partial: true });
   const changed = Object.keys(d).filter((k) => String(d[k] ?? '') !== String(org[k] ?? ''));
-  if (!changed.length) return adminDetail(org.id);
-  await prisma.organisation.update({ where: { id: org.id }, data: Object.fromEntries(changed.map((k) => [k, d[k]])) });
+  if (!changed.length && !Object.keys(extra).length) return adminDetail(org.id);
+  await prisma.organisation.update({ where: { id: org.id }, data: { ...Object.fromEntries(changed.map((k) => [k, d[k]])), ...extra } });
   await audit('ORG_PROFILE_UPDATED_BY_STAFF', org.id, admin.id, { before: Object.fromEntries(changed.map((k) => [k, org[k] ?? null])), after: Object.fromEntries(changed.map((k) => [k, d[k] ?? null])) });
   return adminDetail(org.id);
 };

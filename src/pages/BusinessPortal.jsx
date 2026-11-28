@@ -7,6 +7,8 @@ import {
 import { businessApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Signup from './Signup';
+import ApplicationWizard from './business/ApplicationWizard';
+import Steps from './business/ApplicationSteps';
 import usePageTitle from '../hooks/usePageTitle';
 import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
 import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields, TripsTab, ImportMembers, DelegateFields, TravellersTab } from './business/CompanyTools';
@@ -84,51 +86,9 @@ const Hero = ({ kind, children }) => {
   );
 };
 
-const ApplyForm = ({ kind, info, onDone, user }) => {
-  const c = COPY[kind];
-  const requireGstin = kind === 'AGENCY' ? info?.agency?.requireGstin : info?.corporate?.requireGstin;
-  // The contact details start from the account just created (they can change them)
-  const [f, setF] = useState({ incorporationType: kind === 'AGENCY' ? 'INDIVIDUAL' : 'PVT_LTD', billingEmail: user?.email || '', phone: user?.phone || '' });
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
-  const submit = async (e) => {
-    e.preventDefault(); setBusy(true); setMsg(null);
-    try { await businessApi.apply({ ...f, kind }); window.scrollTo({ top: 0 }); onDone(); } catch (err) { setMsg({ ok: false, text: err.message }); } finally { setBusy(false); }
-  };
-  const field = (k, label, props = {}) => <label className="block text-sm font-semibold text-gray-800">{label}<input className={input} value={f[k] || ''} onChange={set(k)} {...props} /></label>;
-  return (
-    <form onSubmit={submit} className="bg-white border border-gray-200 rounded-2xl p-5 md:p-8 space-y-5" aria-labelledby="apply-h">
-      <div>
-        <h2 id="apply-h" className="text-xl font-bold text-gray-900">Apply for {c.name}</h2>
-        <p className="text-sm text-gray-600 mt-1">Use the {c.who}&apos;s legal details as on its PAN and GST certificate. We review every application, usually within 2 working days.</p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {field('name', kind === 'AGENCY' ? 'Agency name' : 'Company name', { required: true, autoComplete: 'organization' })}
-        {field('legalName', 'Legal name', { required: true, placeholder: 'As on the PAN card' })}
-        <label className="block text-sm font-semibold text-gray-800">Type of business
-          <select className={input} value={f.incorporationType} onChange={set('incorporationType')}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-        </label>
-        {field('pan', 'PAN', { required: true, maxLength: 10, style: { textTransform: 'uppercase' }, placeholder: 'ABCDE1234F' })}
-        {field('gstin', `GSTIN${requireGstin ? '' : ' (optional)'}`, { required: Boolean(requireGstin), maxLength: 15, style: { textTransform: 'uppercase' } })}
-        {field('billingEmail', 'Email for invoices and statements', { required: true, type: 'email' })}
-        {field('phone', 'Phone', { required: true, type: 'tel', autoComplete: 'tel' })}
-        {field('website', 'Website (optional)', { type: 'url', placeholder: 'https://' })}
-        <div className="md:col-span-2">{field('address', 'Registered address', { required: true, autoComplete: 'street-address' })}</div>
-        {field('city', 'City', { required: true })}
-        {field('state', 'State', { required: true, placeholder: 'As in the GSTIN' })}
-        {field('pincode', 'PIN code', { required: true, inputMode: 'numeric', maxLength: 6 })}
-      </div>
-      <Note msg={msg} />
-      <button type="submit" disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white px-6`}>{busy && <Loader2 size={15} className="animate-spin" />} Submit application</button>
-      <p className="text-xs text-gray-500">You become this {c.who}&apos;s admin on ZivoPlus. After approval you can invite your colleagues.</p>
-    </form>
-  );
-};
-
 // ─── Member dashboard ────────────────────────────────────────────────────────
 const STATUS = {
-  IN_REVIEW: [Clock, 'bg-blue-50 border-blue-200 text-blue-900', 'In review', 'ZivoPlus is reviewing your application. Upload your documents (Documents tab) to speed it up.'],
+  IN_REVIEW: [Clock, 'bg-blue-50 border-blue-200 text-blue-900', 'In review', 'ZivoPlus is reviewing your application, usually within 2 working days. We\'ll email you when it\'s done; if anything is missing, you can add it in the Documents tab.'],
   ON_HOLD: [AlertTriangle, 'bg-amber-50 border-amber-200 text-amber-950', 'More details needed', 'Update your details or documents as asked below; we\'ll review it again.'],
   ACTIVE: [CheckCircle2, 'bg-green-50 border-green-200 text-green-900', 'Approved', null],
   SUSPENDED: [Ban, 'bg-red-50 border-red-200 text-red-900', 'Suspended', 'Bookings and top-ups are paused. Contact ZivoPlus support.'],
@@ -400,22 +360,6 @@ const Dashboard = ({ orgId, info, user }) => {
   );
 };
 
-/** "1 Your account → 2 Business details" above the one-step sign-up and the application. */
-const Steps = ({ current }) => (
-  <ol className="flex items-center gap-3 text-sm" aria-label="Steps">
-    {['Your ZivoPlus account', 'Business details and documents'].map((label, i) => {
-      const n = i + 1; const done = n < current; const on = n === current;
-      return (
-        <li key={label} className="flex items-center gap-2" aria-current={on ? 'step' : undefined}>
-          {i > 0 && <span className="w-8 h-px bg-gray-300" aria-hidden="true" />}
-          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-600 text-white' : on ? 'bg-navy-800 text-white' : 'bg-gray-200 text-gray-600'}`}>{done ? '✓' : n}</span>
-          <span className={on ? 'font-semibold text-gray-900' : 'text-gray-500'}>{label}</span>
-        </li>
-      );
-    })}
-  </ol>
-);
-
 const BusinessPortal = ({ kind = 'CORPORATE' }) => {
   const c = COPY[kind];
   usePageTitle(c.name);
@@ -437,7 +381,10 @@ const BusinessPortal = ({ kind = 'CORPORATE' }) => {
 
   let body;
   if (mine === undefined) body = <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Loading…</p>;
-  else if (membership && membership.memberStatus === 'ACTIVE') body = <Dashboard orgId={membership.organisation.id} info={info} user={user} />;
+  else if (membership && membership.memberStatus === 'ACTIVE' && membership.organisation.status === 'DRAFT') {
+    // An application not submitted yet: carry on where they left off
+    body = <Hero kind={kind}><ApplicationWizard key={membership.organisation.id} kind={kind} info={info} user={user} orgId={membership.organisation.id} onSubmitted={() => { load(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></Hero>;
+  } else if (membership && membership.memberStatus === 'ACTIVE') body = <Dashboard orgId={membership.organisation.id} info={info} user={user} />;
   else if (membership) body = <Hero kind={kind}><p className="text-sm text-gray-700">Your access to {membership.organisation.name} is paused. Ask its admin.</p></Hero>;
   else if (!user && open) {
     // One step: create the account here, then the application form opens on the same page
@@ -469,7 +416,7 @@ const BusinessPortal = ({ kind = 'CORPORATE' }) => {
   } else if (!open) {
     body = <Hero kind={kind}><p className="text-sm text-gray-700 bg-white border border-gray-200 rounded-2xl p-5">{c.name} isn&apos;t taking applications yet. Please check back soon.</p></Hero>;
   } else {
-    body = <Hero kind={kind}><Steps current={2} /><ApplyForm kind={kind} info={info} onDone={load} user={user} /></Hero>;
+    body = <Hero kind={kind}><ApplicationWizard key="new" kind={kind} info={info} user={user} onCreated={() => load()} /></Hero>;
   }
 
   return (

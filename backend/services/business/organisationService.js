@@ -20,6 +20,8 @@ import { notifyUser, notifyAdmins } from '../notifyService.js';
 import { emailLayout, inr, siteUrl } from '../emailLayout.js';
 import { getBusinessSettings, termsFor, PAYMENT_MODES, INVOICE_MODES, PRICING_MODELS, KINDS } from './businessSettings.js';
 import { accountSummary, postEntry } from './orgLedger.js';
+import { profileDetails, checklist, missingItems } from './orgChecklist.js';
+import { decryptText } from '../../utils/dataCrypto.js';
 
 const fail = (m, code = 400) => Object.assign(new Error(m), { statusCode: code });
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -31,7 +33,7 @@ export const PORTAL = {
   CORPORATE: { name: 'ZivoPlus for Business', path: '/business', prefix: 'ZB' },
   AGENCY: { name: 'ZivoPlus Partner Hub', path: '/partners', prefix: 'ZP' },
 };
-export const STATUSES = ['IN_REVIEW', 'ACTIVE', 'ON_HOLD', 'SUSPENDED', 'REJECTED'];
+export const STATUSES = ['DRAFT', 'IN_REVIEW', 'ACTIVE', 'ON_HOLD', 'SUSPENDED', 'REJECTED'];
 export const ROLES = {
   ADMIN: 'Admin: everything, including people and the account',
   BOOKER: 'Booker: books stays for anyone in the organisation',
@@ -58,6 +60,7 @@ export const DOC_TYPES = {
   ADDRESS_PROOF: 'Address proof (utility bill, rent agreement)',
   ACCREDITATION: 'IATA / TAAI / TAFI / Ministry of Tourism accreditation',
   AUTHORISATION: 'Authorisation letter for the account admin',
+  CANCELLED_CHEQUE: 'Cancelled cheque or bank letter',
   OTHER: 'Other',
 };
 const INCORPORATION = ['INDIVIDUAL', 'PARTNERSHIP', 'LLP', 'PVT_LTD', 'PUBLIC_LTD', 'HUF', 'TRUST'];
@@ -66,11 +69,24 @@ const audit = (action, entityId, userId, details) => prisma.auditLog.create({ da
 
 // ─── Shapes ──────────────────────────────────────────────────────────────────
 const docView = (d) => ({ id: d.id, type: d.type, label: DOC_TYPES[d.type] || d.type, name: d.name, mimeType: d.mimeType, size: d.size, uploadedAt: d.uploadedAt, review: d.review || null });
+/** The payout / refund account without its full number (staff see it in adminDetail). */
+export const readBank = (org) => {
+  if (!org.bankDetails) return null;
+  try { return JSON.parse(decryptText(org.bankDetails)); } catch { return null; }
+};
+const bankSummary = (org) => {
+  const b = readBank(org);
+  return b ? { holderName: b.holderName, bankName: b.bankName, branch: b.branch, ifsc: b.ifsc, accountType: b.accountType, last4: org.bankLast4, status: org.bankStatus, note: org.bankNote } : null;
+};
+
 export const orgView = (org, settings) => ({
   id: org.id, kind: org.kind, code: org.code, portal: PORTAL[org.kind].name, name: org.name, legalName: org.legalName,
   incorporationType: org.incorporationType, pan: org.pan, gstin: org.gstin, address: org.address, city: org.city, state: org.state, pincode: org.pincode,
   billingEmail: org.billingEmail, phone: org.phone, website: org.website, status: org.status, statusNote: org.statusNote, reviewedAt: org.reviewedAt,
   tier: org.tier, createdAt: org.createdAt, terms: termsFor(org, settings),
+  contactName: org.contactName, contactDesignation: org.contactDesignation, isSignatory: org.isSignatory,
+  accreditation: org.accreditation || null, businessProfile: org.businessProfile || null, gstDeclaration: org.gstDeclaration,
+  submittedAt: org.submittedAt, bank: bankSummary(org), checklist: checklist(org), missing: missingItems(org),
   documents: (Array.isArray(org.documents) ? org.documents : []).map(docView),
   branding: brandingFor(org),
 });
@@ -126,6 +142,33 @@ export const legalDetails = (input, { kind, requireGstin }) => {
   return d;
 };
 
+/** Emails and alerts once an application is submitted (applicant + ZivoPlus admins). */
+export const sendSubmitted = async (org, me) => {
+  const kind = org.kind;
+  const esc = (v) => String(v ?? '').replace(/[<>&]/g, '');
+  const missing = missingItems(org);
+  const adminLink = `${kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}`;
+  await notifyAdmins({
+    type: 'ORG_APPLIED', title: `New ${kind === 'AGENCY' ? 'travel agent' : 'business'} application`,
+    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.${missing.length ? ` Missing: ${missing.length} item${missing.length === 1 ? '' : 's'}.` : ' All documents in.'}`, link: adminLink,
+    email: { subject: `New ${PORTAL[kind].name} application: ${org.name} (${org.code})`, jobType: 'SEND_ORG_APPLIED', html: await emailLayout({
+      title: `New ${kind === 'AGENCY' ? 'travel agent' : 'company'} application`, eyebrow: PORTAL[kind].name, ref: org.code, status: { label: 'In review', tone: 'info' },
+      body: `<p><b>${esc(org.name)}</b> applied for ${PORTAL[kind].name}. Check their details, documents${org.bankDetails ? ' and bank account' : ''}, then approve, ask for more or reject.</p>${missing.length ? `<p><b>Still missing:</b> ${missing.map(esc).join('; ')}</p>` : ''}`,
+      rows: [['Legal name', esc(org.legalName)], ['PAN', org.pan], ['GSTIN', org.gstin || (org.gstDeclaration ? 'Not registered (declared)' : '—')], ['City', `${esc(org.city)}, ${esc(org.state)}`], ['Contact', `${esc(org.contactName || me.name)}${org.contactDesignation ? `, ${esc(org.contactDesignation)}` : ''} (${esc(me.email)})`]],
+      cta: { label: 'Review the application', href: `${site()}${adminLink}` },
+    }) },
+  });
+  const received = checklist(org).filter((i) => i.done).map((i) => i.label);
+  await notifyUser(me.id, {
+    type: 'ORG_APPLIED', title: 'Application received', message: missing.length ? `We're reviewing ${org.name}. Still needed: ${missing.join('; ')}.` : `We're reviewing ${org.name}. We'll email you when it's done.`, link: PORTAL[kind].path,
+    email: { subject: `${PORTAL[kind].name}: application received (${org.code})`, html: await emailLayout({
+      title: 'We\'ve received your application', eyebrow: PORTAL[kind].name, ref: org.code, status: { label: 'In review', tone: 'info' },
+      body: `<p>Thank you, ${esc(me.name)}. We're reviewing <b>${esc(org.name)}</b>, usually within 2 working days, and we'll email you when it's done.</p>${received.length ? `<p><b>Received:</b> ${received.map(esc).join('; ')}.</p>` : ''}${missing.length ? `<p><b>Still needed:</b> ${missing.map(esc).join('; ')}. Upload them so we can approve it quickly.</p>` : ''}`,
+      cta: { label: missing.length ? 'Upload what\'s missing' : `Open ${PORTAL[kind].name}`, href: `${site()}${PORTAL[kind].path}` },
+    }) },
+  });
+};
+
 export const apply = async (user, input = {}) => {
   const kind = input.kind;
   if (!KINDS.includes(kind)) throw fail('Choose ZivoPlus for Business or Partner Hub.');
@@ -140,31 +183,17 @@ export const apply = async (user, input = {}) => {
   const taken = await prisma.organisation.findFirst({ where: { kind, pan: d.pan, status: { not: 'REJECTED' } }, select: { name: true } });
   if (taken) throw fail(`An account with this PAN already exists (${taken.name}). Ask its admin to invite you.`, 409);
 
+  const extra = profileDetails({ contactName: me.name, ...input }, { kind, gstin: d.gstin });
+  // The website saves an application as a draft first (documents and bank next, then submit);
+  // without `draft` it is submitted straight away
+  const draft = Boolean(input.draft);
   const org = await prisma.$transaction(async (tx) => {
-    const o = await tx.organisation.create({ data: { ...d, kind, code: await nextCode(kind, tx), createdById: user.id } });
+    const o = await tx.organisation.create({ data: { ...d, ...extra, kind, code: await nextCode(kind, tx), createdById: user.id, ...(draft ? { status: 'DRAFT' } : { submittedAt: new Date() }) } });
     await tx.orgMember.create({ data: { organisationId: o.id, userId: user.id, role: 'ADMIN' } });
     return o;
   });
-  await audit('ORG_APPLIED', org.id, user.id, { kind, code: org.code, name: org.name, pan: org.pan, gstin: org.gstin });
-  const adminLink = `${org.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}`;
-  await notifyAdmins({
-    type: 'ORG_APPLIED', title: `New ${kind === 'AGENCY' ? 'travel agent' : 'business'} application`,
-    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.`, link: adminLink,
-    email: { subject: `New ${PORTAL[kind].name} application: ${org.name} (${org.code})`, jobType: 'SEND_ORG_APPLIED', html: await emailLayout({
-      title: `New ${kind === 'AGENCY' ? 'travel agent' : 'company'} application`, eyebrow: PORTAL[kind].name, ref: org.code, status: { label: 'In review', tone: 'info' },
-      body: `<p><b>${org.name.replace(/[<>&]/g, '')}</b> applied for ${PORTAL[kind].name}. Check their details and documents, then approve, ask for more or reject.</p>`,
-      rows: [['Legal name', org.legalName.replace(/[<>&]/g, '')], ['PAN', org.pan], ['GSTIN', org.gstin || '—'], ['City', `${org.city}, ${org.state}`], ['Applied by', `${me.name} (${me.email})`]],
-      cta: { label: 'Review the application', href: `${site()}${adminLink}` },
-    }) },
-  });
-  await notifyUser(user.id, {
-    type: 'ORG_APPLIED', title: 'Application received', message: `We're reviewing ${org.name}. Upload your documents to speed it up.`, link: PORTAL[kind].path,
-    email: { subject: `${PORTAL[kind].name}: application received (${org.code})`, html: await emailLayout({
-      title: 'We\'ve received your application', eyebrow: PORTAL[kind].name, ref: org.code, status: { label: 'In review', tone: 'info' },
-      body: `<p>Thank you, ${me.name}. We're reviewing <b>${org.name}</b>. Upload your PAN, GST certificate and business proof so we can approve it quickly; we'll email you when it's done.</p>`,
-      cta: { label: 'Upload documents', href: `${site()}${PORTAL[kind].path}` },
-    }) },
-  });
+  await audit(draft ? 'ORG_DRAFT_STARTED' : 'ORG_APPLIED', org.id, user.id, { kind, code: org.code, name: org.name, pan: org.pan, gstin: org.gstin });
+  if (!draft) await sendSubmitted(org, me);
   return orgView(org, s);
 };
 
@@ -202,15 +231,16 @@ export const updateOrganisation = async (orgId, user, input = {}) => {
   const { org } = await membershipFor(orgId, user, 'org.edit');
   const s = await getBusinessSettings();
   let data;
-  if (['IN_REVIEW', 'ON_HOLD'].includes(org.status)) {
+  if (['DRAFT', 'IN_REVIEW', 'ON_HOLD'].includes(org.status)) {
     const d = legalDetails({ ...org, ...input }, { kind: org.kind, requireGstin: (org.kind === 'AGENCY' ? s.agency : s.corporate).requireGstin });
-    data = { ...d, ...(org.status === 'ON_HOLD' ? { status: 'IN_REVIEW' } : {}) };
+    data = { ...d, ...profileDetails(input, { kind: org.kind, gstin: d.gstin, partial: true }), ...(org.status === 'ON_HOLD' ? { status: 'IN_REVIEW' } : {}) };
   } else if (org.status === 'ACTIVE') {
     data = {};
     if (input.billingEmail !== undefined) { const e = String(input.billingEmail).trim().toLowerCase(); if (!isEmail(e)) throw fail('Enter a valid email.'); data.billingEmail = e; }
     if (input.phone !== undefined) { const p = String(input.phone).replace(/[^\d+]/g, '').slice(0, 15); if (p.replace(/\D/g, '').length < 10) throw fail('Enter a phone number.'); data.phone = p; }
     if (input.website !== undefined) data.website = input.website ? clean(input.website, 200) : null;
     if (input.name !== undefined) { const n = clean(input.name, 120); if (n.length < 2) throw fail('Enter the name.'); data.name = n; }
+    Object.assign(data, profileDetails(Object.fromEntries(['contactName', 'contactDesignation', 'businessProfile', 'accreditation'].filter((k) => input[k] !== undefined).map((k) => [k, input[k]])), { kind: org.kind, gstin: org.gstin, partial: true }));
     const locked = ['legalName', 'pan', 'gstin', 'address', 'city', 'state', 'pincode', 'incorporationType'].filter((k) => input[k] !== undefined && String(input[k] ?? '') !== String(org[k] ?? ''));
     if (locked.length) throw fail('Legal, tax and address details can\'t be changed after approval. Write to ZivoPlus support with the new details.', 409);
   } else {
@@ -280,8 +310,10 @@ export const setBranding = async (orgId, user, input = {}) => {
 };
 
 // ─── KYC documents ───────────────────────────────────────────────────────────
-export const addDocument = async (orgId, user, { type, fileName, file } = {}) => {
-  const { org } = await membershipFor(orgId, user, 'documents.manage');
+export const addDocument = async (orgId, user, input = {}) => storeDocument((await membershipFor(orgId, user, 'documents.manage')).org, user, input);
+
+/** Saves a KYC file for an organisation (members via addDocument; ZivoPlus staff directly). */
+export const storeDocument = async (org, user, { type, fileName, file } = {}) => {
   if (!DOC_TYPES[type]) throw fail('Choose the document type.');
   if (['SUSPENDED', 'REJECTED'].includes(org.status)) throw fail('This organisation can\'t add documents.', 409);
   const docs = Array.isArray(org.documents) ? org.documents : [];
@@ -575,7 +607,8 @@ export const confirmTopup = async (orgId, user, { razorpay_order_id: orderId, ra
 export const adminList = async ({ kind, status, search, page = 1, pageSize = 50 } = {}) => {
   const where = {};
   if (KINDS.includes(kind)) where.kind = kind;
-  if (STATUSES.includes(status)) where.status = status;
+  // Drafts (applications not submitted yet) only when asked for
+  where.status = STATUSES.includes(status) ? status : { not: 'DRAFT' };
   const q = clean(search, 80);
   if (q) where.OR = [{ name: { contains: q, mode: 'insensitive' } }, { legalName: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }, { pan: { contains: q.toUpperCase() } }, { gstin: { contains: q.toUpperCase() } }, { billingEmail: { contains: q.toLowerCase() } }];
   const take = Math.min(Math.max(Number(pageSize) || 50, 1), 200);
@@ -602,7 +635,7 @@ export const adminDetail = async (id) => {
     prisma.auditLog.findMany({ where: { entityType: 'ORGANISATION', entityId: org.id }, orderBy: { createdAt: 'desc' }, take: 50, select: { action: true, details: true, userId: true, createdAt: true } }),
   ]);
   const { adminOrgAgreement } = await import('./orgAgreementService.js');
-  return { ...orgView(org, s), agreement: await adminOrgAgreement(org.id), overrides: { paymentMode: org.paymentMode, creditLimit: Number(org.creditLimit), creditDays: org.creditDays, invoiceMode: org.invoiceMode, pricingModel: org.pricingModel, defaultMarkupPct: org.defaultMarkupPct == null ? null : Number(org.defaultMarkupPct), extraCommissionPct: org.extraCommissionPct == null ? null : Number(org.extraCommissionPct), tier: org.tier }, members: members.map(memberView), account, history };
+  return { ...orgView(org, s), bankFull: readBank(org), agreement: await adminOrgAgreement(org.id), overrides: { paymentMode: org.paymentMode, creditLimit: Number(org.creditLimit), creditDays: org.creditDays, invoiceMode: org.invoiceMode, pricingModel: org.pricingModel, defaultMarkupPct: org.defaultMarkupPct == null ? null : Number(org.defaultMarkupPct), extraCommissionPct: org.extraCommissionPct == null ? null : Number(org.extraCommissionPct), tier: org.tier }, members: members.map(memberView), account, history };
 };
 
 const DECISION_TEXT = {
@@ -685,6 +718,7 @@ export const adminEntry = async (id, admin, { type, amount, note, reference } = 
 };
 
 export default {
+  sendSubmitted, storeDocument, readBank,
   PORTAL, ROLES, DOC_TYPES, STATUSES, can, publicInfo, apply, myOrganisations, membershipFor, viewOrganisation, updateOrganisation,
   addDocument, removeDocument, readDocument, listMembers, inviteMember, updateMember, removeMember, viewAccount, accountFor,
   startTopup, confirmTopup, rememberTopup, setDelegate, importMembers, adminList, adminDetail, decide, setTerms, adminEntry,
