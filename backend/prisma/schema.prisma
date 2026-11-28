@@ -1923,7 +1923,7 @@ model Organisation {
   billingEmail       String
   phone              String
   website            String?
-  /// IN_REVIEW | ACTIVE | ON_HOLD (more details needed) | SUSPENDED | REJECTED
+  /// DRAFT (application not submitted) | IN_REVIEW | ACTIVE | ON_HOLD (more details needed) | SUSPENDED | REJECTED
   status             String           @default("IN_REVIEW")
   statusNote         String?
   reviewedById       String?
@@ -1941,8 +1941,30 @@ model Organisation {
   /// Extra commission ZivoPlus pays this agency on top of the hotel's agent discount
   extraCommissionPct Decimal?         @db.Decimal(5, 2)
   tier               String           @default("STANDARD")
-  /// KYC files: [{ id, type, name, key (private storage), mimeType, size, uploadedAt, uploadedBy }]
+  /// KYC files: [{ id, type, name, key (private storage), mimeType, size, uploadedAt, uploadedBy, review? }]
   documents          Json             @default("[]")
+  /// The person applying and their role; isSignatory: owner / director / partner (else an
+  /// authorisation letter is needed)
+  contactName        String?
+  contactDesignation String?
+  isSignatory        Boolean          @default(true)
+  /// Agents: { body: IATA|TAAI|TAFI|MOT|OTHER, number }
+  accreditation      Json?
+  /// { yearsInBusiness, monthlyBookings, pricingPreference }
+  businessProfile    Json?
+  /// No GSTIN: declared not registered under GST
+  gstDeclaration     Boolean          @default(false)
+  /// Payout / refund account, encrypted JSON { holderName, accountNumber, ifsc, bankName, branch, accountType }
+  bankDetails        String?
+  bankLast4          String?
+  /// PENDING (to check) | CHECKING (test deposit sent) | VERIFIED | NAME_MISMATCH | REJECTED
+  bankStatus         String?
+  bankNote           String?
+  bankCheckRef       String?
+  /// DRAFT until the applicant submits it (then IN_REVIEW)
+  submittedAt        DateTime?
+  declarationAt      DateTime?
+  draftReminderAt    DateTime?
   settings           Json             @default("{}")
   createdById        String
   createdAt          DateTime         @default(now())

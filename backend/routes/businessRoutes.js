@@ -38,6 +38,8 @@
  *  GET    /:orgId/agreement                   the agreement with ZivoPlus; POST /code, /sign { name, code, consent, contentHash },
  *                                             /aadhaar { consent, contentHash }; GET /pdf, /audit-trail
  */
+import application from '../services/business/orgApplication.js';
+import { lookupIfsc } from '../services/verification/kyc.js';
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -65,7 +67,12 @@ router.get('/info', wrap(async (req, res) => ok(res, await svc.publicInfo())));
 
 router.use(protect);
 router.get('/mine', wrap(async (req, res) => ok(res, await svc.myOrganisations(req.user))));
+// Bank branch from an IFSC (the bank account step of the application)
+router.get('/ifsc/:code', wrap(async (req, res) => ok(res, await lookupIfsc(req.params.code))));
 router.post('/apply', wrap(async (req, res) => ok(res, await svc.apply(req.user, req.body || {}), 201)));
+// Finishing a draft application: the bank account, then submit it for review
+router.put('/:orgId/bank', wrap(async (req, res) => ok(res, await application.setBankAsMember(req.params.orgId, req.user, req.body || {}))));
+router.post('/:orgId/submit', wrap(async (req, res) => ok(res, await application.submit(req.params.orgId, req.user, req.body || {}))));
 router.get('/:orgId', wrap(async (req, res) => ok(res, await svc.viewOrganisation(req.params.orgId, req.user))));
 router.put('/:orgId', wrap(async (req, res) => ok(res, await svc.updateOrganisation(req.params.orgId, req.user, req.body || {}))));
 

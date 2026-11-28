@@ -1,5 +1,3 @@
-/** Choices for a company's or travel agent's details (Admin → Business & Partners). */
-export const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
-export const TYPES = [['PVT_LTD', 'Private limited company'], ['PUBLIC_LTD', 'Public limited company'], ['LLP', 'LLP'], ['PARTNERSHIP', 'Partnership firm'], ['INDIVIDUAL', 'Proprietorship (individual)'], ['HUF', 'HUF'], ['TRUST', 'Trust / society']];
+/** Choices for a company's or travel agent's details (shared with the public application). */
+export { STATES, TYPES, PROFILE_FIELDS } from '../../../components/business/orgOptions';
 export const ROLE_OPTIONS = [['ADMIN', 'Admin'], ['BOOKER', 'Booker'], ['APPROVER', 'Approver'], ['FINANCE', 'Finance'], ['TRAVELLER', 'Traveller']];
-export const PROFILE_FIELDS = ['name', 'legalName', 'incorporationType', 'pan', 'gstin', 'address', 'city', 'state', 'pincode', 'billingEmail', 'phone', 'website'];

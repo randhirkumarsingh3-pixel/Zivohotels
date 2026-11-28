@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Loader2, Search, Briefcase, Handshake, X, Download, CheckCircle2, PauseCircle, Ban, AlertTriangle, Settings2, Plus } from 'lucide-react';
-import { adminBusinessApi } from '../../services/api';
+import { adminBusinessApi, businessApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 import useAccess from '../../hooks/useAccess';
-import AddOrganisation, { ProfileFields } from '../components/business/AddOrganisation';
+import AddOrganisation from '../components/business/AddOrganisation';
+import BusinessDetailsFields from '../../components/business/BusinessDetailsFields';
+import BankFields from '../../components/business/BankFields';
 import { ROLE_OPTIONS, PROFILE_FIELDS } from '../components/business/orgFields';
 
 /**
@@ -15,7 +17,7 @@ import { ROLE_OPTIONS, PROFILE_FIELDS } from '../components/business/orgFields';
  */
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-const STATUS = { IN_REVIEW: ['bg-blue-50 text-blue-800', 'In review'], ON_HOLD: ['bg-amber-50 text-amber-900', 'More details asked'], ACTIVE: ['bg-green-50 text-green-800', 'Active'], SUSPENDED: ['bg-red-50 text-red-800', 'Suspended'], REJECTED: ['bg-gray-100 text-gray-600', 'Rejected'] };
+const STATUS = { DRAFT: ['bg-gray-100 text-gray-700', 'Not submitted'], IN_REVIEW: ['bg-blue-50 text-blue-800', 'In review'], ON_HOLD: ['bg-amber-50 text-amber-900', 'More details asked'], ACTIVE: ['bg-green-50 text-green-800', 'Active'], SUSPENDED: ['bg-red-50 text-red-800', 'Suspended'], REJECTED: ['bg-gray-100 text-gray-600', 'Rejected'] };
 const KIND = { CORPORATE: ['Company', Briefcase], AGENCY: ['Travel agent', Handshake] };
 const input = 'mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50';
 const btn = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50';
@@ -192,7 +194,68 @@ const OrgReport = ({ id, kind }) => {
   );
 };
 
-const TABS = [['profile', 'Profile'], ['documents', 'Documents'], ['terms', 'Terms & rates'], ['account', 'Account'], ['team', 'Team'], ['bookings', 'Bookings'], ['reports', 'Reports'], ['history', 'History']];
+/** Staff upload a KYC file for the organisation (e.g. received by email). */
+const DOC_CHOICES = [['PAN_CARD', 'PAN card'], ['GST_CERTIFICATE', 'GST certificate'], ['INCORPORATION', 'Incorporation / deed / licence'], ['ADDRESS_PROOF', 'Address proof'], ['AUTHORISATION', 'Authorisation letter'], ['ACCREDITATION', 'Accreditation'], ['CANCELLED_CHEQUE', 'Cancelled cheque / bank letter'], ['OTHER', 'Other']];
+const StaffUpload = ({ id, kind, onDone, onError }) => {
+  const [type, setType] = useState('PAN_CARD');
+  const [busy, setBusy] = useState(false);
+  const upload = (file) => {
+    if (!file) return;
+    setBusy(true);
+    const reader = new FileReader();
+    reader.onload = async () => { try { onDone(await adminBusinessApi.uploadDocument(id, { type, fileName: file.name, file: reader.result })); } catch (e) { onError(e.message); } finally { setBusy(false); } };
+    reader.readAsDataURL(file);
+  };
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="text-xs font-semibold text-gray-700">Upload for them<select className={input} value={type} onChange={(e) => setType(e.target.value)}>{DOC_CHOICES.filter(([k]) => kind === 'AGENCY' || k !== 'ACCREDITATION').map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+      <label className={`${btn} border border-gray-300 bg-white cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}>{busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} className="rotate-180" />} Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} /></label>
+    </div>
+  );
+};
+
+/** The payout / refund account: full details for staff, check it, or enter it for them. */
+const BANK_STATE = { PENDING: ['bg-amber-50 text-amber-900', 'To check'], CHECKING: ['bg-blue-50 text-blue-800', 'Test deposit sent'], VERIFIED: ['bg-green-50 text-green-800', 'Verified'], NAME_MISMATCH: ['bg-red-50 text-red-800', 'Name doesn\'t match'], REJECTED: ['bg-red-50 text-red-800', 'Not acceptable'] };
+const BankTab = ({ d, manage, busy, run }) => {
+  const [note, setNote] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [b, setB] = useState({ accountType: 'CURRENT' });
+  const full = d.bankFull; const st = BANK_STATE[d.bank?.status] || BANK_STATE.PENDING;
+  const cheque = (d.documents || []).filter((x) => x.type === 'CANCELLED_CHEQUE');
+  return (
+    <section className="space-y-4">
+      {full ? (
+        <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+          <div className="flex items-start justify-between gap-2"><p className="font-semibold text-gray-900">{full.bankName || 'Bank'}{full.branch ? `, ${full.branch}` : ''}</p><span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${st[0]}`}>{st[1]}</span></div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            {[['Account holder', full.holderName], ['Account number', full.accountNumber], ['IFSC', full.ifsc], ['Type', full.accountType?.toLowerCase()], ['Cancelled cheque', cheque.length ? `${cheque.length} file${cheque.length === 1 ? '' : 's'} (Documents tab)` : 'Not uploaded']].map(([k, v]) => <div key={k} className="contents"><dt className="text-gray-500">{k}</dt><dd className="text-gray-900 font-mono break-all">{v}</dd></div>)}
+          </dl>
+          {d.bank?.note && <p className="text-xs text-gray-600">Note: {d.bank.note}</p>}
+          {d.kind === 'AGENCY' && full.holderName && d.legalName && !full.holderName.toLowerCase().includes(d.legalName.toLowerCase().split(' ')[0]) && <p className="text-xs text-amber-900 bg-amber-50 rounded px-2 py-1">Check the holder name against the legal name ({d.legalName}): payouts must go to the agency&apos;s own account.</p>}
+          {manage && (
+            <div className="flex flex-wrap items-end gap-2 pt-2">
+              <button type="button" disabled={busy} onClick={() => run('bank-ok', () => adminBusinessApi.reviewBank(d.id, { status: 'VERIFIED' }), 'Bank account verified.')} className={`${btn} bg-green-700 text-white`}><CheckCircle2 size={14} /> Verified against the cheque</button>
+              <input aria-label="What is wrong" placeholder="What is wrong (for a rejection)" value={note} onChange={(e) => setNote(e.target.value)} className="flex-1 min-w-[10rem] px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              <button type="button" disabled={busy} onClick={() => run('bank-no', () => adminBusinessApi.reviewBank(d.id, { status: 'REJECTED', note }), 'Marked not acceptable; their admins were told.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><Ban size={14} /> Not acceptable</button>
+            </div>
+          )}
+        </div>
+      ) : <p className="text-sm text-gray-500">{d.kind === 'AGENCY' ? 'No bank account yet: needed for commission payouts.' : 'No bank account (optional for companies: only for refunds of an unused balance).'}</p>}
+      {manage && !editing && <button type="button" onClick={() => setEditing(true)} className="text-sm font-semibold text-navy-800 underline">{full ? 'Replace the account' : 'Enter it for them'}</button>}
+      {manage && editing && (
+        <div className="rounded-xl bg-gray-50 p-4 space-y-3">
+          <BankFields b={b} set={(k, v) => setB((x) => ({ ...x, [k]: v }))} lookup={(code) => businessApi.ifsc(code)} />
+          <div className="flex gap-2">
+            <button type="button" disabled={busy || !b.accountNumber || b.accountNumber !== b.confirmAccountNumber} onClick={async () => { if (await run('bank-set', () => adminBusinessApi.setBank(d.id, b), 'Bank account saved.')) { setEditing(false); setB({ accountType: 'CURRENT' }); } }} className={`${btn} bg-navy-800 text-white`}>Save</button>
+            <button type="button" onClick={() => setEditing(false)} className={`${btn} border border-gray-300 bg-white`}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
+const TABS = [['profile', 'Profile'], ['documents', 'Documents'], ['bank', 'Bank account'], ['terms', 'Terms & rates'], ['account', 'Account'], ['team', 'Team'], ['bookings', 'Bookings'], ['reports', 'Reports'], ['history', 'History']];
 
 const Detail = ({ id, onClose, onChanged }) => {
   const { can } = useAccess();
@@ -249,7 +312,7 @@ const Detail = ({ id, onClose, onChanged }) => {
             </div>
             {edit ? (
               <div className="mt-3 space-y-3">
-                <ProfileFields f={edit} set={(k, v) => setEdit((x) => ({ ...x, [k]: v }))} />
+                <BusinessDetailsFields kind={d.kind} f={edit} set={(k, v) => setEdit((x) => ({ ...x, [k]: v }))} />
                 <p className="text-xs text-gray-500">Changes to legal and tax details are kept in the history. Update the agreement afterwards if they changed.</p>
                 <div className="flex gap-2">
                   <button type="button" disabled={!!busy} onClick={async () => { if (await run('profile', () => adminBusinessApi.profile(id, edit), 'Details saved.')) setEdit(null); }} className={`${btn} bg-navy-800 text-white`}>{busy === 'profile' && <Loader2 size={14} className="animate-spin" />} Save</button>
@@ -258,7 +321,12 @@ const Detail = ({ id, onClose, onChanged }) => {
               </div>
             ) : (
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                {[['Legal name', d.legalName], ['Type', d.incorporationType?.replace('_', ' ').toLowerCase()], ['PAN', d.pan], ['GSTIN', d.gstin || '—'], ['Address', `${d.address}, ${d.city}, ${d.state} ${d.pincode}`], ['Invoices to', d.billingEmail], ['Phone', d.phone], ['Website', d.website || '—'], ['Joined', day(d.createdAt)]].map(([k, v]) => <div key={k} className="contents"><dt className="text-gray-500">{k}</dt><dd className="text-gray-900 break-words">{v}</dd></div>)}
+                {[['Legal name', d.legalName], ['Type', d.incorporationType?.replace('_', ' ').toLowerCase()], ['PAN', d.pan], ['GSTIN', d.gstin || '—'], ['Address', `${d.address}, ${d.city}, ${d.state} ${d.pincode}`], ['Invoices to', d.billingEmail], ['Phone', d.phone], ['Website', d.website || '—'],
+                  ['Contact', `${d.contactName || '—'}${d.contactDesignation ? `, ${d.contactDesignation}` : ''}${d.isSignatory === false ? ' (not a signatory: authorisation letter needed)' : ''}`],
+                  ['GST', d.gstin ? 'Registered' : d.gstDeclaration ? 'Not registered (declared)' : 'No GSTIN'],
+                  d.kind === 'AGENCY' && ['Accreditation', d.accreditation ? `${d.accreditation.body} ${d.accreditation.number}` : 'None'],
+                  ['Business', [d.businessProfile?.yearsInBusiness != null && `${d.businessProfile.yearsInBusiness} years`, d.businessProfile?.monthlyBookings && `${d.businessProfile.monthlyBookings} a month`, d.businessProfile?.pricingPreference && `prefers ${d.businessProfile.pricingPreference.toLowerCase().replace('_', ' ')}`].filter(Boolean).join(' · ') || '—'],
+                  ['Joined', day(d.createdAt)], ['Submitted', d.submittedAt ? day(d.submittedAt) : 'Not yet']].filter(Boolean).map(([k, v]) => <div key={k} className="contents"><dt className="text-gray-500">{k}</dt><dd className="text-gray-900 break-words">{v}</dd></div>)}
               </dl>
             )}
           </section>
@@ -280,6 +348,13 @@ const Detail = ({ id, onClose, onChanged }) => {
 
         {tab === 'documents' && (
           <section className="space-y-3">
+            <div className="rounded-lg border border-gray-200 p-3">
+              <p className="text-sm font-semibold text-gray-900 mb-1.5">Checklist {d.missing.length ? <span className="text-red-700 font-normal">· {d.missing.length} missing</span> : <span className="text-green-700 font-normal">· complete</span>}</p>
+              <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {d.checklist.map((i) => <li key={i.key} className={i.done ? 'text-gray-700' : i.required ? 'text-red-700' : 'text-gray-400'}>{i.done ? '✓' : i.required ? '✗' : '○'} {i.label}{!i.required ? ' (optional)' : ''}</li>)}
+              </ul>
+            </div>
+            {manage && <StaffUpload id={id} kind={d.kind} onDone={(x) => { apply(x); setMsg('Uploaded.'); onChanged(); }} onError={setErr} />}
             <p className="text-xs text-gray-600">Open each file and mark it checked, or not acceptable with a note (their admins are told to upload it again).</p>
             {d.documents.length === 0 ? <p className="text-sm text-gray-500">None uploaded yet.</p> : (
               <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
@@ -338,6 +413,8 @@ const Detail = ({ id, onClose, onChanged }) => {
           </section>
           {d.kind === 'CORPORATE' && <AgreedRates orgId={id} manage={manage} active={d.status === 'ACTIVE'} />}
         </>)}
+
+        {tab === 'bank' && <BankTab d={d} manage={manage} canFinance={can('finance.manage') || manage} busy={busy} run={run} />}
 
         {tab === 'account' && (
           <section className="space-y-3">
@@ -454,7 +531,7 @@ const Organisations = ({ kind: fixedKind = '' }) => {
                   return (
                     <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setParams({ id: o.id })}>
                       <td className="px-4 py-3"><button type="button" className="font-semibold text-gray-900 text-left hover:underline" onClick={(e) => { e.stopPropagation(); setParams({ id: o.id }); }}>{o.name}</button><span className="block text-xs text-gray-500 flex items-center gap-1"><KI size={12} aria-hidden="true" /> {kl} · {o.code} · {o.members} member{o.members === 1 ? '' : 's'}</span></td>
-                      <td className="px-4 py-3"><Pill s={o.status} />{o.account.overdueAmount > 0 && <span className="block text-xs text-red-700 mt-1">{inr(o.account.overdueAmount)} overdue</span>}</td>
+                      <td className="px-4 py-3"><Pill s={o.status} />{['IN_REVIEW', 'ON_HOLD', 'DRAFT'].includes(o.status) && (o.missing?.length ? <span className="block text-xs text-red-700 mt-1">{o.missing.length} item{o.missing.length === 1 ? '' : 's'} missing</span> : <span className="block text-xs text-green-700 mt-1">Complete</span>)}{o.account.overdueAmount > 0 && <span className="block text-xs text-red-700 mt-1">{inr(o.account.overdueAmount)} overdue</span>}</td>
                       <td className="px-4 py-3 text-xs text-gray-600">{o.terms.paymentMode.toLowerCase()}{o.terms.creditAllowed ? ` · ${inr(o.terms.creditLimit)} / ${o.terms.creditDays}d` : ''}{o.kind === 'AGENCY' ? ` · ${o.terms.pricingModel.toLowerCase()}` : ''}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">{inr(o.account.balance)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">{inr(o.account.available)}</td>

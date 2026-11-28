@@ -533,6 +533,10 @@ export const businessApi = {
   get: (orgId) => apiFetch(`${API_URL}/business/${orgId}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   update: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}`, jsonBody('PUT', body), 0).then((r) => r?.data),
   addDocument: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/documents`, jsonBody('POST', body), 0).then((r) => r?.data),
+  // The application: bank account, IFSC lookup, submit
+  setBank: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/bank`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  ifsc: (code) => apiFetch(`${API_URL}/business/ifsc/${encodeURIComponent(code)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  submit: (orgId, body) => apiFetch(`${API_URL}/business/${orgId}/submit`, jsonBody('POST', body), 0).then((r) => r?.data),
   removeDocument: (orgId, docId) => apiFetch(`${API_URL}/business/${orgId}/documents/${docId}`, { method: 'DELETE' }, 0),
   documentFile: (orgId, docId) => apiFetch(`${API_URL}/business/${orgId}/documents/${docId}/file`, { responseType: 'blob' }, 0),
   members: (orgId) => apiFetch(`${API_URL}/business/${orgId}/members`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
@@ -618,6 +622,9 @@ export const adminBusinessApi = {
   bookings: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/bookings?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   report: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/report?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   reportCsv: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/report.csv?${qs(q)}`, { responseType: 'blob' }, 0),
+  setBank: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/bank`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  reviewBank: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/bank/review`, jsonBody('POST', body), 0).then((r) => r?.data),
+  uploadDocument: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/documents`, jsonBody('POST', body), 0).then((r) => r?.data),
 };
 // Extranet → GST invoices: the property's invoices for business (GSTIN) bookings
 export const hotelGstInvoicesApi = {

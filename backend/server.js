@@ -475,6 +475,7 @@ server.listen(PORT, HOST, () => {
     startMembershipJob();
     startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
     import('./services/savedHotels.js').then((m) => m.startPriceAlertJob()).catch((e) => console.error('[PriceDrop] job not started:', e.message));
+    import('./services/business/orgApplication.js').then((m) => m.startDraftReminderJob()).catch((e) => console.error('[OrgDrafts] job not started:', e.message));
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
     startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
     startInvoiceCatchUpJob(); // every 10 min: draws invoice PDFs that failed, issues missing invoices

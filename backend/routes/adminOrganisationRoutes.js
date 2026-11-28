@@ -24,6 +24,8 @@ import { getBusinessSettings, saveBusinessSettings } from '../services/business/
 import orgAgreement from '../services/business/orgAgreementService.js';
 import corporateRates from '../services/business/corporateRates.js';
 import ops from '../services/business/adminOrgOps.js';
+import application from '../services/business/orgApplication.js';
+import prisma from '../config/db.js';
 
 const wrap = (fn) => asyncHandler(async (req, res) => {
   try { await fn(req, res); } catch (e) {
@@ -39,7 +41,27 @@ router.use(staffOnly);
 router.get('/', wrap(async (req, res) => ok(res, await svc.adminList(req.query))));
 router.get('/overview', wrap(async (req, res) => ok(res, await ops.overview())));
 router.post('/', wrap(async (req, res) => ok(res, await ops.createOnBehalf(req.user, req.body || {}))));
-router.get('/:id', wrap(async (req, res) => ok(res, await svc.adminDetail(req.params.id))));
+router.get('/:id', wrap(async (req, res) => {
+  // A bank test deposit sent earlier: read its result first
+  const org = await prisma.organisation.findUnique({ where: { id: String(req.params.id) } });
+  if (org) await application.refreshBankCheck(org).catch(() => {});
+  ok(res, await svc.adminDetail(req.params.id));
+}));
+// The bank account: staff enter it, or check it (verified / not acceptable with a note)
+router.put('/:id/bank', wrap(async (req, res) => {
+  const org = await prisma.organisation.findUnique({ where: { id: String(req.params.id) } });
+  if (!org) return res.status(404).json({ success: false, message: 'Organisation not found' });
+  await application.setBank(org, req.user, req.body || {}, { staff: true });
+  return ok(res, await svc.adminDetail(org.id));
+}));
+router.post('/:id/bank/review', wrap(async (req, res) => ok(res, await application.reviewBank(req.params.id, req.user, req.body || {}))));
+// Staff upload a KYC file for the organisation
+router.post('/:id/documents', wrap(async (req, res) => {
+  const org = await prisma.organisation.findUnique({ where: { id: String(req.params.id) } });
+  if (!org) return res.status(404).json({ success: false, message: 'Organisation not found' });
+  await svc.storeDocument(org, req.user, req.body || {});
+  return ok(res, await svc.adminDetail(org.id));
+}));
 // Rates agreed between a company and hotels (the hotel accepts them in the extranet)
 router.get('/:id/rates', wrap(async (req, res) => ok(res, await corporateRates.adminList({ organisationId: req.params.id }))));
 router.get('/:id/rates/hotels', wrap(async (req, res) => ok(res, await corporateRates.hotelChoices(req.query.q))));
