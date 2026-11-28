@@ -70,9 +70,21 @@ describe('Business bookings: the property issues and uploads the GST invoice', f
     expect(full.guestCompanyGstin).to.equal(org.gstin);
     const html = guestInvoiceHtml({ booking: full, hotel: full.hotel, rooms: full.bookingRooms, invoiceRef: 'ZIV/26-27/000001', brand: await brandContext() });
     expect(html).to.include('Tax Invoice').and.include(FACILITATOR).and.include('Inclusive of applicable taxes collected on behalf of the hotel').and.include(org.gstin);
-    expect(html).to.include('998552').and.include('REG/B2B').and.include('service fee').and.not.include('Payment Receipt');
-    // Place of supply: the business's state (from its GSTIN)
-    expect(html).to.include(`(${org.gstin.slice(0, 2)})`);
+    expect(html).to.include('998552').and.include('REG/B2B').and.not.include('Payment Receipt');
+    // No service fee is charged: none is printed
+    expect(html).to.not.include('service fee');
+    // Place of supply: ZivoPlus's registered state by default; the business's state when set so
+    const { company } = await brandContext();
+    expect(company.stateCode, "ZivoPlus state set").to.match(/^\d{2}$/);
+    const pos = (h) => h.match(/Place of supply<\/div><div class="v">([^<]*)</)[1];
+    expect(pos(html)).to.include(`(${company.stateCode})`);
+    await api.put('/admin/documents', { guestInvoice: { facilitatorPlaceOfSupply: 'RECIPIENT' } }, admin);
+    const byRecipient = guestInvoiceHtml({ booking: full, hotel: full.hotel, rooms: full.bookingRooms, invoiceRef: 'ZIV/26-27/000001', brand: await brandContext() });
+    expect(pos(byRecipient)).to.include(`(${org.gstin.slice(0, 2)})`);
+    await api.put('/admin/documents', { guestInvoice: { facilitatorPlaceOfSupply: 'ZIVO' } }, admin);
+    // A service fee, when one is charged on the booking, is printed with its GST
+    const withFee = guestInvoiceHtml({ booking: { ...full, metadata: { ...(full.metadata || {}), serviceFee: 118 } }, hotel: full.hotel, rooms: full.bookingRooms, invoiceRef: 'ZIV/26-27/000001', brand: await brandContext() });
+    expect(withFee).to.include('service fee').and.include('18.00');
     // The voucher tells the business where its invoice comes from
     const v = await api.get(`/bookings/${booking.id}/voucher?type=guest`, { ...booker, responseType: 'arraybuffer' });
     expect(v.status).to.equal(200);

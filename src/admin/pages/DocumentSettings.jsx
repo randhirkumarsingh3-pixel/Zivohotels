@@ -89,6 +89,13 @@ const DocumentSettings = () => {
           </select>
           <span className="block mt-1 font-normal text-gray-500">With the hotel issuing it, the business gets ZivoPlus&apos;s facilitator tax invoice, which says input tax credit is available only against the hotel&apos;s invoice, and downloads the hotel&apos;s invoice from ZivoPlus once uploaded.</span>
         </label>
+        <label className="mt-4 block text-xs font-semibold text-gray-700 max-w-xl">Place of supply on ZivoPlus&apos;s facilitator tax invoice
+          <select className={input} value={s.guestInvoice.facilitatorPlaceOfSupply || 'ZIVO'} disabled={!canEdit} onChange={(e) => set('guestInvoice.facilitatorPlaceOfSupply', e.target.value)}>
+            <option value="ZIVO">ZivoPlus&apos;s registered state (from Finance Settings)</option>
+            <option value="RECIPIENT">The customer&apos;s state when known (business GSTIN or billing state), else ZivoPlus&apos;s</option>
+          </select>
+          <span className="block mt-1 font-normal text-gray-500">Applies to the reservation-service invoice (SAC 998552) when the hotel issues the GST invoice for the stay. Confirm the choice with your CA.</span>
+        </label>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {[['prefix', 'Invoice prefix', 'ZIV'], ['creditPrefix', 'Credit note prefix', 'ZCN'], ['debitPrefix', 'Debit note prefix', 'ZDN']].map(([k, label, def]) => (
             <label key={k} className="text-xs font-semibold text-gray-700">{label}
