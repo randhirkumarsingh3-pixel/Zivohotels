@@ -6,10 +6,12 @@
  *  - guestInvoice.mode: who the guest's GST invoice for the stay comes from
  *      ON_BEHALF      tax invoice with the hotel as supplier, issued by ZivoPlus on its behalf
  *      ZIVO_SUPPLIER  tax invoice with ZivoPlus as supplier (ZivoPlus's GSTIN)
- *      HOTEL_ISSUES   the hotel issues the tax invoice; ZivoPlus gives the guest a payment receipt
+ *      HOTEL_ISSUES   the hotel issues the GST invoice for the stay; ZivoPlus issues its own tax
+ *                     invoice as the facilitator (SAC 998552, accommodation charges collected on
+ *                     behalf of the hotel). B2C: the hotel gives its invoice at the property
  *  - guestInvoice.b2bMode: who invoices a stay booked with a business GSTIN (B2B). Default
  *      HOTEL_ISSUES: the property issues the GST invoice in the business's name and uploads it in
- *      the extranet (Extranet → GST invoices); ZivoPlus gives a payment receipt as the facilitator,
+ *      the extranet (Extranet → GST invoices); ZivoPlus issues its facilitator tax invoice,
  *      so input tax credit is claimed only against the property's invoice
  *  - guestInvoice.prefix / note: the number series and a note printed on it. Numbers run per
  *    financial year (April to March) and stay within GST's 16 characters: ZIV/26-27/000001; credit
@@ -25,6 +27,18 @@ import { getSupportContacts } from '../../config/supportContacts.js';
 const KEY = 'document_settings';
 export const INVOICE_MODES = ['ON_BEHALF', 'ZIVO_SUPPLIER', 'HOTEL_ISSUES'];
 
+const FACILITATOR_TERMS = () => [
+  'Report any dispute about this invoice to ZivoPlus support within 48 hours of receiving it.',
+  'The GST invoice for the stay is issued by the property; ZivoPlus acts only as a facilitator.',
+  'Refunds for cancellations are made by ZivoPlus; the property adjusts its GST invoice for them.',
+  'This is a system-generated invoice and does not need a signature.',
+];
+// Lines of the earlier payment-receipt wording, replaced where an admin saved them unchanged
+const OLD_RECEIPT_TERMS = {
+  'This receipt is not a tax invoice; the GST invoice is issued by the property.': 'The GST invoice for the stay is issued by the property; ZivoPlus acts only as a facilitator.',
+  'Report any error in this receipt to ZivoPlus support within 7 days of receiving it.': 'Report any dispute about this invoice to ZivoPlus support within 48 hours of receiving it.',
+};
+
 export const DEFAULTS = () => ({
   guestInvoice: {
     mode: 'ON_BEHALF', b2bMode: 'HOTEL_ISSUES', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
@@ -33,12 +47,9 @@ export const DEFAULTS = () => ({
       'Report any error in this document to ZivoPlus support within 7 days of receiving it.',
       'Changes to the booking after this invoice (cancellations, refunds, extra hours) are issued as credit or debit notes against it.',
     ],
-    // Printed on ZivoPlus' payment receipts (when the property issues the GST invoice)
-    receiptTerms: [
-      'This receipt is not a tax invoice; the GST invoice is issued by the property.',
-      'Report any error in this receipt to ZivoPlus support within 7 days of receiving it.',
-      'Refunds for cancellations are made by ZivoPlus; the property adjusts its GST invoice for them.',
-    ],
+    // Printed on ZivoPlus' facilitator tax invoices (when the property issues the GST invoice
+    // for the stay); the setting keeps its earlier name
+    receiptTerms: FACILITATOR_TERMS(),
   },
   voucher: {
     guestNotes: [
@@ -62,7 +73,11 @@ export const getDocumentSettings = async () => {
   const d = DEFAULTS();
   const v = row?.value || {};
   return {
-    guestInvoice: { ...d.guestInvoice, ...(v.guestInvoice || {}) },
+    guestInvoice: (() => {
+      const g = { ...d.guestInvoice, ...(v.guestInvoice || {}) };
+      if (Array.isArray(g.receiptTerms)) g.receiptTerms = g.receiptTerms.map((t) => OLD_RECEIPT_TERMS[t] || t);
+      return g;
+    })(),
     voucher: { ...d.voucher, ...(v.voucher || {}) },
     email: { ...d.email, ...(v.email || {}) },
   };

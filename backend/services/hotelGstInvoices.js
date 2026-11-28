@@ -1,7 +1,7 @@
 /**
  * GST invoices the property issues for business (B2B) bookings. With Documents → "Business
  * (GSTIN) bookings" set to the property issuing them (the default), ZivoPlus is only the
- * facilitator: the guest gets a ZivoPlus payment receipt, and the property issues the GST invoice
+ * facilitator: the guest gets ZivoPlus's facilitator tax invoice (SAC 998552), and the property issues the GST invoice
  * in the business's name and uploads it here. The business downloads it from My Bookings or its
  * ZivoPlus for Business account and claims input tax credit against it.
  *

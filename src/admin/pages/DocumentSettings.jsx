@@ -14,7 +14,7 @@ import useAccess from '../../hooks/useAccess';
 const MODES = [
   { id: 'ON_BEHALF', Icon: Building2, title: 'ZivoPlus, on behalf of the hotel', text: 'Tax invoice with the hotel as supplier (its GSTIN and state), numbered and sent by ZivoPlus. Hotels invoice guests only for extras. Common for booking platforms.' },
   { id: 'ZIVO_SUPPLIER', Icon: Receipt, title: 'ZivoPlus as supplier', text: 'Tax invoice with ZivoPlus\'s GSTIN as supplier of the stay. Needs your CA\'s go-ahead and the company details in Finance Settings.' },
-  { id: 'HOTEL_ISSUES', Icon: Landmark, title: 'The hotel issues it', text: 'ZivoPlus gives the guest a payment receipt (not a tax invoice); the hotel issues the GST invoice at check-out.' },
+  { id: 'HOTEL_ISSUES', Icon: Landmark, title: 'The hotel issues it', text: 'The hotel issues the GST invoice for the stay (to individual guests at the property; business bookings are uploaded in the extranet). ZivoPlus issues its own tax invoice as the facilitator (SAC 998552): accommodation charges collected on the hotel\'s behalf, inclusive of its taxes.' },
 ];
 const PREVIEWS = [
   ['guest-invoice', 'Guest invoice (PDF)', FileText], ['guest-voucher', 'Guest voucher (PDF)', FileText], ['hotel-voucher', 'Hotelier voucher (PDF)', FileText],
@@ -87,7 +87,7 @@ const DocumentSettings = () => {
             <option value="ON_BEHALF">ZivoPlus issues it on the hotel&apos;s behalf</option>
             <option value="ZIVO_SUPPLIER">ZivoPlus issues it as the supplier</option>
           </select>
-          <span className="block mt-1 font-normal text-gray-500">With the hotel issuing it, the business gets a ZivoPlus payment receipt that says input tax credit is available only against the hotel&apos;s invoice, and downloads the hotel&apos;s invoice from ZivoPlus once uploaded.</span>
+          <span className="block mt-1 font-normal text-gray-500">With the hotel issuing it, the business gets ZivoPlus&apos;s facilitator tax invoice, which says input tax credit is available only against the hotel&apos;s invoice, and downloads the hotel&apos;s invoice from ZivoPlus once uploaded.</span>
         </label>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {[['prefix', 'Invoice prefix', 'ZIV'], ['creditPrefix', 'Credit note prefix', 'ZCN'], ['debitPrefix', 'Debit note prefix', 'ZDN']].map(([k, label, def]) => (
@@ -105,7 +105,7 @@ const DocumentSettings = () => {
           <label className="text-xs font-semibold text-gray-700">Terms printed at the foot of invoices and notes (one per line)
             <textarea rows={4} className={input} disabled={!canEdit} value={notes(s.guestInvoice.terms || [])} onChange={(e) => set('guestInvoice.terms', e.target.value.split('\n'))} />
           </label>
-          <label className="text-xs font-semibold text-gray-700">Terms printed on ZivoPlus payment receipts, when the hotel issues the GST invoice (one per line)
+          <label className="text-xs font-semibold text-gray-700">Terms printed on ZivoPlus facilitator tax invoices, when the hotel issues the GST invoice (one per line)
             <textarea rows={3} className={input} disabled={!canEdit} value={notes(s.guestInvoice.receiptTerms || [])} onChange={(e) => set('guestInvoice.receiptTerms', e.target.value.split('\n'))} />
           </label>
         </div>

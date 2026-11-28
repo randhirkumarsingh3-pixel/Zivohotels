@@ -8,8 +8,13 @@
  *                 so GST is CGST + SGST.
  *  ZIVO_SUPPLIER  Tax invoice. Supplier: ZivoPlus (its GSTIN). Place of supply is the property's
  *                 state: CGST + SGST when ZivoPlus is registered in that state, else IGST.
- *  HOTEL_ISSUES   Payment receipt (not a tax invoice) for what was paid online; the hotel issues
- *                 the tax invoice for the stay.
+ *  HOTEL_ISSUES   The hotel issues the GST invoice for the stay (B2B: uploaded in the extranet;
+ *                 B2C: given at the property). ZivoPlus issues its own tax invoice as the
+ *                 facilitator: supplier ZivoPlus, SAC 998552 (reservation service for
+ *                 accommodation); the accommodation charges are shown inclusive of the taxes
+ *                 collected on behalf of the hotel, plus ZivoPlus's own service fee (nil today),
+ *                 with the statement that input tax credit is available only against the hotel's
+ *                 invoice.
  *
  * A tax invoice carries what GST rule 46 asks for: supplier and recipient (GSTIN and state for a
  * business), a number unique in the financial year, date, place of supply, SAC and description,
@@ -24,7 +29,10 @@ import { STATE_NAMES } from '../finance/financeSettings.js';
 import { invoiceModeFor } from './documentSettings.js';
 
 export const SAC_ACCOMMODATION = '996311';
+export const SAC_RESERVATION = '998552';
 const SERVICE = 'Accommodation services (hotel stay)';
+const RESERVATION = 'Reservation service for accommodation';
+const ITC_LINE = (zivo) => `Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ${esc(zivo.tradeName || zivo.legalName)} acts only as a facilitator for these services.`;
 const pct = (v) => `${Number.isInteger(v) ? v : Number(v).toFixed(1)}%`;
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -39,17 +47,21 @@ const statusOf = (b, f) => {
 const partiesOf = (b, hotel, brand) => {
   // B2B (a GSTIN): Documents setting b2bMode; else a business account's terms, else the default
   const mode = invoiceModeFor(b, brand.settings);
-  const receipt = mode === 'HOTEL_ISSUES';
+  const facilitator = mode === 'HOTEL_ISSUES';
   const hp = recipientOf(hotel);
   const zivo = brand.company;
-  const posCode = hp.stateCode; const posName = hp.stateName || hotel.state || '';
-  const supplierIsHotel = mode !== 'ZIVO_SUPPLIER';
-  const intra = supplierIsHotel || (zivo.stateCode && zivo.stateCode === posCode);
   const b2b = Boolean(b.guestCompanyGstin);
   const recipientState = b2b ? String(b.guestCompanyGstin).slice(0, 2) : '';
+  // Accommodation: supplied where the property is. ZivoPlus's reservation service (facilitator
+  // invoice): the recipient's state when known (GSTIN, or the billing state), else ZivoPlus's own
+  const facState = recipientState || b.billingStateCode || zivo.stateCode || '';
+  const posCode = facilitator ? facState : hp.stateCode;
+  const posName = facilitator ? (STATE_NAMES[facState] || zivo.stateName || '') : (hp.stateName || hotel.state || '');
+  const supplierIsHotel = !facilitator && mode !== 'ZIVO_SUPPLIER';
+  const intra = supplierIsHotel || (zivo.stateCode && zivo.stateCode === posCode);
 
   const supplierBox = supplierIsHotel
-    ? box({ label: receipt ? 'Property' : 'Supplier (the property)', name: hp.legalName, lines: [
+    ? box({ label: 'Supplier (the property)', name: hp.legalName, lines: [
       `<span class="muted">${esc(hp.property)} · Property ID ${esc(hp.propertyId)}</span>`,
       `<span class="muted">${esc(hp.address)}</span>`,
       hp.gstin ? `GSTIN <b>${esc(hp.gstin)}</b>${hp.pan ? ` · PAN ${esc(hp.pan)}` : ''}` : '<span class="muted">Not registered for GST</span>',
@@ -83,15 +95,15 @@ const partiesOf = (b, hotel, brand) => {
     zivo.address && `Registered office: ${esc(zivo.address)}`,
   ].filter(Boolean).join(' · ');
 
-  return { mode, receipt, hp, zivo, posCode, posName, supplierIsHotel, intra, b2b, supplierBox, recipientBox, issuer };
+  return { mode, facilitator, hp, zivo, posCode, posName, supplierIsHotel, intra, b2b, supplierBox, recipientBox, issuer };
 };
 
 const taxSplit = (intra, rate, tax) => (intra
   ? [['CGST', rate / 2, r2(tax / 2)], ['SGST', rate / 2, r2(tax - r2(tax / 2))]]
   : [['IGST', rate, r2(tax)]]);
 
-const termsBlock = (brand, { receipt = false } = {}) => {
-  const t = (receipt ? brand.settings.guestInvoice.receiptTerms : brand.settings.guestInvoice.terms) || [];
+const termsBlock = (brand, { facilitator = false } = {}) => {
+  const t = (facilitator ? brand.settings.guestInvoice.receiptTerms : brand.settings.guestInvoice.terms) || [];
   return t.length ? `<div class="notes" style="margin-top:10px"><b>Terms</b><ol style="margin:4px 0 0 16px;padding:0">${t.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>` : '';
 };
 
@@ -101,12 +113,13 @@ const termsBlock = (brand, { receipt = false } = {}) => {
  */
 export const guestInvoiceHtml = ({ booking: b, hotel, rooms = [], invoiceRef, issueDate = new Date(), brand }) => {
   const P = partiesOf(b, hotel, brand);
-  const { receipt, hp, zivo, posCode, posName, supplierIsHotel, intra, b2b } = P;
+  if (P.facilitator) return facilitatorInvoiceHtml({ booking: b, hotel, rooms, invoiceRef, issueDate, brand, P });
+  const { hp, zivo, posCode, posName, supplierIsHotel, intra, b2b } = P;
   const f = bookingFigures(b, rooms, { roomTypeName: b.roomType?.name, ratePlan: b.ratePlan });
   const rate = f.taxPct ?? 0;
   const taxCols = taxSplit(intra, rate, f.tax);
 
-  const stayBox = box({ label: receipt ? 'Stay' : 'Stay (address of supply)', name: hotel.name, lines: [
+  const stayBox = box({ label: 'Stay (address of supply)', name: hotel.name, lines: [
     `<span class="muted">${esc(hp.address)}</span>`,
     f.hourly
       ? `${dateTime(b.slotStart || b.checkIn)} – ${new Date(b.slotEnd || b.checkOut).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}`
@@ -114,27 +127,22 @@ export const guestInvoiceHtml = ({ booking: b, hotel, rooms = [], invoiceRef, is
     `${b.rooms} room${b.rooms === 1 ? '' : 's'} · ${b.adults || b.guests || 1} adult${(b.adults || 1) === 1 ? '' : 's'}${b.children ? `, ${b.children} child${b.children === 1 ? '' : 'ren'}` : ''}`,
   ] });
 
-  const lineRows = f.lines.map((l, i) => `<tr><td>${i + 1}</td><td><b>${esc(l.label)}</b>${l.detail ? `<br><span class="muted">${esc(l.detail)}</span>` : ''}</td><td>${receipt ? '' : SAC_ACCOMMODATION}</td><td class="r">${money(l.amount)}</td></tr>`).join('')
+  const lineRows = f.lines.map((l, i) => `<tr><td>${i + 1}</td><td><b>${esc(l.label)}</b>${l.detail ? `<br><span class="muted">${esc(l.detail)}</span>` : ''}</td><td>${SAC_ACCOMMODATION}</td><td class="r">${money(l.amount)}</td></tr>`).join('')
     + f.discounts.map(([label, amt]) => `<tr><td></td><td class="minus">${esc(label)}</td><td></td><td class="r minus">− ${money(amt)}</td></tr>`).join('');
 
-  const title = receipt ? 'Payment Receipt' : 'Tax Invoice';
-  const sub = receipt ? (b2b ? `Collected on behalf of ${hotel.name}, inclusive of applicable taxes` : 'Amount paid online for your stay') : supplierIsHotel ? `Issued by ${zivo.legalName} on behalf of the property` : 'Accommodation booked on ZivoPlus';
+  const title = 'Tax Invoice';
+  const sub = supplierIsHotel ? `Issued by ${zivo.legalName} on behalf of the property` : 'Accommodation booked on ZivoPlus';
   const st = statusOf(b, f);
 
   const body = `<div class="page">
 ${header({ brandSub: zivo.legalName, title, sub, ref: invoiceRef, status: st })}
 ${meta([
-    [receipt ? 'Receipt date' : 'Invoice date', day(issueDate)],
+    ['Invoice date', day(issueDate)],
     ['Booking', esc(b.bookingRef)],
     ['Place of supply', `${esc(posName || '—')}${posCode ? ` (${esc(posCode)})` : ''}`],
-    [receipt ? 'Booked on' : 'Tax payable under reverse charge', receipt ? day(b.createdAt) : 'No'],
+    ['Tax payable under reverse charge', 'No'],
   ])}
-${receipt ? meta([
-    ['Category', b2b ? 'B2B (registered recipient)' : 'B2C (unregistered)'],
-    ['GST invoice issued by', esc(hp.legalName || hotel.name)],
-    b2b ? ['Invoice in the name of', `${esc(b.guestCompanyName)}<br><span class="muted">${esc(b.guestCompanyGstin)}</span>`] : ['Booked on', day(b.createdAt)],
-    ['ZivoPlus acts as', 'Facilitator'],
-  ]) : meta([
+${meta([
     ['SAC', SAC_ACCOMMODATION],
     ['Service', SERVICE],
     ['Category', b2b ? 'B2B (registered recipient)' : 'B2C (unregistered)'],
@@ -142,20 +150,17 @@ ${receipt ? meta([
   ])}
 <div class="parties three">${P.supplierBox}${P.recipientBox}${stayBox}</div>
 
-<table><tr><th style="width:22px">#</th><th>Description</th><th style="width:60px">${receipt ? '' : 'SAC'}</th><th class="r" style="width:110px">Amount (₹)</th></tr>${lineRows}
-<tr class="t"><td></td><td>${receipt ? 'Room charges after discounts (before GST)' : 'Taxable value'}</td><td></td><td class="r">${money(f.taxable)}</td></tr></table>
+<table><tr><th style="width:22px">#</th><th>Description</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>${lineRows}
+<tr class="t"><td></td><td>Taxable value</td><td></td><td class="r">${money(f.taxable)}</td></tr></table>
 
 <div class="cols">
   <div>
     <div class="words">Amount in words: ${amountInWords(f.total)}</div>
     <div class="notes">
-      ${receipt
-    ? `<b>This is not a tax invoice.</b> ZivoPlus collected this amount on behalf of ${esc(hp.legalName || hotel.name)}${hp.gstin ? ` (GSTIN ${esc(hp.gstin)})` : ''}; the accommodation charges include the applicable taxes collected on behalf of the property. ${esc(hotel.name)} issues the GST invoice for the stay${b2b ? ` in the name of ${esc(b.guestCompanyName)} (GSTIN ${esc(b.guestCompanyGstin)}); you can download it in My Bookings once the property uploads it after check-out` : '; ask for it at check-out'}.
-      <br><b>Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ZivoPlus acts only as a facilitator for these services.</b>`
-    : supplierIsHotel
+      ${supplierIsHotel
       ? `Supply of accommodation by ${esc(hp.legalName)}${hp.gstin ? ` (GSTIN ${esc(hp.gstin)})` : ''}. This invoice is issued by ${esc(zivo.legalName)}${zivo.gstin ? ` (GSTIN ${esc(zivo.gstin)})` : ''}, the booking platform, on the property's behalf. The property invoices separately only for extras you use at the hotel.`
       : `Supply of accommodation by ${esc(zivo.legalName)} as an e-commerce operator. Place of supply is the property's location (${esc(posName)}).`}
-      ${receipt ? '' : b2b
+      ${b2b
     ? `<br><b>Input tax credit:</b> available to ${esc(b.guestCompanyName)} (GSTIN ${esc(b.guestCompanyGstin)}) only against this invoice.`
     : '<br>Issued to an unregistered person: no input tax credit.'}
       ${brand.settings.guestInvoice.note ? `<br>${esc(brand.settings.guestInvoice.note)}` : ''}
@@ -164,7 +169,7 @@ ${receipt ? meta([
   </div>
   ${totals([
     ['Taxable value', money(f.taxable)],
-    ...(receipt ? [[`GST ${pct(rate)} (charged by the property)`, money(f.tax)]] : taxCols.map(([n, r, v]) => [`${n} ${pct(r)}`, money(v)])),
+    ...taxCols.map(([n, r, v]) => [`${n} ${pct(r)}`, money(v)]),
     ['Total', inr(f.total), 'grand'],
     ['Paid online', inr(f.paid), 'plus'],
     f.refunded ? ['Refunded', inr(f.refunded), 'less'] : null,
@@ -172,10 +177,78 @@ ${receipt ? meta([
   ])}
 </div>
 <div class="notes" style="margin-top:10px">${P.issuer}</div>
-${termsBlock(brand, { receipt })}
+${termsBlock(brand)}
 ${signature(zivo.legalName, brand.signatory)}
 </div>`;
   return shell(`${title} ${invoiceRef}`, body);
+};
+
+/**
+ * HOTEL_ISSUES: ZivoPlus's own tax invoice as the facilitator (SAC 998552), the way OTAs issue it.
+ * The accommodation charges are collected on behalf of the hotel, inclusive of its taxes; the
+ * hotel issues the GST invoice for the stay. ZivoPlus's taxable supply is its service fee (nil).
+ */
+const facilitatorInvoiceHtml = ({ booking: b, hotel, rooms, invoiceRef, issueDate, brand, P }) => {
+  const { hp, zivo, posCode, posName, b2b } = P;
+  const f = bookingFigures(b, rooms, { roomTypeName: b.roomType?.name, ratePlan: b.ratePlan });
+  const fee = 0;
+  const discounts = r2(f.discounts.reduce((t, [, a]) => t + Number(a || 0), 0));
+  const when = f.hourly
+    ? `${dateTime(b.slotStart || b.checkIn)} – ${new Date(b.slotEnd || b.checkOut).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}`
+    : `${day(b.checkIn, { weekday: 'short' })} → ${day(b.checkOut, { weekday: 'short' })} · ${f.nights} night${f.nights === 1 ? '' : 's'}`;
+  const provider = box({ label: 'Stay · service provider', name: hotel.name, lines: [
+    `<span class="muted">${esc(hp.address)}</span>`,
+    hp.legalName && hp.legalName !== hotel.name ? `<span class="muted">${esc(hp.legalName)}</span>` : '',
+    hp.gstin ? `GSTIN <b>${esc(hp.gstin)}</b>` : '<span class="muted">Not registered for GST</span>',
+    when,
+  ] });
+  const st = statusOf(b, f);
+  const body = `<div class="page">
+${header({ brandSub: zivo.legalName, title: 'Tax Invoice', sub: `${RESERVATION} · ${esc(zivo.tradeName || zivo.legalName)} acts as facilitator`, ref: invoiceRef, status: st })}
+${meta([
+    ['Invoice date', day(issueDate)],
+    ['Booking', esc(b.bookingRef)],
+    ['Place of supply', `${esc(posName || '—')}${posCode ? ` (${esc(posCode)})` : ''}`],
+    ['Tax payable under reverse charge', 'No'],
+  ])}
+${meta([
+    ['SAC', SAC_RESERVATION],
+    ['Service', RESERVATION],
+    ['Category', b2b ? 'REG/B2B (registered recipient)' : 'REG/B2C (unregistered)'],
+    ['Booked on', day(b.createdAt)],
+  ])}
+<div class="parties three">${P.supplierBox}${P.recipientBox}${provider}</div>
+
+<table><tr><th style="width:22px">#</th><th>Payment breakup</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>
+<tr><td>1</td><td><b>Accommodation charges</b><br><span class="muted">Inclusive of applicable taxes collected on behalf of the hotel${f.tax ? ` (GST ${money(f.tax)})` : ''} · ${b.rooms} room${b.rooms === 1 ? '' : 's'}${b.roomType?.name ? ` · ${esc(b.roomType.name)}` : ''}${discounts ? ` · after offers of ${money(discounts)}` : ''}</span></td><td></td><td class="r">${money(f.total)}</td></tr>
+<tr><td>2</td><td><b>${esc(zivo.tradeName || zivo.legalName)} service fee</b><br><span class="muted">Taxable value of the reservation service; GST on it: nil</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(fee)}</td></tr>
+<tr class="t"><td></td><td>Grand total</td><td></td><td class="r">${money(r2(f.total + fee))}</td></tr></table>
+
+<div class="cols">
+  <div>
+    <div class="words">Amount in words: ${amountInWords(r2(f.total + fee))}</div>
+    <div class="notes">
+      <b>${ITC_LINE(zivo)}</b>
+      <br>The GST invoice for the stay is issued by ${esc(hp.legalName || hotel.name)}${hp.gstin ? ` (GSTIN ${esc(hp.gstin)})` : ''}${b2b ? ` in the name of ${esc(b.guestCompanyName)} (GSTIN ${esc(b.guestCompanyGstin)}); you can download it in My Bookings once the property uploads it after check-out` : '; ask for it at the property'}.
+      ${brand.settings.guestInvoice.note ? `<br>${esc(brand.settings.guestInvoice.note)}` : ''}
+      <br><b>This is not a valid travel document.</b> Show your booking voucher at check-in.
+    </div>
+  </div>
+  ${totals([
+    ['Accommodation charges', money(f.total)],
+    ['Service fee', money(fee)],
+    ['GST on service fee', money(0)],
+    ['Grand total', inr(r2(f.total + fee)), 'grand'],
+    ['Paid online', inr(f.paid), 'plus'],
+    f.refunded ? ['Refunded', inr(f.refunded), 'less'] : null,
+    f.due ? ['To pay at the hotel', inr(f.due), 'sub'] : null,
+  ])}
+</div>
+<div class="notes" style="margin-top:10px">${P.issuer}</div>
+${termsBlock(brand, { facilitator: true })}
+${signature(zivo.legalName, brand.signatory)}
+</div>`;
+  return shell(`Tax Invoice ${invoiceRef}`, body);
 };
 
 /**
@@ -185,8 +258,9 @@ ${signature(zivo.legalName, brand.signatory)}
  */
 export const guestNoteHtml = ({ booking: b, hotel, note, invoice, brand, taxPct = null }) => {
   const P = partiesOf(b, hotel, brand);
-  const { zivo, posCode, posName, supplierIsHotel, intra, b2b } = P;
+  const { zivo, posCode, posName, supplierIsHotel, intra, b2b, facilitator } = P;
   const credit = note.kind === 'CREDIT';
+  if (facilitator) return facilitatorNoteHtml({ b, hotel, note, invoice, brand, P, credit });
   const amount = r2(note.amount); const tax = r2(note.taxAmount); const taxable = r2(amount - tax);
   const rate = taxPct ?? (taxable > 0 ? Math.round((tax / taxable) * 1000) / 10 : 0);
   const title = credit ? 'Credit Note' : 'Debit Note';
@@ -223,6 +297,50 @@ ${meta([
 </div>
 <div class="notes" style="margin-top:10px">${P.issuer}</div>
 ${termsBlock(brand)}
+${signature(zivo.legalName, brand.signatory)}
+</div>`;
+  return shell(`${title} ${note.noteRef}`, body);
+};
+
+/** A note against the facilitator invoice: the accommodation charges collected change; no GST. */
+const facilitatorNoteHtml = ({ b, hotel, note, invoice, brand, P, credit }) => {
+  const { zivo, posCode, posName, b2b } = P;
+  const amount = r2(note.amount);
+  const title = credit ? 'Credit Note' : 'Debit Note';
+  const body = `<div class="page">
+${header({ brandSub: zivo.legalName, title, sub: `Against tax invoice ${invoice.invoiceRef} · ${esc(zivo.tradeName || zivo.legalName)} acts as facilitator`, ref: note.noteRef, status: { label: credit ? 'Amount reduced' : 'Amount added', tone: credit ? 'off' : 'warn' } })}
+${meta([
+    [`${title} date`, day(note.createdAt || new Date())],
+    ['Original invoice', `${esc(invoice.invoiceRef)}<br><span class="muted">${day(invoice.createdAt)}</span>`],
+    ['Booking', esc(b.bookingRef)],
+    ['Place of supply', `${esc(posName || '—')}${posCode ? ` (${esc(posCode)})` : ''}`],
+  ])}
+${meta([
+    ['SAC', SAC_RESERVATION],
+    ['Service', RESERVATION],
+    ['Category', b2b ? 'REG/B2B (registered recipient)' : 'REG/B2C (unregistered)'],
+    ['Tax payable under reverse charge', 'No'],
+  ])}
+<div class="parties">${P.supplierBox}${P.recipientBox}</div>
+<table><tr><th style="width:22px">#</th><th>Description</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>
+<tr><td>1</td><td><b>${esc(note.reason)}</b><br><span class="muted">Accommodation charges, inclusive of applicable taxes collected on behalf of the hotel · ${esc(hotel.name)} · ${day(b.checkIn)} → ${day(b.checkOut)}</span></td><td></td><td class="r">${money(amount)}</td></tr>
+<tr><td>2</td><td><b>Service fee</b><br><span class="muted">GST on it: nil</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(0)}</td></tr></table>
+<div class="cols">
+  <div>
+    <div class="words">Amount in words: ${amountInWords(amount)}</div>
+    <div class="notes">${credit
+    ? `This credit note reduces the accommodation charges on tax invoice ${esc(invoice.invoiceRef)} dated ${day(invoice.createdAt)} by ${inr(amount)}. The hotel adjusts its own GST invoice for the stay.`
+    : `This debit note adds ${inr(amount)} of accommodation charges to tax invoice ${esc(invoice.invoiceRef)} dated ${day(invoice.createdAt)}. The hotel adjusts its own GST invoice for the stay.`}
+    <br><b>${ITC_LINE(zivo)}</b></div>
+  </div>
+  ${totals([
+    ['Accommodation charges', money(amount)],
+    ['Service fee', money(0)],
+    [credit ? 'Total credit' : 'Total debit', inr(amount), 'grand'],
+  ])}
+</div>
+<div class="notes" style="margin-top:10px">${P.issuer}</div>
+${termsBlock(brand, { facilitator: true })}
 ${signature(zivo.legalName, brand.signatory)}
 </div>`;
   return shell(`${title} ${note.noteRef}`, body);

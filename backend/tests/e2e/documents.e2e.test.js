@@ -47,7 +47,8 @@ describe('Documents & emails settings', function () {
     expect(await make('ON_BEHALF')).to.include('Tax Invoice').and.include('on behalf of the property').and.include('Supplier (the property)');
     expect(await make('ZIVO_SUPPLIER')).to.include('Tax Invoice').and.not.include('Supplier (the property)');
     const receipt = await make('HOTEL_ISSUES');
-    expect(receipt).to.include('Payment Receipt').and.include('This is not a tax invoice');
+    // The hotel invoices the stay; ZivoPlus issues its own tax invoice as the facilitator
+    expect(receipt).to.include('Tax Invoice').and.include('998552').and.include('Reservation service for accommodation').and.include('collected on behalf of the hotel').and.include('acts only as a facilitator').and.not.include('Payment Receipt').and.not.include('996311');
   });
 
   it('renders samples of every document and email', async () => {

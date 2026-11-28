@@ -77,5 +77,12 @@ describe('Billing address on large invoices for individuals', function () {
     const r = await api.post('/bookings', body(rooms, { checkIn: inDays(130), checkOut: inDays(132) }), auth);
     expect(r.status, JSON.stringify(r.data)).to.be.oneOf([200, 201]);
     made.push(r.data.data.id);
+    // ZivoPlus's facilitator tax invoice; the hotel gives its own at the property (no upload)
+    const b = await prisma.booking.findUnique({ where: { id: r.data.data.id }, include: { hotel: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE } });
+    const html = guestInvoiceHtml({ booking: b, hotel: b.hotel, rooms: b.bookingRooms, invoiceRef: 'ZIV/26-27/000002', brand: await brandContext() });
+    expect(html).to.include('Tax Invoice').and.include('998552').and.include('REG/B2C').and.include('ask for it at the property').and.include('acts only as a facilitator');
+    const { hotelIssuesInvoice } = await import('../../services/hotelGstInvoices.js');
+    const { getDocumentSettings } = await import('../../services/documents/documentSettings.js');
+    expect(hotelIssuesInvoice(b, await getDocumentSettings())).to.equal(false);
   });
 });
