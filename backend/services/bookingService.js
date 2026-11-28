@@ -75,7 +75,7 @@ export const describeRooms = (pricing, rooms, lines = []) => pricing.roomsBreakd
  * again with that promotion. Used by preview and booking so both give the same result.
  * A promotion for some room types only discounts those rooms.
  */
-const priceWithPromotion = async (stayInput, ctx) => {
+export const priceWithPromotion = async (stayInput, ctx) => {
   const membership = await membershipFor(ctx.userId);
   const base = pricingDomain.calculateStay(stayInput);
   const lines = stayInput.rooms.map((r, i) => ({ roomTypeId: r.roomType.id, ratePlanId: r.ratePlan.id, subtotal: base.roomsBreakdown[i].subtotal }));
@@ -98,6 +98,8 @@ const priceWithPromotion = async (stayInput, ctx) => {
     ? await planForCheckout({ userId: ctx.userId, eligibleAmount: pricing.subtotal - pricing.discountAmount, requestedPoints: ctx.usePoints, extraMultiplier: membership?.benefits?.pointsMultiplier || 1 })
     : null;
   if (loyalty?.pointsApplied) pricing = pricingDomain.calculateStay({ ...input, loyaltyDiscountAmount: loyalty.discount });
+  // A date change keeps the points already spent on the booking (the same discount)
+  else if (ctx.fixedLoyaltyDiscount > 0) pricing = pricingDomain.calculateStay({ ...input, loyaltyDiscountAmount: Math.min(ctx.fixedLoyaltyDiscount, pricing.subtotal - pricing.discountAmount) });
   const membershipSummary = membership ? {
     plan: membership.plan.name, code: membership.plan.code, isPaid: membership.isPaid,
     hotelDiscount: member.hotel, zivoDiscount: member.zivo,

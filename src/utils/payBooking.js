@@ -1,4 +1,4 @@
-import { createPaymentOrder, verifyPaymentApi, createExtensionApi, verifyExtensionApi } from '../services/api';
+import { createPaymentOrder, verifyPaymentApi, createExtensionApi, verifyExtensionApi, payDateChangeApi, verifyDateChangeApi } from '../services/api';
 
 /**
  * Pays an existing unpaid booking online with Razorpay (reserve now, pay later; My Bookings and the
@@ -65,6 +65,39 @@ export const payForExtension = async (booking, hours) => {
         try {
           await verifyExtensionApi(booking.id, response);
           resolve('paid');
+        } catch (err) {
+          reject(new Error(err?.message || 'We could not confirm the payment. If money was taken, it is refunded automatically.'));
+        }
+      },
+      modal: { ondismiss: () => resolve('closed') },
+    });
+    rzp.on('payment.failed', (r) => reject(new Error(r?.error?.description || 'The payment failed. Please try again.')));
+    rzp.open();
+  });
+};
+
+/**
+ * Pays the difference for an approved date change; the booking moves to the new dates once the
+ * payment is confirmed. Resolves 'paid' or 'closed'; rejects with a message.
+ */
+export const payForDateChange = async (booking, requestId) => {
+  if (!(await loadRazorpay())) throw new Error('The payment window could not load. Check your connection and try again.');
+  const { order } = await payDateChangeApi(booking.id, requestId);
+  return new Promise((resolve, reject) => {
+    const rzp = new window.Razorpay({
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'ZivoPlus',
+      description: `New dates · ${booking.bookingRef}`,
+      order_id: order.id,
+      prefill: { name: booking.guestName, email: booking.guestEmail, contact: booking.guestPhone },
+      theme: { color: '#1a56db' },
+      handler: async (response) => {
+        try {
+          const r = await verifyDateChangeApi(booking.id, requestId, response);
+          if (r?.applied === false) reject(new Error(r.message));
+          else resolve('paid');
         } catch (err) {
           reject(new Error(err?.message || 'We could not confirm the payment. If money was taken, it is refunded automatically.'));
         }

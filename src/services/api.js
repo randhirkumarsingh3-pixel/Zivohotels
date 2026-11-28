@@ -714,6 +714,15 @@ export const getStayRequests = (bookingId) => apiFetch(`${PUBLIC_BASE}/bookings/
 export const createStayRequest = (bookingId, body) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests`, { method: 'POST', body: JSON.stringify(body) }).then(res => res?.data);
 export const cancelStayRequest = (bookingId, requestId) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/requests/${requestId}/cancel`, { method: 'POST' }).then(res => res?.data);
 
+// Change dates (same rooms, today's rates; the hotel approves)
+const DC = (bookingId) => `${PUBLIC_BASE}/bookings/${bookingId}/date-change`;
+export const getDateChangeApi = (bookingId) => apiFetch(DC(bookingId), { cache: 'no-store' }).then((r) => r?.data);
+export const quoteDateChangeApi = (bookingId, body) => apiFetch(`${DC(bookingId)}/quote`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r?.data);
+export const requestDateChangeApi = (bookingId, body) => apiFetch(DC(bookingId), { method: 'POST', body: JSON.stringify(body) }).then((r) => r?.data);
+export const withdrawDateChangeApi = (bookingId, requestId) => apiFetch(`${DC(bookingId)}/${requestId}/withdraw`, { method: 'POST' }).then((r) => r?.data);
+export const payDateChangeApi = (bookingId, requestId) => apiFetch(`${DC(bookingId)}/${requestId}/pay`, { method: 'POST' }).then((r) => r?.data);
+export const verifyDateChangeApi = (bookingId, requestId, response) => apiFetch(`${DC(bookingId)}/${requestId}/verify`, { method: 'POST', body: JSON.stringify(response) }).then((r) => r?.data);
+
 // Cancel one room of a booking with several rooms (the rest of the booking stays)
 export const getRoomCancelPreview = (bookingId, roomNumber) => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/rooms/${roomNumber}/cancel-preview`).then(res => res?.data);
 export const cancelBookingRoomApi = (bookingId, roomNumber, refundTo = 'SOURCE') => apiFetch(`${PUBLIC_BASE}/bookings/${bookingId}/rooms/${roomNumber}/cancel`, { method: 'POST', body: JSON.stringify({ refundTo }) });

@@ -5,8 +5,7 @@
  * sees the answer in My Bookings.
  */
 import prisma from '../config/db.js';
-import { getDefaultPolicy } from '../utils/refundCalculator.js';
-import { requestsOpenAt } from '../domains/cancellationRules.js';
+import { requestWindow } from '../domains/cancellationRules.js';
 import { createNotification } from './notificationService.js';
 import { queueService } from './queueService.js';
 import { eventBus } from './eventBus.js';
@@ -20,7 +19,26 @@ export const REQUEST_TYPES = {
   AIRPORT_DROP: 'Airport / station drop',
   PARKING: 'Parking',
   SPECIAL_OCCASION: 'Special occasion',
+  ROOM_SERVICE: 'Food / room service',
+  AMENITY: 'Room amenities (towels, pillows, cot…)',
+  LOST_ITEM: 'Lost item',
+  BILL_INVOICE: 'Bill / invoice',
   OTHER: 'Other request',
+};
+/** After check-out only these make sense. */
+export const AFTER_STAY_TYPES = ['LOST_ITEM', 'BILL_INVOICE', 'OTHER'];
+/** Only once the stay is over (or has started, for a bill). */
+const AFTER_ONLY = ['LOST_ITEM'];
+
+/** What the guest can ask for right now, and until when ({ open, types, closesAt, reason }). */
+export const requestOptions = (booking, now = new Date()) => {
+  const w = requestWindow(booking);
+  const after = now >= w.stayEndsAt;
+  const statusOk = after ? ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(booking.status) : ['CONFIRMED', 'CHECKED_IN'].includes(booking.status);
+  if (!statusOk) return { open: false, types: [], closesAt: w.closesAt, afterStay: after, reason: 'Requests can be sent for confirmed bookings only.' };
+  if (now >= w.closesAt) return { open: false, types: [], closesAt: w.closesAt, afterStay: true, reason: 'Requests to the hotel closed 72 hours after check-out.' };
+  const types = after ? AFTER_STAY_TYPES : Object.keys(REQUEST_TYPES).filter((t) => !AFTER_ONLY.includes(t));
+  return { open: true, types, closesAt: w.closesAt, afterStay: after, reason: null };
 };
 const OPEN_STATUSES = ['PENDING', 'CONFIRMED'];
 const MAX_OPEN_PER_BOOKING = 10;
@@ -58,12 +76,6 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
 
 const clean = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
-/** When this booking's guest may start sending requests (free cancellation has ended). */
-export const openTime = async (booking) => {
-  const policy = booking.stayType === 'HOURLY' ? null : await prisma.cancellationPolicy.findUnique({ where: { hotelId: booking.hotelId } }) || getDefaultPolicy();
-  return requestsOpenAt(booking, policy);
-};
-
 /** The guest's requests for one booking, newest first. */
 export const listForBooking = async (bookingId, user) => {
   const booking = await loadBooking(bookingId);
@@ -71,23 +83,23 @@ export const listForBooking = async (bookingId, user) => {
   return prisma.stayRequest.findMany({ where: { bookingId }, orderBy: { createdAt: 'desc' } });
 };
 
-/** A guest asks the hotel for something. Only for their own confirmed booking, before check-out. */
+/** A guest asks the hotel for something: their own confirmed booking, from booking until 72 hours after check-out. */
 export const createRequest = async (bookingId, user, input = {}) => {
   const booking = await loadBooking(bookingId);
   if (!booking || (booking.userId !== user.id && user.role !== 'ADMIN')) throw new StayRequestError('Booking not found', 404);
-  if (!['CONFIRMED', 'CHECKED_IN'].includes(booking.status)) throw new StayRequestError('Requests can be sent for confirmed bookings only.');
-  if (new Date(booking.checkOut) <= new Date()) throw new StayRequestError('This stay has ended.');
-  const opensAt = await openTime(booking);
-  if (opensAt > new Date()) {
-    const when = opensAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-    throw new StayRequestError(`Requests to the hotel open when free cancellation ends, on ${when}.`, 409);
-  }
+  const options = requestOptions(booking);
+  if (!options.open) throw new StayRequestError(options.reason, 409);
 
   const type = String(input.type || '').toUpperCase();
   if (!REQUEST_TYPES[type]) throw new StayRequestError('Choose what you would like to ask the hotel.');
+  if (!options.types.includes(type)) {
+    throw new StayRequestError(options.afterStay
+      ? 'After check-out you can ask about a lost item, your bill or invoice, or something else.'
+      : 'You can report a lost item once your stay is over.', 409);
+  }
   const details = clean(input.details, 500);
   const requestedTime = clean(input.requestedTime, 60) || null;
-  if (type === 'OTHER' && details.length < 3) throw new StayRequestError('Tell the hotel what you need.');
+  if (['OTHER', 'LOST_ITEM', 'AMENITY', 'ROOM_SERVICE', 'BILL_INVOICE'].includes(type) && details.length < 3) throw new StayRequestError(type === 'LOST_ITEM' ? 'Describe the item and where you left it.' : 'Tell the hotel what you need.');
   if (['LATE_ARRIVAL', 'AIRPORT_PICKUP', 'AIRPORT_DROP'].includes(type) && !requestedTime && details.length < 3) {
     throw new StayRequestError(type === 'LATE_ARRIVAL' ? 'Add the time you expect to arrive.' : 'Add your flight or train and its time.');
   }

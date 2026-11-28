@@ -190,9 +190,12 @@ export const verifyExtension = async (bookingId, userId, { razorpay_order_id: or
 /** Razorpay webhook: a captured payment for an extension order (if the page didn't confirm it). */
 export const bookingForExtensionOrder = (orderId) => prisma.booking.findFirst({ where: { metadata: { path: ['pendingExtension', 'orderId'], equals: orderId } }, select: { id: true } });
 
-/** Every online payment on a booking, with what it paid: the booking's own, then each extension. */
+/**
+ * Every online payment on a booking, with what it paid: the booking's own, then each extension
+ * (extra hours, or a date change's difference paid separately).
+ */
 export const paymentsOf = (booking) => {
-  const ext = (booking.metadata?.hourlyExtensions || []).filter((x) => x.paymentId).map((x) => ({ paymentId: x.paymentId, amount: Number(x.amount) || 0 }));
+  const ext = [...(booking.metadata?.hourlyExtensions || []), ...(booking.metadata?.extraPayments || [])].filter((x) => x.paymentId).map((x) => ({ paymentId: x.paymentId, amount: Number(x.amount) || 0 }));
   const extTotal = ext.reduce((t, x) => t + x.amount, 0);
   const main = booking.razorpayPaymentId ? [{ paymentId: booking.razorpayPaymentId, amount: Math.max(0, (Number(booking.paidAmount) || 0) - (Number(booking.walletAmount) || 0) - extTotal) }] : [];
   return [...main, ...ext];

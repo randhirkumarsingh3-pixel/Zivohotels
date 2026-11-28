@@ -118,6 +118,10 @@ export const submitPropertyForReview = (hotelId) => extranetFetch(`/onboarding/$
 /** Confirm or decline a guest's request: status CONFIRMED | DECLINED, reply shown to the guest. */
 export const respondToStayRequest = (requestId, status, reply) => extranetFetch(`/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify({ status, reply }) });
 
+// Guests' date changes: list, approve / decline
+export const fetchDateChanges = () => extranetFetch('/date-changes', { method: 'GET' });
+export const respondToDateChange = (id, decision, reply) => extranetFetch(`/date-changes/${id}`, { method: 'PATCH', body: JSON.stringify({ decision, reply }) });
+
 // --- HOURLY STAYS ---
 export const fetchHourlySetup = () => extranetFetch('/hourly', { method: 'GET' });
 export const saveHourlySetup = (data) => extranetFetch('/hourly', { method: 'PUT', body: JSON.stringify(data) });

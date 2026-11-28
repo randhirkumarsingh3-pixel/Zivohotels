@@ -1,6 +1,5 @@
 import { getDatesInRange } from '../utils/dateUtils.js';
 import prisma from '../config/db.js';
-import { getDefaultPolicy } from '../utils/refundCalculator.js';
 import { requestsOpenAt } from '../domains/cancellationRules.js';
 import { COVER_PHOTO_FIRST } from '../constants/coverPhoto.js';
 import { z } from 'zod';
@@ -645,19 +644,18 @@ export const getMyBookings = async (req, res, next) => {
       // settings (bank, commercials) leaves the server
       if (booking.hotel) {
         const contact = booking.hotel.integrationSettings?.contactInfo || {};
-        booking.hotel.contact = {
-          phone: contact.receptionPhone || contact.guestLandline || null,
-          email: contact.receptionEmail || null,
-        };
+        // Guests get the front desk phone only (no email or WhatsApp)
+        booking.hotel.contact = { phone: contact.receptionPhone || contact.guestLandline || null };
         delete booking.hotel.integrationSettings;
       }
     }
 
-    // When guests may send requests to the hotel: once free cancellation has ended
-    const hotelIds = [...new Set(bookings.filter((b) => b.stayType !== 'HOURLY').map((b) => b.hotelId))];
-    const policies = new Map((await prisma.cancellationPolicy.findMany({ where: { hotelId: { in: hotelIds } } })).map((p) => [p.hotelId, p]));
+    // When guests may send requests to the hotel, and which kinds (booking → 72 hours after check-out)
+    const { requestOptions } = await import('../services/stayRequestService.js');
     for (const booking of bookings) {
-      booking.requestsOpenAt = requestsOpenAt(booking, booking.stayType === 'HOURLY' ? null : policies.get(booking.hotelId) || getDefaultPolicy());
+      const o = requestOptions(booking);
+      booking.requestsOpenAt = requestsOpenAt(booking);
+      booking.requestWindow = { open: o.open, types: o.types, closesAt: o.closesAt, afterStay: o.afterStay };
     }
 
     // Who issues each booking's GST invoice: the hotel (business GSTIN bookings, uploaded by it)

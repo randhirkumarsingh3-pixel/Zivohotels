@@ -78,8 +78,32 @@ export const freeCancellationEndsAt = (booking, policy) => {
   return end < booked ? booked : end;
 };
 
+/** Requests to the hotel stay open this long after the stay ends (lost items, bills). */
+export const REQUESTS_AFTER_STAY_HOURS = 72;
+
 /**
- * Guests can send requests to the hotel (late arrival, pickup…) once free cancellation has ended,
- * so hotels only prepare for stays that are firm. Returns when they open.
+ * When the stay ends: the hourly slot's end, or check-out day at 12:00 IST for nights (check-out
+ * dates are stored as the day at 00:00 UTC).
  */
-export const requestsOpenAt = (booking, policy) => freeCancellationEndsAt(booking, policy);
+export const stayEndsAt = (booking) => {
+  if (booking.stayType === 'HOURLY') return new Date(booking.slotEnd || booking.checkOut);
+  const d = new Date(booking.checkOut);
+  const midnightUtc = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+  return midnightUtc ? new Date(d.getTime() + 6.5 * 3600 * 1000) : d;
+};
+
+/**
+ * Guests can send requests to the hotel from when the booking is made until 72 hours after the stay
+ * ends. After check-out only requests that still make sense (lost item, bill, other) are offered.
+ */
+export const requestWindow = (booking) => {
+  const ends = stayEndsAt(booking);
+  return {
+    opensAt: new Date(booking.createdAt || Date.now()),
+    stayEndsAt: ends,
+    closesAt: new Date(ends.getTime() + REQUESTS_AFTER_STAY_HOURS * 3600 * 1000),
+  };
+};
+
+/** Kept for callers that only need the opening time. */
+export const requestsOpenAt = (booking) => requestWindow(booking).opensAt;

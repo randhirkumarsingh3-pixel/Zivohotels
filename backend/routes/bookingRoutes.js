@@ -1,5 +1,6 @@
 import express from 'express';
 import { listBookingRequests, createBookingRequest, cancelBookingRequest } from '../controllers/stayRequestController.js';
+import { getDateChange, quoteDateChange, requestDateChange, withdrawDateChange, payDateChange, verifyDateChange } from '../controllers/dateChangeController.js';
 import { createBooking, previewBooking, getBookings, getMyBookings, updateBookingStatus, cleanupExpiredBookings, failBooking, cancelBooking, cancelPreview, downloadVoucher, roomCancelPreview, cancelRoom } from '../controllers/bookingController.js';
 import { protect, authorizeRoles, extractUser } from '../middleware/authMiddleware.js';
 import { previewHourly, bookHourly, getExtensionOptions, createExtension, confirmExtension } from '../controllers/hourlyController.js';
@@ -43,6 +44,13 @@ router.route('/:id/requests')
   .get(protect, listBookingRequests)
   .post(protect, createBookingRequest);
 router.post('/:id/requests/:requestId/cancel', protect, cancelBookingRequest);
+// Change dates: whether it's possible, the price for new dates, ask the hotel, withdraw, pay the difference
+router.get('/:id/date-change', protect, getDateChange);
+router.post('/:id/date-change/quote', protect, quoteDateChange);
+router.post('/:id/date-change', protect, requestDateChange);
+router.post('/:id/date-change/:requestId/withdraw', protect, withdrawDateChange);
+router.post('/:id/date-change/:requestId/pay', protect, payDateChange);
+router.post('/:id/date-change/:requestId/verify', protect, verifyDateChange);
 router.get('/:id/voucher', protect, downloadVoucher);
 router.route('/:id/cancel')
   .post(protect, cancelBooking);

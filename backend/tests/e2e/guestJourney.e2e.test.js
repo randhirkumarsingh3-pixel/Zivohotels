@@ -1,6 +1,6 @@
 /**
  * Guest journey rules: what signing in / a new account saves (and that checkout gives exactly
- * that), requests to the hotel opening only after free cancellation ends, and the booking hub
+ * that), requests to the hotel (open from booking until 72 hours after check-out), and the booking hub
  * getting the dates it shows.
  */
 import axios from 'axios';
@@ -30,8 +30,8 @@ describe('Guest journey: offers, requests, booking hub', function () {
 
   before(async () => {
     hotel = await prisma.hotel.findFirst({
-      where: { status: { in: ['LIVE', 'ACTIVE'] }, isDeleted: false, roomTypes: { some: { ratePlans: { some: { isActive: true, basePrice: { gt: 0 } } } } } },
-      include: { roomTypes: { include: { ratePlans: { where: { isActive: true, basePrice: { gt: 0 } } } } } },
+      where: { status: { in: ['LIVE', 'ACTIVE'] }, isDeleted: false, roomTypes: { some: { isActive: true, totalInventory: { gte: 2 }, ratePlans: { some: { isActive: true, basePrice: { gt: 0 } } } } } },
+      include: { roomTypes: { where: { isActive: true, totalInventory: { gte: 2 } }, include: { ratePlans: { where: { isActive: true, basePrice: { gt: 0 } } } } } },
     });
     room = hotel.roomTypes.find((rt) => rt.ratePlans.length);
     plan = room.ratePlans[0];
@@ -74,7 +74,7 @@ describe('Guest journey: offers, requests, booking hub', function () {
     if (anon.status === 200) expect(anon.data.data.memberDiscountAmount || 0).to.equal(0);
   });
 
-  it('opens requests to the hotel only when free cancellation has ended', async () => {
+  it('opens requests to the hotel from booking until 72 hours after check-out', async () => {
     const r = await post('/bookings', {
       hotelId: hotel.id, roomTypeId: room.id, ratePlanId: plan.id, rooms: 1, adults: 1, children: 0,
       checkIn: inDays(60), checkOut: inDays(61), paymentType: 'PAY_AT_HOTEL',
@@ -87,16 +87,30 @@ describe('Guest journey: offers, requests, booking hub', function () {
 
     const mine = await api.get('/bookings/my-bookings', auth);
     const b = mine.data.data.find((x) => x.id === bookingId);
-    expect(new Date(b.requestsOpenAt) > new Date(), 'opens later').to.equal(true);
+    expect(b.requestWindow.open, 'open right after booking').to.equal(true);
+    expect(b.requestWindow.types).to.include('LATE_ARRIVAL').and.not.include('LOST_ITEM');
     expect(b.hotel.checkInTime).to.be.a('string');
+    expect(b.hotel.contact).to.not.have.property('email');
 
     const early = await post(`/bookings/${bookingId}/requests`, { type: 'LATE_ARRIVAL', requestedTime: '11 pm' }, auth);
-    expect(early.status, JSON.stringify(early.data)).to.equal(409);
-    expect(early.data.message).to.match(/free cancellation ends/);
+    expect(early.status, JSON.stringify(early.data)).to.be.oneOf([200, 201]);
+    const lost = await post(`/bookings/${bookingId}/requests`, { type: 'LOST_ITEM', details: 'Black charger' }, auth);
+    expect(lost.status).to.equal(409);
 
-    // Free cancellation over (check-in tomorrow under a 24-hour policy, or a stricter one)
-    await prisma.booking.update({ where: { id: bookingId }, data: { checkIn: new Date(`${inDays(0)}T00:00:00Z`), checkOut: new Date(`${inDays(1)}T00:00:00Z`) } });
-    const now = await post(`/bookings/${bookingId}/requests`, { type: 'LATE_ARRIVAL', requestedTime: '11 pm' }, auth);
-    expect(now.status, JSON.stringify(now.data)).to.be.oneOf([200, 201]);
+    // Checked out two days ago: only a lost item, the bill or something else
+    await prisma.booking.update({ where: { id: bookingId }, data: { status: 'COMPLETED', checkIn: new Date(`${inDays(-3)}T00:00:00Z`), checkOut: new Date(`${inDays(-2)}T00:00:00Z`) } });
+    const after = (await api.get('/bookings/my-bookings', auth)).data.data.find((x) => x.id === bookingId);
+    expect(after.requestWindow.open).to.equal(true);
+    expect(after.requestWindow.types).to.have.members(['LOST_ITEM', 'BILL_INVOICE', 'OTHER']);
+    const late = await post(`/bookings/${bookingId}/requests`, { type: 'LATE_ARRIVAL', requestedTime: '11 pm' }, auth);
+    expect(late.status).to.equal(409);
+    const found = await post(`/bookings/${bookingId}/requests`, { type: 'LOST_ITEM', details: 'Black phone charger, bedside table' }, auth);
+    expect(found.status, JSON.stringify(found.data)).to.be.oneOf([200, 201]);
+
+    // More than 72 hours after check-out: closed
+    await prisma.booking.update({ where: { id: bookingId }, data: { checkIn: new Date(`${inDays(-6)}T00:00:00Z`), checkOut: new Date(`${inDays(-4)}T00:00:00Z`) } });
+    const closed = await post(`/bookings/${bookingId}/requests`, { type: 'OTHER', details: 'Anything' }, auth);
+    expect(closed.status).to.equal(409);
+    expect(closed.data.message).to.match(/72 hours/);
   });
 });

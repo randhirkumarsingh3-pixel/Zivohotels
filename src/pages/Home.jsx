@@ -111,6 +111,9 @@ const Home = () => {
         </section>
       )}
 
+      {/* For companies, travel agents and hotels: high on the page */}
+      <PartnerPanels />
+
       <section className="py-12 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
@@ -136,7 +139,6 @@ const Home = () => {
       <WhyZivo />
       <GuestReviews reviews={feed?.reviews} />
       <RewardsMembership rewards={feed?.rewards} membership={feed?.membership} />
-      <PartnerPanels />
       <HomeFaq />
       <ExploreLinks cities={feed?.cities} areas={feed?.areas} />
     </>

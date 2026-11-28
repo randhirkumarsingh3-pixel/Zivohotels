@@ -119,7 +119,8 @@ const rateLimit = (opts) => expressRateLimit({
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
+  // 1000 requests per address per 15 minutes (GLOBAL_RATE_LIMIT_PER_15_MIN: higher only for automated tests)
+  max: Number(process.env.GLOBAL_RATE_LIMIT_PER_15_MIN) || 1000,
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 

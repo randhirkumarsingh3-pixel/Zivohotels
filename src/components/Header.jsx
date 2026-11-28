@@ -1,14 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import NotificationBell from './shared/NotificationBell';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, ArrowRight } from 'lucide-react';
+import { FOR_BUSINESS } from '../constants/forBusiness';
 import { useAuth } from '../context/AuthContext';
 import Logo from './brand/Logo';
 
 /**
- * Guest site header: white bar, navy links, red for the one main action (Sign up). On phones the
- * menu button opens a panel with the same links (it used to do nothing).
+ * Guest site header: white bar, navy links, red for the one main action (Sign up). "For business"
+ * opens a menu with ZivoPlus for Business, ZivoPlus Partner Hub and List your property. On phones
+ * the menu button opens a panel with the same links.
  */
+
+/** Desktop "For business" menu: opens on click, closes on Escape, outside click or navigation. */
+const BusinessMenu = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const location = useLocation();
+  const active = ['/business', '/partners', '/list-your-property'].some((p) => location.pathname.startsWith(p));
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown); document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="for-business-menu"
+        className={`flex items-center gap-1 font-medium transition-colors ${active || open ? 'text-navy-800' : 'text-gray-600 hover:text-navy-800'}`}>
+        For business <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <div id="for-business-menu" className="absolute right-0 xl:left-1/2 xl:-translate-x-1/2 xl:right-auto top-full mt-4 w-[min(92vw,640px)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+          <div className="grid sm:grid-cols-3">
+            {FOR_BUSINESS.map(({ to, name, Icon, short, line }, i) => (
+              <Link key={to} to={to} className={`group p-5 flex flex-col hover:bg-gray-50 transition-colors ${i ? 'sm:border-l border-gray-100' : ''}`}>
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${i === 2 ? 'bg-brand-50 text-brand-600' : 'bg-navy-50 text-navy-800'}`}><Icon size={20} aria-hidden="true" /></span>
+                <span className="block mt-3 text-xs font-bold uppercase tracking-wider text-gray-500">{short}</span>
+                <span className="block mt-0.5 font-bold text-gray-900 group-hover:text-navy-800">{name}</span>
+                <span className="block mt-1 text-sm text-gray-600 leading-snug">{line}</span>
+                <span className="mt-auto pt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-600">Learn more <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true" /></span>
+              </Link>
+            ))}
+          </div>
+          <div className="bg-navy-950 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-gray-300">Already work with us?</span>
+            <span className="flex flex-wrap gap-x-4 gap-y-1 font-semibold">
+              <Link to="/business" className="hover:text-brand-300">Company log in</Link>
+              <Link to="/partners" className="hover:text-brand-300">Agent log in</Link>
+              <Link to="/extranet/login" className="hover:text-brand-300">Hotel log in</Link>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,9 +93,10 @@ const Header = () => {
             <Logo size="md" />
           </Link>
 
-          <div className="hidden lg:flex items-center gap-7">
+          <div className="hidden xl:flex items-center gap-6 whitespace-nowrap">
             {links.map((l) => <NavLink key={l.to} to={l.to} className={linkCls}>{l.label}</NavLink>)}
-            <div className="flex items-center gap-3 ml-2 border-l pl-6 border-gray-200">
+            <BusinessMenu />
+            <div className="flex items-center gap-3 ml-1 border-l pl-5 border-gray-200">
               {isAuthenticated ? (
                 <>
                   <NotificationBell />
@@ -68,7 +118,7 @@ const Header = () => {
             </div>
           </div>
 
-          <div className="lg:hidden flex items-center gap-1">
+          <div className="xl:hidden flex items-center gap-1">
             {isAuthenticated && <NotificationBell />}
             <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}
               className="p-2 -mr-2 rounded-lg text-navy-800 hover:bg-gray-100">
@@ -79,7 +129,7 @@ const Header = () => {
       </div>
 
       {menuOpen && (
-        <div className="lg:hidden border-t border-gray-200 bg-white shadow-lg">
+        <div className="xl:hidden border-t border-gray-200 bg-white shadow-lg max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col">
             {isAuthenticated && <p className="px-2 py-2 text-sm text-gray-500">Signed in as <span className="font-semibold text-gray-800">{user?.name}</span></p>}
             {links.map((l) => (
@@ -87,6 +137,13 @@ const Header = () => {
             ))}
             {isAuthenticated && <NavLink to="/account" className={({ isActive }) => `px-2 py-3 rounded-lg text-base font-medium ${isActive ? 'text-navy-800 bg-navy-50' : 'text-gray-700 hover:bg-gray-50'}`}>My account</NavLink>}
             <Link to="/help" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">Help</Link>
+            <p className="px-2 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-gray-500">For business</p>
+            {FOR_BUSINESS.map(({ to, name, Icon, short }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => `px-2 py-2.5 rounded-lg flex items-center gap-3 ${isActive ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
+                <span className="w-9 h-9 rounded-lg bg-navy-50 text-navy-800 flex items-center justify-center shrink-0"><Icon size={18} aria-hidden="true" /></span>
+                <span><span className="block text-base font-medium text-gray-900">{name}</span><span className="block text-xs text-gray-500">{short}</span></span>
+              </NavLink>
+            ))}
             <div className="border-t border-gray-200 mt-2 pt-3 pb-1 flex gap-3">
               {isAuthenticated ? (
                 <button type="button" onClick={handleLogout} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 font-semibold text-gray-700">
