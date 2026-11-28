@@ -81,7 +81,7 @@ describe('Business core: organisations, accounts, business rates', function () {
       org = r.data.data;
       expect(org).to.include({ kind: 'CORPORATE', status: 'IN_REVIEW', pan: PAN });
       expect(org.code).to.match(/^ZB-\d{6}$/);
-      expect(org.terms).to.include({ paymentMode: 'PREPAID', invoiceMode: 'ON_BEHALF' });
+      expect(org.terms).to.include({ paymentMode: 'PREPAID', invoiceMode: 'HOTEL_ISSUES' });
       expect((await api.post('/business/apply', company(), owner)).status).to.equal(409);
       expect((await api.post('/business/apply', company(), other)).data.message).to.match(/already exists/);
       const mine = (await api.get('/business/mine', owner)).data.data;

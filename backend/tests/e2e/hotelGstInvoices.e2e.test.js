@@ -1,6 +1,6 @@
 /**
  * Business (GSTIN) bookings: the property issues the GST invoice and uploads it in the extranet;
- * ZivoPlus gives a payment receipt as the facilitator. The business downloads the property's
+ * ZivoPlus issues its own tax invoice as the facilitator (SAC 998552). The business downloads the property's
  * invoice; the property is reminded after check-out while it is missing.
  */
 import axios from 'axios';
@@ -9,7 +9,7 @@ import minimist from 'minimist';
 import crypto from 'crypto';
 import prisma from '../../config/db.js';
 import bcrypt from '../../utils/bcrypt.js';
-import { guestInvoiceHtml } from '../../services/documents/guestInvoiceHtml.js';
+import { guestInvoiceHtml, guestNoteHtml } from '../../services/documents/guestInvoiceHtml.js';
 import { brandContext } from '../../services/documents/documentSettings.js';
 import { BOOKING_ROOMS_INCLUDE } from '../../services/bookingRoomsView.js';
 import { remindMissing } from '../../services/hotelGstInvoices.js';
@@ -64,13 +64,15 @@ describe('Business bookings: the property issues and uploads the GST invoice', f
     if (saved.settings) await prisma.systemConfig.update({ where: { key: 'business_settings' }, data: { value: saved.settings.value } }).catch(() => {});
   });
 
-  it('ZivoPlus gives a payment receipt as the facilitator, not a tax invoice', async () => {
+  it('ZivoPlus issues its own tax invoice as the facilitator (reservation service)', async () => {
     booking = await book(45);
     const full = await prisma.booking.findUnique({ where: { id: booking.id }, include: { hotel: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE } });
     expect(full.guestCompanyGstin).to.equal(org.gstin);
     const html = guestInvoiceHtml({ booking: full, hotel: full.hotel, rooms: full.bookingRooms, invoiceRef: 'ZIV/26-27/000001', brand: await brandContext() });
-    expect(html).to.include('Payment Receipt').and.include('This is not a tax invoice').and.include(FACILITATOR).and.include('inclusive of applicable taxes').and.include(org.gstin);
-    expect(html).to.not.include('<h1>Tax Invoice</h1>');
+    expect(html).to.include('Tax Invoice').and.include(FACILITATOR).and.include('Inclusive of applicable taxes collected on behalf of the hotel').and.include(org.gstin);
+    expect(html).to.include('998552').and.include('REG/B2B').and.include('service fee').and.not.include('Payment Receipt');
+    // Place of supply: the business's state (from its GSTIN)
+    expect(html).to.include(`(${org.gstin.slice(0, 2)})`);
     // The voucher tells the business where its invoice comes from
     const v = await api.get(`/bookings/${booking.id}/voucher?type=guest`, { ...booker, responseType: 'arraybuffer' });
     expect(v.status).to.equal(200);
@@ -120,7 +122,7 @@ describe('Business bookings: the property issues and uploads the GST invoice', f
     expect(await prisma.userNotification.count({ where: { type: 'HOTEL_GST_INVOICE', title: { contains: 'GST invoice' } } })).to.be.greaterThan(0);
   });
 
-  it('after check-out the property is reminded once a day while it is missing; no credit notes from ZivoPlus', async () => {
+  it('after check-out the property is reminded once a day while it is missing; a cancellation gets a facilitator credit note', async () => {
     const b2 = await book(60);
     await prisma.booking.update({ where: { id: b2.id }, data: { checkIn: new Date(`${inDays(-2)}T00:00:00.000Z`), checkOut: new Date(`${inDays(-1)}T00:00:00.000Z`), status: 'COMPLETED' } });
     const before = await prisma.notification.count({ where: { hotelId: hotel.id, type: 'GST_INVOICE_MISSING' } });
@@ -132,10 +134,29 @@ describe('Business bookings: the property issues and uploads the GST invoice', f
     const list = await api.get(`/extranet/gst-invoices/${hotel.id}?status=PENDING`, hotelSide);
     expect(list.data.data.bookings.find((x) => x.bookingId === b2.id).due).to.equal(true);
 
+    // ZivoPlus admins see what is waiting across properties, and can nudge the property now
+    const waiting = await api.get(`/admin/finance/hotel-invoices?status=WAITING&q=${encodeURIComponent(org.gstin)}`, admin);
+    expect(waiting.status, JSON.stringify(waiting.data)).to.equal(200);
+    expect(waiting.data.data.bookings.map((x) => x.bookingId)).to.include(b2.id).and.not.include(booking.id);
+    const uploaded = await api.get(`/admin/finance/hotel-invoices?status=UPLOADED&q=${encodeURIComponent(org.gstin)}`, admin);
+    expect(uploaded.data.data.bookings.map((x) => x.bookingId)).to.deep.equal([booking.id]);
+    expect((await api.post(`/admin/finance/hotel-invoices/${b2.id}/remind`, {}, admin)).data.data.reminded).to.equal(true);
+    expect((await api.post(`/admin/finance/hotel-invoices/${booking.id}/remind`, {}, admin)).status).to.equal(409);
+    expect((await api.get('/admin/finance/hotel-invoices', hotelSide)).status).to.be.oneOf([401, 403]);
+
     const b3 = await book(70);
     const c = await api.post(`/business/${org.id}/bookings/${b3.id}/cancel`, {}, booker);
     expect(c.status).to.equal(200);
-    await sleep(1500);
-    expect(await prisma.guestNote.count({ where: { bookingId: b3.id } })).to.equal(0);
+    // The facilitator invoice is not redrawn: if it was issued, a credit note for the accommodation
+    // charges collected, with no GST of ZivoPlus's own
+    await sleep(2500);
+    const inv = await prisma.invoice.findUnique({ where: { bookingId: b3.id } });
+    const notes = await prisma.guestNote.findMany({ where: { bookingId: b3.id } });
+    if (inv) {
+      expect(notes.map((n) => n.kind)).to.deep.equal(['CREDIT']);
+      const full = await prisma.booking.findUnique({ where: { id: b3.id }, include: { hotel: true } });
+      const html = guestNoteHtml({ booking: full, hotel: full.hotel, note: notes[0], invoice: inv, brand: await brandContext() });
+      expect(html).to.include('Credit Note').and.include('998552').and.include('collected on behalf of the hotel').and.include(FACILITATOR).and.not.include('CGST');
+    } else expect(notes).to.have.length(0);
   });
 });

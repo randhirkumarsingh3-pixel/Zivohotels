@@ -61,7 +61,10 @@ const createBookingSchema = z.object({
   companyGstin: z.string().trim().toUpperCase()
     .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, 'Enter a valid 15-character GSTIN')
     .optional(),
-  companyAddress: z.string().trim().max(500).optional()
+  companyAddress: z.string().trim().max(500).optional(),
+  // The guest's billing address and GST state code: needed on an individual's invoice of ₹50,000+
+  billingAddress: z.string().trim().min(8, 'Enter your full billing address').max(300).optional(),
+  billingStateCode: z.string().trim().regex(/^\d{2}$/, 'Choose your state').optional(),
 }).refine(d => !d.companyGstin || d.companyName, { message: 'Company name is required with a GSTIN', path: ['companyName'] });
 
 const getBookingsSchema = z.object({
@@ -120,7 +123,7 @@ export const createBooking = async (req, res, next) => {
       hotelId, roomTypeId, ratePlanId, checkIn, checkOut, roomLines,
       rooms, adults, children, extraBeds, paymentType,
       guestName, guestEmail, guestPhone, promoCode, usePoints, useWallet,
-      companyName, companyGstin, companyAddress
+      companyName, companyGstin, companyAddress, billingAddress, billingStateCode
     } = validation.data;
 
     const dates = getDatesInRange(checkIn, checkOut);
@@ -132,6 +135,8 @@ export const createBooking = async (req, res, next) => {
     const serviceContext = {
       guestName, guestEmail, guestPhone,
       company: companyName ? { name: companyName, gstin: companyGstin || null, address: companyAddress || null } : null,
+      billing: billingAddress && billingStateCode ? { address: billingAddress, stateCode: billingStateCode } : null,
+      requireBillingFrom: 50000,
       ratePlanId, paymentType, couponCode: promoCode, usePoints, useWallet,
       requestId: req.id,
       sessionId: req.headers['x-session-id'] || null,

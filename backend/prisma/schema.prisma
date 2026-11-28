@@ -332,6 +332,10 @@ model Booking {
   organisation        Organisation?          @relation(fields: [organisationId], references: [id])
   guestNotes          GuestNote[]
   hotelGstInvoice     HotelGstInvoice?
+  /// The guest's billing address and GST state (code), asked at checkout when an individual's
+  /// invoice is ₹50,000 or more (GST rule 46)
+  billingAddress      String?
+  billingStateCode    String?
 
   @@index([hotelId])
   @@index([userId])

@@ -1,4 +1,6 @@
 import prisma from '../config/db.js';
+import { STATE_NAMES } from './finance/financeSettings.js';
+import { getDocumentSettings, invoiceModeFor } from './documents/documentSettings.js';
 import eventBus from '../events/eventBus.js';
 import { membershipFor, memberDiscounts } from './membershipService.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
@@ -124,6 +126,18 @@ const ensureSession = async (sid, userId) => {
   }
 };
 
+/**
+ * The invoice value from which an individual guest's billing address and state are asked at
+ * checkout, or null when they aren't: only when ZivoPlus issues the guest's tax invoice. When the
+ * hotel issues it (HOTEL_ISSUES), the hotel collects these at the property.
+ */
+export const BILLING_ADDRESS_FROM = 50000;
+const billingAddressFrom = async (booking, from = BILLING_ADDRESS_FROM) => {
+  if (booking?.guestCompanyGstin) return null;
+  const mode = invoiceModeFor(booking, await getDocumentSettings().catch(() => null));
+  return mode === 'HOTEL_ISSUES' ? null : from;
+};
+
 export const bookingService = {
 
   /**
@@ -150,6 +164,7 @@ export const bookingService = {
     const { raw: _raw, roomIndexes: _ri, ...promotionSummary } = promotion || {};
     return {
       ...pricing,
+      billingAddressFrom: await billingAddressFrom({ guestCompanyGstin: params.companyGstin || null }),
       roomsBreakdown: describeRooms(pricing, rooms),
       promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus, loyalty, membership,
     };
@@ -224,6 +239,16 @@ export const bookingService = {
     }
     Object.freeze(pricing);
 
+    // GST rule 46: an individual's (B2C) tax invoice of ₹50,000 or more carries their address and
+    // state. Website checkout asks for it (context.requireBillingFrom); business bookings carry
+    // the company's address.
+    const billing = context.billing || null;
+    if (billing && !STATE_NAMES[billing.stateCode]) throw Object.assign(new Error('Choose your state for the billing address.'), { statusCode: 400 });
+    if (context.requireBillingFrom && !company?.gstin && pricing.finalAmount >= context.requireBillingFrom
+      && await billingAddressFrom({ guestCompanyGstin: null }, context.requireBillingFrom) && !(billing?.address && billing?.stateCode)) {
+      throw Object.assign(new Error(`Add your billing address and state: GST needs them on invoices of ₹${Number(context.requireBillingFrom).toLocaleString('en-IN')} or more.`), { statusCode: 400, code: 'BILLING_ADDRESS_REQUIRED' });
+    }
+
     // 4. Execute Transactional Core
     const bookingResult = await prisma.$transaction(async (tx) => {
       
@@ -244,6 +269,8 @@ export const bookingService = {
         guestCompanyName: company?.name || null,
         guestCompanyGstin: company?.gstin || null,
         guestCompanyAddress: company?.address || null,
+        billingAddress: billing?.address || null,
+        billingStateCode: billing?.stateCode || null,
         checkIn: checkInDate,
         checkOut: checkOutDate,
         guests: adults + children,

@@ -19,9 +19,9 @@ export const PRICING_MODELS = ['NET', 'COMMISSION', 'BOTH'];
 export const KINDS = ['CORPORATE', 'AGENCY'];
 
 export const DEFAULTS = {
-  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'ON_BEHALF', holdHours: 24, requireAgreement: false },
+  corporate: { enabled: false, requireGstin: true, paymentMode: 'PREPAID', creditDays: 30, invoiceMode: 'HOTEL_ISSUES', holdHours: 24, requireAgreement: false },
   agency: {
-    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'ON_BEHALF', holdHours: 24, requireAgreement: false,
+    enabled: false, requireGstin: false, paymentMode: 'PREPAID', creditDays: 15, invoiceMode: 'HOTEL_ISSUES', holdHours: 24, requireAgreement: false,
     pricingModel: 'BOTH', defaultMarkupPct: 10, maxMarkupPct: 50, extraCommissionPct: 0,
     // TDS on commission (Income Tax Act section 194H)
     tdsPct: 2,

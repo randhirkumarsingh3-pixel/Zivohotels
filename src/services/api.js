@@ -639,6 +639,8 @@ export const adminOpsApi = {
 
 // Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)
 export const adminFinanceApi = {
+  hotelInvoices: (q = {}) => apiFetch(`${ADMIN_BASE}/finance/hotel-invoices?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  remindHotelInvoice: (bookingId) => apiFetch(`${ADMIN_BASE}/finance/hotel-invoices/${bookingId}/remind`, jsonBody('POST', {}), 0).then((r) => r?.data),
   ledger: (filters) => apiFetch(`${ADMIN_BASE}/finance/ledger?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   payouts: () => apiFetch(`${ADMIN_BASE}/finance/payouts`, { cache: 'no-store' }, 0).then((r) => r?.data),
   due: (hotelId) => apiFetch(`${ADMIN_BASE}/wallets/hotels/${hotelId}/payout`, { cache: 'no-store' }, 0).then((r) => r?.data),

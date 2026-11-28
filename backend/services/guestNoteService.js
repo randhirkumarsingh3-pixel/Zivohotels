@@ -8,8 +8,8 @@
  *
  * Numbered per kind per financial year (ZCN/26-27/000001, ZDN/26-27/000001; prefixes in Admin →
  * Settings → Documents & emails), PDF drawn after the number is taken (retried by the invoice
- * catch-up job). When the guest got a payment receipt instead of a tax invoice (the hotel issues
- * it: HOTEL_ISSUES), the receipt is redrawn instead, as before.
+ * catch-up job). When the hotel issues the GST invoice for the stay (HOTEL_ISSUES), ZivoPlus's
+ * facilitator tax invoice gets notes the same way (accommodation charges collected, no GST).
  */
 import crypto from 'crypto';
 import fs from 'fs/promises';
@@ -17,7 +17,7 @@ import path from 'path';
 import prisma from '../config/db.js';
 import { BOOKING_ROOMS_INCLUDE } from './bookingRoomsView.js';
 import { guestNoteHtml } from './documents/guestInvoiceHtml.js';
-import { brandContext, getDocumentSettings, invoiceModeFor } from './documents/documentSettings.js';
+import { brandContext, getDocumentSettings } from './documents/documentSettings.js';
 import { renderPdf as renderThemedPdf, footerLine } from './documents/theme.js';
 import { fyStart, fyLabel } from '../utils/financialYear.js';
 
@@ -27,12 +27,6 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
   where: { id: bookingId },
   include: { hotel: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE },
 });
-
-/** Was the guest given a tax invoice (not a payment receipt)? */
-const isTaxInvoice = async (booking) => {
-  const mode = invoiceModeFor(booking, await getDocumentSettings());
-  return mode !== 'HOTEL_ISSUES';
-};
 
 /** The invoice's value now: as issued, plus debit notes, less credit notes. */
 export const invoicedValue = async (invoice, fallback = {}) => {
@@ -68,8 +62,7 @@ const drawPdf = async (note, booking = null) => {
 /**
  * Issues a note against the booking's invoice. change: { kind, amount (GST included), tax,
  * reason, key }; key makes it idempotent (one note per event, e.g. 'cancel', 'room-2',
- * 'hours-<orderId>'). Returns the note, or null when there is no tax invoice to adjust (the
- * receipt is redrawn instead) or nothing changed.
+ * 'hours-<orderId>'). Returns the note, or null when there is no invoice yet or nothing changed.
  */
 export const issueNote = async (bookingId, { kind, amount, tax, reason, key }) => {
   const value = r2(amount);
@@ -77,12 +70,6 @@ export const issueNote = async (bookingId, { kind, amount, tax, reason, key }) =
   const booking = await loadBooking(bookingId);
   const invoice = booking && await prisma.invoice.findUnique({ where: { bookingId } });
   if (!booking || !invoice) return null;
-  if (!(await isTaxInvoice(booking))) {
-    // A payment receipt, not a tax invoice: it shows what is paid now
-    const { invoiceService } = await import('./invoiceService.js');
-    await invoiceService.regenerateInvoice(bookingId).catch(() => {});
-    return null;
-  }
   const existing = await prisma.guestNote.findUnique({ where: { bookingId_key: { bookingId, key } } });
   if (existing) return existing;
 

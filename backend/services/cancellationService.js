@@ -430,7 +430,6 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
   scheduleRecompute(booking.hotelId);
   await syncLoyalty(bookingId).catch((e) => console.error('[ZivoRewards] sync failed:', e.message));
   // The issued invoice stays as it is: a credit note for what is no longer charged
-  // (a payment receipt is redrawn instead)
   import('./guestNoteService.js').then((m) => m.issueNote(bookingId, {
     kind: 'CREDIT', amount: roundMoney(q.shareTotal - q.retainedAmount), tax: roundMoney(q.shareTax),
     reason: `Room ${room.roomNumber} (${room.roomType?.name || 'room'}) cancelled${q.retainedAmount > 0 ? '; the cancellation charge stays invoiced' : ''}`, key: `room-${room.roomNumber}`,

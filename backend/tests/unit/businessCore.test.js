@@ -39,7 +39,7 @@ describe('Business prices', () => {
 describe('Organisation terms', () => {
   it('uses the defaults unless ZivoPlus set the organisation\'s own', () => {
     const t = termsFor({ kind: 'CORPORATE', creditLimit: 50000 }, settings);
-    expect(t).to.include({ paymentMode: 'PREPAID', creditAllowed: false, creditLimit: 0, invoiceMode: 'ON_BEHALF', paymentModeIsDefault: true });
+    expect(t).to.include({ paymentMode: 'PREPAID', creditAllowed: false, creditLimit: 0, invoiceMode: 'HOTEL_ISSUES', paymentModeIsDefault: true });
     const c = termsFor({ kind: 'CORPORATE', paymentMode: 'CREDIT', creditLimit: 50000, creditDays: 7, invoiceMode: 'ZIVO_SUPPLIER' }, settings);
     expect(c).to.include({ creditAllowed: true, creditLimit: 50000, creditDays: 7, invoiceMode: 'ZIVO_SUPPLIER' });
   });
