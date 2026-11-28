@@ -153,7 +153,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   let razorpayRefundId = null;
   // An hourly stay with extra hours bought online was paid in several payments: the refund goes
   // back to each (newest first), and each one done is recorded so a retry never repeats it
-  const extensionPayments = booking.metadata?.hourlyExtensions?.length ? paymentsOf(booking) : null;
+  const extensionPayments = (booking.metadata?.hourlyExtensions?.length || booking.metadata?.extraPayments?.length) ? paymentsOf(booking) : null;
   if (toSource > 0 && extensionPayments) {
     let left = toSource;
     const done = { ...(booking.metadata?.refundedPayments || {}) };
@@ -163,7 +163,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
       if (!done[p.paymentId]) {
         try {
           const r = await withTimeout(
-            razorpay.payments.refund(p.paymentId, { amount: Math.round(amount * 100), notes: { requestId, bookingId, initiatedBy } }, { 'X-Razorpay-Idempotency-Key': `${bookingId}-${p.paymentId}` }),
+            razorpay.payments.refund(p.paymentId, { amount: Math.round(amount * 100), notes: { requestId, bookingId, initiatedBy } }),
             10000, 'Razorpay Refund Timed Out',
           );
           done[p.paymentId] = { refundId: r.id, amount };
@@ -184,8 +184,6 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         razorpay.payments.refund(booking.razorpayPaymentId, {
           amount: Math.round(toSource * 100),
           notes: { requestId, bookingId, retry: refundRecord.retryCount, initiatedBy }
-        }, {
-          'X-Razorpay-Idempotency-Key': `${bookingId}-${refundRecord.retryCount}`
         }),
         10000,
         'Razorpay Refund Timed Out'
@@ -384,8 +382,7 @@ export const cancelBookingRoom = async ({ bookingId, roomNumber, initiatedBy, us
     if (!booking.razorpayPaymentId) throw new CancellationError(400, 'This booking has no online payment to refund to. Choose Zivo Cash.');
     try {
       const r = await withTimeout(
-        razorpay.payments.refund(booking.razorpayPaymentId, { amount: Math.round(toSource * 100), notes: { bookingId, roomNumber: String(room.roomNumber), initiatedBy } },
-          { 'X-Razorpay-Idempotency-Key': `${bookingId}-room-${room.roomNumber}` }),
+        razorpay.payments.refund(booking.razorpayPaymentId, { amount: Math.round(toSource * 100), notes: { bookingId, roomNumber: String(room.roomNumber), initiatedBy } }),
         10000, 'Razorpay Refund Timed Out');
       razorpayRefundId = r.id;
     } catch (apiError) {

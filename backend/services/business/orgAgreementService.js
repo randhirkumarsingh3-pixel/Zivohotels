@@ -199,7 +199,7 @@ const afterSigned = async (a) => {
   const rows = [['Agreement', a.reference], ['Organisation', `${org.name} (${org.code})`], ['Signed by', `${a.signerName} (${a.signerEmail})`], ['Signed on', dateTime(a.signedAt)], ['Method', a.signatureMethod === 'AADHAAR_ESIGN' ? 'Aadhaar eSign (Leegality)' : 'Emailed code']];
   const html = await emailLayout({ title: 'Agreement signed', eyebrow: p.name, ref: a.reference, status: { label: 'Signed', tone: 'ok' }, rows, body: '<p>Thank you. Download the signed copy from the Agreement tab at any time.</p>', cta: { label: 'Open', href: `${siteUrl()}${p.path}?tab=agreement` } });
   for (const m of await orgAdmins(org.id)) await notifyUser(m.userId, { type: 'ORG_AGREEMENT_SIGNED', title: 'Agreement signed', message: `${a.title} ${a.reference} is signed.`, link: `${p.path}?tab=agreement`, email: { subject: `Signed: ${a.title} (${a.reference})`, html } });
-  await notifyAdmins({ type: 'ORG_AGREEMENT_SIGNED', title: `${org.name} signed its agreement`, message: `${a.reference} (${p.name}).`, link: `/admin/organisations?id=${org.id}` });
+  await notifyAdmins({ type: 'ORG_AGREEMENT_SIGNED', title: `${org.name} signed its agreement`, message: `${a.reference} (${p.name}).`, link: `${org.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}` });
 };
 
 /** The agreement PDF; signed with Aadhaar, Leegality's signed copy (and audit trail). */

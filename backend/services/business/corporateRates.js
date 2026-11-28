@@ -151,7 +151,7 @@ export const hotelDecide = async (hotelId, user, rateId, { decision, note } = {}
   await prisma.auditLog.create({ data: { action: d === 'ACCEPT' ? 'CORPORATE_RATE_ACCEPTED' : 'CORPORATE_RATE_DECLINED', entityType: 'HOTEL', entityId: r.hotelId, userId: user.id, details: { rateId: r.id, organisationId: r.organisationId, note: text || null } } }).catch(() => {});
   await notifyUser(r.proposedById, {
     type: d === 'ACCEPT' ? 'CORPORATE_RATE_ACCEPTED' : 'CORPORATE_RATE_DECLINED', title: d === 'ACCEPT' ? 'Company rate accepted' : 'Company rate declined',
-    message: `${r.hotel.name}: ${describeRate(r)} for ${r.organisation.name}${text ? ` (${text})` : ''}.`, link: `/admin/organisations/${r.organisationId}`,
+    message: `${r.hotel.name}: ${describeRate(r)} for ${r.organisation.name}${text ? ` (${text})` : ''}.`, link: `/admin/companies?id=${r.organisationId}`,
   }).catch(() => {});
   if (d === 'ACCEPT') {
     const admins = await prisma.orgMember.findMany({ where: { organisationId: r.organisationId, status: 'ACTIVE', role: { in: ['ADMIN', 'BOOKER'] } }, select: { userId: true } });

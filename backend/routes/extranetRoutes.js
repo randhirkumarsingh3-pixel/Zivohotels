@@ -15,6 +15,7 @@ import { extranetGetSetup, extranetSaveSetup, extranetAllocations, extranetSetAl
 import { getRooms } from '../controllers/extranet/roomController.js';
 import { getBookings, updateBookingStatus } from '../controllers/extranet/bookingController.js';
 import { listHotelRequests, respondHotelRequest } from '../controllers/stayRequestController.js';
+import { listHotelDateChanges, respondHotelDateChange } from '../controllers/dateChangeController.js';
 import { listHotelReviews, replyToReview, deleteReply, reportReview } from '../controllers/reviewController.js';
 import { fetchNotifications, markNotificationsRead } from '../controllers/extranet/notificationController.js';
 import { fetchActivityTimeline } from '../controllers/extranet/activityController.js';
@@ -90,6 +91,9 @@ router.put('/bookings/:bookingId/status', updateBookingStatus);
 // Guest requests (concierge): see them and confirm or decline with a reply
 router.get('/requests', listHotelRequests);
 router.patch('/requests/:requestId', respondHotelRequest);
+// Guests' date changes: approve or decline
+router.get('/date-changes', listHotelDateChanges);
+router.patch('/date-changes/:requestId', respondHotelDateChange);
 
 // Reviews
 router.get('/reviews', listHotelReviews);

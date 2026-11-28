@@ -9,6 +9,13 @@
  *  PUT  /:id/terms                        { paymentMode, creditLimit, creditDays, invoiceMode, pricingModel, defaultMarkupPct, extraCommissionPct, tier }
  *  POST /:id/ledger                       { type: PAYMENT|REFUND|ADJUSTMENT, amount, note, reference }
  *  GET  /:id/documents/:docId/file
+ *  GET  /overview                         dashboard (applications waiting, this month, top accounts)
+ *  POST /                                 add a company / agency on their behalf (admin invited by email)
+ *  PUT  /:id/profile                      correct any detail
+ *  POST /:id/documents/:docId/review      { status: VERIFIED|REJECTED, note }
+ *  POST /:id/members                      { email, name, role }
+ *  GET  /:id/bookings                     ?status=&search=&page=
+ *  GET  /:id/report(.csv)                 ?from=&to=
  */
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -16,6 +23,7 @@ import svc from '../services/business/organisationService.js';
 import { getBusinessSettings, saveBusinessSettings } from '../services/business/businessSettings.js';
 import orgAgreement from '../services/business/orgAgreementService.js';
 import corporateRates from '../services/business/corporateRates.js';
+import ops from '../services/business/adminOrgOps.js';
 
 const wrap = (fn) => asyncHandler(async (req, res) => {
   try { await fn(req, res); } catch (e) {
@@ -29,12 +37,24 @@ const staffOnly = (req, res, next) => (req.user?.role === 'ADMIN' ? next() : res
 const router = express.Router();
 router.use(staffOnly);
 router.get('/', wrap(async (req, res) => ok(res, await svc.adminList(req.query))));
+router.get('/overview', wrap(async (req, res) => ok(res, await ops.overview())));
+router.post('/', wrap(async (req, res) => ok(res, await ops.createOnBehalf(req.user, req.body || {}))));
 router.get('/:id', wrap(async (req, res) => ok(res, await svc.adminDetail(req.params.id))));
 // Rates agreed between a company and hotels (the hotel accepts them in the extranet)
 router.get('/:id/rates', wrap(async (req, res) => ok(res, await corporateRates.adminList({ organisationId: req.params.id }))));
 router.get('/:id/rates/hotels', wrap(async (req, res) => ok(res, await corporateRates.hotelChoices(req.query.q))));
 router.post('/:id/rates', wrap(async (req, res) => ok(res, await corporateRates.propose(req.params.id, req.user, req.body || {}))));
 router.post('/:id/rates/:rateId/end', wrap(async (req, res) => ok(res, await corporateRates.endRate(req.params.id, req.user, req.params.rateId, req.body || {}))));
+router.put('/:id/profile', wrap(async (req, res) => ok(res, await ops.updateProfile(req.params.id, req.user, req.body || {}))));
+router.post('/:id/documents/:docId/review', wrap(async (req, res) => ok(res, await ops.reviewDocument(req.params.id, req.params.docId, req.user, req.body || {}))));
+router.post('/:id/members', wrap(async (req, res) => ok(res, await ops.staffAddMember(req.params.id, req.user, req.body || {}))));
+router.get('/:id/bookings', wrap(async (req, res) => ok(res, await ops.bookings(req.params.id, req.query))));
+router.get('/:id/report.csv', wrap(async (req, res) => {
+  const csv = await ops.reportCsv(req.params.id, req.query);
+  res.locals.skipFormat = true;
+  res.type('text/csv').set({ 'Content-Disposition': 'attachment; filename="organisation-report.csv"', 'Cache-Control': 'private, no-store' }).send(`\uFEFF${csv}`);
+}));
+router.get('/:id/report', wrap(async (req, res) => ok(res, await ops.report(req.params.id, req.query))));
 router.post('/:id/decision', wrap(async (req, res) => ok(res, await svc.decide(req.params.id, req.user, req.body || {}))));
 router.put('/:id/terms', wrap(async (req, res) => ok(res, await svc.setTerms(req.params.id, req.user, req.body || {}))));
 router.post('/:id/ledger', wrap(async (req, res) => ok(res, await svc.adminEntry(req.params.id, req.user, req.body || {}))));

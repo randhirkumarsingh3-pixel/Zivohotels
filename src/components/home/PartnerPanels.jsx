@@ -1,40 +1,46 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Briefcase, Copy, Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
+import { FOR_BUSINESS } from '../../constants/forBusiness';
 
 /**
- * Two panels for hotels and companies. Both go to the real teams by email (there's no form yet);
- * the address is shown as text with a copy button, because mail links don't work for everyone.
+ * "ZivoPlus for business" band on the home page: ZivoPlus for Business (companies), ZivoPlus
+ * Partner Hub (travel agents) and List your property (hotels), each with what it offers and where
+ * to start. Navy band with the brand red for the actions, like the rest of the site.
  */
-const Email = ({ address }) => {
-  const [done, setDone] = useState(false);
-  const copy = async () => { try { await navigator.clipboard.writeText(address); setDone(true); setTimeout(() => setDone(false), 2000); } catch { /* visible to select */ } };
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className="font-semibold text-navy-900 select-all">{address}</span>
-      <button type="button" onClick={copy} aria-label={`Copy ${address}`} className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100">{done ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}</button>
-    </span>
-  );
-};
-
 const PartnerPanels = () => (
-  <section className="py-14 bg-gray-50" aria-label="For hotels and companies">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-5 md:grid-cols-2">
-      <article className="bg-white rounded-card border border-gray-200 p-6">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Building2 className="text-navy-700" size={24} aria-hidden="true" /> List your property</h2>
-        <p className="text-gray-600 mt-2">Reach guests across India. Manage rooms, rates, bookings, reviews and payouts in the ZivoPlus Extranet, on your laptop or phone.</p>
-        <p className="text-sm text-gray-700 mt-4">Questions? Write to our partner team: <Email address="partners@zivoplus.com" /></p>
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <Link to="/list-your-property" className="inline-block px-5 py-2.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white font-semibold">List your property</Link>
-          <Link to="/extranet/login" className="text-sm font-semibold text-navy-700 hover:text-navy-900">Already a partner? Log in</Link>
-        </div>
-      </article>
-      <article className="bg-white rounded-card border border-gray-200 p-6">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Briefcase className="text-navy-700" size={24} aria-hidden="true" /> Stays for your company</h2>
-        <p className="text-gray-600 mt-2">Add your company&apos;s GSTIN at checkout for a GST invoice in its name, and choose to pay now or reserve now and pay later.</p>
-        <p className="text-sm text-gray-700 mt-4">Ask about business rates: <Email address="bookings@zivoplus.com" /></p>
-        <Link to="/help#payments" className="mt-4 inline-block px-5 py-2.5 rounded-lg border border-navy-200 text-navy-800 font-semibold hover:bg-navy-50">How payments work</Link>
-      </article>
+  <section className="py-16 bg-navy-950 relative overflow-hidden" aria-labelledby="fb-h">
+    <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-brand-600/20 blur-3xl" aria-hidden="true" />
+    <div className="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-navy-600/30 blur-3xl" aria-hidden="true" />
+    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl">
+        <p className="text-sm font-bold uppercase tracking-widest text-brand-300">ZivoPlus for business</p>
+        <h2 id="fb-h" className="mt-2 text-3xl md:text-4xl font-black text-white tracking-tight">Travel, sell or host with ZivoPlus</h2>
+        <p className="mt-3 text-gray-300">One platform for companies booking work trips, travel agents booking for their customers, and hotels reaching guests across India.</p>
+      </div>
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
+        {FOR_BUSINESS.map(({ to, name, Icon, short, line, points, cta }, i) => (
+          <article key={to} className="bg-white rounded-2xl p-6 flex flex-col shadow-xl shadow-black/20">
+            <div className="flex items-center gap-3">
+              <span className={`w-12 h-12 rounded-xl flex items-center justify-center ${i === 2 ? 'bg-brand-50 text-brand-600' : 'bg-navy-50 text-navy-800'}`}><Icon size={24} aria-hidden="true" /></span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{short}</p>
+                <h3 className="text-lg font-bold text-gray-900">{name}</h3>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-gray-600">{line}</p>
+            <ul className="mt-4 space-y-2 text-sm text-gray-800 flex-1">
+              {points.map((pt) => <li key={pt} className="flex gap-2"><Check size={16} className="text-green-700 shrink-0 mt-0.5" aria-hidden="true" />{pt}</li>)}
+            </ul>
+            <Link to={to} className={`mt-6 inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-semibold text-white transition-colors ${i === 2 ? 'bg-navy-800 hover:bg-navy-900' : 'bg-brand-600 hover:bg-brand-700'}`}>
+              {cta}<ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </article>
+        ))}
+      </div>
+      <p className="mt-6 text-sm text-gray-300">
+        Already with us? <Link to="/business" className="font-semibold text-white hover:text-brand-300 underline-offset-2 hover:underline">Company log in</Link> · <Link to="/partners" className="font-semibold text-white hover:text-brand-300 underline-offset-2 hover:underline">Agent log in</Link> · <Link to="/extranet/login" className="font-semibold text-white hover:text-brand-300 underline-offset-2 hover:underline">Hotel log in</Link>
+        <span className="block sm:inline sm:ml-3 mt-1 sm:mt-0">Questions: <span className="select-all text-white">partners@zivoplus.com</span></span>
+      </p>
     </div>
   </section>
 );

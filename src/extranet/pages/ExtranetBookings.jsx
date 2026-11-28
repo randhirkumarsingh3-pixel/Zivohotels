@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { isHourly, slotText } from '../../utils/stay';
 import GuestRequestsPanel from '../components/GuestRequestsPanel';
+import DateChangesPanel from '../components/DateChangesPanel';
 import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../../utils/bookingRooms';
 import RoomCancel from '../../components/booking/RoomCancel';
 import {
@@ -117,6 +118,8 @@ const ExtranetBookings = () => {
           <Download size={16} aria-hidden="true" /> Export {shown.length} to CSV
         </button>
       </div>
+
+      <DateChangesPanel addToast={addToast} onChanged={() => load(true)} />
 
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Booking status">

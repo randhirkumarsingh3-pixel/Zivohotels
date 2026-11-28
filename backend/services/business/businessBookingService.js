@@ -489,8 +489,9 @@ export const creditCommission = async (tx, booking) => {
 };
 
 /** Commission earned in a period (credited at check-out), with TDS. */
-export const commissionStatement = async (orgId, user, { from, to } = {}) => {
-  const { org } = await membershipFor(orgId, user, 'account.view');
+export const commissionStatement = async (orgId, user, q = {}) => commissionStatementFor((await membershipFor(orgId, user, 'account.view')).org, q);
+/** The statement for an organisation (members via commissionStatement; ZivoPlus staff directly). */
+export const commissionStatementFor = async (org, { from, to } = {}) => {
   const end = to ? new Date(to) : new Date();
   const start = from ? new Date(from) : new Date(end.getFullYear(), end.getMonth(), 1);
   const entries = await prisma.orgLedgerEntry.findMany({ where: { organisationId: org.id, type: { in: ['COMMISSION', 'TDS'] }, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'asc' } });
@@ -632,8 +633,8 @@ const reportBookings = async (org, { from, to }) => {
 const nightsOf = (b) => Math.max(1, Math.round((new Date(b.checkOut) - new Date(b.checkIn)) / 86400000)) * (b.rooms || 1);
 
 /** Spend in a period: totals, savings against the public price, policy compliance, by traveller / city / hotel / cost centre. */
-export const spendReport = async (orgId, user, q = {}) => {
-  const { org } = await membershipFor(orgId, user, 'account.view');
+export const spendReport = async (orgId, user, q = {}) => spendReportFor((await membershipFor(orgId, user, 'account.view')).org, q);
+export const spendReportFor = async (org, q = {}) => {
   const { start, end, rows } = await reportBookings(org, q);
   const group = (keyFn) => {
     const m = new Map();
@@ -666,8 +667,8 @@ export const spendReport = async (orgId, user, q = {}) => {
 
 const csvCell = (v) => { const t = v == null ? '' : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
 /** Bookings with GST details, for input tax credit (match with GSTR-2B) and expense systems. */
-export const spendCsv = async (orgId, user, q = {}) => {
-  const { org } = await membershipFor(orgId, user, 'account.view');
+export const spendCsv = async (orgId, user, q = {}) => spendCsvFor((await membershipFor(orgId, user, 'account.view')).org, q);
+export const spendCsvFor = async (org, q = {}) => {
   const { rows } = await reportBookings(org, q);
   const head = ['Booking', 'Invoice number', 'Invoice date', 'Hotel', 'City', 'Hotel state', 'Hotel GSTIN', 'Check-in', 'Check-out', 'Room nights', 'Traveller', 'Cost centre', 'Booked by', 'Your GSTIN', 'Taxable value', 'GST', 'Total', 'Public price', 'Within policy', 'Policy reason', 'Status'];
   const d = (x) => (x ? new Date(x).toISOString().slice(0, 10) : '');
@@ -681,4 +682,4 @@ export const spendCsv = async (orgId, user, q = {}) => {
 };
 
 export { inr };
-export default { ratesFor, quote, book, listBookings, getBooking, payHeld, cancelBooking, creditCommission, commissionStatement, listApprovals, decideApproval, spendReport, spendCsv, groupQuotePrice, bookGroup, roomingList, saveRoomingList };
+export default { ratesFor, quote, book, listBookings, getBooking, payHeld, cancelBooking, creditCommission, commissionStatement, commissionStatementFor, listApprovals, decideApproval, spendReport, spendReportFor, spendCsv, spendCsvFor, groupQuotePrice, bookGroup, roomingList, saveRoomingList };

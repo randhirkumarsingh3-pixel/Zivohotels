@@ -319,6 +319,7 @@ model Booking {
   timelineEvents      BookingTimelineEvent[]
   bookingRooms        BookingRoom[]
   stayRequests        StayRequest[]
+  dateChanges         DateChangeRequest[]
   intelligence        BookingIntelligence?
   /// NIGHTLY (dates) or HOURLY (a time slot on one day: slotStart to slotEnd, hours long)
   stayType            String                 @default("NIGHTLY")
@@ -401,6 +402,48 @@ model StayRequest {
 
   @@index([hotelId, status])
   @@index([bookingId])
+}
+
+/// A guest asks to move a booking to other dates (My Bookings → Manage → Change dates): same
+/// hotel, rooms and plans, priced at today's rates. Only while free cancellation applies. The hotel
+/// approves or declines in the extranet; the booking changes only when approved (and, when the new
+/// dates cost more on a prepaid booking, once the difference is paid online).
+model DateChangeRequest {
+  id          String    @id @default(uuid())
+  bookingId   String
+  hotelId     String
+  userId      String?
+  oldCheckIn  DateTime
+  oldCheckOut DateTime
+  newCheckIn  DateTime
+  newCheckOut DateTime
+  oldTotal    Decimal   @db.Decimal(10, 2)
+  newTotal    Decimal   @db.Decimal(10, 2)
+  /// newTotal - oldTotal (positive: the guest pays more)
+  difference  Decimal   @db.Decimal(10, 2)
+  /// The new price: { baseAmount, taxAmount, roomPrice, ..., rooms: [per-room breakdown] }
+  pricing     Json
+  /// PENDING (hotel to answer), AWAITING_PAYMENT (approved, guest pays the difference), APPLIED,
+  /// DECLINED, WITHDRAWN, EXPIRED, FAILED (dates no longer available when applying)
+  status      String    @default("PENDING")
+  guestNote   String?
+  hotelReply  String?
+  respondedAt DateTime?
+  respondedBy String?
+  /// When the hotel must answer by (or the guest pay by, once approved)
+  expiresAt   DateTime
+  orderId     String?   @unique
+  paymentId   String?
+  /// Money returned when the new dates cost less: { toSource, toWallet, refundId, status }
+  refund      Json?
+  appliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, status])
+  @@index([bookingId, status])
 }
 
 model TaxRule {

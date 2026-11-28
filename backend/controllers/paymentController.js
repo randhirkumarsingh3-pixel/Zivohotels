@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
 import { roundMoney, toMoney } from '../utils/money.js';
 import { bookingForExtensionOrder, applyExtension } from '../services/hourlyExtension.js';
+import { isDateChangeOrder, applyPaid as applyDateChange } from '../services/dateChangeService.js';
 import { feeDueNow, feeOf } from '../services/serviceFee.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
@@ -285,6 +286,11 @@ export const webhook = asyncHandler(async (req, res) => {
         if (ext) {
           await applyExtension(ext.id, { orderId, paymentId: payment.id, paidPaise: payment.amount })
             .catch((err) => console.error('[Webhook] Extension not applied:', err.message));
+        }
+        // A date change's difference (its own order): move the booking, unless the page already did
+        else if (await isDateChangeOrder(orderId)) {
+          await applyDateChange(orderId, payment.id, payment.amount)
+            .catch((err) => console.error('[Webhook] Date change not applied:', err.message));
         }
         return res.status(200).send('OK');
       }

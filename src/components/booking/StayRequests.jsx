@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Send, Loader2, CheckCircle2, XCircle, Clock, Ban } from 'lucide-react';
 import { getStayRequests, createStayRequest, cancelStayRequest } from '../../services/api';
-import { REQUEST_TYPES, requestLabel as labelOf } from '../../constants/stayRequests';
+import { REQUEST_TYPES, requestLabel as labelOf, detailsHint, DETAILS_REQUIRED } from '../../constants/stayRequests';
 
 /**
  * Requests to the hotel for one booking: send one (late arrival, early check-in, airport pickup…)
- * and see the hotel's answer. The hotel is told by email and in its extranet, and the guest gets an
- * email when it answers.
+ * and see the hotel's answer. Open from booking until 72 hours after check-out; after check-out
+ * only a lost item, the bill/invoice or something else (booking.requestWindow from the server).
  */
 
 const STATUS = {
@@ -23,11 +23,10 @@ const StayRequests = ({ booking }) => {
   const [form, setForm] = useState({ type: '', requestedTime: '', details: '' });
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState(null);
-  const active = ['CONFIRMED', 'CHECKED_IN'].includes(booking.status) && new Date(booking.checkOut) > new Date();
-  // Requests open once free cancellation has ended (the hotel prepares only for firm stays)
-  const opensAt = booking.requestsOpenAt ? new Date(booking.requestsOpenAt) : null;
-  const notYet = active && opensAt && opensAt > new Date();
-  const canAsk = active && !notYet;
+  // From the server: open from booking until 72 hours after check-out, and which kinds apply now
+  const win = booking.requestWindow;
+  const canAsk = Boolean(win?.open);
+  const kinds = REQUEST_TYPES.filter((t) => win?.types?.includes(t.id));
   const type = REQUEST_TYPES.find((t) => t.id === form.type);
 
   const load = useCallback(() => {
@@ -63,11 +62,15 @@ const StayRequests = ({ booking }) => {
       {canAsk ? (
         <form onSubmit={send} className="border border-gray-100 rounded-2xl p-5 space-y-4">
           <div>
-            <h4 className="font-bold text-gray-900 text-sm">Ask the hotel</h4>
-            <p className="text-xs text-gray-500 mt-1">The hotel is told by email and in its system. Requests are confirmed by the hotel, not guaranteed; extra services may be charged by the hotel.</p>
+            <h4 className="font-bold text-gray-900 text-sm">{win.afterStay ? 'Ask the hotel after your stay' : 'Ask the hotel'}</h4>
+            <p className="text-xs text-gray-500 mt-1">
+              {win.afterStay
+                ? <>Left something behind, or need your bill? You can ask until <strong>{when(win.closesAt)}</strong>.</>
+                : 'The hotel is told by email and in its system. Requests are confirmed by the hotel, not guaranteed; extra services may be charged by the hotel.'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="What do you need?">
-            {REQUEST_TYPES.map((t) => (
+            {kinds.map((t) => (
               <button key={t.id} type="button" role="radio" aria-checked={form.type === t.id}
                 onClick={() => setForm((f) => ({ ...f, type: t.id }))}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${form.type === t.id ? 'bg-navy-800 text-white border-navy-800' : 'bg-white text-gray-700 border-gray-200 hover:border-navy-500'}`}>
@@ -85,9 +88,9 @@ const StayRequests = ({ booking }) => {
           )}
           {form.type && (
             <div>
-              <label htmlFor="req-details" className="block text-xs font-semibold text-gray-700 mb-1">Details {form.type === 'OTHER' ? '' : <span className="font-normal text-gray-400">(optional)</span>}</label>
+              <label htmlFor="req-details" className="block text-xs font-semibold text-gray-700 mb-1">Details {DETAILS_REQUIRED.includes(form.type) ? '' : <span className="font-normal text-gray-400">(optional)</span>}</label>
               <textarea id="req-details" rows={3} maxLength={500} value={form.details}
-                placeholder={form.type === 'PARKING' ? 'e.g. One car, SUV' : form.type === 'SPECIAL_OCCASION' ? 'e.g. Anniversary on 20 Dec, a cake if possible' : 'Anything the hotel should know'}
+                placeholder={detailsHint(form.type)}
                 onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
             </div>
@@ -100,9 +103,9 @@ const StayRequests = ({ booking }) => {
         </form>
       ) : (
         <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3">
-          {notYet
-            ? <>You can send requests to the hotel (late arrival, early check-in, airport pickup…) from <strong>{when(opensAt)}</strong>, when free cancellation ends.</>
-            : 'Requests can be sent for confirmed bookings until check-out.'}
+          {win?.closesAt && new Date(win.closesAt) <= new Date()
+            ? 'Requests to the hotel closed 72 hours after check-out. For anything else, contact ZivoPlus support.'
+            : 'Requests can be sent for confirmed bookings.'}
         </p>
       )}
 

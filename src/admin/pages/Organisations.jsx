@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Loader2, Search, Briefcase, Handshake, X, Download, CheckCircle2, PauseCircle, Ban, AlertTriangle, Settings2 } from 'lucide-react';
+import { Loader2, Search, Briefcase, Handshake, X, Download, CheckCircle2, PauseCircle, Ban, AlertTriangle, Settings2, Plus } from 'lucide-react';
 import { adminBusinessApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 import useAccess from '../../hooks/useAccess';
+import AddOrganisation, { ProfileFields } from '../components/business/AddOrganisation';
+import { ROLE_OPTIONS, PROFILE_FIELDS } from '../components/business/orgFields';
 
 /**
  * Admin → Organisations: companies (ZivoPlus for Business) and travel agents (Partner Hub).
@@ -98,163 +100,346 @@ const AgreedRates = ({ orgId, manage, active }) => {
   );
 };
 
+const BOOKING_STATUS = { PENDING: 'Waiting', CONFIRMED: 'Confirmed', CHECKED_IN: 'Checked in', COMPLETED: 'Completed', CANCELLED: 'Cancelled', NO_SHOW: 'No-show' };
+const OrgBookings = ({ id }) => {
+  const [q, setQ] = useState({ status: '', search: '', page: 1 });
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { const t = setTimeout(() => adminBusinessApi.bookings(id, q).then(setD).catch((e) => setErr(e.message)), 200); return () => clearTimeout(t); }, [id, q]);
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <input value={q.search} onChange={(e) => setQ({ ...q, search: e.target.value, page: 1 })} placeholder="Booking ID or guest" aria-label="Search bookings" className="flex-1 min-w-[10rem] px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        <select aria-label="Booking status" value={q.status} onChange={(e) => setQ({ ...q, status: e.target.value, page: 1 })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm"><option value="">Any status</option>{Object.entries(BOOKING_STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+      </div>
+      {err && <p className="text-sm text-red-700">{err}</p>}
+      {!d ? <p className="text-sm text-gray-500">Loading…</p> : d.bookings.length === 0 ? <p className="text-sm text-gray-500">No bookings{q.status || q.search ? ' match' : ' yet'}.</p> : (
+        <>
+          <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+            {d.bookings.map((b) => (
+              <li key={b.id} className="p-3 flex flex-wrap justify-between gap-2">
+                <span><span className="font-mono font-semibold">{b.bookingRef}</span> · {b.guestName}<span className="block text-xs text-gray-500">{b.hotel?.name}, {b.hotel?.city} · {day(b.checkIn)} → {day(b.checkOut)} · {b.rooms} room{b.rooms === 1 ? '' : 's'}{b.bookedBy ? ` · booked by ${b.bookedBy}` : ''}</span></span>
+                <span className="text-right"><b>{inr(b.totalAmount)}</b><span className="block text-xs text-gray-500">{BOOKING_STATUS[b.status] || b.status}{b.commission ? ` · commission ${inr(b.commission)}` : ''}</span></span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-between text-xs text-gray-600">
+            <span>{d.total} booking{d.total === 1 ? '' : 's'}</span>
+            <span className="flex gap-2">
+              <button type="button" disabled={q.page <= 1} onClick={() => setQ({ ...q, page: q.page - 1 })} className="px-2 py-1 border rounded disabled:opacity-40">Previous</button>
+              <button type="button" disabled={q.page * d.pageSize >= d.total} onClick={() => setQ({ ...q, page: q.page + 1 })} className="px-2 py-1 border rounded disabled:opacity-40">Next</button>
+            </span>
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
+const ymd = (dt) => dt.toISOString().slice(0, 10);
+const OrgReport = ({ id, kind }) => {
+  const now = new Date();
+  const [range, setRange] = useState({ from: ymd(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1))), to: ymd(now) });
+  const [r, setR] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { setR(null); adminBusinessApi.report(id, range).then(setR).catch((e) => setErr(e.message)); }, [id, range]);
+  const csv = async () => {
+    try { const b = await adminBusinessApi.reportCsv(id, range); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `report-${range.from}-to-${range.to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 30000); } catch (e) { setErr(e.message); }
+  };
+  const maxV = Math.max(1, ...(r?.trend || []).map((m) => m.value));
+  const Table = ({ title, rows }) => (rows?.length ? (
+    <div>
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
+      <table className="w-full text-sm"><tbody className="divide-y divide-gray-100">{rows.slice(0, 8).map((g) => <tr key={g.key}><td className="py-1.5 text-gray-800">{g.key}</td><td className="py-1.5 text-right text-gray-500">{g.bookings} · {g.roomNights} nights</td><td className="py-1.5 text-right font-semibold">{inr(g.spend)}</td></tr>)}</tbody></table>
+    </div>
+  ) : null);
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs font-semibold text-gray-700">From<input type="date" className={input} value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></label>
+        <label className="text-xs font-semibold text-gray-700">To<input type="date" className={input} value={range.to} min={range.from} onChange={(e) => setRange({ ...range, to: e.target.value })} /></label>
+        <button type="button" onClick={csv} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> CSV with GST details</button>
+      </div>
+      <p className="text-xs text-gray-500">Stays checking in during the period (cancelled ones left out).</p>
+      {err && <p className="text-sm text-red-700">{err}</p>}
+      {!r ? <p className="text-sm text-gray-500">Loading…</p> : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[['Bookings', r.totals.bookings], ['Room nights', r.totals.roomNights], [kind === 'AGENCY' ? 'Sales' : 'Spend', inr(r.totals.spend)], kind === 'AGENCY' ? ['Commission (net of TDS)', inr(r.commission?.totals.net)] : ['Saved vs public price', inr(r.totals.savings)]].map(([k, v]) => <div key={k} className="rounded-lg border border-gray-200 p-2"><p className="text-xs text-gray-500">{k}</p><p className="font-bold text-gray-900">{v}</p></div>)}
+          </div>
+          {kind === 'CORPORATE' && r.totals.checkedAgainstPolicy > 0 && <p className="text-sm text-gray-700">{r.totals.outOfPolicy} of {r.totals.checkedAgainstPolicy} trips were outside the travel policy.</p>}
+          <figure>
+            <figcaption className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Booked by month (last 6 months)</figcaption>
+            <div className="flex items-end gap-2 h-28" role="img" aria-label="Value booked by month">
+              {r.trend.map((m) => (
+                <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[10px] text-gray-500 tabular-nums">{m.bookings}</span>
+                  <span className="w-full rounded-t bg-navy-600" style={{ height: `${Math.max(m.value ? 6 : 0, (m.value / maxV) * 80)}px` }} title={`${m.month}: ${inr(m.value)}`} />
+                  <span className="text-[10px] text-gray-600">{new Date(`${m.month}-01T00:00:00Z`).toLocaleDateString('en-IN', { month: 'short', timeZone: 'UTC' })}</span>
+                </div>
+              ))}
+            </div>
+          </figure>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Table title="By hotel" rows={r.byHotel} />
+            <Table title="By city" rows={r.byCity} />
+            <Table title={kind === 'AGENCY' ? 'By guest' : 'By traveller'} rows={r.byTraveller} />
+            {kind === 'CORPORATE' && <Table title="By cost centre" rows={r.byCostCenter} />}
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
+const TABS = [['profile', 'Profile'], ['documents', 'Documents'], ['terms', 'Terms & rates'], ['account', 'Account'], ['team', 'Team'], ['bookings', 'Bookings'], ['reports', 'Reports'], ['history', 'History']];
+
 const Detail = ({ id, onClose, onChanged }) => {
   const { can } = useAccess();
   const [d, setD] = useState(null);
+  const [tab, setTab] = useState('profile');
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [note, setNote] = useState('');
   const [terms, setTerms] = useState(null);
   const [entry, setEntry] = useState({ type: 'PAYMENT', amount: '', note: '', reference: '' });
+  const [edit, setEdit] = useState(null);
+  const [docNote, setDocNote] = useState({});
+  const [member, setMember] = useState({ email: '', name: '', role: 'BOOKER' });
   const [busy, setBusy] = useState('');
-  const load = useCallback(() => adminBusinessApi.get(id).then((x) => { setD(x); setTerms({ ...x.overrides }); }).catch((e) => setErr(e.message)), [id]);
+  const apply = (x) => { setD(x); setTerms({ ...x.overrides }); };
+  const load = useCallback(() => adminBusinessApi.get(id).then(apply).catch((e) => setErr(e.message)), [id]);
   useEffect(() => { load(); }, [load]);
-  const run = async (key, fn, ok) => { setBusy(key); setErr(''); setMsg(''); try { await fn(); await load(); onChanged(); setMsg(ok); } catch (e) { setErr(e.message); } finally { setBusy(''); } };
+  const run = async (key, fn, ok) => { setBusy(key); setErr(''); setMsg(''); try { const out = await fn(); if (out?.id === id && out.history) apply(out); else await load(); onChanged(); setMsg(ok); return true; } catch (e) { setErr(e.message); return false; } finally { setBusy(''); } };
   if (!d) return <div className="p-6 text-sm text-gray-500">{err || 'Loading…'}</div>;
   const manage = can('business.manage');
   const decide = (status, ok) => run(status, () => adminBusinessApi.decide(id, { status, note }), ok);
   const [kindLabel, KIcon] = KIND[d.kind];
   const val = (v) => (v === null || v === undefined ? '' : v);
   const setT = (k) => (e) => setTerms((t) => ({ ...t, [k]: e.target.value === '' ? null : e.target.value }));
+  const toCheck = d.documents.filter((x) => !x.review).length;
   return (
-    <div className="p-5 md:p-6 space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><KIcon size={14} aria-hidden="true" /> {kindLabel} · {d.code}</p>
-          <h2 className="text-xl font-bold text-gray-900">{d.name}</h2>
-          <div className="mt-1"><Pill s={d.status} /></div>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-lg hover:bg-gray-100"><X size={18} /></button>
-      </div>
-      {err && <p role="alert" className="text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700">{err}</p>}
-      {msg && <p role="status" className="text-sm px-3 py-2 rounded-lg bg-green-50 text-green-800">{msg}</p>}
-
-      <section>
-        <h3 className="font-bold text-gray-900 text-sm">Legal and tax</h3>
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          {[['Legal name', d.legalName], ['Type', d.incorporationType?.replace('_', ' ').toLowerCase()], ['PAN', d.pan], ['GSTIN', d.gstin || '—'], ['Address', `${d.address}, ${d.city}, ${d.state} ${d.pincode}`], ['Invoices to', d.billingEmail], ['Phone', d.phone], ['Website', d.website || '—'], ['Applied', day(d.createdAt)]].map(([k, v]) => <div key={k} className="contents"><dt className="text-gray-500">{k}</dt><dd className="text-gray-900 break-words">{v}</dd></div>)}
-        </dl>
-      </section>
-
-      <section>
-        <h3 className="font-bold text-gray-900 text-sm">Documents ({d.documents.length})</h3>
-        {d.documents.length === 0 ? <p className="text-sm text-gray-500 mt-1">None uploaded yet.</p> : (
-          <ul className="mt-2 space-y-1">{d.documents.map((x) => <li key={x.id}><button type="button" className="text-sm text-navy-800 underline inline-flex items-center gap-1" onClick={() => openBlob(() => adminBusinessApi.documentFile(id, x.id), setErr)}><Download size={13} aria-hidden="true" /> {x.label}</button> <span className="text-xs text-gray-500">{x.name} · {day(x.uploadedAt)}</span></li>)}</ul>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <h3 className="font-bold text-gray-900 text-sm">Agreement</h3>
-        {d.agreement ? (
-          <p className="text-sm text-gray-700">{d.agreement.reference} · {d.agreement.status === 'SIGNED' ? `signed by ${d.agreement.signerName} on ${day(d.agreement.signedAt)}${d.agreement.signatureMethod === 'AADHAAR_ESIGN' ? ' (Aadhaar eSign)' : ''}` : `waiting for their signature${d.agreement.leegalityStatus ? ` (Leegality: ${d.agreement.leegalityStatus.toLowerCase()})` : ''}`}</p>
-        ) : <p className="text-sm text-gray-500">Not prepared yet (prepared when the organisation is approved).</p>}
-        <div className="flex flex-wrap gap-2">
-          {d.agreement && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> PDF</button>}
-          {d.agreement?.signatureMethod === 'AADHAAR_ESIGN' && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id, true), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> Audit trail</button>}
-          {manage && d.agreement?.status !== 'SIGNED' && ['ACTIVE', 'SUSPENDED'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => run('agr', () => adminBusinessApi.prepareAgreement(id), 'Agreement prepared with the current terms and sent to their admins.')} className={`${btn} border border-gray-300 bg-white`}>{d.agreement ? 'Update and resend' : 'Prepare and send'}</button>}
-          {manage && d.agreement?.leegalityStatus === 'SENT' && <button type="button" disabled={!!busy} onClick={() => run('agr-r', () => adminBusinessApi.refreshAgreement(id), 'Checked with Leegality.')} className={`${btn} border border-gray-300 bg-white`}>Check Leegality</button>}
-        </div>
-      </section>
-
-      {manage && (
-        <section className="rounded-xl bg-gray-50 p-4 space-y-3">
-          <h3 className="font-bold text-gray-900 text-sm">Decision</h3>
-          {d.statusNote && <p className="text-xs text-gray-600">Last note: {d.statusNote}</p>}
-          <label className="block text-xs font-semibold text-gray-700">Note to the organisation (needed except for approval)<textarea rows={2} className={input} value={note} onChange={(e) => setNote(e.target.value)} /></label>
-          <div className="flex flex-wrap gap-2">
-            {['IN_REVIEW', 'ON_HOLD', 'SUSPENDED'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('ACTIVE', 'Approved: the organisation\'s admins were emailed.')} className={`${btn} bg-green-700 text-white`}><CheckCircle2 size={15} /> {d.status === 'SUSPENDED' ? 'Reactivate' : 'Approve'}</button>}
-            {['IN_REVIEW', 'ACTIVE'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('ON_HOLD', 'Asked for more details.')} className={`${btn} border border-gray-300 bg-white`}><AlertTriangle size={15} /> Ask for more</button>}
-            {['IN_REVIEW', 'ON_HOLD'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('REJECTED', 'Rejected.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><Ban size={15} /> Reject</button>}
-            {d.status === 'ACTIVE' && <button type="button" disabled={!!busy} onClick={() => decide('SUSPENDED', 'Suspended: bookings and top-ups are paused.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><PauseCircle size={15} /> Suspend</button>}
+    <div className="flex flex-col h-full">
+      <div className="p-5 md:p-6 pb-0 space-y-3 border-b border-gray-100">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><KIcon size={14} aria-hidden="true" /> {kindLabel} · {d.code}</p>
+            <h2 className="text-xl font-bold text-gray-900">{d.name}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-2"><Pill s={d.status} /><span className="text-xs text-gray-500">Balance {inr(d.account.summary.balance)} · available {inr(d.account.summary.available)}{d.account.summary.overdueAmount > 0 ? ` · ${inr(d.account.summary.overdueAmount)} overdue` : ''}</span></div>
           </div>
-        </section>
-      )}
-
-      <section className="space-y-3">
-        <h3 className="font-bold text-gray-900 text-sm">Terms <span className="font-normal text-gray-500">(blank: the default from Business settings)</span></h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-semibold text-gray-700">Payment<select className={input} disabled={!manage} value={val(terms.paymentMode)} onChange={setT('paymentMode')}><option value="">Default</option><option value="PREPAID">Prepaid wallet only</option><option value="CREDIT">Credit line</option><option value="BOTH">Wallet first, then credit</option></select></label>
-          <label className="text-xs font-semibold text-gray-700">Credit limit (₹)<input type="number" min="0" className={input} disabled={!manage} value={val(terms.creditLimit)} onChange={setT('creditLimit')} /></label>
-          <label className="text-xs font-semibold text-gray-700">Credit days<input type="number" min="1" max="120" className={input} disabled={!manage} value={val(terms.creditDays)} onChange={setT('creditDays')} placeholder={`Default ${d.terms.creditDays}`} /></label>
-          <label className="text-xs font-semibold text-gray-700">GST invoice issued by<select className={input} disabled={!manage} value={val(terms.invoiceMode)} onChange={setT('invoiceMode')}><option value="">Default</option><option value="ON_BEHALF">ZivoPlus, on behalf of the hotel</option><option value="ZIVO_SUPPLIER">ZivoPlus as supplier</option><option value="HOTEL_ISSUES">The hotel</option></select></label>
-          {d.kind === 'AGENCY' && <>
-            <label className="text-xs font-semibold text-gray-700">Pricing<select className={input} disabled={!manage} value={val(terms.pricingModel)} onChange={setT('pricingModel')}><option value="">Default</option><option value="NET">Net rates + markup</option><option value="COMMISSION">Commission</option><option value="BOTH">Both (agent chooses)</option></select></label>
-            <label className="text-xs font-semibold text-gray-700">Default markup %<input type="number" min="0" step="0.5" className={input} disabled={!manage} value={val(terms.defaultMarkupPct)} onChange={setT('defaultMarkupPct')} placeholder={`Default ${d.terms.defaultMarkupPct}`} /></label>
-            <label className="text-xs font-semibold text-gray-700">Extra commission from ZivoPlus %<input type="number" min="0" max="30" step="0.5" className={input} disabled={!manage} value={val(terms.extraCommissionPct)} onChange={setT('extraCommissionPct')} placeholder={`Default ${d.terms.extraCommissionPct}`} /></label>
-          </>}
-          <label className="text-xs font-semibold text-gray-700">Tier<input className={input} disabled={!manage} value={val(terms.tier)} onChange={setT('tier')} /></label>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
-        {manage && <button type="button" disabled={!!busy} onClick={() => run('terms', () => adminBusinessApi.terms(id, { ...terms, creditLimit: terms.creditLimit ?? 0 }), 'Terms saved.')} className={`${btn} bg-navy-800 text-white`}>{busy === 'terms' && <Loader2 size={14} className="animate-spin" />} Save terms</button>}
-      </section>
-
-      {d.kind === 'CORPORATE' && <AgreedRates orgId={id} manage={manage} active={d.status === 'ACTIVE'} />}
-
-      <section className="space-y-3">
-        <h3 className="font-bold text-gray-900 text-sm">Account</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-          {[['Balance', inr(d.account.summary.balance)], ['Available', inr(d.account.summary.available)], ['Credit used', inr(d.account.summary.creditUsed)], ['Overdue', inr(d.account.summary.overdueAmount)]].map(([k, v]) => <div key={k} className="rounded-lg border border-gray-200 p-2"><p className="text-xs text-gray-500">{k}</p><p className="font-bold text-gray-900">{v}</p></div>)}
-        </div>
-        {can('finance.manage') && (
-          <div className="grid gap-2 sm:grid-cols-[auto_1fr_1fr] sm:items-end">
-            <label className="text-xs font-semibold text-gray-700">Entry<select className={input} value={entry.type} onChange={(e) => setEntry({ ...entry, type: e.target.value })}><option value="PAYMENT">Payment received (+)</option><option value="REFUND">Refund of balance (−)</option><option value="ADJUSTMENT">Adjustment (±)</option></select></label>
-            <label className="text-xs font-semibold text-gray-700">Amount (₹)<input type="number" step="0.01" className={input} value={entry.amount} onChange={(e) => setEntry({ ...entry, amount: e.target.value })} /></label>
-            <label className="text-xs font-semibold text-gray-700">Bank / UTR reference<input className={input} value={entry.reference} onChange={(e) => setEntry({ ...entry, reference: e.target.value })} /></label>
-            <label className="text-xs font-semibold text-gray-700 sm:col-span-3">What it is for<input className={input} value={entry.note} onChange={(e) => setEntry({ ...entry, note: e.target.value })} /></label>
-            <button type="button" disabled={!!busy || !entry.amount} onClick={() => run('entry', async () => { await adminBusinessApi.entry(id, { ...entry, amount: Number(entry.amount) }); setEntry({ type: 'PAYMENT', amount: '', note: '', reference: '' }); }, 'Recorded.')} className={`${btn} bg-navy-800 text-white sm:col-span-3 justify-self-start`}>Record</button>
-          </div>
-        )}
-        <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto text-sm">
-          {d.account.entries.length === 0 ? <li className="p-3 text-gray-500">No entries yet.</li> : d.account.entries.map((e) => (
-            <li key={e.id} className="p-2.5 flex justify-between gap-3"><span><b>{e.type.toLowerCase()}</b> <span className="text-gray-500">{e.note || e.reference} · {day(e.createdAt)}</span></span><span className={e.amount > 0 ? 'text-green-700 font-semibold' : 'font-semibold'}>{e.amount > 0 ? '+' : '−'}{inr(Math.abs(e.amount))}</span></li>
+        <div role="tablist" aria-label="Organisation" className="flex gap-1 overflow-x-auto -mx-1 px-1">
+          {TABS.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setMsg(''); setErr(''); }} className={`shrink-0 px-3 py-2.5 text-sm font-semibold border-b-2 ${tab === k ? 'border-navy-800 text-navy-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>
+              {l}{k === 'documents' && toCheck > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-100 text-amber-900 text-xs">{toCheck}</span>}{k === 'team' && <span className="ml-1 text-xs text-gray-400">{d.members.length}</span>}
+            </button>
           ))}
-        </ul>
-      </section>
+        </div>
+      </div>
+      <div className="p-5 md:p-6 space-y-6 overflow-y-auto flex-1">
+        {err && <p role="alert" className="text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700">{err}</p>}
+        {msg && <p role="status" className="text-sm px-3 py-2 rounded-lg bg-green-50 text-green-800">{msg}</p>}
 
-      <section>
-        <h3 className="font-bold text-gray-900 text-sm">Team ({d.members.length})</h3>
-        <ul className="mt-2 text-sm space-y-1">{d.members.map((m) => <li key={m.id}>{m.user.name} <span className="text-gray-500">{m.user.email} · {m.role.toLowerCase()}{m.status === 'PAUSED' ? ' · paused' : ''}{m.user.invited ? ' · invited' : ''}</span></li>)}</ul>
-      </section>
+        {tab === 'profile' && (<>
+          <section>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-bold text-gray-900 text-sm">Legal, tax and contact</h3>
+              {manage && !edit && <button type="button" onClick={() => setEdit(Object.fromEntries(PROFILE_FIELDS.map((k) => [k, d[k] ?? ''])))} className="text-sm font-semibold text-navy-800 underline">Edit</button>}
+            </div>
+            {edit ? (
+              <div className="mt-3 space-y-3">
+                <ProfileFields f={edit} set={(k, v) => setEdit((x) => ({ ...x, [k]: v }))} />
+                <p className="text-xs text-gray-500">Changes to legal and tax details are kept in the history. Update the agreement afterwards if they changed.</p>
+                <div className="flex gap-2">
+                  <button type="button" disabled={!!busy} onClick={async () => { if (await run('profile', () => adminBusinessApi.profile(id, edit), 'Details saved.')) setEdit(null); }} className={`${btn} bg-navy-800 text-white`}>{busy === 'profile' && <Loader2 size={14} className="animate-spin" />} Save</button>
+                  <button type="button" onClick={() => setEdit(null)} className={`${btn} border border-gray-300 bg-white`}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                {[['Legal name', d.legalName], ['Type', d.incorporationType?.replace('_', ' ').toLowerCase()], ['PAN', d.pan], ['GSTIN', d.gstin || '—'], ['Address', `${d.address}, ${d.city}, ${d.state} ${d.pincode}`], ['Invoices to', d.billingEmail], ['Phone', d.phone], ['Website', d.website || '—'], ['Joined', day(d.createdAt)]].map(([k, v]) => <div key={k} className="contents"><dt className="text-gray-500">{k}</dt><dd className="text-gray-900 break-words">{v}</dd></div>)}
+              </dl>
+            )}
+          </section>
+          {manage && (
+            <section className="rounded-xl bg-gray-50 p-4 space-y-3">
+              <h3 className="font-bold text-gray-900 text-sm">Decision</h3>
+              {d.statusNote && <p className="text-xs text-gray-600">Last note: {d.statusNote}</p>}
+              {toCheck > 0 && ['IN_REVIEW', 'ON_HOLD'].includes(d.status) && <p className="text-xs text-amber-900 bg-amber-50 rounded px-2 py-1">{toCheck} document{toCheck === 1 ? '' : 's'} not checked yet (Documents tab).</p>}
+              <label className="block text-xs font-semibold text-gray-700">Note to the organisation (needed except for approval)<textarea rows={2} className={input} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+              <div className="flex flex-wrap gap-2">
+                {['IN_REVIEW', 'ON_HOLD', 'SUSPENDED'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('ACTIVE', 'Approved: the organisation\'s admins were emailed.')} className={`${btn} bg-green-700 text-white`}><CheckCircle2 size={15} /> {d.status === 'SUSPENDED' ? 'Reactivate' : 'Approve'}</button>}
+                {['IN_REVIEW', 'ACTIVE'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('ON_HOLD', 'Asked for more details.')} className={`${btn} border border-gray-300 bg-white`}><AlertTriangle size={15} /> Ask for more</button>}
+                {['IN_REVIEW', 'ON_HOLD'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => decide('REJECTED', 'Rejected.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><Ban size={15} /> Reject</button>}
+                {d.status === 'ACTIVE' && <button type="button" disabled={!!busy} onClick={() => decide('SUSPENDED', 'Suspended: bookings and top-ups are paused.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><PauseCircle size={15} /> Suspend</button>}
+              </div>
+            </section>
+          )}
+        </>)}
 
-      <section>
-        <h3 className="font-bold text-gray-900 text-sm">History</h3>
-        <ul className="mt-2 text-xs text-gray-600 space-y-1">{d.history.map((h, i) => <li key={i}>{day(h.createdAt)} · {h.action.replace(/^ORG_/, '').replace(/_/g, ' ').toLowerCase()}{h.details?.note ? `: ${h.details.note}` : ''}</li>)}</ul>
-      </section>
+        {tab === 'documents' && (
+          <section className="space-y-3">
+            <p className="text-xs text-gray-600">Open each file and mark it checked, or not acceptable with a note (their admins are told to upload it again).</p>
+            {d.documents.length === 0 ? <p className="text-sm text-gray-500">None uploaded yet.</p> : (
+              <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                {d.documents.map((x) => (
+                  <li key={x.id} className="p-3 space-y-2 text-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <button type="button" className="font-semibold text-navy-800 underline inline-flex items-center gap-1" onClick={() => openBlob(() => adminBusinessApi.documentFile(id, x.id), setErr)}><Download size={13} aria-hidden="true" /> {x.label}</button>
+                        <p className="text-xs text-gray-500">{x.name} · {day(x.uploadedAt)}</p>
+                      </div>
+                      {x.review ? <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${x.review.status === 'VERIFIED' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>{x.review.status === 'VERIFIED' ? 'Checked' : 'Not acceptable'}{x.review.byName ? ` · ${x.review.byName}` : ''}</span> : <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-900">To check</span>}
+                    </div>
+                    {x.review?.note && <p className="text-xs text-gray-600">Note: {x.review.note}</p>}
+                    {manage && (
+                      <div className="flex flex-wrap items-end gap-2">
+                        <button type="button" disabled={!!busy} onClick={() => run(`v-${x.id}`, () => adminBusinessApi.reviewDocument(id, x.id, { status: 'VERIFIED' }), 'Marked as checked.')} className={`${btn} border border-green-300 text-green-800 bg-white`}><CheckCircle2 size={14} /> Checked</button>
+                        <input aria-label="What is wrong with it" placeholder="What is wrong (for a rejection)" value={docNote[x.id] || ''} onChange={(e) => setDocNote({ ...docNote, [x.id]: e.target.value })} className="flex-1 min-w-[10rem] px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        <button type="button" disabled={!!busy} onClick={() => run(`r-${x.id}`, () => adminBusinessApi.reviewDocument(id, x.id, { status: 'REJECTED', note: docNote[x.id] }), 'Marked not acceptable; their admins were told.')} className={`${btn} border border-gray-300 bg-white text-red-700`}><Ban size={14} /> Not acceptable</button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {tab === 'terms' && (<>
+          <section className="space-y-3">
+            <h3 className="font-bold text-gray-900 text-sm">Terms <span className="font-normal text-gray-500">(blank: the default from Business settings)</span></h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-gray-700">Payment<select className={input} disabled={!manage} value={val(terms.paymentMode)} onChange={setT('paymentMode')}><option value="">Default</option><option value="PREPAID">Prepaid wallet only</option><option value="CREDIT">Credit line</option><option value="BOTH">Wallet first, then credit</option></select></label>
+              <label className="text-xs font-semibold text-gray-700">Credit limit (₹)<input type="number" min="0" className={input} disabled={!manage} value={val(terms.creditLimit)} onChange={setT('creditLimit')} /></label>
+              <label className="text-xs font-semibold text-gray-700">Credit days<input type="number" min="1" max="120" className={input} disabled={!manage} value={val(terms.creditDays)} onChange={setT('creditDays')} placeholder={`Default ${d.terms.creditDays}`} /></label>
+              <label className="text-xs font-semibold text-gray-700">GST invoice issued by<select className={input} disabled={!manage} value={val(terms.invoiceMode)} onChange={setT('invoiceMode')}><option value="">Default</option><option value="ON_BEHALF">ZivoPlus, on behalf of the hotel</option><option value="ZIVO_SUPPLIER">ZivoPlus as supplier</option><option value="HOTEL_ISSUES">The hotel</option></select></label>
+              {d.kind === 'AGENCY' && <>
+                <label className="text-xs font-semibold text-gray-700">Pricing<select className={input} disabled={!manage} value={val(terms.pricingModel)} onChange={setT('pricingModel')}><option value="">Default</option><option value="NET">Net rates + markup</option><option value="COMMISSION">Commission</option><option value="BOTH">Both (agent chooses)</option></select></label>
+                <label className="text-xs font-semibold text-gray-700">Default markup %<input type="number" min="0" step="0.5" className={input} disabled={!manage} value={val(terms.defaultMarkupPct)} onChange={setT('defaultMarkupPct')} placeholder={`Default ${d.terms.defaultMarkupPct}`} /></label>
+                <label className="text-xs font-semibold text-gray-700">Extra commission from ZivoPlus %<input type="number" min="0" max="30" step="0.5" className={input} disabled={!manage} value={val(terms.extraCommissionPct)} onChange={setT('extraCommissionPct')} placeholder={`Default ${d.terms.extraCommissionPct}`} /></label>
+              </>}
+              <label className="text-xs font-semibold text-gray-700">Tier<input className={input} disabled={!manage} value={val(terms.tier)} onChange={setT('tier')} /></label>
+            </div>
+            {manage && <button type="button" disabled={!!busy} onClick={() => run('terms', () => adminBusinessApi.terms(id, { ...terms, creditLimit: terms.creditLimit ?? 0 }), 'Terms saved.')} className={`${btn} bg-navy-800 text-white`}>{busy === 'terms' && <Loader2 size={14} className="animate-spin" />} Save terms</button>}
+          </section>
+          <section className="space-y-2">
+            <h3 className="font-bold text-gray-900 text-sm">Agreement</h3>
+            {d.agreement ? (
+              <p className="text-sm text-gray-700">{d.agreement.reference} · {d.agreement.status === 'SIGNED' ? `signed by ${d.agreement.signerName} on ${day(d.agreement.signedAt)}${d.agreement.signatureMethod === 'AADHAAR_ESIGN' ? ' (Aadhaar eSign)' : ''}` : `waiting for their signature${d.agreement.leegalityStatus ? ` (Leegality: ${d.agreement.leegalityStatus.toLowerCase()})` : ''}`}</p>
+            ) : <p className="text-sm text-gray-500">Not prepared yet (prepared when the organisation is approved).</p>}
+            <div className="flex flex-wrap gap-2">
+              {d.agreement && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> PDF</button>}
+              {d.agreement?.signatureMethod === 'AADHAAR_ESIGN' && <button type="button" onClick={() => openBlob(() => adminBusinessApi.agreementPdf(id, true), setErr)} className={`${btn} border border-gray-300 bg-white`}><Download size={14} /> Audit trail</button>}
+              {manage && d.agreement?.status !== 'SIGNED' && ['ACTIVE', 'SUSPENDED'].includes(d.status) && <button type="button" disabled={!!busy} onClick={() => run('agr', () => adminBusinessApi.prepareAgreement(id), 'Agreement prepared with the current terms and sent to their admins.')} className={`${btn} border border-gray-300 bg-white`}>{d.agreement ? 'Update and resend' : 'Prepare and send'}</button>}
+              {manage && d.agreement?.leegalityStatus === 'SENT' && <button type="button" disabled={!!busy} onClick={() => run('agr-r', () => adminBusinessApi.refreshAgreement(id), 'Checked with Leegality.')} className={`${btn} border border-gray-300 bg-white`}>Check Leegality</button>}
+            </div>
+          </section>
+          {d.kind === 'CORPORATE' && <AgreedRates orgId={id} manage={manage} active={d.status === 'ACTIVE'} />}
+        </>)}
+
+        {tab === 'account' && (
+          <section className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+              {[['Balance', inr(d.account.summary.balance)], ['Available', inr(d.account.summary.available)], ['Credit used', inr(d.account.summary.creditUsed)], ['Overdue', inr(d.account.summary.overdueAmount)]].map(([k, v]) => <div key={k} className="rounded-lg border border-gray-200 p-2"><p className="text-xs text-gray-500">{k}</p><p className="font-bold text-gray-900">{v}</p></div>)}
+            </div>
+            {can('finance.manage') && (
+              <div className="grid gap-2 sm:grid-cols-[auto_1fr_1fr] sm:items-end">
+                <label className="text-xs font-semibold text-gray-700">Entry<select className={input} value={entry.type} onChange={(e) => setEntry({ ...entry, type: e.target.value })}><option value="PAYMENT">Payment received (+)</option><option value="REFUND">Refund of balance (−)</option><option value="ADJUSTMENT">Adjustment (±)</option></select></label>
+                <label className="text-xs font-semibold text-gray-700">Amount (₹)<input type="number" step="0.01" className={input} value={entry.amount} onChange={(e) => setEntry({ ...entry, amount: e.target.value })} /></label>
+                <label className="text-xs font-semibold text-gray-700">Bank / UTR reference<input className={input} value={entry.reference} onChange={(e) => setEntry({ ...entry, reference: e.target.value })} /></label>
+                <label className="text-xs font-semibold text-gray-700 sm:col-span-3">What it is for<input className={input} value={entry.note} onChange={(e) => setEntry({ ...entry, note: e.target.value })} /></label>
+                <button type="button" disabled={!!busy || !entry.amount} onClick={() => run('entry', async () => { await adminBusinessApi.entry(id, { ...entry, amount: Number(entry.amount) }); setEntry({ type: 'PAYMENT', amount: '', note: '', reference: '' }); }, 'Recorded.')} className={`${btn} bg-navy-800 text-white sm:col-span-3 justify-self-start`}>Record</button>
+              </div>
+            )}
+            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-80 overflow-y-auto text-sm">
+              {d.account.entries.length === 0 ? <li className="p-3 text-gray-500">No entries yet.</li> : d.account.entries.map((e) => (
+                <li key={e.id} className="p-2.5 flex justify-between gap-3"><span><b>{e.type.toLowerCase()}</b> <span className="text-gray-500">{e.note || e.reference} · {day(e.createdAt)}</span></span><span className={e.amount > 0 ? 'text-green-700 font-semibold' : 'font-semibold'}>{e.amount > 0 ? '+' : '−'}{inr(Math.abs(e.amount))}</span></li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {tab === 'team' && (
+          <section className="space-y-3">
+            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+              {d.members.map((m) => <li key={m.id} className="p-3 flex flex-wrap justify-between gap-2"><span><b>{m.user.name}</b><span className="block text-xs text-gray-500">{m.user.email}</span></span><span className="text-xs text-gray-600">{m.role.toLowerCase()}{m.status === 'PAUSED' ? ' · paused' : ''}{m.user.invited ? ' · invite not accepted yet' : ''}</span></li>)}
+            </ul>
+            {manage && ['ACTIVE', 'IN_REVIEW', 'ON_HOLD'].includes(d.status) && (
+              <div className="rounded-xl bg-gray-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-gray-900">Add someone</p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <label className="text-xs font-semibold text-gray-700">Email<input type="email" className={input} value={member.email} onChange={(e) => setMember({ ...member, email: e.target.value })} /></label>
+                  <label className="text-xs font-semibold text-gray-700">Name (new accounts)<input className={input} value={member.name} onChange={(e) => setMember({ ...member, name: e.target.value })} /></label>
+                  <label className="text-xs font-semibold text-gray-700">Role<select className={input} value={member.role} onChange={(e) => setMember({ ...member, role: e.target.value })}>{ROLE_OPTIONS.filter(([k]) => d.kind === 'CORPORATE' || !['APPROVER', 'TRAVELLER'].includes(k)).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+                </div>
+                <button type="button" disabled={!!busy || !member.email} onClick={async () => { if (await run('member', () => adminBusinessApi.addMember(id, member), 'Added and emailed.')) setMember({ email: '', name: '', role: 'BOOKER' }); }} className={`${btn} bg-navy-800 text-white`}>{busy === 'member' && <Loader2 size={14} className="animate-spin" />} Add and email</button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'bookings' && <OrgBookings id={id} />}
+        {tab === 'reports' && <OrgReport id={id} kind={d.kind} />}
+
+        {tab === 'history' && (
+          <ul className="text-sm text-gray-700 space-y-1.5">{d.history.length === 0 ? <li className="text-gray-500">Nothing yet.</li> : d.history.map((h, i) => <li key={i}><span className="text-gray-500">{day(h.createdAt)}</span> · {h.action.replace(/^ORG_/, '').replace(/_/g, ' ').toLowerCase()}{h.details?.note ? `: ${h.details.note}` : ''}</li>)}</ul>
+        )}
+      </div>
     </div>
   );
 };
 
-const Organisations = () => {
-  usePageTitle('Organisations');
+const TITLES = {
+  '': ['Organisations', 'Companies on ZivoPlus for Business and travel agents on ZivoPlus Partner Hub.', 'Add company or agent'],
+  CORPORATE: ['ZivoPlus for Business: companies', 'Companies booking work travel: applications, KYC, terms, team, bookings and reports.', 'Add a company'],
+  AGENCY: ['ZivoPlus Partner Hub: travel agents', 'Travel agents booking for their customers: applications, KYC, terms, team, bookings, commission and reports.', 'Add a travel agent'],
+};
+
+const Organisations = ({ kind: fixedKind = '' }) => {
+  const [title, sub, addLabel] = TITLES[fixedKind] || TITLES[''];
+  usePageTitle(title);
+  const { can } = useAccess();
   const [params, setParams] = useSearchParams();
-  const [kind, setKind] = useState('');
+  const [kind, setKind] = useState(fixedKind);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
+  const [adding, setAdding] = useState(false);
+  useEffect(() => { setKind(fixedKind); setStatus(''); }, [fixedKind]);
   const openId = params.get('id');
   const load = useCallback(() => adminBusinessApi.list({ kind, status, search }).then(setData).catch((e) => setErr(e.message)), [kind, status, search]);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
   const count = (k, s) => data?.counts?.[k]?.[s] || 0;
+  const tiles = fixedKind
+    ? [['To review', count(fixedKind, 'IN_REVIEW'), 'IN_REVIEW'], ['More details asked', count(fixedKind, 'ON_HOLD'), 'ON_HOLD'], ['Active', count(fixedKind, 'ACTIVE'), 'ACTIVE'], ['Suspended', count(fixedKind, 'SUSPENDED'), 'SUSPENDED']].map(([l, n, s]) => [l, n, fixedKind, s])
+    : [['Companies to review', count('CORPORATE', 'IN_REVIEW'), 'CORPORATE', 'IN_REVIEW'], ['Agents to review', count('AGENCY', 'IN_REVIEW'), 'AGENCY', 'IN_REVIEW'], ['Active companies', count('CORPORATE', 'ACTIVE'), 'CORPORATE', 'ACTIVE'], ['Active agents', count('AGENCY', 'ACTIVE'), 'AGENCY', 'ACTIVE']];
 
   return (
     <div className="space-y-5 max-w-7xl">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Organisations</h1>
-          <p className="text-sm text-gray-600 mt-1">Companies on ZivoPlus for Business and travel agents on Partner Hub.{data && (!data.settings.corporateEnabled || !data.settings.agencyEnabled) ? ` Applications are closed for ${[!data.settings.corporateEnabled && 'companies', !data.settings.agencyEnabled && 'travel agents'].filter(Boolean).join(' and ')}.` : ''}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <p className="text-sm text-gray-600 mt-1">{sub}{data && (!data.settings.corporateEnabled || !data.settings.agencyEnabled) ? ` Online applications are closed for ${[!data.settings.corporateEnabled && 'companies', !data.settings.agencyEnabled && 'travel agents'].filter(Boolean).join(' and ')} (Business settings); you can still add them here.` : ''}</p>
         </div>
-        <Link to="/admin/business-settings" className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy-800 underline"><Settings2 size={15} aria-hidden="true" /> Business settings</Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link to="/admin/business" className="text-sm font-semibold text-navy-800 underline">Overview</Link>
+          <Link to="/admin/business-settings" className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy-800 underline"><Settings2 size={15} aria-hidden="true" /> Business settings</Link>
+          {can('business.manage') && <button type="button" onClick={() => setAdding(true)} className={`${btn} bg-navy-800 text-white`}><Plus size={15} aria-hidden="true" /> {addLabel}</button>}
+        </div>
       </div>
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[['Companies to review', count('CORPORATE', 'IN_REVIEW'), 'CORPORATE', 'IN_REVIEW'], ['Agents to review', count('AGENCY', 'IN_REVIEW'), 'AGENCY', 'IN_REVIEW'], ['Active companies', count('CORPORATE', 'ACTIVE'), 'CORPORATE', 'ACTIVE'], ['Active agents', count('AGENCY', 'ACTIVE'), 'AGENCY', 'ACTIVE']].map(([l, n, k, s]) => (
+          {tiles.map(([l, n, k, s]) => (
             <button key={l} type="button" onClick={() => { setKind(k); setStatus(s); }} className="text-left rounded-xl border border-gray-200 bg-white p-3 hover:border-navy-300"><p className="text-xs text-gray-500">{l}</p><p className="text-2xl font-bold text-gray-900">{n}</p></button>
           ))}
         </div>
       )}
       <div className="flex flex-wrap gap-2">
         <label className="relative flex-1 min-w-[220px]"><span className="sr-only">Search</span><Search size={15} className="absolute left-3 top-2.5 text-gray-400" aria-hidden="true" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, code, PAN, GSTIN, email" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm" /></label>
-        <select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm"><option value="">Companies and agents</option><option value="CORPORATE">Companies</option><option value="AGENCY">Travel agents</option></select>
+        {!fixedKind && <select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm"><option value="">Companies and agents</option><option value="CORPORATE">Companies</option><option value="AGENCY">Travel agents</option></select>}
         <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm"><option value="">Any status</option>{Object.entries(STATUS).map(([k, [, l]]) => <option key={k} value={k}>{l}</option>)}</select>
       </div>
       {err && <p className="text-sm text-red-700">{err}</p>}
@@ -283,9 +468,10 @@ const Organisations = () => {
       {openId && (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Organisation">
           <button type="button" aria-label="Close" className="absolute inset-0 bg-navy-950/40" onClick={() => setParams({})} />
-          <div className="relative w-full max-w-2xl h-full bg-white overflow-y-auto shadow-2xl"><Detail id={openId} onClose={() => setParams({})} onChanged={load} /></div>
+          <div className="relative w-full max-w-3xl h-full bg-white shadow-2xl"><Detail key={openId} id={openId} onClose={() => setParams({})} onChanged={load} /></div>
         </div>
       )}
+      {adding && <AddOrganisation kind={fixedKind} onClose={() => setAdding(false)} onCreated={(o) => { setAdding(false); load(); setParams({ id: o.id }); }} />}
     </div>
   );
 };

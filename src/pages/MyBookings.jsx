@@ -5,10 +5,11 @@ import { roomsText, bookingRoomsOf, activeRoomsOf, roomGuests } from '../utils/b
 import RoomCancel from '../components/booking/RoomCancel';
 import { 
   Calendar, MapPin, CreditCard, ChevronRight, XCircle, AlertCircle, 
-  RefreshCw, CheckCircle2, FileText, MessageSquare, Phone, Compass, 
-  User, Sparkles, ArrowRightLeft, Clock, Printer, Download,
-  ExternalLink, Mail, Award, Send, ArrowRight, Star, Lock
+  RefreshCw, CheckCircle2, FileText, Phone, Compass, 
+  Sparkles, ArrowRightLeft, Clock, Printer, Download,
+  Award, Send, ArrowRight, Star, Lock, BedDouble, Settings2, X, CalendarClock, Users
 } from 'lucide-react';
+import ChangeDates from '../components/booking/ChangeDates';
 import PayLaterBanner from '../components/booking/PayLaterBanner';
 import { needsPayment } from '../utils/payBooking';
 import AddHoursPanel from '../components/booking/AddHoursPanel';
@@ -32,7 +33,8 @@ const classifyBooking = (booking) => {
   // Hourly stays: by their actual times (the slot starts and ends on one day)
   if (booking.stayType === 'HOURLY') {
     const t = Date.now();
-    if (booking.status === 'CANCELLED' || new Date(booking.slotEnd || booking.checkOut).getTime() <= t) return 'past';
+    if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) return 'cancelled';
+    if (new Date(booking.slotEnd || booking.checkOut).getTime() <= t) return 'past';
     return new Date(booking.slotStart || booking.checkIn).getTime() <= t ? 'ongoing' : 'upcoming';
   }
   const now = today();
@@ -41,7 +43,7 @@ const classifyBooking = (booking) => {
   checkIn.setHours(0, 0, 0, 0);
   checkOut.setHours(0, 0, 0, 0);
 
-  if (['CANCELLED'].includes(booking.status)) return 'past';
+  if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) return 'cancelled';
   if (checkOut <= now) return 'past';        // checked-out / completed
   if (checkIn <= now && checkOut > now) return 'ongoing'; // currently staying
   return 'upcoming';                          // future reservation
@@ -156,11 +158,58 @@ const AspectStars = ({ value, onChange }) => {
 /* ─── Main Component ──────────────────────────────────────────────────── */
 // The hotel's front desk number (from the property's contact details)
 const hotelPhone = (b) => b?.hotel?.contact?.phone || '';
-// WhatsApp needs the number with country code: 10-digit Indian numbers get 91 in front
-const whatsappNumber = (b) => {
-  const d = hotelPhone(b).replace(/\D/g, '');
-  if (!d) return '';
-  return d.length === 10 ? `91${d}` : d.replace(/^0+/, '');
+
+/** The status in words. */
+const statusLabel = (b) => ({
+  PENDING: 'Awaiting payment', CONFIRMED: 'Confirmed', CHECKED_IN: 'Checked in', COMPLETED: 'Completed', CANCELLED: 'Cancelled', NO_SHOW: 'No-show',
+}[b.status] || b.status);
+
+const shortDay = (d) => new Date(d).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' });
+/** "Fri 12 Dec → Sun 14 Dec · 2 nights" (hourly: the slot). */
+const stayLine = (b) => (isHourly(b) ? slotText(b) : `${shortDay(b.checkIn)} → ${shortDay(b.checkOut)} · ${nightsOf(b)} night${nightsOf(b) === 1 ? '' : 's'}`);
+
+const directionsUrl = (b) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.hotel?.latitude && b.hotel?.longitude ? `${b.hotel.latitude},${b.hotel.longitude}` : `${b.hotel?.name || ''} ${b.hotel?.location || ''} ${b.hotel?.city || ''}`)}`;
+
+/** Days until check-in, in words. */
+const untilText = (b) => {
+  const start = new Date(isHourly(b) ? b.slotStart || b.checkIn : b.checkIn);
+  const days = Math.round((new Date(start.toISOString().slice(0, 10)) - new Date(new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10))) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `In ${days} days`;
+};
+
+/** What the guest should do next on a booking, if anything. */
+const nextStep = (b) => {
+  const cat = classifyBooking(b);
+  if (b.status === 'PENDING') return { text: 'Complete payment to confirm this booking', tone: 'amber' };
+  if (cat === 'upcoming') return { text: `Check-in ${untilText(b).toLowerCase()}${!isHourly(b) && b.hotel?.checkInTime ? ` from ${clock(b.hotel.checkInTime) || b.hotel.checkInTime}` : ''}`, tone: 'brand' };
+  if (cat === 'ongoing') return { text: `Check-out ${!isHourly(b) && b.hotel?.checkOutTime ? `by ${clock(b.hotel.checkOutTime) || b.hotel.checkOutTime}` : 'today'}${b.requestWindow?.open ? ' · requests to the hotel are open' : ''}`, tone: 'brand' };
+  if (cat === 'past' && b.requestWindow?.open) return { text: 'Left something behind? Ask the hotel within 72 hours of check-out', tone: 'gray' };
+  return null;
+};
+
+/** The next trip, with a countdown and the main actions. */
+const NextStay = ({ booking: b, onOpen }) => {
+  const img = getImageUrl(b.hotel?.media?.[0]?.url, 900);
+  return (
+    <section aria-label="Your next stay" className="relative overflow-hidden rounded-3xl bg-navy-950 text-white">
+      {img && <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} className="absolute inset-0 w-full h-full object-cover opacity-35" />}
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-950 via-navy-950/85 to-navy-950/30" />
+      <div className="relative p-6 md:p-7 flex flex-col md:flex-row md:items-end justify-between gap-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-300">Your next stay · {untilText(b)}</p>
+          <h2 className="text-2xl font-black mt-1.5">{b.hotel?.name}</h2>
+          <p className="text-sm text-gray-200 mt-1">{b.hotel?.city} · {stayLine(b)}</p>
+          <p className="text-xs text-gray-300 mt-1 font-mono">{b.bookingRef}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => onOpen(b)} className="inline-flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 font-bold text-sm px-4 py-2.5 rounded-xl">View booking<ChevronRight size={15} /></button>
+          {b.requestWindow?.open && <button type="button" onClick={() => onOpen(b, 'requests')} className="inline-flex items-center gap-1.5 bg-white/10 border border-white/25 hover:bg-white/20 font-bold text-sm px-4 py-2.5 rounded-xl"><Send size={14} />Ask the hotel</button>}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 /** Check-in and check-out, with the hotel's times (hourly stays: the time slot). */
@@ -246,8 +295,8 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeBooking, setActiveBooking] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [activeSection, setActiveSection] = useState('upcoming'); // upcoming | ongoing | past
+  const [activeTab, setActiveTab] = useState('stay');
+  const [activeSection, setActiveSection] = useState(null); // upcoming | ongoing | past | cancelled (null: pick on load)
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   // Real refund under the property's policy, fetched when the dialog opens (it used to always
@@ -310,6 +359,17 @@ const MyBookings = () => {
   const upcoming = bookings.filter(b => classifyBooking(b) === 'upcoming');
   const ongoing  = bookings.filter(b => classifyBooking(b) === 'ongoing');
   const past     = bookings.filter(b => classifyBooking(b) === 'past');
+  const cancelled = bookings.filter(b => classifyBooking(b) === 'cancelled');
+  // Open where the guest most likely wants to be: staying now, else the next trip
+  const section = activeSection || (ongoing.length ? 'ongoing' : upcoming.length ? 'upcoming' : past.length ? 'past' : 'cancelled');
+  const nextStay = [...upcoming].sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))[0];
+  const SECTIONS = [
+    { id: 'ongoing', label: 'Staying now', list: ongoing, Icon: MapPin },
+    { id: 'upcoming', label: 'Upcoming', list: upcoming, Icon: Calendar },
+    { id: 'past', label: 'Completed', list: past, Icon: CheckCircle2 },
+    { id: 'cancelled', label: 'Cancelled', list: cancelled, Icon: XCircle },
+  ];
+  const shown = SECTIONS.find((x) => x.id === section)?.list || [];
 
   /* ── Actions ── */
   const handleCancelBooking = async (id) => {
@@ -399,9 +459,9 @@ const MyBookings = () => {
     }
   };
 
-  const handleManage = useCallback((booking) => {
+  const handleManage = useCallback((booking, tab = 'stay') => {
     setActiveBooking(booking);
-    setActiveTab('overview');
+    setActiveTab(tab);
   }, []);
 
   const handleRateStay = useCallback((booking) => {
@@ -436,228 +496,172 @@ const MyBookings = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 pt-24 pb-12">
 
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+      {/* Page header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <span className="text-brand-700 font-bold uppercase tracking-wider text-sm">Zivo Premium</span>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight mt-1">My bookings</h1>
-          <p className="text-gray-500 mt-2 text-lg">See your trips, download vouchers and invoices, and cancel if your plans change.</p>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">My bookings</h1>
+          <p className="text-gray-600 mt-1.5">Your trips, vouchers and invoices, requests to the hotel, and changes, in one place.</p>
         </div>
-
-        {/* Zivo Rewards balance (this showed a made-up "240 Zivo Points") */}
-        <Link to="/rewards" className="bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 text-white rounded-3xl p-6 shadow-xl shadow-gray-950/20 flex items-center gap-6 border border-gray-800 shrink-0 hover:border-brand-500 transition-colors">
-          <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-amber-400">
-            <Award size={28} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Zivo Rewards{rewards ? ` · ${rewards.tier.name}` : ''}</p>
-            <p className="text-2xl font-black text-white mt-0.5">{rewards ? `${rewards.available.toLocaleString('en-IN')} points` : '—'}</p>
-            <p className="text-xs text-gray-400 font-medium mt-1">
-              {rewards?.pending ? `${rewards.pending.toLocaleString('en-IN')} pending · ` : ''}{Object.keys(myReviews).length} review{Object.keys(myReviews).length === 1 ? '' : 's'} written · View rewards →
-            </p>
-          </div>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/rewards" className="inline-flex items-center gap-2 rounded-full bg-navy-900 text-white pl-2 pr-4 py-1.5 text-sm font-semibold hover:bg-navy-800 transition-colors">
+            <span className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-amber-400"><Award size={16} aria-hidden="true" /></span>
+            {rewards ? `${rewards.available.toLocaleString('en-IN')} points` : 'Zivo Rewards'}{rewards?.tier?.name ? <span className="text-gray-300 font-normal">· {rewards.tier.name}</span> : null}
+          </Link>
+          <Link to="/saved" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-semibold text-gray-800 hover:border-brand-500 transition-colors">
+            <Star size={15} className="text-brand-600" aria-hidden="true" /> Saved hotels
+          </Link>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-8 flex items-center gap-4 bg-red-50 border-l-4 border-red-500 text-red-900 p-5 rounded-r-xl shadow-sm animate-fade-in">
-          <AlertCircle className="text-red-500 shrink-0" size={24} />
-          <span className="font-semibold">{error}</span>
+        <div role="alert" className="mb-6 flex items-center gap-3 bg-red-50 border border-red-200 text-red-900 p-4 rounded-2xl">
+          <AlertCircle className="text-red-600 shrink-0" size={20} />
+          <span className="font-semibold text-sm">{error}</span>
         </div>
       )}
 
       {bookings.length === 0 ? (
-        <div className="bg-white rounded-3xl p-16 text-center border border-gray-100 shadow-sm max-w-3xl mx-auto">
-          <div className="bg-gray-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-gray-100">
-            <Calendar className="h-12 w-12 text-gray-300" />
+        <div className="bg-white rounded-3xl p-12 md:p-16 text-center border border-gray-100 shadow-sm max-w-3xl mx-auto">
+          <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-100">
+            <Calendar className="h-10 w-10 text-gray-300" />
           </div>
-          <h3 className="text-2xl font-black text-gray-900 mb-3">No active travel reservations</h3>
-          <p className="text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">Your Travel Hub is currently empty. Explore premium accommodations and reserve your next escape.</p>
-          <Link to="/hotels" className="inline-flex items-center justify-center bg-brand-600 text-white px-8 py-4 rounded-full font-bold shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all gap-2 group">
-            Explore Hotels
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          <h2 className="text-2xl font-black text-gray-900 mb-2">No bookings yet</h2>
+          <p className="text-gray-600 mb-8 max-w-sm mx-auto">When you book a stay, it shows up here with your voucher, invoice and the hotel&apos;s contact.</p>
+          <Link to="/hotels" className="inline-flex items-center justify-center bg-brand-600 text-white px-8 py-3.5 rounded-full font-bold hover:bg-brand-700 transition-colors gap-2">
+            Find a hotel <ArrowRight size={18} />
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Next stay, front and centre */}
+            {nextStay && section !== 'ongoing' && <NextStay booking={nextStay} onOpen={handleManage} />}
 
-          {/* Main Sections (2/3) */}
-          <div className="lg:col-span-2">
-
-            {/* ── Pill Tab Switcher ───────────────────────── */}
-            <div className="flex gap-3 mb-8 flex-wrap">
-              {/* Upcoming */}
-              <button
-                onClick={() => setActiveSection('upcoming')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
-                  activeSection === 'upcoming'
-                    ? 'bg-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/25'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-700'
-                }`}
-              >
-                <Calendar size={15} />
-                Upcoming Bookings
-                <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
-                  activeSection === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                }`}>{upcoming.length}</span>
-              </button>
-
-              {/* Ongoing */}
-              <button
-                onClick={() => setActiveSection('ongoing')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
-                  activeSection === 'ongoing'
-                    ? 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-500/25'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-violet-400 hover:text-violet-600'
-                }`}
-              >
-                <MapPin size={15} />
-                Ongoing Stays
-                {ongoing.length > 0 && (
-                  <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
-                    activeSection === 'ongoing' ? 'bg-white/20 text-white' : 'bg-violet-100 text-violet-600'
-                  }`}>{ongoing.length}</span>
-                )}
-                {ongoing.length > 0 && activeSection !== 'ongoing' && (
-                  <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                )}
-              </button>
-
-              {/* Past */}
-              <button
-                onClick={() => setActiveSection('past')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm border transition-all ${
-                  activeSection === 'past'
-                    ? 'bg-gray-700 text-white border-gray-700 shadow-md shadow-gray-500/20'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-700'
-                }`}
-              >
-                <Clock size={15} />
-                Past Bookings
-                <span className={`text-xs font-black rounded-full px-2 py-0.5 ml-0.5 ${
-                  activeSection === 'past' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                }`}>{past.length}</span>
-              </button>
+            {/* Sections */}
+            <div role="tablist" aria-label="Bookings" className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-gray-100 rounded-2xl">
+              {SECTIONS.map(({ id, label, list, Icon }) => (
+                <button key={id} type="button" role="tab" aria-selected={section === id} onClick={() => setActiveSection(id)}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors ${section === id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                  <Icon size={15} aria-hidden="true" className={section === id ? 'text-brand-600' : ''} />
+                  {label}
+                  <span className={`text-xs rounded-full px-1.5 min-w-[1.25rem] ${section === id ? 'bg-brand-50 text-brand-700' : 'bg-white/70 text-gray-500'}`}>{list.length}</span>
+                  {id === 'ongoing' && list.length > 0 && section !== id && <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" aria-hidden="true" />}
+                </button>
+              ))}
             </div>
 
-            {/* ── Active Section Content ───────────────────── */}
-            <div className="space-y-5">
-              {activeSection === 'upcoming' && (
-                upcoming.length === 0
-                  ? <EmptySection label="upcoming" />
-                  : upcoming.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)
-              )}
-              {activeSection === 'ongoing' && (
-                ongoing.length === 0
-                  ? <EmptySection label="ongoing" />
-                  : ongoing.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)
-              )}
-              {activeSection === 'past' && (
-                past.length === 0
-                  ? <EmptySection label="past" />
-                  : <div className="opacity-90 space-y-5">{past.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} />)}</div>
-              )}
+            <div className="space-y-4" role="tabpanel">
+              {shown.length === 0
+                ? <EmptySection label={SECTIONS.find((x) => x.id === section)?.label.toLowerCase()} />
+                : shown.map(b => <BookingCard key={b.id} booking={b} onRateStay={handleRateStay} onManage={handleManage} onPaid={fetchMyBookings} onError={setError} />)}
             </div>
-
           </div>
 
-          {/* Side panel (1/3) */}
-          <div className="space-y-6">
-            {/* Help (the old "AI Trip Assistant" showed success but sent nothing) */}
+          {/* Side panel */}
+          <aside className="space-y-5">
             <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
-              <h3 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
-                <Phone size={20} className="text-brand-700" />
-                Need something for your stay?
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                For a late arrival, early check-in, airport pickup or parking, open a booking (<span className="font-semibold text-gray-700">Manage</span>) and choose <span className="font-semibold text-gray-700">Requests to hotel</span>. The hotel answers there and by email.
-              </p>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ZivoPlus support</p>
+              <h2 className="text-base font-black text-gray-900 mb-3">Need something for your stay?</h2>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex gap-3"><Send size={17} className="text-brand-600 shrink-0 mt-0.5" aria-hidden="true" /><span><b className="text-gray-900">Requests to the hotel</b>: late arrival, early check-in, pickup and more, from booking until 72 hours after check-out (lost items, bills).</span></li>
+                <li className="flex gap-3"><Phone size={17} className="text-brand-600 shrink-0 mt-0.5" aria-hidden="true" /><span><b className="text-gray-900">Call the hotel</b> from any booking.</span></li>
+                <li className="flex gap-3"><CalendarClock size={17} className="text-brand-600 shrink-0 mt-0.5" aria-hidden="true" /><span><b className="text-gray-900">Change dates or cancel</b> under Manage, while free cancellation applies.</span></li>
+              </ul>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-5 mb-2">ZivoPlus support</p>
               <div className="mb-3"><SupportContacts compact /></div>
               <Link to="/help" className="w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-brand-500 transition-colors text-left text-xs font-bold text-gray-800">
                 <span>Help centre: changes, cancellations, refunds</span><ChevronRight size={14} />
               </Link>
             </div>
-
-            {/* Next stay (no made-up discount: member prices and rewards are real) */}
-            <div className="bg-gradient-to-br from-navy-800 to-navy-950 text-white rounded-3xl p-6 shadow-lg border border-navy-700/50 relative overflow-hidden">
-              <div className="absolute -right-10 -bottom-10 opacity-10"><ArrowRightLeft size={200} /></div>
-              <h3 className="text-xl font-bold text-white mb-2">Ready for your next stay?</h3>
-              <p className="text-xs text-brand-200 leading-relaxed mb-6">Member prices and Zivo Rewards points apply on every booking.</p>
+            <div className="bg-gradient-to-br from-navy-800 to-navy-950 text-white rounded-3xl p-6 shadow-lg">
+              <h2 className="text-lg font-bold mb-1">Ready for your next stay?</h2>
+              <p className="text-xs text-brand-200 leading-relaxed mb-5">Member prices and Zivo Rewards points apply on every booking.</p>
               <Link to="/hotels" className="w-full bg-white text-brand-950 font-extrabold text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 hover:bg-brand-50 transition-colors">
                 Search hotels<ArrowRight size={16} />
               </Link>
             </div>
-          </div>
+          </aside>
         </div>
       )}
 
-      {/* ── SIDE DRAWER ───────────────────────────────────────── */}
-      {activeBooking && (
+      {/* ── BOOKING DETAIL ───────────────────────────────────────── */}
+      {activeBooking && (() => {
+        const b = activeBooking;
+        const phone = hotelPhone(b);
+        const reviewOpen = isReviewUnlocked(b) || Boolean(myReviews[b.id]);
+        const tabs = [
+          { id: 'stay', label: 'Stay & rooms', Icon: BedDouble },
+          { id: 'payment', label: 'Payment', Icon: CreditCard },
+          { id: 'documents', label: 'Documents', Icon: FileText },
+          { id: 'requests', label: 'Requests', Icon: Send, badge: b.requestWindow?.open },
+          { id: 'contact', label: 'Contact hotel', Icon: Phone },
+          { id: 'manage', label: 'Manage', Icon: Settings2 },
+          ...(reviewOpen ? [{ id: 'review', label: 'Review', Icon: Star }] : []),
+        ];
+        const heroImg = getImageUrl(b.hotel?.media?.[0]?.url, 1000);
+        return (
         <>
-          <div onClick={() => setActiveBooking(null)} className="fixed inset-0 z-[110] bg-gray-900/60 backdrop-blur-sm" />
-
-          <div className="fixed inset-y-0 right-0 z-[120] w-full max-w-xl bg-white shadow-2xl overflow-y-auto flex flex-col h-full animate-slide-in">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <div>
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Booking Hub Workspace</span>
-                <h3 className="text-xl font-black text-gray-900 mt-0.5">{activeBooking.hotel?.name}</h3>
-                <p className="text-xs text-gray-500 font-mono mt-1">Ref ID: {activeBooking.bookingRef}</p>
+          <div onClick={() => setActiveBooking(null)} className="fixed inset-0 z-[110] bg-gray-900/60 backdrop-blur-sm" aria-hidden="true" />
+          <div role="dialog" aria-modal="true" aria-labelledby="bk-title" className="fixed inset-y-0 right-0 z-[120] w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full animate-slide-in">
+            {/* Header with the hotel photo */}
+            <div className="relative shrink-0 bg-navy-950 text-white">
+              {heroImg && <img src={heroImg} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} className="absolute inset-0 w-full h-full object-cover opacity-40" />}
+              <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/70 to-navy-950/20" />
+              <div className="relative p-5 md:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border ${getStatusColor(b.status)}`}>{statusLabel(b)}</span>
+                  <button type="button" onClick={() => setActiveBooking(null)} aria-label="Close" className="w-9 h-9 bg-white/10 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20"><X size={18} /></button>
+                </div>
+                <h2 id="bk-title" className="text-2xl font-black mt-3">{b.hotel?.name}</h2>
+                <p className="text-sm text-gray-200 mt-0.5 flex items-center gap-1"><MapPin size={13} aria-hidden="true" />{[b.hotel?.location, b.hotel?.city].filter(Boolean).join(', ')}</p>
+                <p className="text-sm text-gray-200 mt-3">{stayLine(b)} · <span className="font-mono">{b.bookingRef}</span></p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(b.status) && (
+                    <button type="button" onClick={async () => { try { await saveVoucher(b.id, b.bookingRef, 'guest'); } catch (err) { setError(err.message || 'Could not download the voucher.'); } }}
+                      className="inline-flex items-center gap-1.5 bg-white text-navy-950 font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-brand-50"><Download size={14} />Voucher</button>
+                  )}
+                  {phone && !['CANCELLED', 'NO_SHOW'].includes(b.status) && (
+                    <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 bg-white/10 border border-white/25 font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-white/20"><Phone size={14} />Call the hotel</a>
+                  )}
+                  <a href={directionsUrl(b)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-white/10 border border-white/25 font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-white/20"><Compass size={14} />Directions</a>
+                </div>
               </div>
-              <button onClick={() => setActiveBooking(null)} className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-100 text-gray-500 transition-colors">✕</button>
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-100 px-6 flex gap-4 overflow-x-auto whitespace-nowrap scrollbar-none">
-              {[
-                { id: 'overview',  label: 'Overview',    icon: <User size={14} /> },
-                { id: 'timeline',  label: 'Timeline',    icon: <Clock size={14} /> },
-                { id: 'requests',  label: 'Requests to hotel', icon: <Send size={14} /> },
-                { id: 'billing',   label: 'Financials',  icon: <FileText size={14} /> },
-                { id: 'review',    label: 'Rate & Review',icon: <Star size={14} /> },
-                { id: 'support',   label: 'Contact hotel', icon: <Phone size={14} /> }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 py-4 border-b-2 font-bold text-xs transition-colors ${activeTab === tab.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
-                >
-                  {tab.icon}{tab.label}
+            {/* Sections */}
+            <div role="tablist" aria-label="Booking sections" className="shrink-0 border-b border-gray-100 px-3 md:px-5 flex gap-1 overflow-x-auto whitespace-nowrap scrollbar-none bg-white">
+              {tabs.map(({ id, label, Icon, badge }) => (
+                <button key={id} type="button" role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)}
+                  className={`relative flex items-center gap-1.5 px-3 py-3.5 border-b-2 font-bold text-xs transition-colors ${activeTab === id ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>
+                  <Icon size={14} aria-hidden="true" />{label}
+                  {badge && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-label="open" />}
                 </button>
               ))}
             </div>
 
-            {/* Tab Content */}
-            <div className="p-6 flex-1 overflow-y-auto space-y-6">
+            <div className="p-5 md:p-6 flex-1 overflow-y-auto space-y-6">
 
-              {/* OVERVIEW */}
-              {activeTab === 'overview' && (
-                <div className="space-y-6">
-                  <PayLaterBanner booking={activeBooking} onPaid={fetchMyBookings} />
-                  {canAddHours(activeBooking) && <AddHoursPanel booking={activeBooking} onExtended={fetchMyBookings} />}
-                  <div className="grid grid-cols-3 gap-4">
+              {/* STAY & ROOMS */}
+              {activeTab === 'stay' && (
+                <div className="space-y-5">
+                  <PayLaterBanner booking={b} onPaid={fetchMyBookings} />
+                  <StayDates booking={b} />
+                  <div className="grid grid-cols-3 gap-3">
                     {[
-                      { label: 'Guests', value: `${activeBooking.guests} pax` },
-                      { label: 'Rooms',  value: `${activeBooking.rooms} room${activeBooking.rooms === 1 ? '' : 's'}` },
-                      isHourly(activeBooking)
-                        ? { label: 'Hourly', value: lengthText(activeBooking) }
-                        : { label: 'Nights', value: `${nightsOf(activeBooking)} night${nightsOf(activeBooking) === 1 ? '' : 's'}` }
-                    ].map(s => (
-                      <div key={s.label} className="bg-gray-50 p-4 rounded-2xl border border-gray-100/50 text-center">
-                        <p className="text-xs text-gray-400 font-bold uppercase mb-1">{s.label}</p>
-                        <p className="font-extrabold text-gray-900 text-sm">{s.value}</p>
+                      { label: 'Guests', value: `${b.guests} guest${b.guests === 1 ? '' : 's'}` },
+                      { label: 'Rooms', value: `${b.rooms} room${b.rooms === 1 ? '' : 's'}` },
+                      isHourly(b) ? { label: 'Hourly', value: lengthText(b) } : { label: 'Nights', value: `${nightsOf(b)} night${nightsOf(b) === 1 ? '' : 's'}` },
+                    ].map(x => (
+                      <div key={x.label} className="bg-gray-50 p-3 rounded-2xl text-center">
+                        <p className="text-xs text-gray-500 font-bold uppercase mb-0.5">{x.label}</p>
+                        <p className="font-extrabold text-gray-900 text-sm">{x.value}</p>
                       </div>
                     ))}
                   </div>
-
-                  <StayDates booking={activeBooking} />
-
-                  <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm">Stay details</h4>
+                  <section className="border border-gray-100 rounded-2xl p-5" aria-labelledby="st-rooms">
+                    <h3 id="st-rooms" className="font-bold text-gray-900 text-sm mb-3">Rooms and guests</h3>
                     <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div><span className="text-gray-400">Guest Name</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestName}</p></div>
-                      <div><span className="text-gray-400">Contact</span><p className="font-bold text-gray-800 mt-0.5">{activeBooking.guestPhone}</p></div>
+                      <div><span className="text-gray-500">Booked for</span><p className="font-bold text-gray-800 mt-0.5">{b.guestName}</p></div>
+                      <div><span className="text-gray-500">Phone</span><p className="font-bold text-gray-800 mt-0.5">{b.guestPhone || '—'}</p></div>
                       {bookingRoomsOf(activeBooking).length > 1 ? (
                         <div className="col-span-2"><span className="text-gray-400">Rooms</span>
                           <ul className="mt-0.5 space-y-1">
@@ -681,124 +685,136 @@ const MyBookings = () => {
                         </>
                       )}
                     </div>
-                  </div>
-
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-5 flex items-start gap-4">
-                    <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center shrink-0">
-                      <Printer size={20} />
-                    </div>
-                    <div className="text-xs">
-                      <h4 className="font-bold text-emerald-900 mb-1">Booking Voucher</h4>
-                      <p className="text-emerald-700 leading-relaxed mb-3">Download the PDF to show at check-in, even without internet.</p>
-                      <button
-                        onClick={async () => {
-                          try { await saveVoucher(activeBooking.id, activeBooking.bookingRef, 'guest'); }
-                          catch (err) { setError(err.message || 'Could not download the voucher.'); }
-                        }}
-                        className="inline-flex items-center gap-1.5 bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
-                        Download voucher (PDF)<ExternalLink size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Cancelling was only reachable under the Financials tab */}
-                  {activeBooking.status === 'CONFIRMED' && (
-                    <button onClick={() => setCancelTarget(activeBooking)} className="w-full border border-rose-200 hover:border-rose-600 text-rose-700 font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
-                      <XCircle size={14} />Cancel booking
-                    </button>
+                  </section>
+                  {b.timelineEvents?.length > 0 && (
+                    <section aria-labelledby="st-hist">
+                      <h3 id="st-hist" className="font-bold text-gray-900 text-sm mb-3">Booking history</h3>
+                      <ol className="relative border-l-2 border-gray-100 ml-3 space-y-5">
+                        {b.timelineEvents.map(event => (
+                          <li key={event.id} className="pl-6 relative">
+                            <span className="absolute -left-[13px] top-0 w-6 h-6 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">{getTimelineIcon(event.status)}</span>
+                            <p className="font-bold text-gray-900 text-sm">{event.title}</p>
+                            {event.message && <p className="text-xs text-gray-600 mt-0.5">{event.message}</p>}
+                            <p className="text-xs text-gray-400 mt-1">{new Date(event.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
                   )}
                 </div>
               )}
 
-              {/* TIMELINE */}
-              {activeTab === 'timeline' && (
-                <div className="space-y-6">
-                  <h4 className="font-bold text-gray-900 text-sm">Live Operational Timeline</h4>
-                  <div className="relative pl-8 border-l-2 border-gray-100 space-y-8 py-2 ml-4">
-                    {activeBooking.timelineEvents?.map(event => (
-                      <div key={event.id} className="relative">
-                        <div className="absolute -left-12 top-0.5 w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center shadow-sm">
-                          {getTimelineIcon(event.status)}
-                        </div>
-                        <h5 className="font-extrabold text-gray-900 text-sm">{event.title}</h5>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{event.message}</p>
-                        <span className="text-xs text-gray-400 font-bold block mt-2">
-                          {new Date(event.createdAt).toLocaleDateString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-                        </span>
-                      </div>
-                    ))}
-                    {activeBooking.status === 'CONFIRMED' && (
-                      <div className="relative opacity-60">
-                        <div className="absolute -left-12 top-0.5 w-8 h-8 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                          <Clock size={14} className="text-gray-400" />
-                        </div>
-                        <h5 className="font-bold text-gray-500 text-sm">Hotel Acknowledge Arrival</h5>
-                        <p className="text-xs text-gray-400 mt-0.5">Awaiting check-in process verification.</p>
-                      </div>
-                    )}
-                  </div>
+              {/* PAYMENT */}
+              {activeTab === 'payment' && (
+                <div className="space-y-5">
+                  <PaymentSummary booking={b} />
+                  {b.paymentType === 'PAY_AT_HOTEL' && !['CANCELLED', 'NO_SHOW'].includes(b.status) && (
+                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">Pay the hotel at check-in. The hotel accepts the payment methods listed on its page.</p>
+                  )}
                 </div>
               )}
 
-              {/* REQUESTS TO THE HOTEL (concierge) */}
-              {activeTab === 'requests' && <StayRequests booking={activeBooking} />}
-
-              {/* BILLING */}
-              {activeTab === 'billing' && (
-                <div className="space-y-6">
-                  <PaymentSummary booking={activeBooking} />
-
-                  <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm">Invoice & Billing Center</h4>
-                    <p className="text-xs text-gray-500">Your GST invoice, and any credit or debit notes against it when the booking changed (cancellations, refunds, hours added).</p>
-                    {activeBooking.invoice?.status === 'GENERATED' ? (
-                      <button onClick={() => handleDownloadInvoice(activeBooking.invoice.id, activeBooking.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
-                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />{activeBooking.invoiceIssuer === 'HOTEL' ? 'ZivoPlus Tax Invoice (as facilitator)' : 'Official GST Invoice PDF'} · {activeBooking.invoice.invoiceRef}</span>
+              {/* DOCUMENTS */}
+              {activeTab === 'documents' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-600">Your voucher to show at check-in, your GST invoice, and any credit or debit notes when the booking changed (cancellations, refunds, date changes, hours added).</p>
+                  {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(b.status) && (
+                    <button type="button" onClick={async () => { try { await saveVoucher(b.id, b.bookingRef, 'guest'); } catch (err) { setError(err.message || 'Could not download the voucher.'); } }}
+                      className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
+                      <span className="flex items-center gap-2"><Printer size={16} className="text-brand-700" />Booking voucher (PDF) · works offline at check-in</span>
+                      <Download size={14} className="text-gray-400" />
+                    </button>
+                  )}
+                    {b.invoice?.status === 'GENERATED' ? (
+                      <button onClick={() => handleDownloadInvoice(b.invoice.id, b.bookingRef)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors">
+                        <span className="flex items-center gap-2"><FileText size={16} className="text-brand-700" />{b.invoiceIssuer === 'HOTEL' ? 'ZivoPlus Tax Invoice (as facilitator)' : 'Official GST Invoice PDF'} · {b.invoice.invoiceRef}</span>
                         <Download size={14} className="text-gray-400" />
                       </button>
                     ) : (
                       <div className="p-3 rounded-xl bg-gray-50 text-gray-700 text-xs border border-gray-100 flex items-start gap-2">
                         <Clock size={16} className="shrink-0 mt-0.5" />
-                        <span>{invoiceNote(activeBooking)}</span>
+                        <span>{invoiceNote(b)}</span>
                       </div>
                     )}
-                    {activeBooking.invoiceIssuer === 'HOTEL' && activeBooking.guestCompanyGstin && (activeBooking.hotelGstInvoice ? (
-                      <button onClick={() => handleHotelInvoice(activeBooking)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
-                        <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>GST invoice from the hotel · {activeBooking.hotelGstInvoice.invoiceNumber}<span className="block font-normal text-gray-500">In the name of {activeBooking.guestCompanyName} (GSTIN {activeBooking.guestCompanyGstin})</span></span></span>
+                    {b.invoiceIssuer === 'HOTEL' && b.guestCompanyGstin && (b.hotelGstInvoice ? (
+                      <button onClick={() => handleHotelInvoice(b)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
+                        <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>GST invoice from the hotel · {b.hotelGstInvoice.invoiceNumber}<span className="block font-normal text-gray-500">In the name of {b.guestCompanyName} (GSTIN {b.guestCompanyGstin})</span></span></span>
                         <Download size={14} className="text-gray-400 shrink-0" />
                       </button>
-                    ) : !['CANCELLED', 'NO_SHOW'].includes(activeBooking.status) && (
+                    ) : !['CANCELLED', 'NO_SHOW'].includes(b.status) && (
                       <div className="p-3 rounded-xl bg-gray-50 text-gray-700 text-xs border border-gray-100 flex items-start gap-2">
                         <Clock size={16} className="shrink-0 mt-0.5" />
-                        <span>The hotel issues the GST invoice in the name of {activeBooking.guestCompanyName} (GSTIN {activeBooking.guestCompanyGstin}) and uploads it here after check-out.</span>
+                        <span>The hotel issues the GST invoice in the name of {b.guestCompanyName} (GSTIN {b.guestCompanyGstin}) and uploads it here after check-out.</span>
                       </div>
                     ))}
-                    {activeBooking.invoiceIssuer === 'HOTEL' && !activeBooking.guestCompanyGstin && <p className="text-[11px] text-gray-500">The hotel gives you the GST invoice for your stay at the property.</p>}
-                    {activeBooking.invoiceIssuer === 'HOTEL' && <p className="text-[11px] text-gray-500">Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ZivoPlus acts only as a facilitator for these services.</p>}
-                    {(activeBooking.guestNotes || []).filter((n) => n.status === 'GENERATED').map((n) => (
+                    {b.invoiceIssuer === 'HOTEL' && !b.guestCompanyGstin && <p className="text-[11px] text-gray-500">The hotel gives you the GST invoice for your stay at the property.</p>}
+                    {b.invoiceIssuer === 'HOTEL' && <p className="text-[11px] text-gray-500">Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ZivoPlus acts only as a facilitator for these services.</p>}
+                    {(b.guestNotes || []).filter((n) => n.status === 'GENERATED').map((n) => (
                       <button key={n.id} onClick={() => handleDownloadInvoice(n.id, n.noteRef, true)} className="flex items-center justify-between w-full p-3 rounded-xl border border-gray-200 hover:border-brand-500 text-xs font-bold text-gray-800 transition-colors text-left">
                         <span className="flex items-start gap-2"><FileText size={16} className="text-brand-700 shrink-0" /><span>{n.kind === 'CREDIT' ? 'Credit note' : 'Debit note'} · {n.noteRef} · ₹{Math.round(Number(n.amount)).toLocaleString('en-IN')}<span className="block font-normal text-gray-500">{n.reason}</span></span></span>
                         <Download size={14} className="text-gray-400 shrink-0" />
                       </button>
                     ))}
-                  </div>
-
-                  {activeBooking.status === 'CONFIRMED' && (
-                    <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-5 space-y-3">
-                      <h4 className="font-bold text-rose-950 text-sm">Cancel Booking</h4>
-                      <p className="text-xs text-rose-700 leading-relaxed">You will be shown a refund preview before confirming.</p>
-                      <button onClick={() => setCancelTarget(activeBooking)} className="bg-white border border-rose-200 hover:border-rose-600 text-rose-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center gap-1.5">
-                        <XCircle size={14} />Request Cancellation
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* ── REVIEW TAB ─── PREMIUM OTA GRADE ──────── */}
+              {/* REQUESTS TO THE HOTEL */}
+              {activeTab === 'requests' && <StayRequests booking={b} />}
+
+              {/* CONTACT HOTEL: phone only */}
+              {activeTab === 'contact' && (
+                <div className="space-y-4">
+                  {b.metadata?.membership?.prioritySupport && (
+                    <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{b.metadata.membership.plan} booking: you get priority support. Mention your booking ID when you call.</p>
+                  )}
+                  {phone ? (
+                    <a href={`tel:${phone}`} className="flex items-center gap-4 p-5 rounded-2xl border border-gray-200 hover:border-brand-500 transition-colors">
+                      <span className="w-12 h-12 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0"><Phone size={22} aria-hidden="true" /></span>
+                      <span>
+                        <span className="block text-xs text-gray-500 font-bold uppercase tracking-wider">Call {b.hotel?.name}</span>
+                        <span className="block text-xl font-black text-gray-900 font-mono select-all">{phone}</span>
+                        <span className="block text-xs text-gray-500 mt-0.5">Mention booking {b.bookingRef}</span>
+                      </span>
+                    </a>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its phone number yet. Send a request in <span className="font-semibold">Requests</span>, or contact ZivoPlus support with your booking ID and we&apos;ll reach the hotel.</p>
+                      <SupportContacts bookingRef={b.bookingRef} compact />
+                    </>
+                  )}
+                  <p className="text-xs text-gray-500">For late arrival, early check-in, pickup and the like, a written request under <button type="button" onClick={() => setActiveTab('requests')} className="font-semibold text-brand-700 hover:underline">Requests</button> keeps the hotel&apos;s answer with your booking.</p>
+                </div>
+              )}
+
+              {/* MANAGE */}
+              {activeTab === 'manage' && (
+                <div className="space-y-4">
+                  {canAddHours(b) && <AddHoursPanel booking={b} onExtended={fetchMyBookings} />}
+                  <ChangeDates booking={b} onChanged={fetchMyBookings} />
+                  {b.status === 'CONFIRMED' && activeRoomsOf(b).length > 1 && (
+                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">To cancel one room and keep the others, open <button type="button" onClick={() => setActiveTab('stay')} className="font-semibold text-brand-700 hover:underline">Stay &amp; rooms</button>.</p>
+                  )}
+                  {['CONFIRMED', 'PENDING'].includes(b.status) ? (
+                    <section className="border border-rose-100 bg-rose-50/40 rounded-2xl p-5" aria-labelledby="mg-cancel">
+                      <h3 id="mg-cancel" className="font-bold text-rose-950 text-sm">Cancel booking</h3>
+                      <p className="text-xs text-rose-800 mt-1 mb-3">You see the refund under the hotel&apos;s policy before you confirm.</p>
+                      <button type="button" onClick={() => setCancelTarget(b)} className="bg-white border border-rose-200 hover:border-rose-600 text-rose-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors inline-flex items-center gap-1.5">
+                        <XCircle size={14} />Cancel booking
+                      </button>
+                    </section>
+                  ) : (
+                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">{['CANCELLED', 'NO_SHOW'].includes(b.status) ? 'This booking was cancelled.' : 'This stay has started, so it can no longer be cancelled online. Call the hotel or ZivoPlus support for help.'}</p>
+                  )}
+                  <Link to="/help" className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-brand-500 text-xs font-bold text-gray-800">
+                    <span>Help: changes, cancellations and refunds</span><ChevronRight size={14} />
+                  </Link>
+                </div>
+              )}
+
+              {/* REVIEW */}
               {activeTab === 'review' && (
                 <ReviewTab
-                  activeBooking={activeBooking}
+                  activeBooking={b}
                   reviewRating={reviewRating}
                   setReviewRating={setReviewRating}
                   reviewComment={reviewComment}
@@ -819,64 +835,17 @@ const MyBookings = () => {
                   tripType={tripType}
                   setTripType={setTripType}
                   reviewError={reviewError}
-                  existingReview={myReviews[activeBooking.id]}
+                  existingReview={myReviews[b.id]}
                   editing={editingReview}
                   onEdit={startEditReview}
                   onWriteAnother={resetReviewForm}
                 />
               )}
-
-              {/* SUPPORT */}
-              {activeTab === 'support' && (
-                <div className="space-y-6">
-                  <div className="border border-gray-100 rounded-2xl p-5 space-y-4">
-                    <h4 className="font-bold text-gray-900 text-sm">Contact Support & Property</h4>
-                    {activeBooking.metadata?.membership?.prioritySupport && (
-                      <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{activeBooking.metadata.membership.plan} booking: you get priority support. Mention your booking ID when you call.</p>
-                    )}
-                    <p className="text-xs text-gray-500">For a late arrival, early check-in, airport pickup, parking or other requests, contact the hotel. Requests are confirmed by the hotel, not guaranteed.</p>
-                    {hotelPhone(activeBooking) || activeBooking.hotel?.contact?.email ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-bold text-gray-800">
-                        {hotelPhone(activeBooking) && (
-                          <a href={`tel:${hotelPhone(activeBooking)}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors">
-                            <Phone size={16} className="text-gray-500" /><span>Call the hotel <span className="block font-mono font-semibold text-gray-600 select-all">{hotelPhone(activeBooking)}</span></span>
-                          </a>
-                        )}
-                        {whatsappNumber(activeBooking) && (
-                          <a href={`https://wa.me/${whatsappNumber(activeBooking)}?text=${encodeURIComponent(`Hi, I have booking ${activeBooking.bookingRef}`)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl hover:border-emerald-500 transition-colors text-emerald-800">
-                            <MessageSquare size={16} className="text-emerald-500" />WhatsApp the hotel
-                          </a>
-                        )}
-                        {activeBooking.hotel?.contact?.email && (
-                          <a href={`mailto:${activeBooking.hotel.contact.email}?subject=${encodeURIComponent(`Booking ${activeBooking.bookingRef}`)}`} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-brand-500 transition-colors md:col-span-2">
-                            <Mail size={16} className="text-gray-500" /><span className="break-all">{activeBooking.hotel.contact.email}</span>
-                          </a>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3">The hotel hasn&apos;t added its contact details yet. Send a request in <span className="font-semibold">Requests to hotel</span>, or contact ZivoPlus support with your booking ID and we&apos;ll reach the hotel.</p>
-                    )}
-                    {!(hotelPhone(activeBooking) || activeBooking.hotel?.contact?.email) && (
-                      <SupportContacts bookingRef={activeBooking.bookingRef} compact />
-                    )}
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeBooking.hotel?.latitude && activeBooking.hotel?.longitude ? `${activeBooking.hotel.latitude},${activeBooking.hotel.longitude}` : `${activeBooking.hotel?.name || ''} ${activeBooking.hotel?.location || ''} ${activeBooking.hotel?.city || ''}`)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 bg-blue-50/30 border border-blue-100 rounded-xl hover:border-blue-500 transition-colors text-blue-700 text-xs font-bold">
-                      <Compass size={16} className="text-blue-500" />Directions in Google Maps
-                    </a>
-                  </div>
-                  <div className="bg-navy-900 text-white rounded-2xl p-5 space-y-3">
-                    <h4 className="font-bold text-white text-sm">Recommended Stays Nearby</h4>
-                    <p className="text-xs text-brand-200 leading-relaxed">Loved {activeBooking.hotel?.name}? Book similar stays with loyalty perks.</p>
-                    <Link to="/hotels" className="inline-flex items-center gap-1.5 text-xs text-white bg-white/10 border border-white/10 font-bold px-4 py-2.5 rounded-xl hover:bg-white/20 transition-all">
-                      Browse Similar Properties<ArrowRight size={14} />
-                    </Link>
-                  </div>
-                </div>
-              )}
-
             </div>
           </div>
         </>
-      )}
+        );
+      })()}
 
       {/* Cancellation Modal */}
       {cancelTarget && (
@@ -973,115 +942,67 @@ const getTimelineIcon = (status) => {
 
 /* ─── Sub-components ─────────────────────────────────────────────────── */
 const EmptySection = ({ label }) => (
-  <div className="flex items-center gap-3 py-5 px-5 rounded-2xl bg-gray-50 border border-dashed border-gray-200 text-gray-400 text-xs font-medium">
-    <Calendar size={16} />
-    No {label} stays
+  <div className="flex items-center gap-3 py-8 px-5 rounded-2xl bg-gray-50 border border-dashed border-gray-200 text-gray-500 text-sm">
+    <Calendar size={18} aria-hidden="true" />
+    Nothing {label === 'staying now' ? 'right now' : label === 'cancelled' ? 'cancelled' : `here (${label})`}.
   </div>
 );
 
-const BookingCard = ({ booking, onRateStay, onManage, onPaid }) => {
-  const mainImageUrl = getImageUrl(booking.hotel?.media?.[0]?.url, 800) || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
-
-  const reviewReady = isReviewUnlocked(booking);
-  const cat = classifyBooking(booking);
-
+const BookingCard = ({ booking: b, onRateStay, onManage, onPaid, onError }) => {
+  const img = getImageUrl(b.hotel?.media?.[0]?.url, 800);
+  const reviewReady = isReviewUnlocked(b);
+  const cat = classifyBooking(b);
+  const step = nextStep(b);
+  const phone = hotelPhone(b);
+  const live = ['CONFIRMED', 'CHECKED_IN'].includes(b.status);
+  const dim = cat === 'cancelled';
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group flex flex-col md:flex-row">
-      {/* Hotel image */}
-      <div className="md:w-56 h-44 md:h-auto relative overflow-hidden shrink-0">
-        <img
-          src={mainImageUrl}
-          alt={booking.hotel?.name || 'Hotel'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none md:hidden" />
-        <span className="absolute top-3 left-3 md:hidden px-2.5 py-0.5 rounded-full text-xs font-black bg-white/95 text-gray-900 shadow-md">
-          ₹{(booking.paidAmount || booking.totalAmount)?.toLocaleString('en-IN')}
-        </span>
-        {/* Section accent badge on image */}
-        {cat === 'ongoing' && (
-          <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-xs font-black bg-violet-600 text-white shadow-sm">
-            Staying now
-          </span>
-        )}
-      </div>
-
-      {/* Card body */}
-      <div className="p-5 md:p-7 flex-1 flex flex-col justify-between">
-        <div>
-          {needsPayment(booking) && <div className="mb-3"><PayLaterBanner booking={booking} onPaid={onPaid} compact /></div>}
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border ${getStatusColor(booking.status)}`}>
-              {booking.status === 'PENDING' ? 'Awaiting payment' : booking.status.replace('_', ' ')}
-            </span>
-            {booking.paymentStatus === 'REFUNDED' && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-purple-50 text-purple-600 border border-purple-100">
-                Refunded
-              </span>
-            )}
-            {reviewReady && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                <Star size={9} className="fill-amber-500 text-amber-500" />
-                Review ready
-              </span>
-            )}
+    <article className={`bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col sm:flex-row ${dim ? 'opacity-80' : ''}`}>
+      <button type="button" onClick={() => onManage(b)} className="sm:w-48 h-40 sm:h-auto relative overflow-hidden shrink-0 bg-gray-100" aria-label={`Open booking at ${b.hotel?.name}`}>
+        {img ? <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} className="w-full h-full object-cover" loading="lazy" /> : <span className="absolute inset-0 flex items-center justify-center text-gray-300"><BedDouble size={36} /></span>}
+        {cat === 'ongoing' && <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full text-xs font-black bg-brand-600 text-white shadow">Staying now</span>}
+      </button>
+      <div className="p-5 flex-1 flex flex-col gap-3 min-w-0">
+        {needsPayment(b) && <PayLaterBanner booking={b} onPaid={onPaid} compact />}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold text-gray-900 truncate">{b.hotel?.name}</h3>
+            <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5"><MapPin size={12} aria-hidden="true" />{b.hotel?.city} · {roomsText(b)}</p>
           </div>
-
-          <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-700 transition-colors mb-0.5">{booking.hotel?.name}</h3>
-          <p className="text-gray-500 text-xs flex items-center gap-1 mb-3">
-            <MapPin size={12} className="text-gray-400" />
-            {booking.hotel?.city} · {roomsText(booking)}
-          </p>
-
-          {isHourly(booking) && (
-            <div className="bg-navy-50 rounded-2xl p-3 mb-3">
-              <p className="text-xs text-navy-700 font-bold uppercase tracking-wider mb-0.5">Hourly stay</p>
-              <p className="font-extrabold text-navy-900 text-xs">{slotText(booking)}</p>
-              {canAddHours(booking) && <button type="button" onClick={() => onManage?.(booking)} className="mt-1.5 text-xs font-bold text-brand-700 hover:underline">Need more time? Add hours</button>}
-            </div>
-          )}
-          <div className={`grid grid-cols-2 gap-3 bg-gray-50/70 rounded-2xl p-3 mb-3 border border-gray-50 ${isHourly(booking) ? 'hidden' : ''}`}>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-in</p>
-              <p className="font-extrabold text-gray-800 text-xs">
-                {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Check-out</p>
-              <p className="font-extrabold text-gray-800 text-xs">
-                {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
+          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-black border ${getStatusColor(b.status)}`}>{statusLabel(b)}</span>
         </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-3">
-          <div>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ref ID</p>
-            <p className="font-mono text-xs font-bold text-gray-700">{booking.bookingRef}</p>
-          </div>
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-800">
+          <span className="flex items-center gap-1.5 font-semibold"><Calendar size={15} className="text-gray-400" aria-hidden="true" />{stayLine(b)}</span>
+          <span className="flex items-center gap-1.5"><Users size={15} className="text-gray-400" aria-hidden="true" />{b.guests} guest{b.guests === 1 ? '' : 's'}</span>
+        </div>
+
+        {step && (
+          <p className={`text-xs font-semibold rounded-xl px-3 py-2 ${step.tone === 'amber' ? 'bg-amber-50 text-amber-900' : step.tone === 'brand' ? 'bg-brand-50 text-brand-800' : 'bg-gray-50 text-gray-700'}`}>{step.text}</p>
+        )}
+
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-500">Ref <span className="font-mono font-bold text-gray-700">{b.bookingRef}</span> · {rupees(b.totalAmount)}</p>
+          <div className="flex flex-wrap gap-2">
+            {live && (
+              <button type="button" onClick={async () => { try { await saveVoucher(b.id, b.bookingRef, 'guest'); } catch (err) { onError?.(err.message || 'Could not download the voucher.'); } }}
+                className="inline-flex items-center gap-1 border border-gray-200 hover:border-brand-500 text-gray-800 px-3 py-2 rounded-xl font-bold text-xs"><Download size={13} />Voucher</button>
+            )}
+            {live && phone && (
+              <a href={`tel:${phone}`} className="inline-flex items-center gap-1 border border-gray-200 hover:border-brand-500 text-gray-800 px-3 py-2 rounded-xl font-bold text-xs"><Phone size={13} />Call hotel</a>
+            )}
             {reviewReady && (
-              <button
-                onClick={() => onRateStay(booking)}
-                className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 px-4 py-2 rounded-xl font-bold text-xs transition-all"
-              >
-                <Star size={12} className="fill-amber-500 text-amber-500" />
-                Rate Stay
+              <button type="button" onClick={() => onRateStay(b)} className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-xl font-bold text-xs">
+                <Star size={12} className="fill-amber-500 text-amber-500" />Rate stay
               </button>
             )}
-            <button
-              onClick={() => onManage(booking)}
-              className="inline-flex items-center gap-1 bg-gray-900 text-white hover:bg-brand-600 px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition-all"
-            >
-              Manage
-              <ChevronRight size={13} />
+            <button type="button" onClick={() => onManage(b)} className="inline-flex items-center gap-1 bg-gray-900 text-white hover:bg-brand-600 px-4 py-2 rounded-xl font-bold text-xs">
+              View booking<ChevronRight size={13} />
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 
