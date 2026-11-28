@@ -51,15 +51,17 @@ describe('Billing address on large invoices for individuals', function () {
 
   it('a stay of ₹50,000 or more needs the billing address and a real state, then prints them', async () => {
     const rooms = Math.min(8, room.totalInventory);
-    const p = await api.post('/bookings/preview', body(rooms), auth);
+    // Its own dates: the small stay above holds a room on the first test's dates
+    const own = { checkIn: inDays(150), checkOut: inDays(152) };
+    const p = await api.post('/bookings/preview', body(rooms, own), auth);
     expect(p.data.data.totalAmount).to.be.at.least(50000);
     expect(p.data.data.billingAddressFrom).to.equal(50000);
-    const without = await api.post('/bookings', body(rooms), auth);
+    const without = await api.post('/bookings', body(rooms, own), auth);
     expect(without.status).to.equal(400);
     expect(without.data.message).to.match(/billing address/i);
-    const badState = await api.post('/bookings', body(rooms, { billingAddress: '12 Hill Road, Bandra West, Mumbai 400050', billingStateCode: '99' }), auth);
+    const badState = await api.post('/bookings', body(rooms, { ...own, billingAddress: '12 Hill Road, Bandra West, Mumbai 400050', billingStateCode: '99' }), auth);
     expect(badState.status).to.equal(400);
-    const ok = await api.post('/bookings', body(rooms, { billingAddress: '12 Hill Road, Bandra West, Mumbai 400050', billingStateCode: '27' }), auth);
+    const ok = await api.post('/bookings', body(rooms, { ...own, billingAddress: '12 Hill Road, Bandra West, Mumbai 400050', billingStateCode: '27' }), auth);
     expect(ok.status, JSON.stringify(ok.data)).to.be.oneOf([200, 201]);
     made.push(ok.data.data.id);
     const b = await prisma.booking.findUnique({ where: { id: ok.data.data.id }, include: { hotel: true, roomType: { select: { name: true } }, ratePlan: { select: { name: true, mealPlan: true } }, ...BOOKING_ROOMS_INCLUDE } });
