@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Edit2, Trash2, MapPin, Building, X,
-  AlertCircle, RefreshCw, Star, ChevronDown, Send
+  AlertCircle, RefreshCw, Star, ChevronDown, Send, QrCode
 } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -505,6 +505,15 @@ const Properties = () => {
                                 <Send size={15} />
                               </button>
                             )}
+                            <a
+                              href={`${API_URL}/reviews/qr/${hotel.id}.pdf`}
+                              download
+                              className="p-1.5 text-gray-400 hover:text-navy-700 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="Download feedback QR card (PDF)"
+                              aria-label={`Download feedback QR card for ${hotel.name}`}
+                            >
+                              <QrCode size={15} />
+                            </a>
                             <button
                               onClick={() => navigate(`/admin/properties/edit/${hotel.id}`)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"

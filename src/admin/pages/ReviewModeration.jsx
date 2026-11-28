@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Star, ShieldCheck, Flag, CheckCircle2, XCircle, MessageSquareX, Loader2, BadgeCheck } from 'lucide-react';
+import { Star, ShieldCheck, Flag, CheckCircle2, XCircle, MessageSquareX, Loader2, BadgeCheck, QrCode, Search, Download } from 'lucide-react';
 import { getImageUrl } from '../../utils/image';
 
 /**
@@ -23,6 +23,42 @@ const call = async (path, method = 'GET', body) => {
 const QUEUES = [['held', 'Held for check'], ['reported', 'Reported by hotels'], ['published', 'Published'], ['rejected', 'Not published']];
 const REJECT_NOTES = ['Contains personal contact details', 'Contains links or advertising', 'Abusive or offensive language', 'Not about this property or stay', 'Contains false or misleading claims'];
 
+/** Feedback QR codes for any property: search, then download the printable card or the image. */
+const FeedbackQrPanel = ({ hotels }) => {
+  const [q, setQ] = useState('');
+  const [pick, setPick] = useState('');
+  const term = q.trim().toLowerCase();
+  const matches = term ? hotels.filter((h) => `${h.name} ${h.city || ''}`.toLowerCase().includes(term)).slice(0, 8) : [];
+  const chosen = hotels.find((h) => h.id === pick);
+  return (
+    <section className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm" aria-labelledby="fqr-admin-h">
+      <h2 id="fqr-admin-h" className="font-bold text-gray-900 flex items-center gap-2"><QrCode size={18} aria-hidden="true" /> Feedback QR codes</h2>
+      <p className="text-sm text-gray-600 mt-1">Download a property&apos;s code to print. Guests who booked there scan it, sign in and rate their stay.</p>
+      <div className="mt-3 flex flex-col md:flex-row md:items-start gap-3">
+        <div className="relative flex-1 max-w-md">
+          <label htmlFor="fqr-search" className="sr-only">Find a property</label>
+          <Search size={15} className="absolute left-3 top-2.5 text-gray-400" aria-hidden="true" />
+          <input id="fqr-search" value={q} onChange={(e) => { setQ(e.target.value); setPick(''); }} placeholder="Find a property by name or city" className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm" autoComplete="off" />
+          {matches.length > 0 && !pick && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto" role="listbox">
+              {matches.map((h) => (
+                <li key={h.id}><button type="button" onClick={() => { setPick(h.id); setQ(h.name); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">{h.name}<span className="text-gray-500">{h.city ? ` · ${h.city}` : ''}</span></button></li>
+              ))}
+            </ul>
+          )}
+          {term && !matches.length && !pick && <p className="text-xs text-gray-500 mt-1">No property matches.</p>}
+        </div>
+        {chosen && (
+          <div className="flex flex-wrap gap-2">
+            <a href={`${API}/reviews/qr/${chosen.id}.pdf`} download className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold"><Download size={15} aria-hidden="true" /> Printable card (PDF)</a>
+            <a href={`${API}/reviews/qr/${chosen.id}.png`} download className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold"><Download size={15} aria-hidden="true" /> QR image (PNG)</a>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 const ReviewModeration = () => {
   const [queue, setQueue] = useState('held');
   const [hotelId, setHotelId] = useState('');
@@ -43,7 +79,7 @@ const ReviewModeration = () => {
     }
   }, [queue, hotelId]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { call('/hotels').then((h) => setHotels(h || [])).catch(() => {}); }, []);
+  useEffect(() => { call('/reviews/hotels').then((h) => setHotels(Array.isArray(h) ? h : [])).catch(() => {}); }, []);
 
   const decide = async (r, action) => {
     const note = notes[r.id] || '';
@@ -70,17 +106,12 @@ const ReviewModeration = () => {
           ))}
           <select aria-label="Property" value={hotelId} onChange={(e) => setHotelId(e.target.value)} className="ml-auto px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
             <option value="">All properties</option>
-            {hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            {hotels.map((h) => <option key={h.id} value={h.id}>{h.name}{h.city ? ` · ${h.city}` : ''}</option>)}
           </select>
         </div>
-        {hotelId && (
-          <p className="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>This property&apos;s feedback QR code:</span>
-            <a href={`${API}/reviews/qr/${hotelId}.pdf`} download className="font-semibold text-navy-800 underline">Printable card (PDF)</a>
-            <a href={`${API}/reviews/qr/${hotelId}.png`} download className="font-semibold text-navy-800 underline">QR image (PNG)</a>
-          </p>
-        )}
       </div>
+
+      <FeedbackQrPanel hotels={hotels} />
 
       {msg && <div role={msg.type === 'error' ? 'alert' : 'status'} className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>{msg.text}</div>}
 

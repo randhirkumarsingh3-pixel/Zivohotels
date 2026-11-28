@@ -5,6 +5,17 @@ import prisma from '../config/db.js';
 // Mounted at /api/v1/admin/reviews (protect + ADMIN/OWNER from /admin; the controller allows ADMIN only).
 const router = express.Router();
 router.get('/', adminListReviews);
+// Properties to choose from (moderation filter and feedback QR codes): search by name or city
+router.get('/hotels', async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim().slice(0, 80);
+    const hotels = await prisma.hotel.findMany({
+      where: { isDeleted: false, ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { city: { contains: q, mode: 'insensitive' } }] } : {}) },
+      select: { id: true, name: true, city: true, status: true }, orderBy: { name: 'asc' }, take: q ? 50 : 500,
+    });
+    res.json({ success: true, data: hotels });
+  } catch (e) { next(e); }
+});
 router.patch('/:id', adminModerateReview);
 
 // Feedback QR code (services/feedbackQr.js): PNG and the printable A5 card, and how it's used

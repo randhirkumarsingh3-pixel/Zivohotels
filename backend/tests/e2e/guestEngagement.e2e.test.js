@@ -185,6 +185,9 @@ describe('Guest engagement: reviews, saved hotels and price alerts, monthly repo
       expect(Buffer.from(pdf.data).subarray(0, 4).toString()).to.equal('%PDF');
       expect((await api.get(`/admin/reviews/qr/${hotel.id}.png`, { ...admin, responseType: 'arraybuffer' })).status).to.equal(200);
       expect((await api.get(`/extranet/reviews/qr.png?hotelId=${hotel.id}`, guest)).status).to.be.oneOf([401, 403]);
+      const found = (await api.get(`/admin/reviews/hotels?q=${encodeURIComponent(hotel.name.slice(0, 6))}`, admin)).data.data;
+      expect(found.map((h) => h.id)).to.include(hotel.id);
+      expect((await api.get('/admin/reviews/hotels', guest)).status).to.be.oneOf([401, 403]);
       const stats = (await api.get(`/extranet/reviews/qr-stats?hotelId=${hotel.id}`, owner)).data.data;
       slug = stats.url.split('/feedback/')[1];
       expect(slug).to.match(/-[0-9a-f]{8}$/);
