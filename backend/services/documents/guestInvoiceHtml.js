@@ -12,8 +12,8 @@
  *                 B2C: given at the property). ZivoPlus issues its own tax invoice as the
  *                 facilitator: supplier ZivoPlus, SAC 998552 (reservation service for
  *                 accommodation); the accommodation charges are shown inclusive of the taxes
- *                 collected on behalf of the hotel, plus ZivoPlus's own service fee (nil today),
- *                 with the statement that input tax credit is available only against the hotel's
+ *                 collected on behalf of the hotel, plus ZivoPlus's own service fee with its GST
+ *                 when one was charged (not printed otherwise), with the statement that input tax credit is available only against the hotel's
  *                 invoice.
  *
  * A tax invoice carries what GST rule 46 asks for: supplier and recipient (GSTIN and state for a
@@ -32,6 +32,14 @@ export const SAC_ACCOMMODATION = '996311';
 export const SAC_RESERVATION = '998552';
 const SERVICE = 'Accommodation services (hotel stay)';
 const RESERVATION = 'Reservation service for accommodation';
+/** A service fee ZivoPlus charged on the booking (metadata.serviceFee, GST included), if any. */
+const serviceFeeOf = (b) => {
+  const m = b?.metadata || {};
+  const amount = r2(m.serviceFee || 0);
+  const gstPct = Number(m.serviceFeeGstPct ?? 18);
+  const tax = amount > 0 ? r2(m.serviceFeeTax ?? (amount - amount / (1 + gstPct / 100))) : 0;
+  return { amount, tax, gstPct };
+};
 const ITC_LINE = (zivo) => `Input tax credit of GST charged by the original service provider is available only against the invoice issued by the respective service provider. ${esc(zivo.tradeName || zivo.legalName)} acts only as a facilitator for these services.`;
 const pct = (v) => `${Number.isInteger(v) ? v : Number(v).toFixed(1)}%`;
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -53,8 +61,10 @@ const partiesOf = (b, hotel, brand) => {
   const b2b = Boolean(b.guestCompanyGstin);
   const recipientState = b2b ? String(b.guestCompanyGstin).slice(0, 2) : '';
   // Accommodation: supplied where the property is. ZivoPlus's reservation service (facilitator
-  // invoice): the recipient's state when known (GSTIN, or the billing state), else ZivoPlus's own
-  const facState = recipientState || b.billingStateCode || zivo.stateCode || '';
+  // invoice): Documents setting facilitatorPlaceOfSupply. ZIVO (default): ZivoPlus's registered
+  // state; RECIPIENT: the recipient's state when known (GSTIN, or the billing state), else ZivoPlus's
+  const byRecipient = brand.settings?.guestInvoice?.facilitatorPlaceOfSupply === 'RECIPIENT';
+  const facState = (byRecipient && (recipientState || b.billingStateCode)) || zivo.stateCode || '';
   const posCode = facilitator ? facState : hp.stateCode;
   const posName = facilitator ? (STATE_NAMES[facState] || zivo.stateName || '') : (hp.stateName || hotel.state || '');
   const supplierIsHotel = !facilitator && mode !== 'ZIVO_SUPPLIER';
@@ -191,7 +201,11 @@ ${signature(zivo.legalName, brand.signatory)}
 const facilitatorInvoiceHtml = ({ booking: b, hotel, rooms, invoiceRef, issueDate, brand, P }) => {
   const { hp, zivo, posCode, posName, b2b } = P;
   const f = bookingFigures(b, rooms, { roomTypeName: b.roomType?.name, ratePlan: b.ratePlan });
-  const fee = 0;
+  // ZivoPlus's own service fee, when one was charged on this booking (none today): shown with
+  // its GST; otherwise not printed at all
+  const feeData = serviceFeeOf(b);
+  const fee = feeData.amount;
+  const feeTaxCols = fee > 0 ? taxSplit(Boolean(zivo.stateCode && zivo.stateCode === posCode), feeData.gstPct, feeData.tax) : [];
   const discounts = r2(f.discounts.reduce((t, [, a]) => t + Number(a || 0), 0));
   const when = f.hourly
     ? `${dateTime(b.slotStart || b.checkIn)} – ${new Date(b.slotEnd || b.checkOut).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}`
@@ -221,7 +235,7 @@ ${meta([
 
 <table><tr><th style="width:22px">#</th><th>Payment breakup</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>
 <tr><td>1</td><td><b>Accommodation charges</b><br><span class="muted">Inclusive of applicable taxes collected on behalf of the hotel${f.tax ? ` (GST ${money(f.tax)})` : ''} · ${b.rooms} room${b.rooms === 1 ? '' : 's'}${b.roomType?.name ? ` · ${esc(b.roomType.name)}` : ''}${discounts ? ` · after offers of ${money(discounts)}` : ''}</span></td><td></td><td class="r">${money(f.total)}</td></tr>
-<tr><td>2</td><td><b>${esc(zivo.tradeName || zivo.legalName)} service fee</b><br><span class="muted">Taxable value of the reservation service; GST on it: nil</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(fee)}</td></tr>
+${fee > 0 ? `<tr><td>2</td><td><b>${esc(zivo.tradeName || zivo.legalName)} service fee</b><br><span class="muted">Taxable value ${money(r2(fee - feeData.tax))} · GST ${pct(feeData.gstPct)} ${money(feeData.tax)}</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(fee)}</td></tr>` : ''}
 <tr class="t"><td></td><td>Grand total</td><td></td><td class="r">${money(r2(f.total + fee))}</td></tr></table>
 
 <div class="cols">
@@ -236,8 +250,7 @@ ${meta([
   </div>
   ${totals([
     ['Accommodation charges', money(f.total)],
-    ['Service fee', money(fee)],
-    ['GST on service fee', money(0)],
+    ...(fee > 0 ? [['Service fee (taxable value)', money(r2(fee - feeData.tax))], ...feeTaxCols.map(([n, r, v]) => [`${n} ${pct(r)} on service fee`, money(v)])] : []),
     ['Grand total', inr(r2(f.total + fee)), 'grand'],
     ['Paid online', inr(f.paid), 'plus'],
     f.refunded ? ['Refunded', inr(f.refunded), 'less'] : null,
@@ -324,7 +337,7 @@ ${meta([
 <div class="parties">${P.supplierBox}${P.recipientBox}</div>
 <table><tr><th style="width:22px">#</th><th>Description</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>
 <tr><td>1</td><td><b>${esc(note.reason)}</b><br><span class="muted">Accommodation charges, inclusive of applicable taxes collected on behalf of the hotel · ${esc(hotel.name)} · ${day(b.checkIn)} → ${day(b.checkOut)}</span></td><td></td><td class="r">${money(amount)}</td></tr>
-<tr><td>2</td><td><b>Service fee</b><br><span class="muted">GST on it: nil</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(0)}</td></tr></table>
+</table>
 <div class="cols">
   <div>
     <div class="words">Amount in words: ${amountInWords(amount)}</div>
@@ -335,7 +348,6 @@ ${meta([
   </div>
   ${totals([
     ['Accommodation charges', money(amount)],
-    ['Service fee', money(0)],
     [credit ? 'Total credit' : 'Total debit', inr(amount), 'grand'],
   ])}
 </div>

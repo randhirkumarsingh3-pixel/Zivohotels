@@ -41,7 +41,9 @@ const OLD_RECEIPT_TERMS = {
 
 export const DEFAULTS = () => ({
   guestInvoice: {
-    mode: 'HOTEL_ISSUES', b2bMode: 'HOTEL_ISSUES', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
+    mode: 'HOTEL_ISSUES', b2bMode: 'HOTEL_ISSUES',
+    // Place of supply on ZivoPlus's facilitator invoice: ZIVO (its registered state) or RECIPIENT
+    facilitatorPlaceOfSupply: 'ZIVO', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
     terms: [
       'Input tax credit is available only to the business whose GSTIN is shown as the recipient.',
       'Report any error in this document to ZivoPlus support within 7 days of receiving it.',
@@ -97,6 +99,10 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
     if (g.b2bMode !== undefined) {
       if (!INVOICE_MODES.includes(g.b2bMode)) throw new DocumentSettingsError('Choose who issues the invoice for business (GSTIN) bookings');
       next.guestInvoice.b2bMode = g.b2bMode;
+    }
+    if (g.facilitatorPlaceOfSupply !== undefined) {
+      if (!['ZIVO', 'RECIPIENT'].includes(g.facilitatorPlaceOfSupply)) throw new DocumentSettingsError('Choose the place of supply for the facilitator invoice');
+      next.guestInvoice.facilitatorPlaceOfSupply = g.facilitatorPlaceOfSupply;
     }
     // Three letters at most: with the year (26-27) and a 6-digit number that is GST's 16 characters
     for (const [k, label] of [['prefix', 'invoice'], ['creditPrefix', 'credit note'], ['debitPrefix', 'debit note']]) {
