@@ -1,22 +1,23 @@
 import { Link } from 'react-router-dom';
-import { Award, Crown, Check } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Award, Crown, Check, Wallet } from 'lucide-react';
 
 /**
- * Zivo Rewards and Zivo Prime side by side, with the live programme rules (points per ₹100, what a
- * point is worth, tiers) and the paid plan's price and benefits. Hidden if neither is running.
+ * Zivo Rewards, Zivo Cash and the paid membership side by side, with the live programme rules
+ * (points per ₹100, what a point is worth, tiers) and the paid plan's price and benefits.
  */
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 
 const RewardsMembership = ({ rewards, membership }) => {
+  const { isAuthenticated } = useAuth();
   const prime = membership?.paidPlan;
-  if (!rewards && !prime) return null;
 
   return (
     <section className="py-14 bg-white" aria-labelledby="loyalty-heading">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 id="loyalty-heading" className="text-2xl md:text-3xl font-bold text-navy-900 mb-1">Save more every time you stay</h2>
-        <p className="text-gray-600 mb-6">Free Rewards on every booking, and Prime for frequent travellers.</p>
-        <div className="grid gap-5 md:grid-cols-2">
+        <p className="text-gray-600 mb-6">Free Rewards on every booking, Zivo Cash for instant refunds, and a membership for frequent travellers.</p>
+        <div className={`grid gap-5 ${rewards && prime ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           {rewards && (
             <article className="rounded-card border border-gray-200 p-6 flex flex-col bg-gradient-to-br from-white to-navy-50">
               <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Award className="text-brand-600" size={24} aria-hidden="true" /> Zivo Rewards</h3>
@@ -30,6 +31,16 @@ const RewardsMembership = ({ rewards, membership }) => {
               <Link to="/rewards" className="mt-6 self-start px-5 py-2.5 rounded-lg border border-navy-200 bg-white text-navy-800 font-semibold hover:bg-navy-50">How Rewards work</Link>
             </article>
           )}
+          <article className="rounded-card border border-gray-200 p-6 flex flex-col bg-gradient-to-br from-white to-brand-50">
+            <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900"><Wallet className="text-brand-600" size={24} aria-hidden="true" /> Zivo Cash</h3>
+            <p className="text-sm text-gray-600 mt-1">Your ZivoPlus wallet</p>
+            <ul className="mt-4 space-y-2 text-gray-700 text-sm">
+              <li className="flex gap-2"><Check size={18} className="text-green-700 shrink-0" aria-hidden="true" /> Choose Zivo Cash for a refund and get it instantly, not in 5-7 days</li>
+              <li className="flex gap-2"><Check size={18} className="text-green-700 shrink-0" aria-hidden="true" /> Pay with it at checkout on any hotel, fully or in part</li>
+              <li className="flex gap-2"><Check size={18} className="text-green-700 shrink-0" aria-hidden="true" /> See every credit and payment in one place</li>
+            </ul>
+            <Link to={isAuthenticated ? '/wallet' : '/signup'} className="mt-6 self-start px-5 py-2.5 rounded-lg border border-navy-200 bg-white text-navy-800 font-semibold hover:bg-navy-50">{isAuthenticated ? 'Your Zivo Cash' : 'Create a free account'}</Link>
+          </article>
           {prime && (
             <article className="rounded-card p-6 flex flex-col bg-navy-900 text-white">
               <h3 className="flex items-center gap-2 text-xl font-bold"><Crown className="text-amber-300" size={24} aria-hidden="true" /> {prime.name}</h3>

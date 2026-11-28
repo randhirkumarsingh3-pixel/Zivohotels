@@ -17,8 +17,22 @@ import { phoneForApi, inputClass, primaryButton, returnTo } from '../components/
  */
 const ONBOARDING_DRAFT = 'zivo_onboarding_draft';
 
-const Signup = ({ partner = false, aside = null }) => {
-  usePageTitle(partner ? 'List your property' : 'Create an account');
+/** Inside another page (Business / Partner Hub apply): a card instead of the full sign-up page. */
+const EmbeddedShell = ({ title, subtitle, children }) => (
+  <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-8">
+    <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+    {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+    <div className="mt-5 max-w-md">{children}</div>
+  </div>
+);
+
+/**
+ * Create an account (email + mobile confirmed with codes). `embedded` + `onCreated`: shown inside
+ * another page, which carries on once the account exists (no navigation); `heading` overrides the title.
+ */
+const Signup = ({ partner = false, aside = null, embedded = false, onCreated = null, heading = null }) => {
+  usePageTitle(embedded ? null : partner ? 'List your property' : 'Create an account');
+  const Shell = embedded ? EmbeddedShell : AuthShell;
   const navigate = useNavigate();
   const location = useLocation();
   const { setSession } = useAuth();
@@ -70,6 +84,7 @@ const Signup = ({ partner = false, aside = null }) => {
     try {
       const r = await signupUser({ ...details(), ...codes });
       setSession(r?.data?.user);
+      if (onCreated) { onCreated(r?.data?.user); return; }
       if (partner) {
         // Registration opens at step 1 with what they already told us
         try {
@@ -98,6 +113,7 @@ const Signup = ({ partner = false, aside = null }) => {
     try {
       const r = await googleSignInApi(credential);
       setSession(r?.data?.user);
+      if (onCreated) { onCreated(r?.data?.user); return; }
       navigate(back.path, { replace: true, state: back.state });
     } catch (err) {
       setError(err.message || 'Google sign-in failed.');
@@ -106,7 +122,7 @@ const Signup = ({ partner = false, aside = null }) => {
 
   if (step === 'codes') {
     return (
-      <AuthShell title="Confirm it's you" subtitle="We sent a 6-digit code to your email and one to your mobile." aside={aside}>
+      <Shell title={heading ? `${heading}: confirm it's you` : "Confirm it's you"} subtitle="We sent a 6-digit code to your email and one to your mobile." aside={aside}>
         <form className="space-y-5" onSubmit={finish}>
           <ErrorNote>{error}</ErrorNote>
           <Field label={<span className="flex items-center gap-1.5"><Mail size={15} aria-hidden="true" /> Code sent to {form.email.trim()}</span>} id="email-code">
@@ -126,17 +142,17 @@ const Signup = ({ partner = false, aside = null }) => {
             Change my details
           </button>
         </form>
-      </AuthShell>
+      </Shell>
     );
   }
 
   return (
-    <AuthShell
-      title={partner ? 'List your property' : 'Create an account'}
+    <Shell
+      title={heading || (partner ? 'List your property' : 'Create an account')}
       aside={aside}
       subtitle={partner
         ? <>Already a partner? <Link to="/extranet/login" className="font-semibold text-navy-700 hover:text-navy-900">Log in to the Extranet</Link></>
-        : <>Already have an account? <Link to="/login" state={location.state} className="font-semibold text-navy-700 hover:text-navy-900">Sign in instead</Link></>}
+        : <>Already have an account? <Link to="/login" state={embedded ? { from: location } : location.state} className="font-semibold text-navy-700 hover:text-navy-900">Sign in instead</Link></>}
     >
       <form className="space-y-5" onSubmit={start}>
         {!partner && back.booking && (
@@ -178,7 +194,7 @@ const Signup = ({ partner = false, aside = null }) => {
         </p>
       </form>
       {!partner && <GoogleButton onCredential={onGoogle} text="signup_with" />}
-    </AuthShell>
+    </Shell>
   );
 };
 

@@ -11,6 +11,7 @@ import WhyZivo from '../components/home/WhyZivo';
 import GuestReviews from '../components/home/GuestReviews';
 import RewardsMembership from '../components/home/RewardsMembership';
 import PartnerPanels from '../components/home/PartnerPanels';
+import YourZivoPlus from '../components/home/YourZivoPlus';
 import HomeFaq from '../components/home/HomeFaq';
 import ExploreLinks from '../components/home/ExploreLinks';
 import { getRecommendations, getHomeFeed } from '../services/api';
@@ -99,6 +100,7 @@ const Home = () => {
         </div>
       </section>
 
+      {isAuthenticated && user?.role === 'CUSTOMER' && <YourZivoPlus name={user?.name?.split(' ')[0]} />}
       <MemberBanner signup={feed?.signup} membership={feed?.membership} isAuthenticated={isAuthenticated} role={user?.role} />
       <OffersCarousel offers={feed?.offers} />
 
@@ -110,9 +112,6 @@ const Home = () => {
           </div>
         </section>
       )}
-
-      {/* For companies, travel agents and hotels: high on the page */}
-      <PartnerPanels />
 
       <section className="py-12 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -139,6 +138,8 @@ const Home = () => {
       <WhyZivo />
       <GuestReviews reviews={feed?.reviews} />
       <RewardsMembership rewards={feed?.rewards} membership={feed?.membership} />
+      {/* For companies, travel agents and hotels: last, before the FAQ */}
+      <PartnerPanels />
       <HomeFaq />
       <ExploreLinks cities={feed?.cities} areas={feed?.areas} />
     </>

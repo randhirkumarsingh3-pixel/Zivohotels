@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { businessApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import Signup from './Signup';
 import usePageTitle from '../hooks/usePageTitle';
 import { BookTab, BookingsTab, CommissionTab, BrandingForm } from './business/PartnerBooking';
 import { PolicyTab, ApprovalsTab, ReportsTab, MemberPolicyFields, TripsTab, ImportMembers, DelegateFields, TravellersTab } from './business/CompanyTools';
@@ -83,10 +84,11 @@ const Hero = ({ kind, children }) => {
   );
 };
 
-const ApplyForm = ({ kind, info, onDone }) => {
+const ApplyForm = ({ kind, info, onDone, user }) => {
   const c = COPY[kind];
   const requireGstin = kind === 'AGENCY' ? info?.agency?.requireGstin : info?.corporate?.requireGstin;
-  const [f, setF] = useState({ incorporationType: kind === 'AGENCY' ? 'INDIVIDUAL' : 'PVT_LTD' });
+  // The contact details start from the account just created (they can change them)
+  const [f, setF] = useState({ incorporationType: kind === 'AGENCY' ? 'INDIVIDUAL' : 'PVT_LTD', billingEmail: user?.email || '', phone: user?.phone || '' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
@@ -398,6 +400,22 @@ const Dashboard = ({ orgId, info, user }) => {
   );
 };
 
+/** "1 Your account → 2 Business details" above the one-step sign-up and the application. */
+const Steps = ({ current }) => (
+  <ol className="flex items-center gap-3 text-sm" aria-label="Steps">
+    {['Your ZivoPlus account', 'Business details and documents'].map((label, i) => {
+      const n = i + 1; const done = n < current; const on = n === current;
+      return (
+        <li key={label} className="flex items-center gap-2" aria-current={on ? 'step' : undefined}>
+          {i > 0 && <span className="w-8 h-px bg-gray-300" aria-hidden="true" />}
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-600 text-white' : on ? 'bg-navy-800 text-white' : 'bg-gray-200 text-gray-600'}`}>{done ? '✓' : n}</span>
+          <span className={on ? 'font-semibold text-gray-900' : 'text-gray-500'}>{label}</span>
+        </li>
+      );
+    })}
+  </ol>
+);
+
 const BusinessPortal = ({ kind = 'CORPORATE' }) => {
   const c = COPY[kind];
   usePageTitle(c.name);
@@ -421,14 +439,24 @@ const BusinessPortal = ({ kind = 'CORPORATE' }) => {
   if (mine === undefined) body = <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Loading…</p>;
   else if (membership && membership.memberStatus === 'ACTIVE') body = <Dashboard orgId={membership.organisation.id} info={info} user={user} />;
   else if (membership) body = <Hero kind={kind}><p className="text-sm text-gray-700">Your access to {membership.organisation.name} is paused. Ask its admin.</p></Hero>;
-  else if (!user) {
+  else if (!user && open) {
+    // One step: create the account here, then the application form opens on the same page
+    body = (
+      <Hero kind={kind}>
+        <Steps current={1} />
+        <Signup embedded heading={`Step 1 of 2: your ZivoPlus account`} onCreated={() => { load(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+        {kind === 'CORPORATE' && info?.sso?.available && (
+          <p className="text-sm text-gray-600 text-center md:text-left">Your company uses Google Workspace or Microsoft sign-in with ZivoPlus? <Link to="/login?company=1" state={{ from: location }} className="font-semibold text-navy-800 underline">Sign in with your work account</Link></p>
+        )}
+      </Hero>
+    );
+  } else if (!user) {
     body = (
       <Hero kind={kind}>
         <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-8 flex flex-col md:flex-row md:items-center gap-4 justify-between">
-          <div><h2 className="text-xl font-bold text-gray-900">{open ? c.open : 'Opening soon'}</h2><p className="text-sm text-gray-600 mt-1">{open ? 'Sign in or create a ZivoPlus account, then apply with your business details.' : `${c.name} isn't taking applications yet. Already invited? Sign in.`}</p></div>
+          <div><h2 className="text-xl font-bold text-gray-900">Opening soon</h2><p className="text-sm text-gray-600 mt-1">{c.name} isn&apos;t taking applications yet. Already invited? Sign in.</p></div>
           <div className="flex gap-2">
             <Link to="/login" state={{ from: location }} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white px-6`}>Sign in</Link>
-            {open && <Link to="/signup" state={{ from: location }} className={`${btn} border border-gray-300 bg-white`}>Create account</Link>}
           </div>
         </div>
         {kind === 'CORPORATE' && info?.sso?.available && (
@@ -441,7 +469,7 @@ const BusinessPortal = ({ kind = 'CORPORATE' }) => {
   } else if (!open) {
     body = <Hero kind={kind}><p className="text-sm text-gray-700 bg-white border border-gray-200 rounded-2xl p-5">{c.name} isn&apos;t taking applications yet. Please check back soon.</p></Hero>;
   } else {
-    body = <Hero kind={kind}><ApplyForm kind={kind} info={info} onDone={load} /></Hero>;
+    body = <Hero kind={kind}><Steps current={2} /><ApplyForm kind={kind} info={info} onDone={load} user={user} /></Hero>;
   }
 
   return (

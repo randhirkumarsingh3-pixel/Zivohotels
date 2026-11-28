@@ -146,9 +146,16 @@ export const apply = async (user, input = {}) => {
     return o;
   });
   await audit('ORG_APPLIED', org.id, user.id, { kind, code: org.code, name: org.name, pan: org.pan, gstin: org.gstin });
+  const adminLink = `${org.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}`;
   await notifyAdmins({
     type: 'ORG_APPLIED', title: `New ${kind === 'AGENCY' ? 'travel agent' : 'business'} application`,
-    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.`, link: `${org.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}`,
+    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.`, link: adminLink,
+    email: { subject: `New ${PORTAL[kind].name} application: ${org.name} (${org.code})`, jobType: 'SEND_ORG_APPLIED', html: await emailLayout({
+      title: `New ${kind === 'AGENCY' ? 'travel agent' : 'company'} application`, eyebrow: PORTAL[kind].name, ref: org.code, status: { label: 'In review', tone: 'info' },
+      body: `<p><b>${org.name.replace(/[<>&]/g, '')}</b> applied for ${PORTAL[kind].name}. Check their details and documents, then approve, ask for more or reject.</p>`,
+      rows: [['Legal name', org.legalName.replace(/[<>&]/g, '')], ['PAN', org.pan], ['GSTIN', org.gstin || '—'], ['City', `${org.city}, ${org.state}`], ['Applied by', `${me.name} (${me.email})`]],
+      cta: { label: 'Review the application', href: `${site()}${adminLink}` },
+    }) },
   });
   await notifyUser(user.id, {
     type: 'ORG_APPLIED', title: 'Application received', message: `We're reviewing ${org.name}. Upload your documents to speed it up.`, link: PORTAL[kind].path,
