@@ -52,6 +52,7 @@ const Agreements = lazyPage(() => import('./admin/pages/Agreements'));
 const AdminAgreementTemplate = lazyPage(() => import('./admin/pages/AgreementTemplate'));
 const AdminOrganisations = lazyPage(() => import('./admin/pages/Organisations'));
 const AdminBusinessSettings = lazyPage(() => import('./admin/pages/BusinessSettings'));
+const AdminBusinessOverview = lazyPage(() => import('./admin/pages/BusinessOverview'));
 const BusinessPortal = lazyPage(() => import('./pages/BusinessPortal'));
 const ExtranetBusinessRates = lazyPage(() => import('./extranet/pages/ExtranetBusinessRates'));
 const ExtranetGstInvoices = lazyPage(() => import('./extranet/pages/ExtranetGstInvoices'));
@@ -199,6 +200,9 @@ function App() {
               <Route path="properties/new" element={<PropertyWizard />} />
               <Route path="agreements" element={<Agreements />} />
               <Route path="agreement-template" element={<AdminAgreementTemplate />} />
+              <Route path="business" element={<AdminBusinessOverview />} />
+              <Route path="companies" element={<AdminOrganisations kind="CORPORATE" />} />
+              <Route path="travel-agents" element={<AdminOrganisations kind="AGENCY" />} />
               <Route path="organisations" element={<AdminOrganisations />} />
               <Route path="business-settings" element={<AdminBusinessSettings />} />
               <Route path="bookings" element={<AdminBookings />} />

@@ -65,8 +65,8 @@ const INCORPORATION = ['INDIVIDUAL', 'PARTNERSHIP', 'LLP', 'PVT_LTD', 'PUBLIC_LT
 const audit = (action, entityId, userId, details) => prisma.auditLog.create({ data: { action, entityType: 'ORGANISATION', entityId, userId: userId || 'SYSTEM', details } }).catch(() => {});
 
 // ─── Shapes ──────────────────────────────────────────────────────────────────
-const docView = (d) => ({ id: d.id, type: d.type, label: DOC_TYPES[d.type] || d.type, name: d.name, mimeType: d.mimeType, size: d.size, uploadedAt: d.uploadedAt });
-const orgView = (org, settings) => ({
+const docView = (d) => ({ id: d.id, type: d.type, label: DOC_TYPES[d.type] || d.type, name: d.name, mimeType: d.mimeType, size: d.size, uploadedAt: d.uploadedAt, review: d.review || null });
+export const orgView = (org, settings) => ({
   id: org.id, kind: org.kind, code: org.code, portal: PORTAL[org.kind].name, name: org.name, legalName: org.legalName,
   incorporationType: org.incorporationType, pan: org.pan, gstin: org.gstin, address: org.address, city: org.city, state: org.state, pincode: org.pincode,
   billingEmail: org.billingEmail, phone: org.phone, website: org.website, status: org.status, statusNote: org.statusNote, reviewedAt: org.reviewedAt,
@@ -88,7 +88,7 @@ export const publicInfo = async () => {
   };
 };
 
-const nextCode = async (kind, db) => {
+export const nextCode = async (kind, db) => {
   const prefix = PORTAL[kind].prefix;
   const n = await db.organisation.count({ where: { kind } });
   for (let i = 1; i <= 50; i += 1) {
@@ -99,7 +99,7 @@ const nextCode = async (kind, db) => {
 };
 
 /** Checks and normalises legal details; throws with a clear message. */
-const legalDetails = (input, { kind, requireGstin }) => {
+export const legalDetails = (input, { kind, requireGstin }) => {
   const d = {
     name: clean(input.name, 120), legalName: clean(input.legalName, 160),
     incorporationType: INCORPORATION.includes(input.incorporationType) ? input.incorporationType : null,
@@ -148,7 +148,7 @@ export const apply = async (user, input = {}) => {
   await audit('ORG_APPLIED', org.id, user.id, { kind, code: org.code, name: org.name, pan: org.pan, gstin: org.gstin });
   await notifyAdmins({
     type: 'ORG_APPLIED', title: `New ${kind === 'AGENCY' ? 'travel agent' : 'business'} application`,
-    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.`, link: `/admin/organisations?id=${org.id}`,
+    message: `${org.name} (${org.code}) applied for ${PORTAL[kind].name}.`, link: `${org.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}`,
   });
   await notifyUser(user.id, {
     type: 'ORG_APPLIED', title: 'Application received', message: `We're reviewing ${org.name}. Upload your documents to speed it up.`, link: PORTAL[kind].path,
@@ -212,7 +212,7 @@ export const updateOrganisation = async (orgId, user, input = {}) => {
   const updated = await prisma.organisation.update({ where: { id: org.id }, data });
   await audit('ORG_UPDATED', org.id, user.id, { fields: Object.keys(data) });
   if (org.status === 'ON_HOLD' && updated.status === 'IN_REVIEW') {
-    await notifyAdmins({ type: 'ORG_RESUBMITTED', title: 'Organisation updated for review', message: `${updated.name} (${updated.code}) sent updated details.`, link: `/admin/organisations?id=${org.id}` });
+    await notifyAdmins({ type: 'ORG_RESUBMITTED', title: 'Organisation updated for review', message: `${updated.name} (${updated.code}) sent updated details.`, link: `${updated.kind === 'AGENCY' ? '/admin/travel-agents' : '/admin/companies'}?id=${org.id}` });
   }
   return orgView(updated, s);
 };
@@ -314,7 +314,7 @@ export const readDocument = async (orgId, docId, { user, staff = false }) => {
 };
 
 // ─── Members ─────────────────────────────────────────────────────────────────
-const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, grade: m.grade || null, approverMemberId: m.approverMemberId || null, costCenter: m.costCenter || null, delegateMemberId: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateMemberId : null, delegateUntil: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateUntil : null, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
+export const memberView = (m) => ({ id: m.id, role: m.role, roleLabel: ROLES[m.role], status: m.status, joinedAt: m.createdAt, grade: m.grade || null, approverMemberId: m.approverMemberId || null, costCenter: m.costCenter || null, delegateMemberId: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateMemberId : null, delegateUntil: m.delegateUntil && new Date(m.delegateUntil) > new Date() ? m.delegateUntil : null, user: { id: m.user.id, name: m.user.name, email: m.user.email, invited: m.user.status === 'INVITED' } });
 
 export const listMembers = async (orgId, user) => {
   const { org } = await membershipFor(orgId, user, 'members.view');
@@ -322,9 +322,14 @@ export const listMembers = async (orgId, user) => {
   return rows.map(memberView);
 };
 
-export const inviteMember = async (orgId, actor, { email, name, role } = {}) => {
+export const inviteMember = async (orgId, actor, input = {}) => {
   const { org } = await membershipFor(orgId, actor, 'members.manage');
   if (org.status !== 'ACTIVE') throw fail('You can invite people once ZivoPlus approves your organisation.', 409);
+  return addMember(org, actor, input);
+};
+
+/** Adds a person to an organisation (a new account gets a set-password link) and emails them. */
+export const addMember = async (org, actor, { email, name, role } = {}) => {
   if (!ROLES[role]) throw fail('Choose a role.');
   const mail = String(email || '').trim().toLowerCase();
   if (!isEmail(mail)) throw fail('Enter a valid email address.');

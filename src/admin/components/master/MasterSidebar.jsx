@@ -1,6 +1,6 @@
 import { Children, createContext, useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge, ListChecks, FileText, HeartPulse, Briefcase, Handshake } from 'lucide-react';
+import { Clock, LayoutDashboard, Ticket, MessageSquareText, Award, Crown, Building2, CalendarDays, IndianRupee, ClipboardList, Users, Network, BarChart3, Settings, LogOut, FileSignature, ClipboardCheck, TrendingUp, Wallet, Zap, Target, FlaskConical, Activity, AlertTriangle, X, BookOpenCheck, ShieldCheck, Globe, MapPinned, Receipt, SlidersHorizontal, Gauge, ListChecks, FileText, HeartPulse, Briefcase, Handshake, LayoutGrid, Settings2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useAccess from '../../../hooks/useAccess';
 import Logo from '../../../components/brand/Logo';
@@ -85,9 +85,11 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem perm="settings.view" name="Agreement Template" path="/admin/agreement-template" icon={<FileText size={18} />} />
         </NavGroup>
 
-        <NavGroup title="Business">
-          <NavItem perm="business.view" name="Organisations" path="/admin/organisations" icon={<Briefcase size={18} />} />
-          <NavItem perm="business.view" name="Business Settings" path="/admin/business-settings" icon={<Handshake size={18} />} />
+        <NavGroup title="Business & Partners">
+          <NavItem perm="business.view" name="Overview" path="/admin/business" icon={<LayoutGrid size={18} />} />
+          <NavItem perm="business.view" name="ZivoPlus for Business" path="/admin/companies" icon={<Briefcase size={18} />} />
+          <NavItem perm="business.view" name="ZivoPlus Partner Hub" path="/admin/travel-agents" icon={<Handshake size={18} />} />
+          <NavItem perm="business.view" name="Business Settings" path="/admin/business-settings" icon={<Settings2 size={18} />} />
         </NavGroup>
 
         <NavGroup title="Bookings">

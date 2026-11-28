@@ -108,7 +108,7 @@ const BusinessSettings = () => {
           <h1 className="text-2xl font-bold text-gray-900">Business settings</h1>
           <p className="text-sm text-gray-600 mt-1">Defaults for companies and travel agents. You can set different terms on any organisation.</p>
         </div>
-        <Link to="/admin/organisations" className="text-sm font-semibold text-navy-800 underline">Organisations</Link>
+        <Link to="/admin/business" className="text-sm font-semibold text-navy-800 underline">Business &amp; Partners</Link>
       </div>
       <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
         <h2 className="font-bold text-gray-900 flex items-center gap-2"><Briefcase size={18} aria-hidden="true" /> ZivoPlus for Business (companies)</h2>

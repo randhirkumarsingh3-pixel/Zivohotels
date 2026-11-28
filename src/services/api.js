@@ -609,6 +609,15 @@ export const adminBusinessApi = {
   rateHotels: (id, q) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/hotels?q=${encodeURIComponent(q || '')}`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
   proposeRate: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates`, jsonBody('POST', body), 0).then((r) => r?.data),
   endRate: (id, rateId, note) => apiFetch(`${ADMIN_BASE}/organisations/${id}/rates/${rateId}/end`, jsonBody('POST', { note }), 0).then((r) => r?.data),
+  // Business & Partners: overview, add on their behalf, correct details, KYC checks, team, bookings, reports
+  overview: () => apiFetch(`${ADMIN_BASE}/organisations/overview`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  create: (body) => apiFetch(`${ADMIN_BASE}/organisations`, jsonBody('POST', body), 0).then((r) => r?.data),
+  profile: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/profile`, jsonBody('PUT', body), 0).then((r) => r?.data),
+  reviewDocument: (id, docId, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/documents/${docId}/review`, jsonBody('POST', body), 0).then((r) => r?.data),
+  addMember: (id, body) => apiFetch(`${ADMIN_BASE}/organisations/${id}/members`, jsonBody('POST', body), 0).then((r) => r?.data),
+  bookings: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/bookings?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  report: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/report?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  reportCsv: (id, q = {}) => apiFetch(`${ADMIN_BASE}/organisations/${id}/report.csv?${qs(q)}`, { responseType: 'blob' }, 0),
 };
 // Extranet → GST invoices: the property's invoices for business (GSTIN) bookings
 export const hotelGstInvoicesApi = {
