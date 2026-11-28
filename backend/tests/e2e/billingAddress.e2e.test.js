@@ -1,6 +1,7 @@
 /**
  * GST rule 46: an individual's tax invoice of ₹50,000 or more carries their address and state.
- * Website checkout asks for them above that amount; the invoice prints them.
+ * Website checkout asks for them above that amount when ZivoPlus issues the tax invoice; the
+ * invoice prints them. When the hotel issues it, checkout doesn't ask (the hotel collects them).
  */
 import axios from 'axios';
 import { expect } from 'chai';
@@ -18,7 +19,7 @@ const inDays = (n) => { const d = new Date(`${istToday()}T00:00:00.000Z`); d.set
 
 describe('Billing address on large invoices for individuals', function () {
   this.timeout(60000);
-  let auth; let hotel; let room; const made = [];
+  let auth; let admin; let savedDocs; let hotel; let room; const made = [];
   const body = (rooms, extra = {}) => ({
     hotelId: hotel.id, roomTypeId: room.id, ratePlanId: room.ratePlans[0].id, rooms, adults: rooms, children: 0,
     checkIn: inDays(120), checkOut: inDays(122), paymentType: 'PREPAID', guestName: 'Kiran Desai', guestEmail: 'kiran@example.com', guestPhone: '9876501234',
@@ -28,12 +29,16 @@ describe('Billing address on large invoices for individuals', function () {
   before(async () => {
     const login = await api.post('/auth/login', { email: 'user@zivoplus.com', password: process.env.SEED_CUSTOMER_PASSWORD || 'customer123' });
     auth = { headers: { Authorization: `Bearer ${login.data.data.token}` } };
+    admin = { headers: { Authorization: `Bearer ${(await api.post('/auth/login', { email: 'admin@zivoplus.com', password: 'admin123' })).data.data.token}` } };
+    savedDocs = (await api.get('/admin/documents', admin)).data.data.settings;
+    await api.put('/admin/documents', { guestInvoice: { mode: 'ON_BEHALF' } }, admin);
     const hotels = await prisma.hotel.findMany({ where: { status: { in: ['LIVE', 'ACTIVE'] }, isDeleted: false }, include: { roomTypes: { where: { isActive: true }, include: { ratePlans: { where: { isActive: true, basePrice: { gt: 0 } } } } } } });
     // A room type where a few rooms for two nights come to more than ₹50,000
     for (const h of hotels) for (const rt of h.roomTypes) if (!room && rt.ratePlans.length && rt.totalInventory >= 4 && Number(rt.ratePlans[0].basePrice) * 2 * Math.min(8, rt.totalInventory) > 60000) { hotel = h; room = rt; }
   });
 
   after(async () => {
+    if (savedDocs) await api.put('/admin/documents', { guestInvoice: { mode: savedDocs.guestInvoice.mode } }, admin);
     for (const id of made) await api.post(`/bookings/${id}/cancel`, {}, auth).catch(() => {});
   });
 
@@ -48,6 +53,7 @@ describe('Billing address on large invoices for individuals', function () {
     const rooms = Math.min(8, room.totalInventory);
     const p = await api.post('/bookings/preview', body(rooms), auth);
     expect(p.data.data.totalAmount).to.be.at.least(50000);
+    expect(p.data.data.billingAddressFrom).to.equal(50000);
     const without = await api.post('/bookings', body(rooms), auth);
     expect(without.status).to.equal(400);
     expect(without.data.message).to.match(/billing address/i);
@@ -60,5 +66,16 @@ describe('Billing address on large invoices for individuals', function () {
     expect(b).to.include({ billingAddress: '12 Hill Road, Bandra West, Mumbai 400050', billingStateCode: '27' });
     const html = guestInvoiceHtml({ booking: b, hotel: b.hotel, rooms: b.bookingRooms, invoiceRef: 'ZIV/26-27/000001', brand: await brandContext() });
     expect(html).to.include('12 Hill Road, Bandra West, Mumbai 400050').and.include('State: Maharashtra (27)');
+  });
+
+  it('when the hotel issues the tax invoice, checkout does not ask for the address', async () => {
+    await api.put('/admin/documents', { guestInvoice: { mode: 'HOTEL_ISSUES' } }, admin);
+    const rooms = Math.min(8, room.totalInventory);
+    const p = await api.post('/bookings/preview', body(rooms, { checkIn: inDays(130), checkOut: inDays(132) }), auth);
+    expect(p.data.data.totalAmount).to.be.at.least(50000);
+    expect(p.data.data.billingAddressFrom).to.equal(null);
+    const r = await api.post('/bookings', body(rooms, { checkIn: inDays(130), checkOut: inDays(132) }), auth);
+    expect(r.status, JSON.stringify(r.data)).to.be.oneOf([200, 201]);
+    made.push(r.data.data.id);
   });
 });

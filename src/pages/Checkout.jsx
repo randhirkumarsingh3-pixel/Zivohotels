@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useAllExperiments } from '../context/ExperimentContext';
 import { getImageUrl } from '../utils/image';
-import { GST_STATES, BILLING_ADDRESS_FROM } from '../utils/gstStates';
+import { GST_STATES } from '../utils/gstStates';
 import usePageTitle from '../hooks/usePageTitle';
 import { occupancyOf, occParams, roomGuestsLabel } from '../utils/occupancy';
 import { payForBooking, deadlineLabel } from '../utils/payBooking';
@@ -191,7 +191,10 @@ const Checkout = () => {
 
   // Fiscal values from Backend Preview
   const total = preview?.totalAmount || 0;
-  const needsBilling = total >= BILLING_ADDRESS_FROM && !(withCompany && company.gstin.trim());
+  // Asked only when ZivoPlus issues the tax invoice (the preview says from what value); when the
+  // hotel issues it, the hotel collects the guest's address
+  const billingFrom = preview?.billingAddressFrom ?? null;
+  const needsBilling = billingFrom != null && total >= billingFrom && !(withCompany && company.gstin.trim());
   const roomPrice = preview?.roomPrice || 0;
   const extraGuestCharges = preview?.extraGuestCharges || 0;
   const extraBedCharges = preview?.extraBedCharges || 0;
@@ -236,7 +239,7 @@ const Checkout = () => {
       setError(multiRoom ? `Enter the lead guest's name for room ${unnamed + 1}.` : 'Enter the guest\'s name.');
       return;
     }
-    if (needsBilling && (billing.address.trim().length < 8 || !billing.stateCode)) { setError('Add your billing address and state: GST needs them on invoices of ₹50,000 or more.'); return; }
+    if (needsBilling && (billing.address.trim().length < 8 || !billing.stateCode)) { setError(`Add your billing address and state: GST needs them on invoices of ₹${Number(billingFrom).toLocaleString('en-IN')} or more.`); return; }
     if (withCompany) {
       if (!company.name.trim()) { setError('Enter the company name for the GST invoice, or untick "Add company / GST details".'); return; }
       if (company.gstin && !GSTIN_RE.test(company.gstin.trim())) { setError('Enter a valid 15-character GSTIN (for example 27ABCDE1234F1Z5).'); return; }
@@ -593,7 +596,7 @@ const Checkout = () => {
               )}
               {needsBilling && (
                 <fieldset className="mt-6">
-                  <legend className="text-sm font-bold text-gray-800">Billing address <span className="font-medium text-gray-500">(GST needs it on invoices of ₹50,000 or more)</span></legend>
+                  <legend className="text-sm font-bold text-gray-800">Billing address <span className="font-medium text-gray-500">(GST needs it on invoices of ₹{Number(billingFrom).toLocaleString('en-IN')} or more)</span></legend>
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
                     <input type="text" aria-label="Billing address" value={billing.address} onChange={(e) => setBilling({ ...billing, address: e.target.value })} placeholder="House / flat, street, city, PIN code" maxLength={300} autoComplete="street-address"
                       className="w-full bg-gray-50 border-b-2 border-b-gray-200 rounded-t-xl px-4 py-3 focus:bg-white focus:border-b-brand-700 outline-none font-medium" />
