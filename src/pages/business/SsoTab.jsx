@@ -151,6 +151,11 @@ export const SsoTab = ({ org }) => {
 
   return (
     <div className="space-y-5">
+      {data.testMode && (
+        <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <b>Setup mode.</b> ZivoPlus hasn&apos;t connected Google Workspace and Microsoft yet. Until then, &quot;Test sign-in&quot; and your employees&apos; sign-ins go to a ZivoPlus test page where they confirm their work email with a one-time code. Your settings carry over when the real connection is switched on.
+        </p>
+      )}
       <section className={`rounded-2xl p-5 border ${c.enabled && data.config.enabled ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

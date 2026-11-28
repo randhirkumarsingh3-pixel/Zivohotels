@@ -271,6 +271,9 @@ export const loginCodeVerifyApi = (identifier, code) => post('/auth/login/code/v
 export const googleSignInApi = (credential) => post('/auth/google', { credential });
 /** Company sign-in: the work email decides the company and provider; returns { url } to go to. */
 export const companySsoStartApi = (email, returnTo) => post('/auth/sso/start', { email, returnTo });
+/** Company sign-in in setup mode: the test sign-in page proves the work email with a code. */
+export const companySsoTestCodeApi = (state, email) => post('/auth/sso/test-idp/code', { state, email });
+export const companySsoTestVerifyApi = (state, email, code, name) => post('/auth/sso/test-idp/verify', { state, email, code, name });
 export const phoneCodeSendApi = (phone) => post('/auth/phone/code', { phone });
 export const phoneVerifyApi = (phone, code) => post('/auth/phone/verify', { phone, code });
 export const logoutAllApi = () => post('/auth/logout-all');

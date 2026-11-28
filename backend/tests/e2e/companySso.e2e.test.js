@@ -230,6 +230,36 @@ describe('Company sign-in (Google Workspace / Microsoft)', function () {
     expect(right.location).to.match(/\/business$/);
   });
 
+  it('setup mode: ZivoPlus\'s test page stands in for the provider; the email is proved with a code', async () => {
+    const svc = await import('../../services/business/companySso.js');
+    process.env.SSO_TEST_MODE = 'true';
+    try {
+      expect(svc.providersOffered()).to.deep.equal({ GOOGLE: true, MICROSOFT: true });
+      const { url } = await svc.startLogin(`ravi@${domain}`, '/business');
+      expect(url).to.include('/sso-test-signin?').and.include('provider=MICROSOFT');
+      const state = new URL(url).searchParams.get('state');
+      let refused = await svc.testSendCode({ state, email: 'ravi@elsewhere.in' }).catch((e) => e);
+      expect(refused.statusCode).to.equal(422);
+      const sent = await svc.testSendCode({ state, email: `ravi@${domain}` });
+      expect(sent.testCode, 'codes are shown while emails are in test mode').to.match(/^\d{6}$/);
+      refused = await svc.testVerify({ state, email: `ravi@${domain}`, code: '000000' }).catch((e) => e);
+      expect(refused).to.be.instanceOf(Error);
+      const ok = await svc.testVerify({ state, email: `ravi@${domain}`, code: sent.testCode, name: 'Ravi Kumar' });
+      const back = new URL(ok.redirect);
+      expect(back.pathname).to.equal('/api/v1/auth/sso/callback');
+      // A changed code is refused; the genuine one signs Ravi in
+      const forged = await svc.completeSignIn({ state, code: `${back.searchParams.get('code')}x` }).catch((e) => e);
+      expect(forged.message).to.include('confirmed');
+      const { url: again } = await svc.startLogin(`ravi@${domain}`, '/business');
+      const st2 = new URL(again).searchParams.get('state');
+      const c2 = await svc.testSendCode({ state: st2, email: `ravi@${domain}` });
+      const ok2 = await svc.testVerify({ state: st2, email: `ravi@${domain}`, code: c2.testCode });
+      const r = await svc.completeSignIn({ state: st2, code: new URL(ok2.redirect).searchParams.get('code') });
+      expect(r.kind).to.equal('LOGIN');
+      expect(r.user.email).to.equal(`ravi@${domain}`);
+    } finally { delete process.env.SSO_TEST_MODE; }
+  });
+
   it('removing the last verified domain turns company sign-in off', async () => {
     const s = (await api.get(`/business/${orgId}/sso`, auth(admin))).data.data;
     expect((await api.delete(`/business/${orgId}/sso/domains/${s.domains[0].id}`, auth(admin))).status).to.equal(200);
