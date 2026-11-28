@@ -17,13 +17,15 @@ import Logo from './brand/Logo';
  * Membership are on the home page and in the footer.
  * Signed in: Hotels, My Bookings, Saved, Zivo Cash (live balance), Zivo Rewards (live tier and
  * points), the person's own company / agency portal if they belong to one, and "Hi, Name" (menu:
- * My account, Membership, the three business products, Log out). Below 1280 px the menu button
+ * My account, Membership, their company / agency accounts if any, Log out). Below 1280 px the menu button
  * opens the same items. The logo is unchanged.
  */
 const [BUSINESS, PARTNER_HUB, LIST_PROPERTY] = FOR_BUSINESS;
 const PORTAL = { CORPORATE: BUSINESS, AGENCY: PARTNER_HUB };
 
-/** The signed-in guest's own portals (companies / agencies they are an active member of). */
+/** The signed-in guest's companies / agencies (active members only): { to, name, Icon, orgName, role, status }. */
+const ROLE_NAMES = { ADMIN: 'Admin', BOOKER: 'Booker', APPROVER: 'Approver', FINANCE: 'Finance', TRAVELLER: 'Traveller' };
+const STATUS_NAMES = { ACTIVE: 'Active', IN_REVIEW: 'In review', ON_HOLD: 'More details asked', SUSPENDED: 'Suspended' };
 const useMyPortals = (enabled) => {
   const [portals, setPortals] = useState([]);
   useEffect(() => {
@@ -31,8 +33,8 @@ const useMyPortals = (enabled) => {
     let live = true;
     businessApi.mine().then((rows) => {
       if (!live) return;
-      const kinds = [...new Set((rows || []).filter((m) => m.memberStatus === 'ACTIVE' && !['REJECTED'].includes(m.organisation?.status)).map((m) => m.organisation.kind))];
-      setPortals(kinds.map((k) => PORTAL[k]).filter(Boolean));
+      setPortals((rows || []).filter((m) => m.memberStatus === 'ACTIVE' && m.organisation?.status !== 'REJECTED' && PORTAL[m.organisation?.kind])
+        .map((m) => ({ ...PORTAL[m.organisation.kind], orgId: m.organisation.id, orgName: m.organisation.name, role: ROLE_NAMES[m.role] || m.role, status: STATUS_NAMES[m.organisation.status] || m.organisation.status })));
     }).catch(() => {});
     return () => { live = false; };
   }, [enabled]);
@@ -126,7 +128,7 @@ const Header = () => {
     guest && { to: '/saved', Icon: Heart, title: 'Saved', sub: 'Price-drop alerts', red: true },
     guest && { to: '/wallet', Icon: Wallet, title: 'Zivo Cash', sub: summary.balance !== undefined ? `${inr(summary.balance)} balance` : 'Your balance' },
     guest && { to: '/rewards', Icon: Award, title: 'Zivo Rewards', sub: summary.rewards ? `${summary.rewards.tier?.name ? `${summary.rewards.tier.name} · ` : ''}${Number(summary.rewards.available || 0).toLocaleString('en-IN')} points` : 'Points on every stay' },
-    ...myPortals.map((p) => ({ to: p.to, Icon: p.Icon || Building2, title: p.name, sub: 'Your account' })),
+    ...[...new Map(myPortals.map((p) => [p.to, p])).values()].map((p) => ({ to: p.to, Icon: p.Icon || Building2, title: p.name, sub: p.orgName })),
     staffLink,
   ] : [
     { to: '/hotels', Icon: BedDouble, title: 'Hotels', sub: 'Stays across India' },
@@ -154,13 +156,15 @@ const Header = () => {
                     <Link to="/account" className={menuItem}><User size={17} className="text-navy-700" aria-hidden="true" /> My account</Link>
                     <Link to="/membership" className={menuItem}><Crown size={17} className="text-navy-700" aria-hidden="true" /> Membership</Link>
                     {!guest && <Link to="/my-bookings" className={menuItem}><CalendarDays size={17} className="text-navy-700" aria-hidden="true" /> My Bookings</Link>}
-                    <p className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-gray-500">Work with ZivoPlus</p>
-                    {FOR_BUSINESS.map(({ to, name, Icon, short }) => (
-                      <Link key={to} to={to} className={menuItem}>
-                        <Icon size={17} className="text-navy-700" aria-hidden="true" />
-                        <span><span className="block text-gray-900">{name}</span><span className="block text-xs text-gray-500">{short}</span></span>
-                      </Link>
-                    ))}
+                    {myPortals.length > 0 && <>
+                      <p className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-gray-500">Your accounts</p>
+                      {myPortals.map(({ to, Icon, name, orgId, orgName, role, status }) => (
+                        <Link key={orgId} to={to} className={menuItem}>
+                          <Icon size={17} className="text-navy-700" aria-hidden="true" />
+                          <span><span className="block text-gray-900 font-semibold">{orgName}</span><span className="block text-xs text-gray-500">{name} · {role} · {status}</span></span>
+                        </Link>
+                      ))}
+                    </>}
                     <div className="border-t border-gray-100 mt-2 pt-2">
                       <button type="button" onClick={handleLogout} className={menuItem}><LogOut size={17} aria-hidden="true" /> Log out</button>
                     </div>
@@ -201,13 +205,13 @@ const Header = () => {
             {isAuthenticated && <NavLink to="/account" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">My account</NavLink>}
             {isAuthenticated && <NavLink to="/membership" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">Membership</NavLink>}
             <Link to="/help" className="px-2 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50">Help</Link>
-            {isAuthenticated && (
+            {myPortals.length > 0 && (
               <>
-                <p className="px-2 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-gray-500">Work with ZivoPlus</p>
-                {FOR_BUSINESS.map(({ to, name, Icon, short }) => (
-                  <NavLink key={to} to={to} className={({ isActive }) => `px-2 py-2.5 rounded-lg flex items-center gap-3 ${isActive ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
+                <p className="px-2 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-gray-500">Your accounts</p>
+                {myPortals.map(({ to, Icon, name, orgId, orgName, role, status }) => (
+                  <NavLink key={orgId} to={to} className={mobileLinkCls}>
                     <span className="w-9 h-9 rounded-lg bg-navy-50 text-navy-800 flex items-center justify-center shrink-0"><Icon size={18} aria-hidden="true" /></span>
-                    <span><span className="block text-base font-medium text-gray-900">{name}</span><span className="block text-xs text-gray-500">{short}</span></span>
+                    <span><span className="block text-base font-medium text-gray-900">{orgName}</span><span className="block text-xs text-gray-500">{name} · {role} · {status}</span></span>
                   </NavLink>
                 ))}
               </>
