@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
 import { roundMoney, toMoney } from '../utils/money.js';
 import { bookingForExtensionOrder, applyExtension } from '../services/hourlyExtension.js';
+import { feeDueNow, feeOf } from '../services/serviceFee.js';
 
 // Keys are validated at server boot in server.js — no fallbacks here.
 const razorpay = new Razorpay({
@@ -103,8 +104,9 @@ export const createOrder = asyncHandler(async (req, res) => {
     if (booking.paymentType === 'PARTIAL') {
       amountToCharge = roundMoney(booking.totalAmount * (config.partialPaymentPercent / 100)); // Dynamic upfront, to the paisa
     }
-    // The part already paid with Zivo Cash isn't charged again
-    amountToCharge = roundMoney(amountToCharge - (toMoney(booking.walletAmount) || 0));
+    // ZivoPlus's service fee (if any) is paid with the first payment; Zivo Cash already used isn't
+    // charged again
+    amountToCharge = roundMoney(amountToCharge + feeDueNow(booking) - (toMoney(booking.walletAmount) || 0));
     if (!(amountToCharge > 0)) {
       return res.status(400).json({ success: false, message: 'Nothing left to pay for this booking', requestId: req.id });
     }
@@ -178,7 +180,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       try {
         await razorpay.payments.refund(razorpay_payment_id, {
           // Only the card / UPI part; Zivo Cash used on it is returned to the wallet automatically
-          amount: Math.round((booking.totalAmount * (booking.paymentType === 'PARTIAL' ? 0.3 : 1) - (toMoney(booking.walletAmount) || 0)) * 100)
+          amount: Math.round((roundMoney(booking.totalAmount * (booking.paymentType === 'PARTIAL' ? ((await getSystemConfig()).partialPaymentPercent / 100) : 1)) + feeDueNow(booking) - (toMoney(booking.walletAmount) || 0)) * 100)
         });
       } catch (refundErr) {
         console.error("Failed to process auto-refund for late payment", refundErr);
@@ -222,7 +224,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
         paidAmount: amountPaid,
-        remainingAmount: roundMoney(booking.totalAmount - amountPaid)
+        remainingAmount: roundMoney(booking.totalAmount - amountPaid),
+        // The service fee came with this payment
+        ...(feeDueNow(booking) > 0 ? { metadata: { ...(booking.metadata || {}), serviceFeePaid: true } } : {}),
       }
     });
 
@@ -304,9 +308,10 @@ export const webhook = asyncHandler(async (req, res) => {
             status: 'CONFIRMED',
             ...(booking.paymentType === 'PAY_AT_HOTEL' ? { paymentType: 'PREPAID' } : {}),
             razorpayPaymentId: payment.id,
-            // Card / UPI amount plus any Zivo Cash used on the booking
-            paidAmount: roundMoney(payment.amount / 100 + (toMoney(booking.walletAmount) || 0)),
-            remainingAmount: roundMoney(booking.totalAmount - (payment.amount / 100) - (toMoney(booking.walletAmount) || 0))
+            // Card / UPI amount plus any Zivo Cash used on the booking, less the service fee it carried
+            paidAmount: roundMoney(payment.amount / 100 + (toMoney(booking.walletAmount) || 0) - feeDueNow(booking)),
+            remainingAmount: roundMoney(booking.totalAmount - (payment.amount / 100) - (toMoney(booking.walletAmount) || 0) + feeDueNow(booking)),
+            ...(feeDueNow(booking) > 0 ? { metadata: { ...(booking.metadata || {}), serviceFeePaid: true } } : {}),
           }
         });
 
@@ -415,15 +420,18 @@ export const refundPayment = asyncHandler(async (req, res) => {
 
     // Trigger Razorpay Refund
     // Card / UPI part only; Zivo Cash used on the booking goes back to the wallet automatically
+    // (with the service fee: a full refund returns it too)
+    const fee = feeOf(booking);
+    const feeBack = fee.paid && !(fee.refunded > 0) ? fee.amount : 0;
     const refund = await razorpay.payments.refund(booking.razorpayPaymentId, {
-      amount: Math.round(((toMoney(booking.paidAmount) || 0) - (toMoney(booking.walletAmount) || 0)) * 100)
+      amount: Math.round(((toMoney(booking.paidAmount) || 0) + feeBack - (toMoney(booking.walletAmount) || 0)) * 100)
     });
 
     await prisma.$transaction(async (tx) => {
       // 1. Cancel booking and mark refunded
       await tx.booking.update({
         where: { id: bookingId },
-        data: { status: 'CANCELLED', paymentStatus: 'REFUNDED', remainingAmount: booking.totalAmount }
+        data: { status: 'CANCELLED', paymentStatus: 'REFUNDED', remainingAmount: booking.totalAmount, ...(feeBack > 0 ? { metadata: { ...(booking.metadata || {}), serviceFeeRefunded: feeBack } } : {}) }
       });
 
       // 2. Restore inventory

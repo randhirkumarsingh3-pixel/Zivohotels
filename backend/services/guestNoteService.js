@@ -30,7 +30,8 @@ const loadBooking = (bookingId) => prisma.booking.findUnique({
 
 /** The invoice's value now: as issued, plus debit notes, less credit notes. */
 export const invoicedValue = async (invoice, fallback = {}) => {
-  const notes = await prisma.guestNote.findMany({ where: { invoiceId: invoice.id }, select: { kind: true, amount: true, taxAmount: true } });
+  // (the service fee is ZivoPlus's own charge, not part of the invoiced stay: its note doesn't count)
+  const notes = await prisma.guestNote.findMany({ where: { invoiceId: invoice.id, NOT: { key: 'service-fee' } }, select: { kind: true, amount: true, taxAmount: true } });
   let total = invoice.totalAmount != null ? Number(invoice.totalAmount) : Number(fallback.total || 0);
   let tax = invoice.taxAmount != null ? Number(invoice.taxAmount) : Number(fallback.tax || 0);
   for (const n of notes) {

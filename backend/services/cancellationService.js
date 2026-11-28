@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { feeRefundOnCancel, feeOf } from './serviceFee.js';
 import ledgerService from './finance/ledgerService.js';
 import { move as moveWallet } from './finance/walletService.js';
 import { syncBooking as syncLoyalty } from './loyaltyService.js';
@@ -55,12 +56,17 @@ export const previewGuestCancellation = async (booking) => {
   const hourly = booking.stayType === 'HOURLY' ? hourlyGuestRefund(booking) : null;
   const { refundAmount, policyApplied, memberWaiver } = hourly || guestRefund(booking, policy);
   // Zivo Cash used on the booking goes back to the wallet; for the rest the guest can choose
-  const walletPart = Math.min(refundAmount, toMoney(booking.walletAmount) || 0);
+  // ZivoPlus's service fee: back only if it was refundable (shown separately)
+  const serviceFeeRefund = feeRefundOnCancel(booking, 'GUEST');
+  const fee = feeOf(booking);
+  const back = roundMoney(refundAmount + serviceFeeRefund);
+  const walletPart = Math.min(back, toMoney(booking.walletAmount) || 0);
   return {
     paidAmount,
-    refundAmount,
+    refundAmount: back,
+    serviceFeeRefund, serviceFeeKept: fee.paid && !serviceFeeRefund ? fee.amount : 0,
     walletRefund: roundMoney(walletPart),
-    choosableRefund: roundMoney(refundAmount - walletPart),
+    choosableRefund: roundMoney(back - walletPart),
     retainedAmount: roundMoney(paidAmount - refundAmount),
     memberWaiver,
     memberPlan: memberWaiver > 0 ? booking.metadata?.membership?.plan : null,
@@ -114,6 +120,10 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
     policyApplied = `CANCELLED_BY_${initiatedBy}`; // full refund
   }
   const retainedAmount = roundMoney(paidAmount - refundAmount);
+  // ZivoPlus's service fee (if one was paid): back when the hotel or ZivoPlus cancels, and when the
+  // guest cancels only if the fee was refundable. Not part of the stay's refund (refundAmount).
+  const feeBack = feeRefundOnCancel(booking, initiatedBy);
+  const moneyBack = roundMoney(refundAmount + feeBack);
 
   // Where the refund goes. Zivo Cash used on the booking always goes back to the wallet; the rest
   // goes back to the card / UPI, or to Zivo Cash (instant) only when the guest chose that.
@@ -121,22 +131,22 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   const isPaid = ['PAID', 'PARTIAL_PAID'].includes(booking.paymentStatus);
   let toWallet = 0;
   if (isPaid) {
-    toWallet = Math.min(refundAmount, walletUsed);
-    if (refundTo === 'WALLET' && initiatedBy === 'GUEST' && booking.userId) toWallet = refundAmount;
+    toWallet = Math.min(moneyBack, walletUsed);
+    if (refundTo === 'WALLET' && initiatedBy === 'GUEST' && booking.userId) toWallet = moneyBack;
   }
   toWallet = roundMoney(toWallet);
   // Business bookings (ZivoPlus for Business / Partner Hub) were paid from the organisation's
   // account: the refund goes back there
   const toOrg = booking.organisationId && isPaid ? roundMoney(refundAmount) : 0;
   if (toOrg > 0) toWallet = 0;
-  const toSource = toOrg > 0 ? 0 : roundMoney(refundAmount - toWallet);
+  const toSource = toOrg > 0 ? 0 : roundMoney(moneyBack - toWallet);
   // Never completed (abandoned at checkout): the Zivo Cash put towards it comes back in full
   const walletReturned = !isPaid && walletUsed > 0 && booking.userId ? walletUsed : 0;
 
   const refundRecord = await prisma.refund.upsert({
     where: { bookingId },
-    update: { status: 'INITIATED', amount: refundAmount, retryCount: { increment: 1 }, lastAttemptAt: new Date(), requestId },
-    create: { bookingId, amount: refundAmount, status: 'INITIATED', lastAttemptAt: new Date(), requestId }
+    update: { status: 'INITIATED', amount: moneyBack, retryCount: { increment: 1 }, lastAttemptAt: new Date(), requestId },
+    create: { bookingId, amount: moneyBack, status: 'INITIATED', lastAttemptAt: new Date(), requestId }
   });
 
   // Razorpay refund (outside the DB transaction, with an idempotency key)
@@ -203,7 +213,9 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         refundAmount,
         cancelledAt: new Date(),
         // With no refund, the payment status is unchanged; refundAmount records what was returned
-        paymentStatus: refundAmount > 0 ? 'REFUNDED' : booking.paymentStatus
+        // for the stay (the service fee returned is recorded on its own)
+        paymentStatus: moneyBack > 0 ? 'REFUNDED' : booking.paymentStatus,
+        ...(feeBack > 0 ? { metadata: { ...(booking.metadata || {}), serviceFeeRefunded: feeBack } } : {}),
       }
     });
 
@@ -225,8 +237,8 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         bookingId,
         status: 'CANCELLED',
         title: 'Booking Cancelled',
-        message: refundAmount > 0
-          ? toOrg > 0 ? `Cancelled by ${byLabel}. ${inr(toOrg)} refunded to the organisation's ZivoPlus account.` : `Cancelled by ${byLabel}. Refund of ${inr(refundAmount)}: ` + [
+        message: moneyBack > 0
+          ? toOrg > 0 ? `Cancelled by ${byLabel}. ${inr(toOrg)} refunded to the organisation's ZivoPlus account.` : `Cancelled by ${byLabel}. Refund of ${inr(moneyBack)}${feeBack > 0 ? ` (including the ${inr(feeBack)} service fee)` : ''}: ` + [
               toWallet > 0 && `${inr(toWallet)} added to your Zivo Cash`,
               toSource > 0 && `${inr(toSource)} to your original payment method (5-7 working days)`,
             ].filter(Boolean).join(', ') + '.'
@@ -255,7 +267,7 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
         userId,
         requestId,
         details: {
-          initiatedBy, refundAmount, retainedAmount, memberWaiver, refundToWallet: toWallet, refundToSource: toSource, refundToOrganisation: toOrg, walletReturned, status: 'SUCCESS', policy: policyApplied,
+          initiatedBy, refundAmount, serviceFeeRefunded: feeBack, retainedAmount, memberWaiver, refundToWallet: toWallet, refundToSource: toSource, refundToOrganisation: toOrg, walletReturned, status: 'SUCCESS', policy: policyApplied,
           razorpayRefundId, paymentId: booking.razorpayPaymentId
         }
       }
@@ -267,6 +279,12 @@ export const cancelBookingWithRefund = async ({ bookingId, initiatedBy, userId, 
   // A booking that was invoiced: a credit note for what is no longer charged (the invoice stays)
   import('./guestNoteService.js').then((m) => m.creditForCancellation(bookingId, { retainedAmount, before: { total: toMoney(booking.totalAmount), tax: toMoney(booking.taxAmount) } }))
     .catch((e) => console.error('[GuestNote] cancellation:', e.message));
+  // The service fee returned: a credit note against ZivoPlus's invoice for its own supply
+  if (feeBack > 0) {
+    const fee = feeOf(booking);
+    import('./guestNoteService.js').then((m) => m.issueNote(bookingId, { kind: 'CREDIT', amount: feeBack, tax: fee.tax, reason: 'Service fee refunded', key: 'service-fee' }))
+      .catch((e) => console.error('[GuestNote] service fee:', e.message));
+  }
 
   // Tell the hotel (in-app; plus email when the hotel side cancelled, so the owner has a record)
   const message = initiatedBy === 'GUEST'

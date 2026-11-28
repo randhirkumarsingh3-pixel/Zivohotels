@@ -252,7 +252,7 @@ ${fee > 0 ? `<tr><td>2</td><td><b>${esc(zivo.tradeName || zivo.legalName)} servi
     ['Accommodation charges', money(f.total)],
     ...(fee > 0 ? [['Service fee (taxable value)', money(r2(fee - feeData.tax))], ...feeTaxCols.map(([n, r, v]) => [`${n} ${pct(r)} on service fee`, money(v)])] : []),
     ['Grand total', inr(r2(f.total + fee)), 'grand'],
-    ['Paid online', inr(f.paid), 'plus'],
+    ['Paid online', inr(r2(f.paid + (b.metadata?.serviceFeePaid ? fee : 0))), 'plus'],
     f.refunded ? ['Refunded', inr(f.refunded), 'less'] : null,
     f.due ? ['To pay at the hotel', inr(f.due), 'sub'] : null,
   ])}
@@ -319,6 +319,10 @@ ${signature(zivo.legalName, brand.signatory)}
 const facilitatorNoteHtml = ({ b, hotel, note, invoice, brand, P, credit }) => {
   const { zivo, posCode, posName, b2b } = P;
   const amount = r2(note.amount);
+  // A note for ZivoPlus's own service fee (key 'service-fee'), with its GST
+  const isFee = note.key === 'service-fee';
+  const tax = r2(note.taxAmount);
+  const feeRate = isFee && amount - tax > 0 ? Math.round((tax / (amount - tax)) * 100) : 0;
   const title = credit ? 'Credit Note' : 'Debit Note';
   const body = `<div class="page">
 ${header({ brandSub: zivo.legalName, title, sub: `Against tax invoice ${invoice.invoiceRef} · ${esc(zivo.tradeName || zivo.legalName)} acts as facilitator`, ref: note.noteRef, status: { label: credit ? 'Amount reduced' : 'Amount added', tone: credit ? 'off' : 'warn' } })}
@@ -336,17 +340,25 @@ ${meta([
   ])}
 <div class="parties">${P.supplierBox}${P.recipientBox}</div>
 <table><tr><th style="width:22px">#</th><th>Description</th><th style="width:60px">SAC</th><th class="r" style="width:110px">Amount (₹)</th></tr>
-<tr><td>1</td><td><b>${esc(note.reason)}</b><br><span class="muted">Accommodation charges, inclusive of applicable taxes collected on behalf of the hotel · ${esc(hotel.name)} · ${day(b.checkIn)} → ${day(b.checkOut)}</span></td><td></td><td class="r">${money(amount)}</td></tr>
+${isFee
+    ? `<tr><td>1</td><td><b>${esc(note.reason)}</b><br><span class="muted">${esc(zivo.tradeName || zivo.legalName)} service fee · taxable value ${money(r2(amount - tax))} · GST ${money(tax)}</span></td><td>${SAC_RESERVATION}</td><td class="r">${money(amount)}</td></tr>`
+    : `<tr><td>1</td><td><b>${esc(note.reason)}</b><br><span class="muted">Accommodation charges, inclusive of applicable taxes collected on behalf of the hotel · ${esc(hotel.name)} · ${day(b.checkIn)} → ${day(b.checkOut)}</span></td><td></td><td class="r">${money(amount)}</td></tr>`}
 </table>
 <div class="cols">
   <div>
     <div class="words">Amount in words: ${amountInWords(amount)}</div>
-    <div class="notes">${credit
+    <div class="notes">${isFee
+    ? `This credit note reverses the ${esc(zivo.tradeName || zivo.legalName)} service fee of ${inr(amount)}, GST included, on tax invoice ${esc(invoice.invoiceRef)} dated ${day(invoice.createdAt)}.`
+    : credit
     ? `This credit note reduces the accommodation charges on tax invoice ${esc(invoice.invoiceRef)} dated ${day(invoice.createdAt)} by ${inr(amount)}. The hotel adjusts its own GST invoice for the stay.`
     : `This debit note adds ${inr(amount)} of accommodation charges to tax invoice ${esc(invoice.invoiceRef)} dated ${day(invoice.createdAt)}. The hotel adjusts its own GST invoice for the stay.`}
     <br><b>${ITC_LINE(zivo)}</b></div>
   </div>
-  ${totals([
+  ${totals(isFee ? [
+    ['Service fee (taxable value)', money(r2(amount - tax))],
+    ...taxSplit(Boolean(zivo.stateCode && zivo.stateCode === posCode), feeRate, tax).map(([n, r, v]) => [`${n} ${pct(r)}`, money(v)]),
+    ['Total credit', inr(amount), 'grand'],
+  ] : [
     ['Accommodation charges', money(amount)],
     [credit ? 'Total credit' : 'Total debit', inr(amount), 'grand'],
   ])}

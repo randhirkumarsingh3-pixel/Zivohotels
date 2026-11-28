@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { hourlyFromQuery, timeLabel } from '../utils/hourly';
 import { useLocation } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
-import { getHotels, trackEvent, searchHourlyHotels } from '../services/api';
+import { getHotels, trackEvent, searchHourlyHotels, getServiceFeeInfo } from '../services/api';
+import { serviceFeeText } from '../utils/guestOffers';
 import { defaultStay } from '../components/home/searchLinks';
 import { occupancyOf, occParams, occToParam } from '../utils/occupancy';
 
@@ -53,6 +54,9 @@ const Listing = ({ place = null }) => {
   const { searchParams, updateSearchParams } = useBooking();
   const allExperiments = useAllExperiments();
   const location = useLocation();
+  // ZivoPlus's service fee, when on: said up front, before any price is chosen
+  const [serviceFee, setServiceFee] = useState(null);
+  useEffect(() => { getServiceFeeInfo().then(setServiceFee).catch(() => setServiceFee(null)); }, []);
   // City / area landing pages (/hotels-in-bengaluru) search that place unless the address says otherwise
   const search = useMemo(() => {
     if (!place) return location.search;
@@ -262,6 +266,7 @@ const Listing = ({ place = null }) => {
           </h1>
           {place?.intro && <p className="-mt-3 mb-5 text-navy-100 max-w-3xl">{place.intro}</p>}
           <SmartSearchBar isMobile={isMobile} initial={hourly ? { destination: hourly.city, hourly } : searchBarInitial} />
+          {serviceFee && <p className="mt-3 text-sm text-navy-100">Prices shown are for the stay. A {serviceFeeText(serviceFee)}, including GST, is added when you pay online; you see it before you book.</p>}
           {hourly && <p className="mt-3 text-sm text-navy-100">{`${hourly.hours}-hour stays from ${timeLabel(hourly.start)} on ${new Date(`${hourly.date}T06:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}. Prices before GST.`}</p>}
         </div>
       </div>

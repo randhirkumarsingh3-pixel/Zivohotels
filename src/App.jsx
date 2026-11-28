@@ -70,6 +70,7 @@ const FinanceLedger = lazyPage(() => import('./admin/pages/FinanceLedger'));
 const FinancePayouts = lazyPage(() => import('./admin/pages/FinancePayouts'));
 const FinanceDocuments = lazyPage(() => import('./admin/pages/FinanceDocuments'));
 const FinanceHotelInvoices = lazyPage(() => import('./admin/pages/FinanceHotelInvoices'));
+const FinanceServiceFee = lazyPage(() => import('./admin/pages/FinanceServiceFee'));
 const FinanceSettings = lazyPage(() => import('./admin/pages/FinanceSettings'));
 const FraudRiskCenter = lazyPage(() => import('./admin/pages/FraudRiskCenter'));
 const OperatorDecisionCenter = lazyPage(() => import('./admin/pages/OperatorDecisionCenter'));
@@ -224,6 +225,7 @@ function App() {
               <Route path="finance/payouts" element={<FinancePayouts />} />
               <Route path="finance/documents" element={<FinanceDocuments />} />
               <Route path="finance/hotel-invoices" element={<FinanceHotelInvoices />} />
+              <Route path="finance/service-fee" element={<FinanceServiceFee />} />
               <Route path="finance/settings" element={<FinanceSettings />} />
               <Route path="wallets" element={<WalletControl />} />
 

@@ -414,7 +414,8 @@ const Detail = () => {
   const taxRate   = (nights && nightsN ? afterOffer / (nights * nightsN) : pricePerNight) <= 7500 ? 0.05 : 0.18;
   const taxes     = Math.round(afterOffer * taxRate);
   const estimateTotal = afterOffer + taxes;
-  const grandTotal = quote?.totalAmount ?? estimateTotal;
+  // With ZivoPlus's service fee (when on), so the price shown is the price paid
+  const grandTotal = quote ? Number(quote.payableTotal ?? quote.totalAmount) : estimateTotal;
   const extraGuests = chosenRooms.reduce((n, r) => n + Math.max(0, guestsIn(r) - (r.roomType?.baseOccupancy || 2)), 0);
   // Lowest nightly price across rooms (after automatic offers), for the summary at the top
   const allPlans = (hotel.roomTypes || []).filter((rt) => rt.availableForStay !== 0).flatMap((rt) => rt.ratePlans || []);
@@ -670,7 +671,13 @@ const Detail = () => {
                       <span>GST {quote.taxBreakdown?.length > 1 ? `(${quote.taxBreakdown.map((t) => `${t.percentage}%`).join(' + ')})` : `(${quote.taxPercentage ?? Math.round(taxRate * 100)}%)`}</span>
                       <span>{fmt(quote.taxAmount || 0)}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>Total if you pay now</span><span>{fmt(quote.totalAmount)}</span></div>
+                    {quote.serviceFee?.amount > 0 && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>ZivoPlus service fee <span className="text-xs">(incl. GST)</span></span>
+                        <span>{fmt(quote.serviceFee.amount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>Total if you pay now</span><span>{fmt(grandTotal)}</span></div>
                     <p className="text-xs text-gray-500">Part-payment and pay-later options are at checkout.</p>
                   </div>
                 ) : checkIn && checkOut && allChosen && quoteError ? (
@@ -713,7 +720,7 @@ const Detail = () => {
             {checkIn && checkOut && allChosen && quote ? (
               <button type="button" onClick={() => document.getElementById('summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-left">
                 <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">{fmt(grandTotal)}</p>
-                <p className="text-xs text-gray-500 truncate underline decoration-dotted">{multiRoom ? `${nightsN} rooms` : selectedRoomType?.name} · {nights} night{nights > 1 ? 's' : ''} · incl. GST</p>
+                <p className="text-xs text-gray-500 truncate underline decoration-dotted">{multiRoom ? `${nightsN} rooms` : selectedRoomType?.name} · {nights} night{nights > 1 ? 's' : ''} · incl. GST{quote.serviceFee?.amount > 0 ? ' and service fee' : ''}</p>
               </button>
             ) : fromPrice > 0 ? (
               <>
