@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   authConfig, signupStart, signup, login, loginCodeSend, loginCodeVerify, googleSignIn,
+  companySsoStart, companySsoCallback,
   phoneCodeSend, phoneCodeVerify, me, sendOtp, verifyOtp, logout, logoutGlobal, adoptSession,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -20,6 +21,9 @@ router.post('/login', login);
 router.post('/login/code', loginCodeSend);
 router.post('/login/code/verify', loginCodeVerify);
 router.post('/google', googleSignIn);
+// Company sign-in (Google Workspace / Microsoft), set up by a company in ZivoPlus for Business
+router.post('/sso/start', companySsoStart);
+router.get('/sso/callback', companySsoCallback);
 
 // Add or change the mobile number (e.g. after Google sign-in)
 router.post('/phone/code', protect, phoneCodeSend);

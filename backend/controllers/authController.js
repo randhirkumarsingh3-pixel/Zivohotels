@@ -19,6 +19,7 @@ import { sendCode, checkCode, CodeError, emailTestMode } from '../services/otpSe
 import { normalizePhone, maskPhone, smsTestMode, smsProvider } from '../services/smsService.js';
 import { sendWelcome, sendPartnerWelcome } from '../services/accountEmails.js';
 import { notifyAdmins } from '../services/notifyService.js';
+import companySso from '../services/business/companySso.js';
 
 // --- Validation ---
 
@@ -61,7 +62,8 @@ export const publicUser = (u, hotelId = null) => ({
 });
 
 /** Starts a session: login bookkeeping, the HTTP-only cookie, and the reply body. */
-const startSession = async (req, res, user, status = 200) => {
+/** Signs the user in: session cookie (and token for API clients). Shared by every sign-in way. */
+const issueSession = async (req, res, user) => {
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -78,6 +80,19 @@ const startSession = async (req, res, user, status = 200) => {
   setSessionCookie(res, token, updated.role === 'ADMIN' ? STAFF_SESSION : undefined); // the token in the body is for API clients; browsers use the cookie
   const sessionId = req.headers['x-session-id'];
   if (sessionId) setImmediate(() => mergeAnonymousSession(sessionId, updated.id));
+  return { token, updated, hotelId };
+};
+
+const startSession = async (req, res, user, status = 200) => {
+  // A company that made company sign-in the only way in: its employees use it (not on sign-up)
+  if (status !== 201) {
+    const required = await companySso.companySignInRequired(user).catch(() => null);
+    if (required) {
+      await secLog(req, 'SSO_REQUIRED_REFUSED', { email: user.email }, user.id);
+      return res.status(403).json({ success: false, code: 'COMPANY_SSO_REQUIRED', message: `Your company signs in with ${required.provider === 'MICROSOFT' ? 'Microsoft' : 'Google Workspace'}. Use "Sign in with your company account".`, requestId: req.id });
+    }
+  }
+  const { token, updated, hotelId } = await issueSession(req, res, user);
   return res.status(status).json({ success: true, token, requestId: req.id, data: { user: publicUser(updated, hotelId) } });
 };
 
@@ -109,6 +124,8 @@ export const authConfig = (req, res) => {
       smsTestMode: smsTestMode(),
       smsProvider: smsProvider(),
       emailTestMode: emailTestMode(),
+      // Company sign-in (Google Workspace / Microsoft) offered: the sign-in page shows its button
+      companySso: companySso.ssoAvailable(),
     },
   });
 };
@@ -447,3 +464,32 @@ async function mergeAnonymousSession(sessionId, userId) {
     console.error('[SessionMerge] Error merging session:', error);
   }
 }
+
+// --- Company sign-in (single sign-on, ZivoPlus for Business) ---
+
+/** "Sign in with your company account": { email, returnTo } → { url } of the company's provider. */
+export const companySsoStart = asyncHandler(async (req, res) => {
+  try {
+    return res.json({ success: true, data: await companySso.startLogin(req.body?.email, req.body?.returnTo) });
+  } catch (e) {
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    throw e;
+  }
+});
+
+/** Back from Google / Microsoft: a test is recorded; a sign-in sets the session cookie. Always redirects. */
+export const companySsoCallback = asyncHandler(async (req, res) => {
+  const q = req.query || {};
+  try {
+    const r = await companySso.completeSignIn({ state: q.state, code: q.code, error: q.error, errorDescription: q.error_description });
+    if (r.kind === 'LOGIN') {
+      await issueSession(req, res, r.user);
+      await secLog(req, 'COMPANY_SSO_LOGIN', { email: r.user.email, organisationId: r.organisationId }, r.user.id);
+    }
+    return res.redirect(303, r.redirect);
+  } catch (e) {
+    await secLog(req, 'COMPANY_SSO_FAILED', { error: e.message });
+    const fallback = `${String(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/login?company=1&sso_error=${encodeURIComponent('Company sign-in failed. Please try again.')}`;
+    return res.redirect(303, e.redirect || fallback);
+  }
+});
