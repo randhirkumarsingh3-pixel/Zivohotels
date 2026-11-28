@@ -131,4 +131,34 @@ export const remindMissing = async ({ now = new Date() } = {}) => {
   return sent;
 };
 
-export default { listForHotel, upload, readFile, remindMissing, hotelIssuesInvoice };
+/**
+ * ZivoPlus admins (Admin → Finance → Hotel GST invoices): business bookings whose GST invoice the
+ * property issues, across properties: what is uploaded and what is waiting after check-out.
+ */
+export const adminList = async ({ status = '', hotelId = '', q = '' } = {}) => {
+  const settings = await getDocumentSettings();
+  const where = { guestCompanyGstin: { not: null }, status: { in: INVOICED } };
+  if (hotelId) where.hotelId = String(hotelId);
+  const s = clean(q, 60);
+  if (s) where.OR = [{ bookingRef: { contains: s, mode: 'insensitive' } }, { guestCompanyName: { contains: s, mode: 'insensitive' } }, { guestCompanyGstin: { contains: s.toUpperCase() } }];
+  const rows = await prisma.booking.findMany({ where, include: { hotelGstInvoice: true, hotel: { select: { id: true, name: true, city: true } } }, orderBy: { checkOut: 'desc' }, take: 500 });
+  const all = rows.filter((b) => hotelIssuesInvoice(b, settings)).map((b) => ({ ...view(b, b.hotelGstInvoice), hotel: b.hotel, reminders: b.metadata?.gstInvoiceReminders?.count || 0 }));
+  const list = status === 'WAITING' ? all.filter((x) => x.due) : status === 'UPLOADED' ? all.filter((x) => x.invoice) : status === 'UPCOMING' ? all.filter((x) => !x.invoice && !x.due) : all;
+  list.sort((a, b) => (Number(b.due) - Number(a.due)) || new Date(a.checkOut) - new Date(b.checkOut));
+  return { bookings: list, counts: { waiting: all.filter((x) => x.due).length, uploaded: all.filter((x) => x.invoice).length, upcoming: all.filter((x) => !x.invoice && !x.due).length } };
+};
+
+/** An admin nudges the property now (outside the daily reminders). */
+export const adminRemind = async (bookingId, user) => {
+  const b = await prisma.booking.findUnique({ where: { id: String(bookingId) }, include: { hotelGstInvoice: true } });
+  if (!b || !hotelIssuesInvoice(b, await getDocumentSettings())) throw fail('Booking not found', 404);
+  if (b.hotelGstInvoice) throw fail('The property has already uploaded it.', 409);
+  await notifyHotel(b.hotelId, {
+    type: 'GST_INVOICE_MISSING', title: 'GST invoice to upload (ZivoPlus asked)', message: `${b.bookingRef}: please upload the GST invoice in the name of ${b.guestCompanyName} (GSTIN ${b.guestCompanyGstin}) in GST invoices.`, metadata: { bookingId: b.id, link: '/extranet/gst-invoices' },
+    email: { subject: `GST invoice needed: booking ${b.bookingRef}`, html: `<p>Please issue the GST invoice for booking <b>${b.bookingRef}</b> in the name of ${b.guestCompanyName} (GSTIN ${b.guestCompanyGstin}) and upload it in the ZivoPlus extranet → GST invoices. The business needs it to claim input tax credit.</p>` },
+  });
+  await prisma.auditLog.create({ data: { action: 'HOTEL_GST_INVOICE_REMINDED', entityType: 'BOOKING', entityId: b.id, userId: user.id, details: { by: 'ADMIN' } } }).catch(() => {});
+  return { reminded: true };
+};
+
+export default { listForHotel, upload, readFile, remindMissing, hotelIssuesInvoice, adminList, adminRemind };

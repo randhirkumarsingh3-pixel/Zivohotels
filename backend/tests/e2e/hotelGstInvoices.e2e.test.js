@@ -132,6 +132,16 @@ describe('Business bookings: the property issues and uploads the GST invoice', f
     const list = await api.get(`/extranet/gst-invoices/${hotel.id}?status=PENDING`, hotelSide);
     expect(list.data.data.bookings.find((x) => x.bookingId === b2.id).due).to.equal(true);
 
+    // ZivoPlus admins see what is waiting across properties, and can nudge the property now
+    const waiting = await api.get(`/admin/finance/hotel-invoices?status=WAITING&q=${encodeURIComponent(org.gstin)}`, admin);
+    expect(waiting.status, JSON.stringify(waiting.data)).to.equal(200);
+    expect(waiting.data.data.bookings.map((x) => x.bookingId)).to.include(b2.id).and.not.include(booking.id);
+    const uploaded = await api.get(`/admin/finance/hotel-invoices?status=UPLOADED&q=${encodeURIComponent(org.gstin)}`, admin);
+    expect(uploaded.data.data.bookings.map((x) => x.bookingId)).to.deep.equal([booking.id]);
+    expect((await api.post(`/admin/finance/hotel-invoices/${b2.id}/remind`, {}, admin)).data.data.reminded).to.equal(true);
+    expect((await api.post(`/admin/finance/hotel-invoices/${booking.id}/remind`, {}, admin)).status).to.equal(409);
+    expect((await api.get('/admin/finance/hotel-invoices', hotelSide)).status).to.be.oneOf([401, 403]);
+
     const b3 = await book(70);
     const c = await api.post(`/business/${org.id}/bookings/${b3.id}/cancel`, {}, booker);
     expect(c.status).to.equal(200);

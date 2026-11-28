@@ -1,8 +1,18 @@
 import express from 'express';
+import gstInvoices from '../services/hotelGstInvoices.js';
 import { ledger, payouts, getSettings, putSettings, listDocuments, getDocument, previewMonth, issueMonth, creditNote, statement, emailMonth, propertyYear, documentsZip } from '../controllers/adminFinanceController.js';
 
 /** Admin → Finance (mounted at /admin/finance; reading needs finance.view, changes finance.manage) */
 const router = express.Router();
+// Business (GSTIN) bookings whose GST invoice the property issues and uploads
+const answer = (fn) => async (req, res, next) => {
+  try { res.json({ success: true, data: await fn(req) }); } catch (e) {
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    next(e);
+  }
+};
+router.get('/hotel-invoices', answer((req) => gstInvoices.adminList(req.query)));
+router.post('/hotel-invoices/:bookingId/remind', answer((req) => gstInvoices.adminRemind(req.params.bookingId, req.user)));
 router.get('/ledger', ledger);
 router.get('/payouts', payouts);
 router.get('/settings', getSettings);

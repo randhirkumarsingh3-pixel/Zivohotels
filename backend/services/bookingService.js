@@ -1,4 +1,5 @@
 import prisma from '../config/db.js';
+import { STATE_NAMES } from './finance/financeSettings.js';
 import eventBus from '../events/eventBus.js';
 import { membershipFor, memberDiscounts } from './membershipService.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
@@ -224,6 +225,15 @@ export const bookingService = {
     }
     Object.freeze(pricing);
 
+    // GST rule 46: an individual's (B2C) tax invoice of ₹50,000 or more carries their address and
+    // state. Website checkout asks for it (context.requireBillingFrom); business bookings carry
+    // the company's address.
+    const billing = context.billing || null;
+    if (billing && !STATE_NAMES[billing.stateCode]) throw Object.assign(new Error('Choose your state for the billing address.'), { statusCode: 400 });
+    if (context.requireBillingFrom && !company?.gstin && pricing.finalAmount >= context.requireBillingFrom && !(billing?.address && billing?.stateCode)) {
+      throw Object.assign(new Error(`Add your billing address and state: GST needs them on invoices of ₹${Number(context.requireBillingFrom).toLocaleString('en-IN')} or more.`), { statusCode: 400, code: 'BILLING_ADDRESS_REQUIRED' });
+    }
+
     // 4. Execute Transactional Core
     const bookingResult = await prisma.$transaction(async (tx) => {
       
@@ -244,6 +254,8 @@ export const bookingService = {
         guestCompanyName: company?.name || null,
         guestCompanyGstin: company?.gstin || null,
         guestCompanyAddress: company?.address || null,
+        billingAddress: billing?.address || null,
+        billingStateCode: billing?.stateCode || null,
         checkIn: checkInDate,
         checkOut: checkOutDate,
         guests: adults + children,

@@ -70,6 +70,9 @@ const partiesOf = (b, hotel, brand) => {
       b2b && recipientState ? `<span class="muted">State: ${esc(STATE_NAMES[recipientState] || '')} (${esc(recipientState)})</span>` : '',
       b2b ? `<span class="muted">Guest: ${esc(b.guestName)}</span>` : '',
       `<span class="muted">${esc([b.guestEmail, b.guestPhone].filter(Boolean).join(' · '))}</span>`,
+      // An individual's billing address and state (asked at checkout for ₹50,000 and more)
+      !b2b && b.billingAddress ? `<span class="muted">${esc(b.billingAddress)}</span>` : '',
+      !b2b && b.billingStateCode ? `<span class="muted">State: ${esc(STATE_NAMES[b.billingStateCode] || '')} (${esc(b.billingStateCode)})</span>` : '',
     ],
   });
 

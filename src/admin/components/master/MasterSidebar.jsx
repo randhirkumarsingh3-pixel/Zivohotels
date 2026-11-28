@@ -125,6 +125,7 @@ const MasterSidebar = ({ open = false, onClose = () => {} }) => {
           <NavItem perm="finance.view" name="Ledger" path="/admin/finance/ledger" icon={<ClipboardList size={18} />} />
           <NavItem perm="finance.view" name="Payouts" path="/admin/finance/payouts" icon={<IndianRupee size={18} />} />
           <NavItem perm="finance.view" name="Invoices & Statements" path="/admin/finance/documents" icon={<Receipt size={18} />} />
+          <NavItem perm="finance.view" name="Hotel GST Invoices (B2B)" path="/admin/finance/hotel-invoices" icon={<FileText size={18} />} />
           <NavItem perm="finance.view" name="Finance Settings" path="/admin/finance/settings" icon={<SlidersHorizontal size={18} />} />
         </NavGroup>
 
