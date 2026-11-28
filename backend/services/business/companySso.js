@@ -13,6 +13,13 @@
  *   Redirect   SSO_REDIRECT_URI, else <FRONTEND_URL>/api/v1/auth/sso/callback
  * Outside production, SSO_MOCK_IDP_URL points both providers (and the DNS check) at a test
  * identity provider (tests/e2e/companySso.e2e.test.js).
+ *
+ * Setup mode (SSO_TEST_MODE=true, until ZivoPlus's Google / Microsoft app registrations are in
+ * place): both providers are offered, and "Sign in with Google / Microsoft" goes to ZivoPlus's
+ * own test sign-in page (/sso-test-signin) instead. The person still proves the work email with a
+ * one-time code sent to it, so nobody can sign in as someone else; the domain check (DNS) is the
+ * real one. Everything else (members, auto-join, company sign-in only) works as it will live.
+ * Turn it off (remove the variable) once the real values are set.
  */
 import crypto from 'crypto';
 import dns from 'dns';
@@ -25,6 +32,8 @@ const fail = (message, statusCode = 400) => Object.assign(new Error(message), { 
 const site = () => String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
 const mock = () => (process.env.NODE_ENV !== 'production' && process.env.SSO_MOCK_IDP_URL ? String(process.env.SSO_MOCK_IDP_URL).replace(/\/$/, '') : null);
 const STATE_TTL = 10 * 60 * 1000;
+export const testMode = () => process.env.SSO_TEST_MODE === 'true';
+const TEST_TENANT = '00000000-0000-4000-8000-000000000001';
 const JOIN_ROLES = ['TRAVELLER', 'BOOKER', 'APPROVER', 'FINANCE'];
 // Free email services: anyone can have an address there, so nobody can own them for sign-in
 const PUBLIC_DOMAINS = new Set(['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.in', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'aol.com', 'rediffmail.com', 'proton.me', 'protonmail.com', 'zoho.com', 'zohomail.in', 'yandex.com', 'gmx.com', 'mail.com']);
@@ -37,6 +46,7 @@ export const domainOf = (email) => String(email || '').trim().toLowerCase().spli
 // --- Providers -------------------------------------------------------------------------------
 
 const creds = (p) => {
+  if (testMode()) return { id: 'zivoplus-setup-mode', secret: 'zivoplus-setup-mode' };
   if (mock()) return { id: 'zivoplus-mock-client', secret: 'zivoplus-mock-secret' };
   if (p === 'GOOGLE') return { id: process.env.SSO_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID, secret: process.env.SSO_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET };
   return { id: process.env.SSO_MICROSOFT_CLIENT_ID, secret: process.env.SSO_MICROSOFT_CLIENT_SECRET };
@@ -50,6 +60,7 @@ export const providersOffered = () => ({
 export const ssoAvailable = () => Object.values(providersOffered()).some(Boolean);
 
 const endpoints = (p, tenant) => {
+  if (testMode()) return { authorize: `${site()}/sso-test-signin` };
   const m = mock();
   if (p === 'GOOGLE') {
     if (m) return { authorize: `${m}/google/authorize`, token: `${m}/google/token`, jwks: `${m}/google/jwks`, issuers: [`${m}/google`] };
@@ -118,7 +129,7 @@ const view = async (orgId) => {
   const domains = await prisma.orgSsoDomain.findMany({ where: { organisationId: orgId }, orderBy: { createdAt: 'asc' } });
   return {
     config: { enabled: c.enabled, provider: c.provider, tenantId: c.tenantId, autoJoin: c.autoJoin, defaultRole: c.defaultRole, defaultGrade: c.defaultGrade, enforce: c.enforce },
-    domains: domains.map(domainView), providers: providersOffered(), lastTest: c.lastTest || null,
+    domains: domains.map(domainView), providers: providersOffered(), lastTest: c.lastTest || null, testMode: testMode(),
   };
 };
 
@@ -232,6 +243,7 @@ const authorizeUrl = async (orgId, c, { purpose, userId = null, returnTo = null,
     state: id, nonce, code_challenge: crypto.createHash('sha256').update(codeVerifier).digest('base64url'), code_challenge_method: 'S256', prompt: 'select_account',
   });
   if (loginHint) q.set('login_hint', loginHint);
+  if (testMode()) q.set('provider', c.provider);
   if (c.provider === 'GOOGLE' && hd) q.set('hd', hd);
   return `${e.authorize}?${q}`;
 };
@@ -287,6 +299,56 @@ const exchangeCode = async (c, code, codeVerifier) => {
   return body.id_token;
 };
 
+// --- Setup mode: ZivoPlus's test sign-in page stands in for Google / Microsoft ------------------
+
+const testKey = () => crypto.createHash('sha256').update(`sso-setup-mode:${process.env.JWT_SECRET || ''}`).digest();
+const sealTest = (o) => { const body = Buffer.from(JSON.stringify(o)).toString('base64url'); return `${body}.${crypto.createHmac('sha256', testKey()).update(body).digest('base64url')}`; };
+const openTest = (code) => {
+  const [body, mac] = String(code || '').split('.');
+  const want = body && crypto.createHmac('sha256', testKey()).update(body).digest('base64url');
+  if (!mac || !want || mac.length !== want.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(want))) throw fail('The test sign-in could not be confirmed. Please try again.', 401);
+  return JSON.parse(Buffer.from(body, 'base64url').toString());
+};
+const testClaimsFrom = (code, st) => {
+  const o = openTest(code);
+  if (o.state !== st.id || o.claims?.nonce !== st.nonce || !(o.exp > Date.now())) throw fail('The test sign-in could not be matched to this request. Please try again.', 401);
+  return o.claims;
+};
+
+/** The sign-in in flight that the test page is for: its company, provider and verified domains. */
+const testRequest = async (state, email) => {
+  if (!testMode()) throw fail('Not available.', 404);
+  const st = state && await prisma.ssoLoginState.findUnique({ where: { id: String(state) } });
+  if (!st || st.expiresAt < new Date()) throw fail('This sign-in link has expired. Please start again.', 410);
+  const c = await prisma.orgSso.findUnique({ where: { organisationId: st.organisationId } });
+  const mail = String(email || '').trim().toLowerCase();
+  const domains = (await prisma.orgSsoDomain.findMany({ where: { organisationId: st.organisationId, status: 'VERIFIED' }, select: { domain: true } })).map((d) => d.domain);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) throw fail('Enter your work email.', 422);
+  if (!domains.includes(domainOf(mail))) throw fail(`Use an email at ${domains.map((d) => `@${d}`).join(' or ') || 'your company\'s verified domain'}.`, 422);
+  return { st, c, mail };
+};
+
+/** Test page, step 1: a one-time code to the work email (shown on screen while emails are in test mode). */
+export const testSendCode = async ({ state, email }, meta = {}) => {
+  const { mail } = await testRequest(state, email);
+  const { sendCode } = await import('../otpService.js');
+  const sent = await sendCode({ channel: 'EMAIL', target: mail, purpose: 'LOGIN', ipAddress: meta.ip, userAgent: meta.userAgent });
+  return { to: mail, testCode: sent.testCode };
+};
+
+/** Test page, step 2: the code proves the email; back to the callback as the provider would. */
+export const testVerify = async ({ state, email, code, name }) => {
+  const { st, c, mail } = await testRequest(state, email);
+  const { checkCode } = await import('../otpService.js');
+  await checkCode({ channel: 'EMAIL', target: mail, purpose: 'LOGIN', code: String(code || '') });
+  const nm = String(name || '').trim().slice(0, 120) || mail.split('@')[0];
+  const claims = c?.provider === 'MICROSOFT'
+    ? { sub: `setup:${mail}`, preferred_username: mail, tid: c.tenantId || TEST_TENANT, name: nm, nonce: st.nonce }
+    : { sub: `setup:${mail}`, email: mail, email_verified: true, hd: domainOf(mail), name: nm, nonce: st.nonce };
+  const sealed = sealTest({ state: st.id, claims, exp: Date.now() + 2 * 60 * 1000 });
+  return { redirect: `${redirectUri()}?${new URLSearchParams({ code: sealed, state: st.id })}` };
+};
+
 /** Who signed in, checked against the company's settings: { email, name, tid }. */
 const identityFrom = async (c, claims, domains) => {
   let email; let name = claims.name || '';
@@ -324,18 +386,23 @@ export const completeSignIn = async ({ state, code, error, errorDescription }) =
     if (!c?.provider || !providersOffered()[c.provider]) throw fail('Company sign-in is not set up.', 409);
     if (st.purpose === 'LOGIN' && !c.enabled) throw fail('Company sign-in is turned off for your company. Sign in with your password or a code.', 409);
     const domains = (await prisma.orgSsoDomain.findMany({ where: { organisationId: st.organisationId, status: 'VERIFIED' }, select: { domain: true } })).map((d) => d.domain);
-    const idToken = await exchangeCode(c, code, st.codeVerifier);
-    const e = endpoints(c.provider, c.tenantId);
-    const claims = await verifyIdToken(idToken, { jwks: e.jwks, issuers: e.issuers, issuerFor: e.issuerFor, audience: creds(c.provider).id, nonce: st.nonce });
+    let claims;
+    if (testMode()) claims = testClaimsFrom(code, st);
+    else {
+      const idToken = await exchangeCode(c, code, st.codeVerifier);
+      const e = endpoints(c.provider, c.tenantId);
+      claims = await verifyIdToken(idToken, { jwks: e.jwks, issuers: e.issuers, issuerFor: e.issuerFor, audience: creds(c.provider).id, nonce: st.nonce });
+    }
     const who = await identityFrom(c, claims, domains);
 
     if (st.purpose === 'TEST') {
       // Microsoft without a directory ID: the tested account's directory is pinned from now on
-      await prisma.orgSso.update({ where: { id: c.id }, data: { lastTest: { ok: true, at: new Date().toISOString(), email: who.email }, ...(c.provider === 'MICROSOFT' && !c.tenantId ? { tenantId: who.tid } : {}) } });
+      // (Setup mode pins nothing: the real directory is pinned by the first real test.)
+      await prisma.orgSso.update({ where: { id: c.id }, data: { lastTest: { ok: true, at: new Date().toISOString(), email: who.email, ...(testMode() ? { setupMode: true } : {}) }, ...(c.provider === 'MICROSOFT' && !c.tenantId && !testMode() ? { tenantId: who.tid } : {}) } });
       await prisma.auditLog.create({ data: { action: 'COMPANY_SSO_TESTED', entityType: 'ORGANISATION', entityId: st.organisationId, userId: st.userId || 'SYSTEM', details: { ok: true, email: who.email } } }).catch(() => {});
       return { kind: 'TEST', redirect: testBack(true) };
     }
-    if (c.provider === 'MICROSOFT' && !c.tenantId) throw fail('Your company\'s Microsoft directory isn\'t confirmed yet. Ask your admin to test company sign-in again.', 409);
+    if (c.provider === 'MICROSOFT' && !c.tenantId && !testMode()) throw fail('Your company\'s Microsoft directory isn\'t confirmed yet. Ask your admin to test company sign-in again.', 409);
 
     const org = await prisma.organisation.findUnique({ where: { id: st.organisationId } });
     if (org?.status !== 'ACTIVE') throw fail('Your company\'s ZivoPlus account is not active.', 403);
@@ -372,4 +439,4 @@ export const completeSignIn = async ({ state, code, error, errorDescription }) =
   }
 };
 
-export default { getSso, saveSso, addDomain, verifyDomain, removeDomain, startTest, startLogin, completeSignIn, companySignInRequired, ssoAvailable, providersOffered, ROLES };
+export default { testMode, testSendCode, testVerify, getSso, saveSso, addDomain, verifyDomain, removeDomain, startTest, startLogin, completeSignIn, companySignInRequired, ssoAvailable, providersOffered, ROLES };

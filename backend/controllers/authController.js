@@ -493,3 +493,16 @@ export const companySsoCallback = asyncHandler(async (req, res) => {
     return res.redirect(303, e.redirect || fallback);
   }
 });
+
+/** Setup mode only (SSO_TEST_MODE): ZivoPlus's test sign-in page standing in for Google / Microsoft. */
+const ssoTestStep = (fn) => asyncHandler(async (req, res) => {
+  try {
+    return res.json({ success: true, data: await fn(req.body || {}, { ip: req.ip, userAgent: req.headers['user-agent'] }) });
+  } catch (e) {
+    if (e instanceof CodeError) return codeFail(res, e);
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    throw e;
+  }
+});
+export const companySsoTestCode = ssoTestStep((body, meta) => companySso.testSendCode(body, meta));
+export const companySsoTestVerify = ssoTestStep((body) => companySso.testVerify(body));
