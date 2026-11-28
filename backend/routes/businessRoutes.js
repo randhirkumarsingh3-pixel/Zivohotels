@@ -33,6 +33,8 @@
  *  GET    /:orgId/agreed-rates                rates agreed with hotels for the company, in place or coming up
  *  GET    /:orgId/trips?status=               POST { city, checkIn, checkOut, rooms, adults, purpose, notes, travellerMemberId? }
  *  POST   /:orgId/trips/:id/decline { note }  POST /:orgId/trips/:id/cancel
+ *  GET    /:orgId/sso                         company sign-in settings (admins): PUT config, POST /domains { domain },
+ *         POST /domains/:id/verify (DNS TXT), DELETE /domains/:id, POST /test → { url }
  *  GET    /:orgId/agreement                   the agreement with ZivoPlus; POST /code, /sign { name, code, consent, contentHash },
  *                                             /aadhaar { consent, contentHash }; GET /pdf, /audit-trail
  */
@@ -48,6 +50,7 @@ import booking from '../services/business/businessBookingService.js';
 import { agencyVoucherPdf } from '../services/voucherService.js';
 import { policyOf, savePolicy } from '../services/business/travelPolicy.js';
 import orgAgreement from '../services/business/orgAgreementService.js';
+import sso from '../services/business/companySso.js';
 
 const router = express.Router();
 const wrap = (fn) => asyncHandler(async (req, res) => {
@@ -74,6 +77,12 @@ router.get('/:orgId/documents/:docId/file', wrap(async (req, res) => {
   res.set({ 'Content-Type': f.mimeType, 'Content-Disposition': `inline; filename="${f.name.replace(/[^\w.-]/g, '_')}"`, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(f.content);
 }));
 
+router.get('/:orgId/sso', wrap(async (req, res) => ok(res, await sso.getSso(req.params.orgId, req.user))));
+router.put('/:orgId/sso', wrap(async (req, res) => ok(res, await sso.saveSso(req.params.orgId, req.user, req.body || {}))));
+router.post('/:orgId/sso/domains', wrap(async (req, res) => ok(res, await sso.addDomain(req.params.orgId, req.user, req.body || {}), 201)));
+router.post('/:orgId/sso/domains/:domainId/verify', wrap(async (req, res) => ok(res, await sso.verifyDomain(req.params.orgId, req.user, req.params.domainId))));
+router.delete('/:orgId/sso/domains/:domainId', wrap(async (req, res) => ok(res, await sso.removeDomain(req.params.orgId, req.user, req.params.domainId))));
+router.post('/:orgId/sso/test', wrap(async (req, res) => ok(res, await sso.startTest(req.params.orgId, req.user))));
 router.get('/:orgId/members', wrap(async (req, res) => ok(res, await svc.listMembers(req.params.orgId, req.user))));
 router.post('/:orgId/members', wrap(async (req, res) => ok(res, await svc.inviteMember(req.params.orgId, req.user, req.body || {}), 201)));
 router.post('/:orgId/members/import', wrap(async (req, res) => {

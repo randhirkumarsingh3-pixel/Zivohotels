@@ -83,6 +83,8 @@ export const publicInfo = async () => {
     corporate: { name: PORTAL.CORPORATE.name, enabled: s.corporate.enabled, requireGstin: s.corporate.requireGstin },
     agency: { name: PORTAL.AGENCY.name, enabled: s.agency.enabled, requireGstin: s.agency.requireGstin, pricingModel: s.agency.pricingModel },
     roles: ROLES, documentTypes: DOC_TYPES,
+    // Company sign-in (Business → Sign-in) is offered once ZivoPlus set up a provider
+    sso: { available: (await import('./companySso.js')).ssoAvailable() },
   };
 };
 

@@ -2125,3 +2125,57 @@ model HotelGstInvoice {
 
   @@index([hotelId])
 }
+
+/// Company sign-in (single sign-on) for a ZivoPlus for Business account: employees at the
+/// company's verified email domains sign in with Google Workspace or Microsoft Entra ID.
+model OrgSso {
+  id             String   @id @default(uuid())
+  organisationId String   @unique
+  enabled        Boolean  @default(false)
+  /// GOOGLE | MICROSOFT
+  provider       String?
+  /// Microsoft: the directory (tenant) id; set by the admin or pinned by the first good test
+  tenantId       String?
+  autoJoin       Boolean  @default(false)
+  defaultRole    String   @default("TRAVELLER")
+  defaultGrade   String?
+  /// Passwords, codes and Google sign-in stop working for emails at the verified domains
+  enforce        Boolean  @default(false)
+  /// { ok, at, email, error } of the admin's last test sign-in
+  lastTest       Json?
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+/// An email domain a company proved it owns (DNS TXT record), for company sign-in.
+model OrgSsoDomain {
+  id             String    @id @default(uuid())
+  organisationId String
+  domain         String
+  /// PENDING | VERIFIED
+  status         String    @default("PENDING")
+  token          String
+  verifiedAt     DateTime?
+  checkedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([organisationId, domain])
+  @@index([domain, status])
+}
+
+/// One sign-in attempt in flight with the provider (state, nonce, PKCE), used once, 10 minutes.
+model SsoLoginState {
+  id             String   @id
+  organisationId String
+  /// LOGIN | TEST
+  purpose        String
+  nonce          String
+  codeVerifier   String
+  returnTo       String?
+  userId         String?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([expiresAt])
+}
