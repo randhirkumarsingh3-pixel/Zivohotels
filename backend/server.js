@@ -292,6 +292,22 @@ app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed);
+// Saved hotels and price-drop alerts (signed-in guests); see services/savedHotels.js
+{
+  const { protect } = await import('./middleware/authMiddleware.js');
+  const saved = await import('./services/savedHotels.js');
+  const answer = (fn, code = 200) => async (req, res, next) => {
+    try { res.status(code).json({ success: true, data: await fn(req) }); } catch (e) {
+      if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+      next(e);
+    }
+  };
+  app.get('/api/v1/saved-hotels', protect, answer((req) => saved.listSaved(req.user.id)));
+  app.get('/api/v1/saved-hotels/ids', protect, answer((req) => saved.savedIds(req.user.id)));
+  app.post('/api/v1/saved-hotels', protect, answer((req) => saved.saveHotel(req.user.id, req.body || {}), 201));
+  app.patch('/api/v1/saved-hotels/:hotelId', protect, answer((req) => saved.setAlerts(req.user.id, req.params.hotelId, req.body?.alerts)));
+  app.delete('/api/v1/saved-hotels/:hotelId', protect, answer((req) => saved.removeSaved(req.user.id, req.params.hotelId)));
+}
 // ZivoPlus's service fee, when on, so every price to pay shows it (services/serviceFee.js)
 app.get('/api/v1/public/service-fee', async (req, res, next) => {
   try {
@@ -446,6 +462,7 @@ server.listen(PORT, HOST, () => {
     startWalletJob();
     startMembershipJob();
     startNearbyJob(); // fills what's nearby once for properties with a map pin (live ones included)
+    import('./services/savedHotels.js').then((m) => m.startPriceAlertJob()).catch((e) => console.error('[PriceDrop] job not started:', e.message));
     startFinanceDocumentsJob(); // 1st of the month: last month's commission invoices, owner emails
     startRetentionJob(); // daily: removes data past its retention period (services/retentionService.js)
     startInvoiceCatchUpJob(); // every 10 min: draws invoice PDFs that failed, issues missing invoices

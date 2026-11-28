@@ -8,6 +8,7 @@ import { useBooking } from '../context/BookingContext';
 import { getImageUrl } from '../utils/image';
 import { amenityLabels } from '../utils/amenityLabels';
 import { hotelPath } from '../utils/hotelPath';
+import SaveButton from './saved/SaveButton';
 
 /**
  * A hotel in search results and on the home page.
@@ -53,11 +54,15 @@ const HotelCard = ({ hotel, layout = 'grid' }) => {
   const place = [hotel.location || hotel.city, hotel.distanceKm != null ? `${hotel.distanceKm} km away` : ''].filter(Boolean).join(' · ');
   const freeCancel = hotel.freeCancellation || hotel.badges?.isFreeCancellation;
   const soldOut = hotel.badges?.isSoldOut;
+  // The dates being looked at go with a saved hotel (for price-drop alerts)
+  const occ = occupancyOf(searchParams || {});
+  const saveStay = searchParams?.checkIn && searchParams?.checkOut ? { checkIn: searchParams.checkIn, checkOut: searchParams.checkOut, adults: occ.reduce((n, r) => n + (Number(r.adults) || 0), 0) || 2, rooms: occ.length || 1 } : {};
   const row = layout === 'row';
 
   const photo = (
     <div className={`relative overflow-hidden shrink-0 bg-gray-100 ${row ? 'h-52 md:h-auto md:w-72 md:min-h-[220px]' : 'h-52 sm:h-56'}`}>
       {hotel.badges?.isTopRated && <span className="absolute top-3 left-3 z-10 bg-navy-800 text-white text-xs font-bold px-2.5 py-1 rounded-md">Top rated</span>}
+      {!hotel.hourly && <SaveButton hotelId={hotel.id} hotelName={hotel.name} className="absolute top-3 right-3 z-20" stay={saveStay} />}
       {soldOut && (
         <div className="absolute inset-0 z-20 bg-navy-950/60 flex items-center justify-center">
           <span className="bg-white text-gray-900 font-bold px-4 py-2 rounded-lg text-sm">{hotel.hourly ? 'Not free at this time' : 'Sold out for these dates'}</span>

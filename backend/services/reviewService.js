@@ -4,7 +4,6 @@ import { awardReviewBonus } from './loyaltyService.js';
 import prisma from '../config/db.js';
 import { mediaService } from './MediaService.js';
 import { createNotification } from './notificationService.js';
-import { queueService } from './queueService.js';
 import { escapeHtml } from '../utils/html.js';
 
 /**
@@ -322,15 +321,21 @@ export const replyAsHotel = async (reviewId, hotelId, text, userId) => {
   const updated = await prisma.review.update({ where: { id: reviewId }, data: { reply, replyAt: new Date(), replyById: userId } });
   await prisma.auditLog.create({ data: { action: isNew ? 'REVIEW_REPLIED' : 'REVIEW_REPLY_EDITED', entityType: 'REVIEW', entityId: reviewId, userId, details: { hotelId } } });
   if (isNew && review.user?.email) {
-    queueService.enqueue('email', 'REVIEW_REPLY', {
-      to: review.user.email,
-      subject: `${review.hotel.name} replied to your review`,
-      html: `<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:20px">
-        <h2 style="margin:0 0 12px">${escapeHtml(review.hotel.name)} replied to your review</h2>
-        <p style="color:#555">Your review: ${'★'.repeat(Math.round(review.rating))}${review.title ? ` · ${escapeHtml(review.title)}` : ''}</p>
-        <blockquote style="border-left:3px solid #e11d48;margin:16px 0;padding:8px 16px;color:#111;background:#f9fafb">${escapeHtml(reply).replace(/\n/g, '<br>')}</blockquote>
-        <p style="color:#888;font-size:13px">See it in My Bookings on ZivoPlus.</p></div>`,
-    }, { priority: 3 }).catch(() => {});
+    // In the ZivoPlus email look, with the bell notification too
+    const { emailLayout } = await import('./emailLayout.js');
+    const { notifyUser } = await import('./notifyService.js');
+    const html = await emailLayout({
+      title: `${review.hotel.name} replied to your review`,
+      eyebrow: 'Your review',
+      body: `<p>Your review: ${'★'.repeat(Math.round(review.rating))}${review.title ? ` · ${escapeHtml(review.title)}` : ''}</p>
+<blockquote style="border-left:3px solid #e11d48;margin:16px 0;padding:8px 16px;background:#f9fafb">${escapeHtml(reply).replace(/\n/g, '<br>')}</blockquote>`,
+      cta: { label: 'See it in My Bookings', href: review.bookingId ? `/my-bookings?review=${review.bookingId}` : '/my-bookings' },
+    });
+    await notifyUser(review.userId, {
+      type: 'REVIEW_REPLY', title: `${review.hotel.name} replied to your review`, message: reply.slice(0, 140),
+      link: review.bookingId ? `/my-bookings?review=${review.bookingId}` : '/my-bookings', metadata: { reviewId },
+      email: { to: review.user.email, subject: `${review.hotel.name} replied to your review`, html, jobType: 'REVIEW_REPLY' },
+    }).catch(() => {});
   }
   return updated;
 };

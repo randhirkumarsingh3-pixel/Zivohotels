@@ -41,6 +41,7 @@ model User {
   reviews             Review[]
   staffMemberships    StaffMember[]  @relation("StaffUser")
   orgMemberships      OrgMember[]
+  savedHotels         SavedHotel[]
 }
 
 model Hotel {
@@ -140,6 +141,7 @@ model Hotel {
   /// Hourly stays: { enabled, approved (by ZivoPlus), openFrom "08:00", openTo "21:00",
   /// durations [3,6,9,12], cleaningMinutes, leadMinutes, freeCancelHours, extraHourPrice, allowOffers }
   hourlySettings     Json?
+  savedHotels        SavedHotel[]
 
   @@index([ownerId])
   @@index([city])
@@ -2178,4 +2180,31 @@ model SsoLoginState {
   createdAt      DateTime @default(now())
 
   @@index([expiresAt])
+}
+
+/// A hotel a guest saved (the heart on hotel cards and pages), with the dates they looked at.
+/// With dates and alerts on, the price for those dates is checked a few times a day and the guest
+/// is emailed when it drops (services/savedHotels.js).
+model SavedHotel {
+  id             String    @id @default(uuid())
+  userId         String
+  hotelId        String
+  checkIn        DateTime?
+  checkOut       DateTime?
+  adults         Int       @default(2)
+  rooms          Int       @default(1)
+  alerts         Boolean   @default(true)
+  /// Lowest total for the dates when saved, the last check, and the last alert sent
+  savedPrice     Decimal?  @db.Decimal(12, 2)
+  lastPrice      Decimal?  @db.Decimal(12, 2)
+  lastCheckedAt  DateTime?
+  lastAlertPrice Decimal?  @db.Decimal(12, 2)
+  lastAlertAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotel          Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hotelId])
+  @@index([alerts, checkIn])
 }

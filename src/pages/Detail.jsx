@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getHotelById, trackEvent, getMyMembership, previewBookingApi, getHotelHourly, getGuestOffers } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { offerText } from '../utils/guestOffers';
+import SaveButton from '../components/saved/SaveButton';
 import { Link as RouterLink } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { MapPin, Star, BedDouble, ShieldCheck, Flame, CreditCard, CalendarDays, Users } from 'lucide-react';
@@ -447,7 +448,11 @@ const Detail = () => {
               {typeLabel && <span className="text-gray-600 font-medium">{stars > 0 ? '· ' : ''}{typeLabel}</span>}
               {hotel.memberDiscountPercent > 0 && <RouterLink to="/membership" className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-xs font-bold">Member price: {hotel.memberDiscountPercent}% off</RouterLink>}
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-navy-900">{hotel.name}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-navy-900">{hotel.name}</h1>
+              <SaveButton hotelId={hotel.id} hotelName={hotel.name} onLight className="shrink-0"
+                stay={checkIn && checkOut ? { checkIn, checkOut, adults: occupancy.reduce((n, r) => n + (Number(r.adults) || 0), 0) || 2, rooms: occupancy.length || 1 } : {}} />
+            </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <a href="#location" className="inline-flex items-start text-gray-600 hover:text-navy-800">
                 <MapPin className="h-4 w-4 mr-1 mt-0.5 text-brand-700 shrink-0" aria-hidden="true" />

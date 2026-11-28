@@ -112,6 +112,21 @@ router.put('/notifications/read', markNotificationsRead);
 router.get('/activity', fetchActivityTimeline);
 router.get('/dashboard', getDashboard);
 router.get('/performance', getPerformance);
+// Monthly report by room type against the month before, with booking pace (services/extranetReports.js)
+router.get('/performance/monthly', async (req, res, next) => {
+  try {
+    const { monthlyReport } = await import('../services/extranetReports.js');
+    res.json({ success: true, data: await monthlyReport(req.scopedHotelId, req.query.month) });
+  } catch (e) { if (e.statusCode === 400) return res.status(400).json({ success: false, message: e.message }); next(e); }
+});
+router.get('/performance/monthly.csv', async (req, res, next) => {
+  try {
+    const { monthlyReport, monthlyReportCsv } = await import('../services/extranetReports.js');
+    const r = await monthlyReport(req.scopedHotelId, req.query.month);
+    res.locals.skipFormat = true;
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="performance-${r.month}.csv"`, 'Cache-Control': 'private, no-store' }).send(monthlyReportCsv(r));
+  } catch (e) { if (e.statusCode === 400) return res.status(400).json({ success: false, message: e.message }); next(e); }
+});
 
 // Finance & Settlements
 router.get('/finance/overview', getFinancialOverview);

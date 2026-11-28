@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Eye, MousePointerClick, CalendarCheck, Percent, IndianRupee, BedDouble, XCircle, Clock, Trophy, Lightbulb, ChevronRight, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { extranetGet } from '../../services/extranetApi';
 import { useExtranet } from '../context/ExtranetContext';
+import MonthlyReport from '../components/MonthlyReport';
 
 /**
  * Extranet -> Performance: real figures for the last 7, 30 or 90 days (GET /extranet/performance):
@@ -146,6 +147,8 @@ const ExtranetPerformance = () => {
           </div>
         </>
       )}
+
+      <MonthlyReport hotelId={hotelId} addToast={addToast} />
     </div>
   );
 };

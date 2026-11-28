@@ -30,6 +30,7 @@ const Header = () => {
     { to: '/rewards', label: 'Zivo Rewards' },
     { to: '/membership', label: 'Membership' },
     isAuthenticated && { to: '/my-bookings', label: 'My Bookings' },
+    isAuthenticated && user?.role === 'CUSTOMER' && { to: '/saved', label: 'Saved' },
     isAuthenticated && user?.role === 'CUSTOMER' && { to: '/wallet', label: 'Zivo Cash' },
     isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'OWNER') && { to: user.role === 'ADMIN' ? '/admin' : '/extranet', label: user.role === 'ADMIN' ? 'Admin' : 'Extranet' },
   ].filter(Boolean);
