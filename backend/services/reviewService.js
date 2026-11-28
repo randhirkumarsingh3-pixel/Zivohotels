@@ -4,7 +4,6 @@ import { awardReviewBonus } from './loyaltyService.js';
 import prisma from '../config/db.js';
 import { mediaService } from './MediaService.js';
 import { createNotification } from './notificationService.js';
-import { queueService } from './queueService.js';
 import { escapeHtml } from '../utils/html.js';
 
 /**
@@ -54,12 +53,13 @@ export const moderationFlags = (text) => {
 // ── Eligibility ─────────────────────────────────────────────────────────────
 
 /** Can this booking be reviewed now? Returns null or the reason it can't. */
-export const reviewBlocker = (booking, now = new Date()) => {
+export const reviewBlocker = (booking, now = new Date(), { openOnCheckIn = false } = {}) => {
   if (!booking) return 'Booking not found';
   if (['CANCELLED', 'NO_SHOW', 'PENDING'].includes(booking.status)) return 'Only completed stays can be reviewed';
+  // From the hotel's feedback QR code, guests can rate from the check-in day (they're there)
   const opens = new Date(booking.checkIn);
   opens.setHours(0, 0, 0, 0);
-  opens.setDate(opens.getDate() + 1);
+  if (!openOnCheckIn) opens.setDate(opens.getDate() + 1);
   if (now < opens) return `You can review this stay from ${opens.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
   if (now > new Date(new Date(booking.checkOut).getTime() + REVIEW_WINDOW_DAYS * DAY)) return `Reviews can be written up to ${REVIEW_WINDOW_DAYS} days after check-out`;
   return null;
@@ -205,8 +205,16 @@ const notifyHotelOfReview = (review, hotelName) => createNotification({
 
 export const createReview = async (payload, { userId }) => {
   const booking = await prisma.booking.findUnique({ where: { id: payload.bookingId }, include: { hotel: { select: { id: true, name: true } } } });
-  if (!booking || booking.userId !== userId) throw fail('Booking not found', 404);
-  const blocker = reviewBlocker(booking);
+  const fromQr = payload.source === 'QR';
+  // The account that booked; from the hotel's QR code also the named guest (same confirmed email),
+  // e.g. a traveller whose company booked for them
+  let allowed = Boolean(booking && booking.userId === userId);
+  if (booking && !allowed && fromQr && booking.guestEmail) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerifiedAt: true } });
+    allowed = Boolean(me?.emailVerifiedAt && me.email && me.email.toLowerCase() === String(booking.guestEmail).toLowerCase());
+  }
+  if (!allowed) throw fail('Booking not found', 404);
+  const blocker = reviewBlocker(booking, new Date(), { openOnCheckIn: fromQr });
   if (blocker) throw fail(blocker);
   if (await prisma.review.findUnique({ where: { bookingId: booking.id }, select: { id: true } })) throw fail('You have already reviewed this stay. You can edit your review instead.', 409);
 
@@ -225,11 +233,11 @@ export const createReview = async (payload, { userId }) => {
         ...base, photos, ...applyModeration(base),
         isVerified: true,
         editableUntil: new Date(Date.now() + EDIT_HOURS * 60 * 60 * 1000),
-        bookingId: booking.id, userId, hotelId: booking.hotelId,
+        bookingId: booking.id, userId, hotelId: booking.hotelId, source: fromQr ? 'QR' : 'WEB',
       }
     });
     if (r.status === 'APPROVED') await recomputeHotelStats(booking.hotelId, tx);
-    await tx.auditLog.create({ data: { action: 'REVIEW_CREATED', entityType: 'REVIEW', entityId: r.id, userId, details: { bookingId: booking.id, rating: r.rating, status: r.status } } });
+    await tx.auditLog.create({ data: { action: 'REVIEW_CREATED', entityType: 'REVIEW', entityId: r.id, userId, details: { bookingId: booking.id, rating: r.rating, status: r.status, source: r.source } } });
     return r;
   });
   if (review.status === 'APPROVED') {
@@ -322,15 +330,21 @@ export const replyAsHotel = async (reviewId, hotelId, text, userId) => {
   const updated = await prisma.review.update({ where: { id: reviewId }, data: { reply, replyAt: new Date(), replyById: userId } });
   await prisma.auditLog.create({ data: { action: isNew ? 'REVIEW_REPLIED' : 'REVIEW_REPLY_EDITED', entityType: 'REVIEW', entityId: reviewId, userId, details: { hotelId } } });
   if (isNew && review.user?.email) {
-    queueService.enqueue('email', 'REVIEW_REPLY', {
-      to: review.user.email,
-      subject: `${review.hotel.name} replied to your review`,
-      html: `<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:20px">
-        <h2 style="margin:0 0 12px">${escapeHtml(review.hotel.name)} replied to your review</h2>
-        <p style="color:#555">Your review: ${'★'.repeat(Math.round(review.rating))}${review.title ? ` · ${escapeHtml(review.title)}` : ''}</p>
-        <blockquote style="border-left:3px solid #e11d48;margin:16px 0;padding:8px 16px;color:#111;background:#f9fafb">${escapeHtml(reply).replace(/\n/g, '<br>')}</blockquote>
-        <p style="color:#888;font-size:13px">See it in My Bookings on ZivoPlus.</p></div>`,
-    }, { priority: 3 }).catch(() => {});
+    // In the ZivoPlus email look, with the bell notification too
+    const { emailLayout } = await import('./emailLayout.js');
+    const { notifyUser } = await import('./notifyService.js');
+    const html = await emailLayout({
+      title: `${review.hotel.name} replied to your review`,
+      eyebrow: 'Your review',
+      body: `<p>Your review: ${'★'.repeat(Math.round(review.rating))}${review.title ? ` · ${escapeHtml(review.title)}` : ''}</p>
+<blockquote style="border-left:3px solid #e11d48;margin:16px 0;padding:8px 16px;background:#f9fafb">${escapeHtml(reply).replace(/\n/g, '<br>')}</blockquote>`,
+      cta: { label: 'See it in My Bookings', href: review.bookingId ? `/my-bookings?review=${review.bookingId}` : '/my-bookings' },
+    });
+    await notifyUser(review.userId, {
+      type: 'REVIEW_REPLY', title: `${review.hotel.name} replied to your review`, message: reply.slice(0, 140),
+      link: review.bookingId ? `/my-bookings?review=${review.bookingId}` : '/my-bookings', metadata: { reviewId },
+      email: { to: review.user.email, subject: `${review.hotel.name} replied to your review`, html, jobType: 'REVIEW_REPLY' },
+    }).catch(() => {});
   }
   return updated;
 };

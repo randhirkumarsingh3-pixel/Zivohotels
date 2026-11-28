@@ -29,7 +29,7 @@ const reviewFields = {
   tripType: z.string().optional().nullable(),
   photos: z.array(z.union([z.string(), z.object({ url: z.string() })])).max(5, 'Up to 5 photos').optional(),
 };
-const createSchema = z.object({ bookingId: z.string().uuid(), ...reviewFields }).strip();
+const createSchema = z.object({ bookingId: z.string().uuid(), source: z.enum(['WEB', 'QR']).optional(), ...reviewFields }).strip();
 const editSchema = z.object(reviewFields).partial().strip();
 
 export const getReviewOptions = (req, res) => res.json({ success: true, data: {

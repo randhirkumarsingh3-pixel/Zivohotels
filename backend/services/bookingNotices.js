@@ -286,7 +286,7 @@ export const sendStayMessages = async (now = new Date()) => {
     if (!b || b.metadata?.notices?.reviewRequest || !(await claim(b, 'reviewRequest'))) continue;
     await notifyUser(b.userId, {
       type: 'REVIEW_REQUEST', title: `How was ${b.hotel.name}?`, message: 'Rate your stay: it takes a minute and helps other guests.',
-      link: '/my-bookings', metadata: { bookingId: b.id },
+      link: `/my-bookings?review=${b.id}`, metadata: { bookingId: b.id },
       email: b.guestEmail ? {
         to: b.guestEmail, jobType: 'SEND_REVIEW_REQUEST',
         subject: `How was your stay at ${b.hotel.name}?`,
@@ -294,7 +294,32 @@ export const sendStayMessages = async (now = new Date()) => {
           title: 'How was your stay?',
           body: `<p>Thanks for staying at <b>${h(b.hotel.name)}</b> with ZivoPlus. Tell other guests how it went: rate your stay in My Bookings. It takes a minute.</p>`,
           rows: [['Booking', b.bookingRef], ['Stay', `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`]],
-          cta: { label: 'Rate your stay', href: '/my-bookings' },
+          cta: { label: 'Rate your stay', href: `/my-bookings?review=${b.id}` },
+        }),
+      } : null,
+    });
+    sent += 1;
+  }
+
+  // One reminder 5-6 days after check-out, if still not reviewed (the review window stays open 90 days)
+  const later = await prisma.booking.findMany({
+    where: { status: { in: ['COMPLETED', 'CHECKED_IN', 'CONFIRMED'] }, checkOut: { gte: new Date(now.getTime() - 6 * 24 * HOUR), lte: new Date(now.getTime() - 5 * 24 * HOUR) }, review: null, userId: { not: null } },
+    select: { id: true }, take: 300,
+  });
+  for (const { id } of later) {
+    const b = await loadForNotice(id);
+    if (!b || !b.metadata?.notices?.reviewRequest || b.metadata?.notices?.reviewReminder || !(await claim(b, 'reviewReminder'))) continue;
+    await notifyUser(b.userId, {
+      type: 'REVIEW_REQUEST', title: `A minute to rate ${b.hotel.name}?`, message: 'Your review helps other guests choose, and the hotel can reply.',
+      link: `/my-bookings?review=${b.id}`, metadata: { bookingId: b.id, reminder: true },
+      email: b.guestEmail ? {
+        to: b.guestEmail, jobType: 'SEND_REVIEW_REMINDER',
+        subject: `A minute to rate ${b.hotel.name}?`,
+        html: await emailLayout({
+          title: 'Still have a minute?',
+          body: `<p>How was <b>${h(b.hotel.name)}</b>? A star rating and a line or two helps other guests choose, and the hotel can reply to you. This is the only reminder we'll send.</p>`,
+          rows: [['Booking', b.bookingRef], ['Stay', `${emailDay(b.checkIn)} to ${emailDay(b.checkOut)}`]],
+          cta: { label: 'Rate your stay', href: `/my-bookings?review=${b.id}` },
         }),
       } : null,
     });

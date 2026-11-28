@@ -73,6 +73,13 @@ const ReviewModeration = () => {
             {hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         </div>
+        {hotelId && (
+          <p className="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>This property&apos;s feedback QR code:</span>
+            <a href={`${API}/reviews/qr/${hotelId}.pdf`} download className="font-semibold text-navy-800 underline">Printable card (PDF)</a>
+            <a href={`${API}/reviews/qr/${hotelId}.png`} download className="font-semibold text-navy-800 underline">QR image (PNG)</a>
+          </p>
+        )}
       </div>
 
       {msg && <div role={msg.type === 'error' ? 'alert' : 'status'} className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>{msg.text}</div>}

@@ -334,10 +334,14 @@ export const lookupNearbyPlace = (q, lat, lng) => apiFetch(`${PUBLIC_BASE}/hotel
 export const getHotelAmenities = (id) => apiFetch(`${PUBLIC_BASE}/hotels/${id}/amenities`).then(res => res?.data);
 export const getHotelImages = (id) => apiFetch(`${PUBLIC_BASE}/hotels/${id}/images`).then(res => res?.data);
 
-// ─── WISHLIST ────────────────────────────────────────────────────────────────
-export const getWishlist = () => apiFetch(`${PUBLIC_BASE}/wishlist`).then(res => res?.data);
-export const addToWishlist = (hotelId) => apiFetch(`${PUBLIC_BASE}/wishlist/${hotelId}`, { method: 'POST' });
-export const removeFromWishlist = (hotelId) => apiFetch(`${PUBLIC_BASE}/wishlist/${hotelId}`, { method: 'DELETE' });
+// ─── SAVED HOTELS (and price-drop alerts) ───────────────────────────────────
+export const savedHotelsApi = {
+  list: () => apiFetch(`${PUBLIC_BASE}/saved-hotels`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  ids: () => apiFetch(`${PUBLIC_BASE}/saved-hotels/ids`, { cache: 'no-store' }, 0).then((r) => r?.data || []),
+  save: (body) => apiFetch(`${PUBLIC_BASE}/saved-hotels`, jsonBody('POST', body), 0).then((r) => r?.data),
+  alerts: (hotelId, alerts) => apiFetch(`${PUBLIC_BASE}/saved-hotels/${hotelId}`, jsonBody('PATCH', { alerts }), 0).then((r) => r?.data),
+  remove: (hotelId) => apiFetch(`${PUBLIC_BASE}/saved-hotels/${hotelId}`, { method: 'DELETE' }, 0),
+};
 
 // ─── PROFILE ─────────────────────────────────────────────────────────────────
 export const getProfile = () => apiFetch(`${PUBLIC_BASE}/profile`).then(res => res?.data);

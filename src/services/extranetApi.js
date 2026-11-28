@@ -153,6 +153,9 @@ export const financeHubApi = {
   documentPdf: (id) => extranetFile(`/finance/documents/${id}/pdf`),
   statement: (period, format) => extranetFile(`/finance/statement?period=${encodeURIComponent(period)}&format=${format}`),
   invoicesZip: (fy) => extranetFile(`/finance/documents/zip?fy=${encodeURIComponent(fy)}`),
+  feedbackQrPng: () => extranetFile('/reviews/qr.png'),
+  feedbackQrPdf: () => extranetFile('/reviews/qr.pdf'),
+  monthlyReportCsv: (month) => extranetFile(`/performance/monthly.csv?month=${encodeURIComponent(month)}`),
 };
 
 export const googleHotelsApi = {

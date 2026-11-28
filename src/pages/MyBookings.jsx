@@ -412,6 +412,16 @@ const MyBookings = () => {
     setSelectedTags([]); setReviewPhotos([]); setReviewError(''); setReviewSuccess(false); setEditingReview(false);
   }, []);
 
+  // From the "Rate your stay" email (/my-bookings?review=<booking id>): open that stay's review
+  const reviewParam = new URLSearchParams(window.location.search).get('review');
+  useEffect(() => {
+    if (!reviewParam || !bookings.length) return;
+    const b = bookings.find((x) => x.id === reviewParam);
+    if (b) handleRateStay(b);
+    const u = new URL(window.location.href); u.searchParams.delete('review');
+    window.history.replaceState(null, '', `${u.pathname}${u.search}`);
+  }, [reviewParam, bookings, handleRateStay]);
+
   /* ── Loading screen ── */
   if (loading && bookings.length === 0) {
     return (
