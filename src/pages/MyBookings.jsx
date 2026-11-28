@@ -199,12 +199,15 @@ const rupees = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`
 /** What the guest paid and still owes, in plain words (pay-at-hotel stays: nothing paid yet). */
 const PaymentSummary = ({ booking }) => {
   const paid = Number(booking.paidAmount) || 0;
+  // ZivoPlus's service fee, when one was paid (its own charge, next to the stay)
+  const fee = booking.metadata?.serviceFeePaid ? Number(booking.metadata.serviceFee) || 0 : 0;
+  const feeBack = Number(booking.metadata?.serviceFeeRefunded) || 0;
   const cancelled = ['CANCELLED', 'NO_SHOW'].includes(booking.status);
   // Not paid yet (pay at the hotel / pay later): the whole balance is still due, even where the
   // booking does not record it as remaining yet
   const unpaid = !['PAID', 'PARTIAL_PAID', 'REFUNDED'].includes(booking.paymentStatus);
   const due = cancelled ? 0 : Math.max(Number(booking.remainingAmount) || 0, unpaid ? (Number(booking.totalAmount) || 0) - paid : 0);
-  const refunded = Number(booking.refundAmount) || 0;
+  const refunded = (Number(booking.refundAmount) || 0) + feeBack;
   const pill = cancelled ? (refunded > 0 ? ['Refunded', 'emerald'] : ['Cancelled', 'gray'])
     : due > 0 && paid > 0 ? ['Part paid', 'amber']
       : due > 0 ? ['Pay at the hotel', 'amber']
@@ -220,7 +223,7 @@ const PaymentSummary = ({ booking }) => {
         <span className={`text-xs font-black uppercase px-2.5 py-1 rounded-full border ${pillCls}`}>{pill[0]}</span>
       </div>
       <div className="border-t border-white/10 pt-4 grid grid-cols-2 gap-4 text-xs text-gray-400">
-        <div><span>Paid online</span><p className="font-bold text-white mt-0.5">{rupees(paid)}</p></div>
+        <div><span>Paid online</span><p className="font-bold text-white mt-0.5">{rupees(paid + fee)}</p>{fee > 0 && <p className="mt-0.5">incl. {rupees(fee)} service fee</p>}</div>
         <div><span>{cancelled ? 'Refunded' : 'To pay at the hotel'}</span><p className="font-bold text-white mt-0.5">{rupees(cancelled ? refunded : due)}</p></div>
         <div><span>Payment method</span><p className="font-bold text-white mt-0.5">{PAYMENT_METHOD[booking.paymentType] || booking.paymentType}</p></div>
         <div><span>Reference No.</span><p className="font-mono text-white mt-0.5">{booking.bookingRef}</p></div>
@@ -886,6 +889,8 @@ const MyBookings = () => {
                     <div className="flex justify-between pb-2 border-b border-gray-100 text-gray-500 font-semibold"><span>Cancellation policy</span><span className="text-right">{cancelPreview.policyLabel}</span></div>
                     <div className="flex justify-between text-gray-700"><span>Paid online</span><span>₹{cancelPreview.paidAmount.toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between text-rose-600 font-bold"><span>Cancellation charge</span><span>- ₹{cancelPreview.retainedAmount.toLocaleString('en-IN')}</span></div>
+                    {cancelPreview.serviceFeeRefund > 0 && <div className="flex justify-between text-gray-700"><span>Service fee (refunded)</span><span>+ ₹{cancelPreview.serviceFeeRefund.toLocaleString('en-IN')}</span></div>}
+                    {cancelPreview.serviceFeeKept > 0 && <p className="text-gray-500">The ₹{cancelPreview.serviceFeeKept.toLocaleString('en-IN')} ZivoPlus service fee isn&apos;t refunded when you cancel.</p>}
                     <div className="flex justify-between text-emerald-600 font-black text-sm pt-2 border-t border-gray-100"><span>Refund</span><span>₹{cancelPreview.refundAmount.toLocaleString('en-IN')}</span></div>
                     {cancelPreview.walletRefund > 0 && (
                       <p className="text-gray-500">₹{cancelPreview.walletRefund.toLocaleString('en-IN')} you paid with Zivo Cash goes back to your Zivo Cash.</p>

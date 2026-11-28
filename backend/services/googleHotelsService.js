@@ -223,7 +223,8 @@ export const priceStay = async (hotelId, checkin, nights, adults = 2, children =
         const p = await bookingService.previewBooking({ hotelId, roomTypeId: rt.id, ratePlanId: rp.id, checkIn: checkin, checkOut: checkout, adults, children, rooms: 1, extraBeds: 0, paymentType: 'PREPAID' });
         out.push({
           roomTypeId: rt.id, ratePlanId: rp.id, room: rt.name, plan: rp.name, occupancy: adults + children,
-          baserate: Number(p.baseAmount), tax: Number(p.taxAmount), total: Number(p.totalAmount),
+          // ZivoPlus's service fee (when on) goes in OtherFees, so Google shows the full price
+          baserate: Number(p.baseAmount), tax: Number(p.taxAmount), fees: Number(p.serviceFee?.amount || 0), total: Number(p.totalAmount) + Number(p.serviceFee?.amount || 0),
           refundableDays: /non.?refundable/i.test(rp.cancellationPolicy || '') ? null : freeDays,
           meal: rp.mealPlan || 'NONE',
         });
@@ -258,7 +259,7 @@ export const transactionXml = async (body) => {
       <PackageID>${xml(p.ratePlanId)}</PackageID>
       <Baserate currency="INR">${money(p.baserate)}</Baserate>
       <Tax currency="INR">${money(p.tax)}</Tax>
-      <OtherFees currency="INR">0.00</OtherFees>
+      <OtherFees currency="INR">${money(p.fees || 0)}</OtherFees>
       <Occupancy>${p.occupancy}</Occupancy>
     </RoomBundle>`;
       });
@@ -266,7 +267,7 @@ export const transactionXml = async (body) => {
 ${head}
     <Baserate currency="INR">${money(best.baserate)}</Baserate>
     <Tax currency="INR">${money(best.tax)}</Tax>
-    <OtherFees currency="INR">0.00</OtherFees>
+    <OtherFees currency="INR">${money(best.fees || 0)}</OtherFees>
     <AllowablePointsOfSale><PointOfSale id="${xml(settings.posId)}"/></AllowablePointsOfSale>
 ${bundles.join('\n')}
   </Result>`);

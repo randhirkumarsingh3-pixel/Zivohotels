@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import { STATE_NAMES } from './finance/financeSettings.js';
 import { getDocumentSettings, invoiceModeFor } from './documents/documentSettings.js';
+import { feeForBooking, getServiceFeeSettings, feeMetadata } from './serviceFee.js';
 import eventBus from '../events/eventBus.js';
 import { membershipFor, memberDiscounts } from './membershipService.js';
 import { scheduleRecompute } from './dynamicPricingService.js';
@@ -162,8 +163,12 @@ export const bookingService = {
       hotelId: hotel.id, checkIn: checkInDate, checkOut: checkOutDate, userId: params.userId, code: couponCode, usePoints: params.usePoints
     });
     const { raw: _raw, roomIndexes: _ri, ...promotionSummary } = promotion || {};
+    // ZivoPlus's service fee (Admin → Finance → Service fee; off unless turned on): separate from
+    // the accommodation total, paid with it online
+    const serviceFee = await feeForBooking({ totalAmount: pricing.totalAmount, paymentType, guestCompanyGstin: params.companyGstin || null });
     return {
       ...pricing,
+      serviceFee, payableTotal: pricing.totalAmount + serviceFee.amount,
       billingAddressFrom: await billingAddressFrom({ guestCompanyGstin: params.companyGstin || null }),
       roomsBreakdown: describeRooms(pricing, rooms),
       promotion: promotion ? promotionSummary : null, promoCodeStatus: codeStatus, loyalty, membership,
@@ -238,6 +243,10 @@ export const bookingService = {
       throw Object.assign(new Error(codeStatus.message), { statusCode: 400 });
     }
     Object.freeze(pricing);
+    // ZivoPlus's service fee, when on (services/serviceFee.js): recorded as quoted, charged with the
+    // first online payment; never part of totalAmount (the hotel's figures)
+    const serviceFee = await feeForBooking({ totalAmount: pricing.finalAmount, paymentType, business: Boolean(business), guestCompanyGstin: company?.gstin || null });
+    const serviceFeeMeta = serviceFee.amount > 0 ? feeMetadata(serviceFee, await getServiceFeeSettings()) : {};
 
     // GST rule 46: an individual's (B2C) tax invoice of ₹50,000 or more carries their address and
     // state. Website checkout asks for it (context.requireBillingFrom); business bookings carry
@@ -298,6 +307,7 @@ export const bookingService = {
         ...(business ? { channel: business.channel, organisationId: business.organisationId, businessPricing } : {}),
         metadata: {
            pricingVersion: 'DDD-V1',
+           ...serviceFeeMeta,
            ...(payLaterBy ? { payLater: { deadline: payLaterBy.toISOString() } } : {}),
            ratePlanName: ratePlan.name,
            discountAmount: pricing.discountAmount,
@@ -348,12 +358,15 @@ export const bookingService = {
       // Business: paid from the organisation's account now, or held until holdUntil
       if (business) booking = await business.afterCreate(tx, booking);
       if (!business && context.useWallet && userId && paymentType !== 'PAY_AT_HOTEL') {
-        const dueNow = paymentType === 'PARTIAL'
+        // (with the service fee, if any: it is paid with this first payment)
+        const dueNow = roundMoney((paymentType === 'PARTIAL'
           ? roundMoney(pricing.finalAmount * ((systemConfig.partialPaymentPercent ?? 30) / 100))
-          : pricing.finalAmount;
+          : pricing.finalAmount) + serviceFee.amount);
         const used = await payForBooking(tx, { userId, bookingId: booking.id, bookingRef: booking.bookingRef, amountDue: dueNow });
         if (used > 0) {
           walletPaidInFull = used >= dueNow;
+          // paidAmount is towards the stay; the fee is recorded as paid separately
+          const towardsStay = roundMoney(used - (walletPaidInFull ? serviceFee.amount : 0));
           booking = await tx.booking.update({
             where: { id: booking.id },
             data: {
@@ -361,8 +374,9 @@ export const bookingService = {
               ...(walletPaidInFull ? {
                 status: 'CONFIRMED',
                 paymentStatus: paymentType === 'PARTIAL' ? 'PARTIAL_PAID' : 'PAID',
-                paidAmount: used,
-                remainingAmount: roundMoney(pricing.finalAmount - used),
+                paidAmount: towardsStay,
+                remainingAmount: roundMoney(pricing.finalAmount - towardsStay),
+                ...(serviceFee.amount > 0 ? { metadata: { ...(booking.metadata || {}), serviceFeePaid: true } } : {}),
               } : {}),
             }
           });

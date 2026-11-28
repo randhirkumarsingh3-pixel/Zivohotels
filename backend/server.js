@@ -292,6 +292,13 @@ app.use('/api/v1/hotels', hotelRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/public/search', searchLimiter, searchRoutes);
 app.get('/api/v1/public/home', getHomeFeed);
+// ZivoPlus's service fee, when on, so every price to pay shows it (services/serviceFee.js)
+app.get('/api/v1/public/service-fee', async (req, res, next) => {
+  try {
+    const { publicFeeInfo } = await import('./services/serviceFee.js');
+    res.set('Cache-Control', 'public, max-age=60').json({ success: true, data: await publicFeeInfo() });
+  } catch (e) { next(e); }
+});
 // What signing in / a new account saves (hotel page pop-up); see services/guestOffers.js
 app.get('/api/v1/public/guest-offers', async (req, res, next) => {
   try {

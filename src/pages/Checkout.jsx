@@ -212,9 +212,12 @@ const Checkout = () => {
   const taxPercentage = preview?.taxPercentage;
   const pricingSource = preview?.pricingType;
 
-  let payableNow = total;
+  // ZivoPlus's service fee (when on): its own charge, paid online with the booking
+  const serviceFee = preview?.serviceFee?.amount || 0;
+  const grandTotal = total + serviceFee;
+  let payableNow = grandTotal;
   if (paymentType === 'PAY_AT_HOTEL') payableNow = 0;
-  if (paymentType === 'PARTIAL') payableNow = Math.round(total * (config.partialPaymentPercent / 100) * 100) / 100;
+  if (paymentType === 'PARTIAL') payableNow = Math.round(total * (config.partialPaymentPercent / 100) * 100) / 100 + serviceFee;
   const walletUse = useWallet && paymentType !== 'PAY_AT_HOTEL' ? Math.min(walletBalance, payableNow) : 0;
   const payOnline = Math.round((payableNow - walletUse) * 100) / 100;
 
@@ -644,7 +647,7 @@ const Checkout = () => {
                       {on && preview && !fetchingPreview && (
                         <p className="mt-3 pt-3 border-t border-navy-100 text-sm text-gray-900 tabular-nums">
                           <strong>₹{Math.round(payableNow).toLocaleString('en-IN')}</strong> now
-                          {total - payableNow > 0 && <span className="block text-xs text-gray-600">₹{Math.round(total - payableNow).toLocaleString('en-IN')} {opt.id === 'PAY_AT_HOTEL' ? `online by ${payLaterBy ? deadlineLabel(payLaterBy) : 'the deadline'}` : 'at the hotel'}</span>}
+                          {grandTotal - payableNow > 0 && <span className="block text-xs text-gray-600">₹{Math.round(grandTotal - payableNow).toLocaleString('en-IN')} {opt.id === 'PAY_AT_HOTEL' ? `online by ${payLaterBy ? deadlineLabel(payLaterBy) : 'the deadline'}` : 'at the hotel'}</span>}
                         </p>
                       )}
                     </button>
@@ -876,12 +879,18 @@ const Checkout = () => {
                     <span>GST{preview?.taxBreakdown?.length > 1 ? ` (${preview.taxBreakdown.map((t) => `${t.percentage}%`).join(" + ")})` : taxPercentage != null ? ` (${taxPercentage}%)` : ''}</span>
                     <span className="text-gray-900">₹{taxes.toLocaleString()}</span>
                   </div>
+                  {serviceFee > 0 && (
+                    <div className="flex justify-between text-gray-500 font-medium">
+                      <span>ZivoPlus service fee <span className="text-xs">(incl. {preview.serviceFee.gstPct}% GST)</span></span>
+                      <span className="text-gray-900">₹{serviceFee.toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-6 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Grand Total</span>
-                    <span className="text-3xl font-black text-brand-700 tracking-tighter">₹{total.toLocaleString()}</span>
+                    <span className="text-3xl font-black text-brand-700 tracking-tighter">₹{grandTotal.toLocaleString()}</span>
                   </div>
                   {paymentType === 'PARTIAL' && (
                     <div className="mt-4 p-4 bg-navy-900 rounded-2xl text-white">
@@ -889,7 +898,7 @@ const Checkout = () => {
                         <span className="text-xs font-bold opacity-60">Amount Payable Now</span>
                         <span className="text-xl font-black">₹{payableNow.toLocaleString()}</span>
                       </div>
-                      <p className="text-xs font-medium opacity-40 italic">Balance ₹{(total - payableNow).toLocaleString()} payable at reception.</p>
+                      <p className="text-xs font-medium opacity-40 italic">Balance ₹{(grandTotal - payableNow).toLocaleString()} payable at reception.</p>
                     </div>
                   )}
                 </div>

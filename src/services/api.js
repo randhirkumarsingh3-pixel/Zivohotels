@@ -289,6 +289,8 @@ export const searchDestinations = (query, options = {}) => apiFetch(`${PUBLIC_BA
 // Home page: cities with live counts, top-rated hotels, live offers, reviews, sign-up and membership
 export const getHomeFeed = () => apiFetch(`${PUBLIC_BASE}/public/home`).then(res => res?.data);
 // What signing in / a new account saves on a hotel (sign-in price, first-booking offer)
+/** ZivoPlus's service fee, when on ({ type, value, maxAmount, gstPct }), else null. */
+export const getServiceFeeInfo = () => apiFetch(`${PUBLIC_BASE}/public/service-fee`).then(res => res?.data || null);
 export const getGuestOffers = (hotelId) => apiFetch(`${PUBLIC_BASE}/public/guest-offers${hotelId ? `?hotelId=${encodeURIComponent(hotelId)}` : ''}`).then(res => res?.data || null);
 export const nearbyDestinations = (lat, lng, options = {}) => apiFetch(`${PUBLIC_BASE}/public/search/nearby?lat=${lat}&lng=${lng}`, options).then(res => res?.data);
 
@@ -643,6 +645,8 @@ export const adminOpsApi = {
 // Admin → Finance (ledger, payouts; recording a payout uses the wallet endpoint)
 export const adminFinanceApi = {
   hotelInvoices: (q = {}) => apiFetch(`${ADMIN_BASE}/finance/hotel-invoices?${qs(q)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  serviceFee: () => apiFetch(`${ADMIN_BASE}/finance/service-fee`, { cache: 'no-store' }, 0).then((r) => r?.data),
+  saveServiceFee: (body) => apiFetch(`${ADMIN_BASE}/finance/service-fee`, jsonBody('PUT', body), 0).then((r) => r?.data),
   remindHotelInvoice: (bookingId) => apiFetch(`${ADMIN_BASE}/finance/hotel-invoices/${bookingId}/remind`, jsonBody('POST', {}), 0).then((r) => r?.data),
   ledger: (filters) => apiFetch(`${ADMIN_BASE}/finance/ledger?${qs(filters)}`, { cache: 'no-store' }, 0).then((r) => r?.data),
   payouts: () => apiFetch(`${ADMIN_BASE}/finance/payouts`, { cache: 'no-store' }, 0).then((r) => r?.data),
