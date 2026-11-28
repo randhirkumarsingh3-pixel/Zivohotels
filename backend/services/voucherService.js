@@ -186,7 +186,7 @@ export const guestVoucherHtml = (d) => {
   const { booking: b, hotel } = d;
   const pay = paymentSummary(b);
   const f = bookingFigures(b, d.rooms || [], { roomTypeName: d.roomType?.name, ratePlan: d.ratePlan });
-  const settings = d.brand?.settings || { guestInvoice: { mode: 'ON_BEHALF' }, voucher: { guestNotes: [] } };
+  const settings = d.brand?.settings || { guestInvoice: { mode: 'HOTEL_ISSUES' }, voucher: { guestNotes: [] } };
   const body = `${header({ brandSub: 'Booking voucher', title: 'Booking Confirmation', sub: 'Show this at check-in, on your phone or printed', ref: b.bookingRef, status: { label: STATUS_LABEL[b.status] || b.status, tone: statusTone(b.status) } })}
 ${stayMeta(d)}
 <div class="parties three">
@@ -310,7 +310,7 @@ export const hotelierVoucherHtml = (d, f) => {
   const collectedAtHotel = roundMoney(Math.max(0, f.gross - f.collected));
   const owed = f.netPayable < 0;
   const gstSplit = f.terms.sameState ? 'CGST + SGST' : 'IGST';
-  const settings = d.brand?.settings || { guestInvoice: { mode: 'ON_BEHALF' }, voucher: { hotelNotes: [] } };
+  const settings = d.brand?.settings || { guestInvoice: { mode: 'HOTEL_ISSUES' }, voucher: { hotelNotes: [] } };
   // Night-wise payable after commission and TCS/TDS; the last night takes the rounding so the column adds up
   const P = days.map((_, i) => roundMoney(G[i] - C[i] - D[i]));
   const sumP = roundMoney(P.reduce((t, v) => t + v, 0));

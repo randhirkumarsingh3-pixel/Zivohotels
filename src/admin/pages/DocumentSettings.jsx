@@ -14,7 +14,7 @@ import useAccess from '../../hooks/useAccess';
 const MODES = [
   { id: 'ON_BEHALF', Icon: Building2, title: 'ZivoPlus, on behalf of the hotel', text: 'Tax invoice with the hotel as supplier (its GSTIN and state), numbered and sent by ZivoPlus. Hotels invoice guests only for extras. Common for booking platforms.' },
   { id: 'ZIVO_SUPPLIER', Icon: Receipt, title: 'ZivoPlus as supplier', text: 'Tax invoice with ZivoPlus\'s GSTIN as supplier of the stay. Needs your CA\'s go-ahead and the company details in Finance Settings.' },
-  { id: 'HOTEL_ISSUES', Icon: Landmark, title: 'The hotel issues it', text: 'The hotel issues the GST invoice for the stay (to individual guests at the property; business bookings are uploaded in the extranet). ZivoPlus issues its own tax invoice as the facilitator (SAC 998552): accommodation charges collected on the hotel\'s behalf, inclusive of its taxes.' },
+  { id: 'HOTEL_ISSUES', Icon: Landmark, title: 'The hotel issues it (default)', text: 'The hotel issues the GST invoice for the stay (to individual guests at the property; business bookings are uploaded in the extranet). ZivoPlus issues its own tax invoice as the facilitator (SAC 998552): accommodation charges collected on the hotel\'s behalf, inclusive of its taxes.' },
 ];
 const PREVIEWS = [
   ['guest-invoice', 'Guest invoice (PDF)', FileText], ['guest-voucher', 'Guest voucher (PDF)', FileText], ['hotel-voucher', 'Hotelier voucher (PDF)', FileText],

@@ -41,7 +41,7 @@ const OLD_RECEIPT_TERMS = {
 
 export const DEFAULTS = () => ({
   guestInvoice: {
-    mode: 'ON_BEHALF', b2bMode: 'HOTEL_ISSUES', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
+    mode: 'HOTEL_ISSUES', b2bMode: 'HOTEL_ISSUES', prefix: 'ZIV', creditPrefix: 'ZCN', debitPrefix: 'ZDN', note: '',
     terms: [
       'Input tax credit is available only to the business whose GSTIN is shown as the recipient.',
       'Report any error in this document to ZivoPlus support within 7 days of receiving it.',
@@ -132,7 +132,7 @@ export const saveDocumentSettings = async (input = {}, userId = null) => {
 export const invoiceModeFor = (booking, settings) => {
   const gi = settings?.guestInvoice || {};
   if (booking?.guestCompanyGstin) return gi.b2bMode || 'HOTEL_ISSUES';
-  return booking?.businessPricing?.invoiceMode || gi.mode || 'ON_BEHALF';
+  return booking?.businessPricing?.invoiceMode || gi.mode || 'HOTEL_ISSUES';
 };
 
 /** Everything a document needs about ZivoPlus: legal details, support contacts, settings. */
