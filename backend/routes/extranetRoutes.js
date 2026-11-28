@@ -94,6 +94,25 @@ router.patch('/requests/:requestId', respondHotelRequest);
 // Reviews
 router.get('/reviews', listHotelReviews);
 router.post('/reviews/:reviewId/reply', replyToReview);
+
+// Feedback QR code (services/feedbackQr.js): PNG and the printable A5 card, and how it's used
+const sendQr = (kind, hotelOf) => async (req, res, next) => {
+  try {
+    const fq = await import('../services/feedbackQr.js');
+    const hotel = await hotelOf(req);
+    if (!hotel) return res.status(404).json({ success: false, message: 'Property not found' });
+    const name = `feedback-qr-${String(hotel.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+    res.locals.skipFormat = true;
+    if (kind === 'png') return res.set({ 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${name}.png"`, 'Cache-Control': 'private, no-store' }).send(await fq.qrPng(hotel));
+    return res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}.pdf"`, 'Cache-Control': 'private, no-store' }).send(await fq.qrCardPdf(hotel));
+  } catch (e) { next(e); }
+};
+const scopedHotel = (req) => prisma.hotel.findUnique({ where: { id: req.scopedHotelId }, select: { id: true, name: true, city: true } });
+router.get('/reviews/qr.png', sendQr('png', scopedHotel));
+router.get('/reviews/qr.pdf', sendQr('pdf', scopedHotel));
+router.get('/reviews/qr-stats', async (req, res, next) => {
+  try { const { qrStats, feedbackUrl } = await import('../services/feedbackQr.js'); const h = await scopedHotel(req); res.json({ success: true, data: { ...(await qrStats(req.scopedHotelId)), url: h ? feedbackUrl(h) : null } }); } catch (e) { next(e); }
+});
 router.delete('/reviews/:reviewId/reply', deleteReply);
 router.post('/reviews/:reviewId/report', reportReview);
 

@@ -16,6 +16,7 @@ const Signup = lazyPage(() => import('./pages/Signup'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 const SsoTestSignIn = lazyPage(() => import('./pages/SsoTestSignIn'));
 const SavedHotels = lazyPage(() => import('./pages/SavedHotels'));
+const Feedback = lazyPage(() => import('./pages/Feedback'));
 const MyBookings = lazyPage(() => import('./pages/MyBookings'));
 const Rewards = lazyPage(() => import('./pages/Rewards'));
 const Wallet = lazyPage(() => import('./pages/Wallet'));
@@ -153,6 +154,7 @@ function App() {
               <Route path="/accept-invite" element={<AcceptInvite />} />
               <Route path="/sso-test-signin" element={<SsoTestSignIn />} />
               <Route path="/saved" element={<SavedHotels />} />
+              <Route path="/feedback/:ref" element={<Feedback />} />
               <Route 
                 path="/checkout" 
                 element={

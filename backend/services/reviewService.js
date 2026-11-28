@@ -53,12 +53,13 @@ export const moderationFlags = (text) => {
 // ── Eligibility ─────────────────────────────────────────────────────────────
 
 /** Can this booking be reviewed now? Returns null or the reason it can't. */
-export const reviewBlocker = (booking, now = new Date()) => {
+export const reviewBlocker = (booking, now = new Date(), { openOnCheckIn = false } = {}) => {
   if (!booking) return 'Booking not found';
   if (['CANCELLED', 'NO_SHOW', 'PENDING'].includes(booking.status)) return 'Only completed stays can be reviewed';
+  // From the hotel's feedback QR code, guests can rate from the check-in day (they're there)
   const opens = new Date(booking.checkIn);
   opens.setHours(0, 0, 0, 0);
-  opens.setDate(opens.getDate() + 1);
+  if (!openOnCheckIn) opens.setDate(opens.getDate() + 1);
   if (now < opens) return `You can review this stay from ${opens.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
   if (now > new Date(new Date(booking.checkOut).getTime() + REVIEW_WINDOW_DAYS * DAY)) return `Reviews can be written up to ${REVIEW_WINDOW_DAYS} days after check-out`;
   return null;
@@ -204,8 +205,16 @@ const notifyHotelOfReview = (review, hotelName) => createNotification({
 
 export const createReview = async (payload, { userId }) => {
   const booking = await prisma.booking.findUnique({ where: { id: payload.bookingId }, include: { hotel: { select: { id: true, name: true } } } });
-  if (!booking || booking.userId !== userId) throw fail('Booking not found', 404);
-  const blocker = reviewBlocker(booking);
+  const fromQr = payload.source === 'QR';
+  // The account that booked; from the hotel's QR code also the named guest (same confirmed email),
+  // e.g. a traveller whose company booked for them
+  let allowed = Boolean(booking && booking.userId === userId);
+  if (booking && !allowed && fromQr && booking.guestEmail) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerifiedAt: true } });
+    allowed = Boolean(me?.emailVerifiedAt && me.email && me.email.toLowerCase() === String(booking.guestEmail).toLowerCase());
+  }
+  if (!allowed) throw fail('Booking not found', 404);
+  const blocker = reviewBlocker(booking, new Date(), { openOnCheckIn: fromQr });
   if (blocker) throw fail(blocker);
   if (await prisma.review.findUnique({ where: { bookingId: booking.id }, select: { id: true } })) throw fail('You have already reviewed this stay. You can edit your review instead.', 409);
 
@@ -224,11 +233,11 @@ export const createReview = async (payload, { userId }) => {
         ...base, photos, ...applyModeration(base),
         isVerified: true,
         editableUntil: new Date(Date.now() + EDIT_HOURS * 60 * 60 * 1000),
-        bookingId: booking.id, userId, hotelId: booking.hotelId,
+        bookingId: booking.id, userId, hotelId: booking.hotelId, source: fromQr ? 'QR' : 'WEB',
       }
     });
     if (r.status === 'APPROVED') await recomputeHotelStats(booking.hotelId, tx);
-    await tx.auditLog.create({ data: { action: 'REVIEW_CREATED', entityType: 'REVIEW', entityId: r.id, userId, details: { bookingId: booking.id, rating: r.rating, status: r.status } } });
+    await tx.auditLog.create({ data: { action: 'REVIEW_CREATED', entityType: 'REVIEW', entityId: r.id, userId, details: { bookingId: booking.id, rating: r.rating, status: r.status, source: r.source } } });
     return r;
   });
   if (review.status === 'APPROVED') {

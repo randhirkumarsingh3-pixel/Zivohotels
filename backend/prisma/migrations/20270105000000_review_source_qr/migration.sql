@@ -1,0 +1,6 @@
+-- AlterEnum
+ALTER TYPE "EventType" ADD VALUE 'FEEDBACK_QR_SCANNED';
+
+-- AlterTable
+ALTER TABLE "Review" ADD COLUMN     "source" TEXT NOT NULL DEFAULT 'WEB';
+

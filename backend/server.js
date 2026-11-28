@@ -73,7 +73,7 @@ import { startWalletJob } from './services/finance/walletService.js';
 import adminLoyaltyRoutes from './routes/adminLoyaltyRoutes.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { protect, authorizeRoles } from './middleware/authMiddleware.js';
+import { protect, authorizeRoles, extractUser } from './middleware/authMiddleware.js';
 import { permissionGate } from './middleware/permissionGate.js';
 import { ensureAccessSetup } from './services/accessService.js';
 import { requestLogger } from './middleware/logger.js';
@@ -308,6 +308,17 @@ app.get('/api/v1/public/home', getHomeFeed);
   app.patch('/api/v1/saved-hotels/:hotelId', protect, answer((req) => saved.setAlerts(req.user.id, req.params.hotelId, req.body?.alerts)));
   app.delete('/api/v1/saved-hotels/:hotelId', protect, answer((req) => saved.removeSaved(req.user.id, req.params.hotelId)));
 }
+// The hotel's feedback QR code lands here (services/feedbackQr.js): the hotel, and the signed-in
+// guest's stays there that can be rated
+app.get('/api/v1/feedback/:ref', extractUser, async (req, res, next) => {
+  try {
+    const { feedbackPage } = await import('./services/feedbackQr.js');
+    res.set('Cache-Control', 'private, no-store').json({ success: true, data: await feedbackPage(String(req.params.ref).slice(0, 200), req.user || null, { sessionId: req.headers['x-session-id'] }) });
+  } catch (e) {
+    if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ success: false, message: e.message });
+    next(e);
+  }
+});
 // ZivoPlus's service fee, when on, so every price to pay shows it (services/serviceFee.js)
 app.get('/api/v1/public/service-fee', async (req, res, next) => {
   try {

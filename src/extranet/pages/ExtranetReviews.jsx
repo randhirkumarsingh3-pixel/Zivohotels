@@ -3,6 +3,7 @@ import { Star, MessageSquare, Reply, Flag, Loader2, Trash2, Pencil, BadgeCheck, 
 import { fetchReviews, replyToReview, deleteReviewReply, reportReview } from '../../services/extranetApi';
 import { getImageUrl } from '../../utils/image';
 import { useExtranet } from '../context/ExtranetContext';
+import FeedbackQrCard from '../components/FeedbackQrCard';
 
 /**
  * Extranet -> Guest Reviews for the active property: review score and breakdown, published
@@ -77,6 +78,8 @@ const ExtranetReviews = () => {
         <h1 className="text-3xl font-black text-gray-900 tracking-tight">Guest Reviews</h1>
         <p className="text-gray-500 font-medium mt-1">Verified reviews of {property?.name || 'your property'}. Reply to show future guests you listen.</p>
       </div>
+
+      <FeedbackQrCard hotelId={hotelId} propertyName={property?.name} addToast={addToast} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

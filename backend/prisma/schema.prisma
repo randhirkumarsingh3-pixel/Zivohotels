@@ -666,6 +666,8 @@ model GuestNoteSequence {
 /// moderator. The hotel can reply publicly and report a review to Zivo.
 model Review {
   id             String       @id @default(uuid())
+  /// Where the review was written: WEB (My Bookings) or QR (the hotel's feedback QR code)
+  source         String       @default("WEB")
   rating         Float
   title          String?
   comment        String?
@@ -1639,6 +1641,7 @@ enum EventType {
   HOTEL_VIEWED
   BOOKING_STARTED
   BOOKING_COMPLETED
+  FEEDBACK_QR_SCANNED
 }
 
 model PolicyTemplate {

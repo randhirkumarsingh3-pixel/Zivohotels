@@ -24,15 +24,15 @@ describe('Guest engagement: reviews, saved hotels and price alerts, monthly repo
   const password = `Eng!${crypto.randomUUID().slice(0, 10)}x9`;
   let admin; let guest; let guestUser; let owner; let hotel; let room;
   const month = inDays(70).slice(0, 7);
-  const body = (checkIn, checkOut) => ({
+  const body = (checkIn, checkOut, guestEmail = null) => ({
       hotelId: hotel.id, roomTypeId: room.id, ratePlanId: room.ratePlans[0].id, rooms: 1, adults: 1, children: 0, checkIn, checkOut, paymentType: 'PREPAID',
-      guestName: 'Kavya Iyer', guestEmail: guestUser.email, guestPhone: '9876598765', roomLines: [{ roomTypeId: room.id, ratePlanId: room.ratePlans[0].id, adults: 1, guestName: 'Kavya Iyer' }],
+      guestName: 'Kavya Iyer', guestEmail: guestEmail || guestUser.email, guestPhone: '9876598765', roomLines: [{ roomTypeId: room.id, ratePlanId: room.ratePlans[0].id, adults: 1, guestName: 'Kavya Iyer' }],
     });
   const sleep = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
-  const book = async (checkIn, checkOut) => {
+  const book = async (checkIn, checkOut, { as = null, guestEmail = null } = {}) => {
     // Earlier test files book a lot: wait out the per-minute booking limit if it is reached
     const post = async (tries = 0) => {
-      const res = await api.post('/bookings', body(checkIn, checkOut), guest);
+      const res = await api.post('/bookings', body(checkIn, checkOut, guestEmail), as || guest);
       if (res.status === 429 && tries < 14) { await sleep(5000); return post(tries + 1); }
       return res;
     };
@@ -41,7 +41,7 @@ describe('Guest engagement: reviews, saved hotels and price alerts, monthly repo
     const b = r.data.data;
     const order = `order_eng_${b.id.slice(0, 8)}`; const pay = `pay_eng_${b.id.slice(0, 8)}`;
     await prisma.booking.update({ where: { id: b.id }, data: { razorpayOrderId: order } });
-    const v = await api.post('/payments/verify', { razorpay_order_id: order, razorpay_payment_id: pay, razorpay_signature: crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(`${order}|${pay}`).digest('hex'), bookingId: b.id }, guest);
+    const v = await api.post('/payments/verify', { razorpay_order_id: order, razorpay_payment_id: pay, razorpay_signature: crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(`${order}|${pay}`).digest('hex'), bookingId: b.id }, as || guest);
     expect(v.status, JSON.stringify(v.data)).to.equal(200);
     return prisma.booking.findUnique({ where: { id: b.id } });
   };
@@ -163,6 +163,70 @@ describe('Guest engagement: reviews, saved hotels and price alerts, monthly repo
       const m = await api.patch(`/admin/reviews/${review.id}`, { action: 'REJECT', note: 'Removed in a test.' }, admin);
       expect(m.status, JSON.stringify(m.data)).to.equal(200);
       expect((await prisma.review.findUnique({ where: { id: review.id } })).status).to.equal('REJECTED');
+    });
+  });
+
+  describe('Feedback QR code', () => {
+    let slug; let traveller; let travellerUser; let stranger; let mine;
+    before(async () => {
+      const hash = await bcrypt.hash(password, 10);
+      const mk = async (name, email) => { const u = await prisma.user.create({ data: { name, email, password: hash, role: 'CUSTOMER', status: 'ACTIVE', emailVerifiedAt: new Date() } }); return { u, auth: { headers: { Authorization: `Bearer ${(await api.post('/auth/login', { email, password })).data.data.token}` } } }; };
+      ({ u: travellerUser, auth: traveller } = await mk('Arjun Menon', `arjun.q${tag}@example.com`));
+      ({ auth: stranger } = await mk('Someone Else', `else.q${tag}@example.com`));
+    });
+
+    it('the hotel downloads it as a PNG and a printable card; admins can too', async () => {
+      const png = await api.get(`/extranet/reviews/qr.png?hotelId=${hotel.id}`, { ...owner, responseType: 'arraybuffer' });
+      expect(png.status).to.equal(200);
+      expect(png.headers['content-type']).to.include('image/png');
+      expect(Buffer.from(png.data).subarray(1, 4).toString()).to.equal('PNG');
+      const pdf = await api.get(`/extranet/reviews/qr.pdf?hotelId=${hotel.id}`, { ...owner, responseType: 'arraybuffer' });
+      expect(pdf.status).to.equal(200);
+      expect(Buffer.from(pdf.data).subarray(0, 4).toString()).to.equal('%PDF');
+      expect((await api.get(`/admin/reviews/qr/${hotel.id}.png`, { ...admin, responseType: 'arraybuffer' })).status).to.equal(200);
+      expect((await api.get(`/extranet/reviews/qr.png?hotelId=${hotel.id}`, guest)).status).to.be.oneOf([401, 403]);
+      const stats = (await api.get(`/extranet/reviews/qr-stats?hotelId=${hotel.id}`, owner)).data.data;
+      slug = stats.url.split('/feedback/')[1];
+      expect(slug).to.match(/-[0-9a-f]{8}$/);
+    });
+
+    it('scanning signed out asks to sign in; a code that isn\'t a hotel is refused', async () => {
+      const r = (await api.get(`/feedback/${slug}`)).data.data;
+      expect(r).to.include({ signedIn: false });
+      expect(r.hotel.id).to.equal(hotel.id);
+      expect(r.stays).to.deep.equal([]);
+      expect((await api.get('/feedback/not-a-hotel-12345678')).status).to.equal(404);
+    });
+
+    it('a guest with a stay rates it from check-in day; without the code it opens the day after', async () => {
+      mine = await book(inDays(0), inDays(1));
+      const page = (await api.get(`/feedback/${slug}`, guest)).data.data;
+      const s = page.stays.find((x) => x.bookingId === mine.id);
+      expect(s).to.include({ canReview: true, bookedByMe: true });
+      const web = await api.post('/reviews', { bookingId: mine.id, rating: 4 }, guest);
+      expect(web.status).to.equal(400);
+      const qr = await api.post('/reviews', { bookingId: mine.id, rating: 4, source: 'QR', comment: 'Smooth check-in and a quiet room.' }, guest);
+      expect(qr.status, JSON.stringify(qr.data)).to.equal(201);
+      expect(qr.data.data.source).to.equal('QR');
+      const again = (await api.get(`/feedback/${slug}`, guest)).data.data.stays.find((x) => x.bookingId === mine.id);
+      expect(again.canReview).to.equal(false);
+      expect(again.review).to.include({ mine: true });
+    });
+
+    it('the named guest of someone else\'s booking can rate it by scanning; others get no form', async () => {
+      const forArjun = await book(inDays(0), inDays(1), { guestEmail: travellerUser.email });
+      const page = (await api.get(`/feedback/${slug}`, traveller)).data.data;
+      const s = page.stays.find((x) => x.bookingId === forArjun.id);
+      expect(s).to.include({ canReview: true, bookedByMe: false });
+      expect((await api.post('/reviews', { bookingId: forArjun.id, rating: 5 }, traveller)).status).to.equal(404);
+      const ok = await api.post('/reviews', { bookingId: forArjun.id, rating: 5, source: 'QR' }, traveller);
+      expect(ok.status, JSON.stringify(ok.data)).to.equal(201);
+      // Someone with no stay here sees nothing to rate, and can't post one
+      expect((await api.get(`/feedback/${slug}`, stranger)).data.data.stays).to.deep.equal([]);
+      expect((await api.post('/reviews', { bookingId: mine.id, rating: 1, source: 'QR' }, stranger)).status).to.equal(404);
+      const stats = (await api.get(`/extranet/reviews/qr-stats?hotelId=${hotel.id}`, owner)).data.data;
+      expect(stats.reviews).to.be.at.least(2);
+      expect(stats.scans30d).to.be.at.least(4);
     });
   });
 });
